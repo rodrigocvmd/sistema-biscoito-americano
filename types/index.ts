@@ -64,12 +64,12 @@ export interface StoreDocument {
 export type UrgencyLevel = "Urgente" | "Acabando em breve" | "Sem urgência (adiantando)";
 
 export interface SupplyOrder {
-	id: string;
-	name: string;
-	urgency: UrgencyLevel;
-	quantity?: string;
-	status: "pending" | "delivered";
-	createdAt: any; // Firestore Timestamp
+  id: string;
+  name: string;
+  urgency: UrgencyLevel;
+  quantity?: string;
+  status: 'pending' | 'delivered' | 'cancelled';
+  createdAt: any; // Firestore Timestamp
 	deliveredAt?: any; // Firestore Timestamp
 	expireAt?: any; // Firestore Timestamp
 }

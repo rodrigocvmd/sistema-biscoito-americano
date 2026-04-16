@@ -40,6 +40,8 @@ export default function SuppliesPage({ params }: { params: Promise<{ store: stri
 	const [newUrgency, setNewUrgency] = useState<UrgencyLevel>("Normal");
 	const [newQuantity, setNewQuantity] = useState("");
 	const [adding, setAdding] = useState(false);
+	const [showDelivered, setShowDelivered] = useState(false);
+	const [orderToCancel, setOrderToCancel] = useState<string | null>(null);
 
 	useEffect(() => {
 		const ordersRef = collection(db, "stores", store, "supplyOrders");
@@ -51,13 +53,13 @@ export default function SuppliesPage({ params }: { params: Promise<{ store: stri
 			orderBy("createdAt", "desc"),
 		);
 
-		// Query for Delivered (last 14 days)
+		// Query for Delivered or Cancelled (last 14 days)
 		const fourteenDaysAgo = new Date();
 		fourteenDaysAgo.setDate(fourteenDaysAgo.getDate() - 14);
 
 		const qDelivered = query(
 			ordersRef,
-			where("status", "==", "delivered"),
+			where("status", "in", ["delivered", "cancelled"]),
 			where("deliveredAt", ">=", Timestamp.fromDate(fourteenDaysAgo)),
 			orderBy("deliveredAt", "desc"),
 		);
@@ -127,6 +129,25 @@ export default function SuppliesPage({ params }: { params: Promise<{ store: stri
 		}
 	};
 
+	const handleCancelOrder = async () => {
+		if (!orderToCancel) return;
+		try {
+			const orderRef = doc(db, "stores", store, "supplyOrders", orderToCancel);
+			const cancelledAt = new Date();
+			const expireAt = new Date();
+			expireAt.setDate(cancelledAt.getDate() + 14);
+
+			await updateDoc(orderRef, {
+				status: "cancelled",
+				deliveredAt: Timestamp.fromDate(cancelledAt),
+				expireAt: Timestamp.fromDate(expireAt),
+			});
+			setOrderToCancel(null);
+		} catch (error) {
+			console.error("Erro ao cancelar pedido:", error);
+		}
+	};
+
 	const getUrgencyBadge = (urgency: UrgencyLevel) => {
 		switch (urgency) {
 			case "Urgente (sem estoque)":
@@ -192,13 +213,15 @@ export default function SuppliesPage({ params }: { params: Promise<{ store: stri
 						/>
 					</div>
 					<div className="space-y-1">
-						<label className=" cursor-pointer text-xs font-bold text-slate-400 uppercase ml-1">Urgência</label>
+						<label className=" cursor-pointer text-xs font-bold text-slate-400 uppercase ml-1">
+							Urgência
+						</label>
 						<select
 							value={newUrgency}
 							onChange={(e) => setNewUrgency(e.target.value as UrgencyLevel)}
 							className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500 transition-all text-slate-800 font-medium appearance-none cursor-pointer">
-							<option value="Urgente (sem estoque)">🔥 Urgente (sem estoque)</option>
 							<option value="Acabando em breve">📅 Acabando em breve</option>
+							<option value="Urgente (sem estoque)">🔥 Urgente (sem estoque)</option>
 							<option value="Sem urgência (adiantando)">⏳ Sem urgência (adiantando)</option>
 						</select>
 					</div>
@@ -227,27 +250,38 @@ export default function SuppliesPage({ params }: { params: Promise<{ store: stri
 						{pendingOrders.map((order) => (
 							<div
 								key={order.id}
-								className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between group hover:border-red-200 transition-all">
-								<div className="flex flex-col gap-1">
-									<div className="flex items-center gap-3">
-										<span className="text-lg font-bold text-slate-800">{order.name}</span>
-										{getUrgencyBadge(order.urgency)}
+								className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4 group hover:border-red-200 transition-all">
+								<div className="flex-1 min-w-0">
+									<div className="flex flex-wrap items-center gap-2 mb-2">
+										<span className="text-lg font-black text-slate-800 truncate">{order.name}</span>
+										<div className="shrink-0">{getUrgencyBadge(order.urgency)}</div>
 									</div>
-									<div className="flex items-center gap-4 text-xs text-slate-400 font-medium">
+									<div className="flex flex-wrap items-center gap-x-4 gap-y-2">
 										{order.quantity && (
-											<span className="flex items-center gap-1">Qtd: {order.quantity}</span>
+											<span className="text-md font-bold text-blue-600 bg-red-50 px-2 py-0.5 rounded-lg border border-red-100 flex items-center gap-1.5">
+												{order.quantity}
+											</span>
 										)}
-										<span className="flex items-center gap-1">
-											<Calendar size={12} /> {order.createdAt?.toDate().toLocaleDateString("pt-BR")}
+										<span className="flex items-center gap-1.5 text-[11px] text-slate-400 font-bold uppercase tracking-wider">
+											<Calendar size={14} />
+											{order.createdAt?.toDate().toLocaleDateString("pt-BR")}
 										</span>
 									</div>
 								</div>
-								<button
-									onClick={() => handleMarkAsDelivered(order.id)}
-									className="flex items-center gap-2 bg-emerald-50 text-emerald-600 hover:bg-emerald-600 hover:text-white px-4 py-2 rounded-lg font-bold text-sm transition-all border border-emerald-100 cursor-pointer">
-									<CheckCircle2 size={18} />
-									Marcar Entregue
-								</button>
+								<div className="flex items-center gap-2 shrink-0 sm:w-auto w-full">
+									<button
+										onClick={() => setOrderToCancel(order.id)}
+										className="flex items-center justify-center p-2.5 bg-slate-50 text-slate-400 hover:bg-red-50 hover:text-red-600 rounded-xl transition-all border border-slate-100 cursor-pointer"
+										title="Cancelar pedido">
+										<Trash2 size={18} />
+									</button>
+									<button
+										onClick={() => handleMarkAsDelivered(order.id)}
+										className="flex-1 flex items-center justify-center gap-2 bg-emerald-50 text-emerald-600 hover:bg-emerald-600 hover:text-white px-4 py-2.5 rounded-xl font-black text-xs transition-all border border-emerald-100 cursor-pointer active:scale-95 shadow-sm active:shadow-none">
+										<CheckCircle2 size={16} />
+										Entregue
+									</button>
+								</div>
 							</div>
 						))}
 					</div>
@@ -256,38 +290,88 @@ export default function SuppliesPage({ params }: { params: Promise<{ store: stri
 
 			{/* Delivered List (Last 14 days) */}
 			<section className="space-y-4 pt-6 border-t border-slate-200">
-				<div className="flex items-center justify-between">
-					<h3 className="text-lg font-bold text-slate-500 flex items-center gap-2 ml-1">
-						<CheckCircle2 className="text-slate-300" size={20} />
-						Insumos Entregues (Últimas 2 semanas)
+				<button
+					onClick={() => setShowDelivered(!showDelivered)}
+					className="w-full flex items-center justify-between p-2 hover:bg-slate-100 rounded-xl transition-all cursor-pointer group">
+					<h3 className="text-lg font-bold text-slate-500 flex items-center gap-2">
+						<CheckCircle2
+							className={`${showDelivered ? "text-emerald-500" : "text-slate-300"}`}
+							size={20}
+						/>
+						({deliveredOrders.length}) Insumos Entregues (Últimas 2 Semanas)
 					</h3>
-				</div>
-				<div className="grid grid-cols-1 md:grid-cols-2 gap-3 opacity-60 grayscale-[0.5]">
-					{deliveredOrders.map((order) => (
-						<div
-							key={order.id}
-							className="bg-slate-50 p-3 rounded-lg border border-slate-200 flex items-center justify-between">
-							<div>
-								<p className="text-md font-bold text-slate-700 line-through decoration-slate-400">
-									{order.name}
-								</p>
-								<p className="text-[12px] text-slate-400 font-bold uppercase">
-									Marcado como entregue em:{" "}
-									{order.deliveredAt?.toDate().toLocaleDateString("pt-BR")}
-								</p>
+					<span className="text-slate-400 font-bold text-xs uppercase tracking-widest group-hover:text-slate-600">
+						{showDelivered ? "Esconder" : "Mostrar"}
+					</span>
+				</button>
+
+				{showDelivered && (
+					<div className="grid grid-cols-1 md:grid-cols-2 gap-3 opacity-60 animate-in fade-in slide-in-from-top-2 duration-300">
+						{deliveredOrders.map((order) => (
+							<div
+								key={order.id}
+								className={`p-3 rounded-lg border flex items-center justify-between ${
+									order.status === "cancelled"
+										? "bg-red-50 border-red-100 opacity-80"
+										: "bg-slate-50 border-slate-200"
+								}`}>
+								<div>
+									<p
+										className={`text-md font-bold ${
+											order.status === "cancelled"
+												? "text-red-700"
+												: "text-green-700 line-through decoration-slate-400"
+										}`}>
+										{order.name}
+										{order.status === "cancelled" && " (Cancelado)"}
+									</p>
+									<p className="text-[12px] text-slate-400 font-bold uppercase">
+										{order.status === "cancelled" ? "Cancelado em: " : "Entregue em: "}
+										{order.deliveredAt?.toDate().toLocaleDateString("pt-BR")}
+									</p>
+								</div>
+								<div className={order.status === "cancelled" ? "text-red-500" : "text-emerald-600"}>
+									{order.status === "cancelled" ? <Trash2 size={16} /> : <CheckCircle2 size={16} />}
+								</div>
 							</div>
-							<div className="text-emerald-600">
-								<CheckCircle2 size={16} />
-							</div>
-						</div>
-					))}
-					{deliveredOrders.length === 0 && (
-						<p className="text-sm text-slate-400 italic ml-1">
-							Nenhuma entrega recente para exibir.
-						</p>
-					)}
-				</div>
+						))}
+						{deliveredOrders.length === 0 && (
+							<p className="text-sm text-slate-400 italic ml-1 py-4">
+								Nenhuma entrega recente para exibir nas últimas 2 semanas.
+							</p>
+						)}
+					</div>
+				)}
 			</section>
+
+			{/* Cancellation Modal */}
+			{orderToCancel && (
+				<div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
+					<div className="bg-white rounded-3xl p-8 max-w-sm w-full shadow-2xl animate-in zoom-in-95 duration-200">
+						<div className="bg-red-50 text-red-600 w-16 h-16 rounded-2xl flex items-center justify-center mb-6 mx-auto">
+							<AlertTriangle size={32} />
+						</div>
+						<h3 className="text-xl font-black text-slate-800 text-center mb-2">
+							Confirmar Cancelamento
+						</h3>
+						<p className="text-slate-500 text-center font-medium mb-8">
+							Tem certeza que deseja cancelar este pedido de insumo? Ele será movido para o histórico como cancelado.
+						</p>
+						<div className="flex flex-col gap-3">
+							<button
+								onClick={handleCancelOrder}
+								className="w-full bg-red-600 hover:bg-red-700 text-white font-black py-4 rounded-2xl transition-all shadow-lg shadow-red-100 cursor-pointer">
+								Sim, cancelar pedido
+							</button>
+							<button
+								onClick={() => setOrderToCancel(null)}
+								className="w-full bg-slate-100 hover:bg-slate-200 text-slate-600 font-black py-4 rounded-2xl transition-all cursor-pointer">
+								Não, manter pedido
+							</button>
+						</div>
+					</div>
+				</div>
+			)}
 		</div>
 	);
 }

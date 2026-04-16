@@ -115,7 +115,7 @@ export default function StockPage({ params }: { params: Promise<{ store: string 
 					<button
 						onClick={() => setSortBy("name")}
 						className={`cursor-pointer px-3 py-1.5 rounded-md text-xs font-bold transition-all ${sortBy === "name" ? "bg-white text-red-600 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}>
-						Alfabética (A-Z)
+						Alfabética
 					</button>
 					<button
 						onClick={() => setSortBy("quantity")}
