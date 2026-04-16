@@ -1,4 +1,4 @@
-export type StoreId = "conjunto" | "terraco" | "lago" | "noroeste" | "noroeste";
+export type StoreId = "conjunto" | "terraco" | "lago" | "noroeste";
 
 export const STORE_NAMES: Record<StoreId, string> = {
 	conjunto: "Conjunto Nacional",
@@ -61,7 +61,8 @@ export interface StoreDocument {
 	stock: Partial<StockData>;
 }
 
-export type UrgencyLevel = "Urgente" | "Acabando em breve" | "Sem urgência (adiantando)";
+// Padronização dos termos de urgência
+export type UrgencyLevel = "Urgente" | "Acabando" | "Adiantando";
 
 export interface SupplyOrder {
 	id: string;

@@ -20,11 +20,14 @@ import {
 	CheckCircle2,
 	Clock,
 	AlertTriangle,
+	AlertCircle,
 	Info,
 	Calendar,
 	Package,
 	Trash2,
 	RefreshCw,
+	Hourglass,
+	Coffee,
 } from "lucide-react";
 
 import { use } from "react";
@@ -37,7 +40,7 @@ export default function SuppliesPage({ params }: { params: Promise<{ store: stri
 
 	// Form State
 	const [newName, setNewName] = useState("");
-	const [newUrgency, setNewUrgency] = useState<UrgencyLevel>("Normal");
+	const [newUrgency, setNewUrgency] = useState<UrgencyLevel>("Acabando");
 	const [newQuantity, setNewQuantity] = useState("");
 	const [adding, setAdding] = useState(false);
 	const [showDelivered, setShowDelivered] = useState(false);
@@ -104,7 +107,7 @@ export default function SuppliesPage({ params }: { params: Promise<{ store: stri
 
 			setNewName("");
 			setNewQuantity("");
-			setNewUrgency("Normal");
+			setNewUrgency("Acabando");
 		} catch (error) {
 			console.error("Erro ao adicionar insumo:", error);
 		} finally {
@@ -150,22 +153,22 @@ export default function SuppliesPage({ params }: { params: Promise<{ store: stri
 
 	const getUrgencyBadge = (urgency: UrgencyLevel) => {
 		switch (urgency) {
-			case "Urgente (sem estoque)":
+			case "Urgente":
 				return (
 					<span className="flex items-center gap-1 bg-red-100 text-red-700 px-2 py-1 rounded-md text-[10px] font-bold uppercase">
-						<AlertTriangle size={12} /> Urgente (sem estoque)
+						<AlertTriangle size={12} /> Urgente
 					</span>
 				);
-			case "Normal":
+			case "Acabando":
 				return (
-					<span className="flex items-center gap-1 bg-blue-100 text-blue-700 px-2 py-1 rounded-md text-[10px] font-bold uppercase">
-						<Info size={12} /> Acabando em breve
+					<span className="flex items-center gap-1 bg-amber-100 text-amber-700 px-2 py-1 rounded-md text-[10px] font-bold uppercase">
+						<AlertCircle size={12} /> Acabando
 					</span>
 				);
 			default:
 				return (
-					<span className="flex items-center gap-1 bg-slate-100 text-slate-600 px-2 py-1 rounded-md text-[10px] font-bold uppercase">
-						<Clock size={12} /> Sem urgência (adiantando)
+					<span className="flex items-center gap-1 bg-blue-100 text-blue-700 px-2 py-1 rounded-md text-[10px] font-bold uppercase">
+						<Hourglass size={12} /> Adiantando
 					</span>
 				);
 		}
@@ -201,9 +204,7 @@ export default function SuppliesPage({ params }: { params: Promise<{ store: stri
 						/>
 					</div>
 					<div className="space-y-1">
-						<label className="text-xs font-bold text-slate-400 uppercase ml-1">
-							Qtd (opcional)
-						</label>
+						<label className="text-xs font-bold text-slate-400 uppercase ml-1">Qtd (opcional)</label>
 						<input
 							type="text"
 							placeholder="Ex: 5 caixas"
@@ -213,22 +214,20 @@ export default function SuppliesPage({ params }: { params: Promise<{ store: stri
 						/>
 					</div>
 					<div className="space-y-1">
-						<label className=" cursor-pointer text-xs font-bold text-slate-400 uppercase ml-1">
-							Urgência
-						</label>
+						<label className="text-xs font-bold text-slate-400 uppercase ml-1">Urgência</label>
 						<select
 							value={newUrgency}
 							onChange={(e) => setNewUrgency(e.target.value as UrgencyLevel)}
 							className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500 transition-all text-slate-800 font-medium appearance-none cursor-pointer">
-							<option value="Acabando em breve">📅 Acabando em breve</option>
-							<option value="Urgente (sem estoque)">🔥 Urgente (sem estoque)</option>
-							<option value="Sem urgência (adiantando)">⏳ Sem urgência (adiantando)</option>
+							<option value="Urgente">🚨 Urgente</option>
+							<option value="Acabando">⚠️ Acabando</option>
+							<option value="Adiantando">⏳ Adiantando</option>
 						</select>
 					</div>
 					<button
 						type="submit"
 						disabled={adding}
-						className="cursor-pointer bg-green-600 hover:bg-green-700 text-white font-bold h-[50px] rounded-xl shadow-md shadow-red-100 transition-all flex items-center justify-center gap-2 disabled:opacity-50">
+						className="cursor-pointer bg-red-600 hover:bg-red-700 text-white font-bold h-[50px] rounded-xl shadow-md shadow-red-100 transition-all flex items-center justify-center gap-2 disabled:opacity-50">
 						{adding ? <RefreshCw className="animate-spin" size={20} /> : <Plus size={20} />}
 						Adicionar
 					</button>
@@ -253,12 +252,15 @@ export default function SuppliesPage({ params }: { params: Promise<{ store: stri
 								className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4 group hover:border-red-200 transition-all">
 								<div className="flex-1 min-w-0">
 									<div className="flex flex-wrap items-center gap-2 mb-2">
-										<span className="text-lg font-black text-slate-800 truncate">{order.name}</span>
+										<span className="text-lg font-black text-slate-800 truncate">
+											{order.name}
+										</span>
 										<div className="shrink-0">{getUrgencyBadge(order.urgency)}</div>
 									</div>
 									<div className="flex flex-wrap items-center gap-x-4 gap-y-2">
 										{order.quantity && (
-											<span className="text-md font-bold text-blue-600 bg-red-50 px-2 py-0.5 rounded-lg border border-red-100 flex items-center gap-1.5">
+											<span className="text-md font-extrabold text-red-600 bg-red-50 px-2 py-0.5 rounded-lg border border-red-100 flex items-center gap-1.5">
+												<Package size={14} />
 												{order.quantity}
 											</span>
 										)}
@@ -320,10 +322,10 @@ export default function SuppliesPage({ params }: { params: Promise<{ store: stri
 										className={`text-md font-bold ${
 											order.status === "cancelled"
 												? "text-red-700"
-												: "text-green-700 line-through decoration-slate-400"
+												: "text-slate-700 line-through decoration-slate-400"
 										}`}>
 										{order.name}
-										{order.status === "cancelled" && " (Cancelado)"}
+										{order.status === "cancelled" && " (CANCELADO)"}
 									</p>
 									<p className="text-[12px] text-slate-400 font-bold uppercase">
 										{order.status === "cancelled" ? "Cancelado em: " : "Entregue em: "}
@@ -355,17 +357,18 @@ export default function SuppliesPage({ params }: { params: Promise<{ store: stri
 							Confirmar Cancelamento
 						</h3>
 						<p className="text-slate-500 text-center font-medium mb-8">
-							Tem certeza que deseja cancelar este pedido de insumo? Ele será movido para o histórico como cancelado.
+							Tem certeza que deseja cancelar este pedido de insumo? Ele será movido para o histórico
+							como cancelado.
 						</p>
 						<div className="flex flex-col gap-3">
 							<button
 								onClick={handleCancelOrder}
-								className="w-full bg-red-600 hover:bg-red-700 text-white font-black py-4 rounded-2xl transition-all shadow-lg shadow-red-100 cursor-pointer">
+								className="cursor-pointer w-full bg-red-600 hover:bg-red-700 text-white font-black py-4 rounded-2xl transition-all shadow-lg shadow-red-100">
 								Sim, cancelar pedido
 							</button>
 							<button
 								onClick={() => setOrderToCancel(null)}
-								className="w-full bg-slate-100 hover:bg-slate-200 text-slate-600 font-black py-4 rounded-2xl transition-all cursor-pointer">
+								className="cursor-pointer w-full bg-slate-100 hover:bg-slate-200 text-slate-600 font-black py-4 rounded-2xl transition-all">
 								Não, manter pedido
 							</button>
 						</div>
