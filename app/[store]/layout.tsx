@@ -21,15 +21,15 @@ export default async function StoreLayout({
 		<div className="flex-1 flex flex-col min-h-screen bg-slate-50">
 			{/* Header */}
 			<header className="bg-white border-b border-slate-200 sticky top-0 z-10 shadow-sm">
-				<div className="max-w-5xl mx-auto px-4 py-4 flex items-center justify-between gap-4">
-					<div className="flex items-center gap-4 overflow-hidden">
+				<div className="max-w-5xl mx-auto px-4 flex flex-col sm:flex-row sm:items-center justify-between">
+					<div className="flex items-center gap-4 py-4 overflow-hidden">
 						<Link
 							href="/"
-							className="p-2 hover:bg-slate-100 rounded-lg text-slate-500 transition-colors">
+							className="p-2 hover:bg-slate-100 rounded-lg text-slate-500 transition-colors shrink-0">
 							<ChevronLeft size={24} />
 						</Link>
 						<div className="overflow-hidden">
-							<h1 className="text-xl font-extrabold text-red-700 truncate">
+							<h1 id="h1" className="text-xl font-extrabold text-red-700 truncate">
 								{storeName.toUpperCase()}
 							</h1>
 							<p className="text-[10px] font-bold text-slate-400 -mt-1 tracking-widest">
@@ -37,14 +37,11 @@ export default async function StoreLayout({
 							</p>
 						</div>
 					</div>
-          <nav className="max-w-5xl px-4 flex gap-8">
-					<TabLink href={`/${store}/estoque`} icon={<ClipboardList size={20} />} label="Estoque" />
-					<TabLink href={`/${store}/insumos`} icon={<Package size={20} />} label="Insumos" />
-				</nav>
+					<nav id="estoqueInsumosBtn" className="flex gap-6 sm:gap-8 border-t sm:border-t-0 border-slate-100 justify-center sm:justify-start">
+						<TabLink href={`/${store}/estoque`} icon={<ClipboardList size={20} />} label="Estoque" />
+						<TabLink href={`/${store}/insumos`} icon={<Package size={20} />} label="Insumos" />
+					</nav>
 				</div>
-
-				{/* Navigation Tabs */}
-				
 			</header>
 
 			<main className="flex-1 w-full max-w-7xl mx-auto p-4 md:p-6 pb-20">{children}</main>

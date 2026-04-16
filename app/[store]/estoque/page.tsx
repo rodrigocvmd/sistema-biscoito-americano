@@ -106,7 +106,7 @@ export default function StockPage({ params }: { params: Promise<{ store: string 
 				<span className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-3">
 					Ordenar por:
 				</span>
-				<div className="flex bg-slate-100 p-1 rounded-lg gap-1">
+				<div id="orderContainer" className="flex bg-slate-100 p-1 rounded-lg gap-1">
 					<button
 						onClick={() => setSortBy("default")}
 						className={`cursor-pointer px-3 py-1.5 rounded-md text-xs font-bold transition-all ${sortBy === "default" ? "bg-white text-red-600 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}>
@@ -135,7 +135,7 @@ export default function StockPage({ params }: { params: Promise<{ store: string 
 							Insira a quantidade exata de pacotes/unidades em estoque
 						</p>
 					</div>
-					<div className="bg-slate-50 px-4 py-2 rounded-xl border border-slate-100 text-right">
+					<div className="bg-slate-50 px-4 py-2 rounded-xl border border-slate-100 text-center">
 						<span className="text-[10px] uppercase tracking-widest font-bold text-slate-400 block mb-1">
 							ÚLTIMA ATUALIZAÇÃO
 						</span>
