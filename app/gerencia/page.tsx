@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { db } from "@/lib/firebase";
-import { collection, getDocs, onSnapshot, query, where, orderBy } from "firebase/firestore";
+import { collection, getDocs, onSnapshot, query, where, orderBy, doc, updateDoc, collectionGroup } from "firebase/firestore";
 import { STOCK_LABELS, StockData, STORE_NAMES, StoreId, SupplyOrder } from "@/types";
 import {
 	LayoutDashboard,
@@ -17,6 +17,7 @@ import {
 	ChevronUp,
 	Hourglass,
 	Coffee,
+	Check,
 } from "lucide-react";
 import Link from "next/link";
 
@@ -33,9 +34,10 @@ export default function GerenciaPage() {
 	const [view, setView] = useState<"general" | "byStore" | "insumos">("general");
 	const [allData, setAllData] = useState<FullStoreData[]>([]);
 	const [expandedStores, setExpandedStores] = useState<Record<string, boolean>>({
-		conjunto: true, // Começar com algumas abertas para facilitar
+		conjunto: true,
 	});
 	const [insumosSort, setInsumosSort] = useState<"default" | "urgency" | "date">("urgency");
+	const [tableSort, setTableSort] = useState<"default" | "name">("default");
 
 	const toggleStore = (storeId: string) => {
 		setExpandedStores((prev) => ({
@@ -44,8 +46,29 @@ export default function GerenciaPage() {
 		}));
 	};
 
+	const rotateStores = () => {
+		setAllData((prev) => {
+			if (prev.length < 2) return prev;
+			const [first, ...rest] = prev;
+			return [...rest, first];
+		});
+	};
+
+	const handleToggleCheck = async (storeId: string, orderId: string, currentChecked: boolean) => {
+		try {
+			const orderRef = doc(db, "stores", storeId, "supplyOrders", orderId);
+			await updateDoc(orderRef, {
+				checkedByGerencia: !currentChecked,
+			});
+		} catch (error) {
+			console.error("Erro ao alternar check:", error);
+		}
+	};
+
 	// Função para normalizar urgências antigas para o novo padrão
-	const normalizeUrgency = (urgency: string): { label: string; type: "urgente" | "acabando" | "adiantando" } => {
+	const normalizeUrgency = (
+		urgency: string,
+	): { label: string; type: "urgente" | "acabando" | "adiantando" } => {
 		const u = urgency.toLowerCase();
 		if (u.includes("urgente")) return { label: "Urgente", type: "urgente" };
 		if (u.includes("acabando") || u.includes("normal")) return { label: "Acabando", type: "acabando" };
@@ -55,46 +78,48 @@ export default function GerenciaPage() {
 	useEffect(() => {
 		const storeIds = Object.keys(STORE_NAMES) as StoreId[];
 
-		// Listener para as lojas (estoque)
-		const unsubscribeStores = onSnapshot(collection(db, "stores"), (snapshot) => {
+		// 1. Ouvinte para as Lojas (Estoque)
+		const unsubscribeStores = onSnapshot(collection(db, "stores"), (storesSnapshot) => {
 			const storesMap: Record<string, any> = {};
-			snapshot.docs.forEach((doc) => {
+			storesSnapshot.docs.forEach((doc) => {
 				storesMap[doc.id] = doc.data();
 			});
 
-			// Para cada loja, vamos buscar também os insumos pendentes
-			const fetchData = async () => {
-				const fullData: FullStoreData[] = [];
+			// 2. Ouvinte Global para TODOS os pedidos pendentes
+			const ordersQuery = query(collectionGroup(db, "supplyOrders"), where("status", "==", "pending"));
 
-				for (const id of storeIds) {
-					const storeDoc = storesMap[id] || {};
+			const unsubscribeOrders = onSnapshot(ordersQuery, (ordersSnapshot) => {
+				const allOrders = ordersSnapshot.docs.map((doc) => ({
+					id: doc.id,
+					storeId: doc.ref.parent.parent?.id,
+					...doc.data(),
+				})) as (SupplyOrder & { storeId: string })[];
 
-					// Buscar insumos pendentes desta loja
-					const ordersRef = collection(db, "stores", id, "supplyOrders");
-					const q = query(
-						ordersRef,
-						where("status", "==", "pending"),
-						orderBy("createdAt", "desc"),
-					);
-					const ordersSnap = await getDocs(q);
-					const pendingOrders = ordersSnap.docs.map((doc) => ({
-						id: doc.id,
-						...doc.data(),
-					})) as SupplyOrder[];
-
-					fullData.push({
-						id,
-						name: STORE_NAMES[id],
-						lastStockUpdate: storeDoc.lastStockUpdate?.toDate() || null,
-						stock: storeDoc.stock || {},
-						pendingOrders: pendingOrders,
+				// Consolidar dados mantendo a ordem atual do estado se já existir (para não quebrar a rotação)
+				setAllData((currentData) => {
+					const newFullData = storeIds.map((id) => {
+						const storeDoc = storesMap[id] || {};
+						return {
+							id,
+							name: STORE_NAMES[id],
+							lastStockUpdate: storeDoc.lastStockUpdate?.toDate() || null,
+							stock: storeDoc.stock || {},
+							pendingOrders: allOrders.filter((o) => o.storeId === id),
+						};
 					});
-				}
-				setAllData(fullData);
-				setLoading(false);
-			};
 
-			fetchData();
+					// Se já temos dados e rodamos a lista, precisamos manter a ordem das lojas
+					if (currentData.length > 0) {
+						const currentIdOrder = currentData.map((d) => d.id);
+						return currentIdOrder.map((id) => newFullData.find((d) => d.id === id)!);
+					}
+
+					return newFullData;
+				});
+				setLoading(false);
+			});
+
+			return () => unsubscribeOrders();
 		});
 
 		return () => unsubscribeStores();
@@ -158,45 +183,81 @@ export default function GerenciaPage() {
 
 			<main className="flex-1 max-w-7xl w-full mx-auto p-4 md:p-6 space-y-6">
 				{view === "general" ? (
-					<div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
-						<div className="overflow-x-auto">
-							<table className="w-full border-collapse">
-								<thead>
-									<tr className="bg-slate-50 border-b border-slate-200">
-										<th className="p-4 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest sticky left-0 bg-slate-50">
-											Item
-										</th>
-										{allData.map((store) => (
-											<th
-												key={store.id}
-												className="p-4 text-center text-[10px] font-black text-blue-600 uppercase tracking-widest border-l border-slate-200">
-												{store.name}
+					<div className="space-y-4">
+						{/* Table Sorting Navbar */}
+						<div className="bg-white p-2 rounded-xl border border-slate-200 shadow-sm flex items-center gap-4 w-fit">
+							<span className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-2">
+								Itens:
+							</span>
+							<div className="flex bg-slate-100 p-1 rounded-lg gap-1">
+								<button
+									onClick={() => setTableSort("default")}
+									className={`cursor-pointer px-3 py-1.5 rounded-md text-[10px] font-black transition-all ${tableSort === "default" ? "bg-white text-blue-600 shadow-sm" : "text-slate-500"}`}>
+									Padrão
+								</button>
+								<button
+									onClick={() => setTableSort("name")}
+									className={`cursor-pointer px-3 py-1.5 rounded-md text-[10px] font-black transition-all ${tableSort === "name" ? "bg-white text-blue-600 shadow-sm" : "text-slate-500"}`}>
+									A-Z
+								</button>
+							</div>
+						</div>
+
+						<div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
+							<div className="overflow-x-auto">
+								<table className="w-full border-collapse">
+									<thead>
+										<tr className="bg-slate-50 border-b border-slate-200">
+											<th className="p-4 text-left text-[10px] font-black text-slate-400 uppercase tracking-widest sticky left-0 bg-slate-50 z-20 min-w-[150px]">
+												<div className="flex items-center gap-2">
+													ITEM
+													<button
+														onClick={rotateStores}
+														className="cursor-pointer p-1.5 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-600 hover:text-white transition-all shadow-sm"
+														title="Mover primeira loja para o final">
+														<RefreshCw size={12} />
+													</button>
+												</div>
 											</th>
-										))}
-									</tr>
-								</thead>
-								<tbody>
-									{(Object.entries(STOCK_LABELS) as [keyof StockData, string][]).map(
-										([key, label]) => (
-											<tr
-												key={key}
-												className="border-b border-slate-100 hover:bg-blue-50/30 transition-colors group">
-												<td className="p-4 text-xs font-black text-slate-600 uppercase sticky left-0 bg-white group-hover:bg-blue-50/30">
-													{label}
-												</td>
-												{allData.map((store) => (
-													<td key={store.id} className="p-4 text-center border-l border-slate-100">
-														<span
-															className={`text-lg font-black ${(store.stock[key] || 0) < 5 ? "text-red-600" : "text-slate-800"}`}>
-															{store.stock[key] || 0}
+											{allData.map((store) => (
+												<th
+													key={store.id}
+													className="p-4 text-center text-[10px] font-black text-blue-600 uppercase tracking-widest border-l border-slate-200 min-w-[120px]">
+													<div className="flex flex-col items-center gap-1">
+														<span className="leading-tight">{store.name}</span>
+														<span className="text-[8px] font-bold text-slate-400 lowercase tracking-normal bg-white px-2 py-0.5 rounded-full border border-slate-100 whitespace-nowrap">
+															{store.lastStockUpdate
+																? store.lastStockUpdate.toLocaleDateString("pt-BR")
+																: "n/a"}
 														</span>
+													</div>
+												</th>
+											))}
+										</tr>
+									</thead>
+									<tbody>
+										{[...(Object.entries(STOCK_LABELS) as [keyof StockData, string][])]
+											.sort((a, b) => (tableSort === "name" ? a[1].localeCompare(b[1]) : 0))
+											.map(([key, label]) => (
+												<tr
+													key={key}
+													className="border-b border-slate-100 hover:bg-blue-50/30 transition-colors group">
+													<td className="p-4 text-xs font-black text-slate-600 uppercase sticky left-0 bg-white group-hover:bg-blue-50/30 z-10 border-r border-slate-50">
+														{label}
 													</td>
-												))}
-											</tr>
-										),
-									)}
-								</tbody>
-							</table>
+													{allData.map((store) => (
+														<td key={store.id} className="p-4 text-center border-l border-slate-100">
+															<span
+																className={`text-lg font-black ${(store.stock[key] || 0) < 5 ? "text-red-600" : "text-slate-800"}`}>
+																{store.stock[key] || 0}
+															</span>
+														</td>
+													))}
+												</tr>
+											))}
+									</tbody>
+								</table>
+							</div>
 						</div>
 					</div>
 				) : view === "byStore" ? (
@@ -282,30 +343,6 @@ export default function GerenciaPage() {
 					</div>
 				) : (
 					<div className="space-y-6">
-						{/* Insumos Sorting Navbar */}
-						<div className="bg-white p-2 rounded-xl border border-slate-200 shadow-sm flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 mb-8">
-							<span className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2 sm:ml-3">
-								Ordenar Insumos por:
-							</span>
-							<div className="flex bg-slate-100 p-1 rounded-lg gap-1 overflow-x-auto no-scrollbar">
-								<button
-									onClick={() => setInsumosSort("default")}
-									className={`cursor-pointer px-3 py-1.5 rounded-md text-xs font-bold transition-all whitespace-nowrap ${insumosSort === "default" ? "bg-white text-blue-600 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}>
-									Padrão
-								</button>
-								<button
-									onClick={() => setInsumosSort("urgency")}
-									className={`cursor-pointer px-3 py-1.5 rounded-md text-xs font-bold transition-all whitespace-nowrap ${insumosSort === "urgency" ? "bg-white text-blue-600 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}>
-									Urgência (Maior)
-								</button>
-								<button
-									onClick={() => setInsumosSort("date")}
-									className={`cursor-pointer px-3 py-1.5 rounded-md text-xs font-bold transition-all whitespace-nowrap ${insumosSort === "date" ? "bg-white text-blue-600 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}>
-									Data (Antigos)
-								</button>
-							</div>
-						</div>
-
 						{allData.map(
 							(store) =>
 								store.pendingOrders.length > 0 && (
@@ -342,9 +379,38 @@ export default function GerenciaPage() {
 
 										{expandedStores[store.id] && (
 											<div className="p-6 pt-0 border-t border-slate-50 animate-in slide-in-from-top-2 duration-300">
-												<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-6">
+												{/* Store-specific Sorting Navbar */}
+												<div className="flex flex-col sm:flex-row sm:items-center gap-3 py-4 border-b border-slate-50 mb-6">
+													<span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">
+														Ordenar:
+													</span>
+													<div className="flex bg-slate-100 p-1 rounded-lg gap-1 w-fit">
+														<button
+															onClick={() => setInsumosSort("default")}
+															className={`cursor-pointer px-3 py-1 rounded-md text-[10px] font-black transition-all whitespace-nowrap ${insumosSort === "default" ? "bg-white text-blue-600 shadow-sm" : "text-slate-500"}`}>
+															Padrão
+														</button>
+														<button
+															onClick={() => setInsumosSort("urgency")}
+															className={`cursor-pointer px-3 py-1 rounded-md text-[10px] font-black transition-all whitespace-nowrap ${insumosSort === "urgency" ? "bg-white text-blue-600 shadow-sm" : "text-slate-500"}`}>
+															Urgência
+														</button>
+														<button
+															onClick={() => setInsumosSort("date")}
+															className={`cursor-pointer px-3 py-1 rounded-md text-[10px] font-black transition-all whitespace-nowrap ${insumosSort === "date" ? "bg-white text-blue-600 shadow-sm" : "text-slate-500"}`}>
+															Data
+														</button>
+													</div>
+												</div>
+
+												<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
 													{[...store.pendingOrders]
 														.sort((a, b) => {
+															// Prioridade 1: Itens com check administrativo vão para o fim
+															if (a.checkedByGerencia && !b.checkedByGerencia) return 1;
+															if (!a.checkedByGerencia && b.checkedByGerencia) return -1;
+
+															// Prioridade 2: Ordenação escolhida
 															if (insumosSort === "urgency") {
 																const weight: Record<string, number> = {
 																	Urgente: 3,
@@ -362,48 +428,72 @@ export default function GerenciaPage() {
 														})
 														.map((order) => {
 															const norm = normalizeUrgency(order.urgency);
+															const isChecked = order.checkedByGerencia || false;
+
 															return (
 																<div
 																	key={order.id}
-																	className="bg-slate-50 p-5 rounded-2xl border border-slate-100 flex flex-col justify-between gap-4 hover:bg-white hover:border-blue-200 hover:shadow-md transition-all">
+																	className={`p-5 rounded-2xl border flex flex-col justify-between gap-4 transition-all ${
+																		isChecked
+																			? "bg-slate-100 border-slate-200 opacity-60"
+																			: "bg-slate-50 border-slate-100 hover:bg-white hover:border-blue-200 hover:shadow-md"
+																	}`}>
 																	<div className="flex items-start justify-between gap-3">
-																		<div className="flex-1">
-																			<p className="text-md font-black text-slate-800 leading-tight">
+																		<div className="flex-1 min-w-0">
+																			<p
+																				className={`text-md font-black leading-tight truncate ${
+																					isChecked ? "text-slate-400 line-through" : "text-slate-800"
+																				}`}>
 																				{order.name}
 																			</p>
 																			<p className="text-[10px] font-bold text-slate-400 uppercase mt-1">
 																				{order.createdAt?.toDate().toLocaleDateString("pt-BR")}
 																			</p>
 																		</div>
-																		<div className="shrink-0">
-																			{norm.type === "urgente" ? (
-																				<span className="bg-red-100 text-red-600 p-2.5 rounded-xl block">
-																					<AlertTriangle size={20} />
-																				</span>
-																			) : norm.type === "acabando" ? (
-																				<span className="bg-amber-100 text-amber-600 p-2.5 rounded-xl block">
-																					<AlertCircle size={20} />
-																				</span>
-																			) : (
-																				<span className="bg-blue-100 text-blue-600 p-2.5 rounded-xl block">
-																					<Hourglass size={20} />
-																				</span>
-																			)}
+																		<div className="flex items-center gap-2 shrink-0">
+																			<button
+																				onClick={() => handleToggleCheck(store.id, order.id, isChecked)}
+																				className={`p-2 rounded-xl border transition-all cursor-pointer ${
+																					isChecked
+																						? "bg-blue-600 border-blue-600 text-white"
+																						: "bg-white border-slate-200 text-slate-300 hover:border-blue-400 hover:text-blue-500"
+																				}`}
+																				title={isChecked ? "Desmarcar" : "Marcar como visualizado"}>
+																				<Check size={16} strokeWidth={isChecked ? 4 : 2} />
+																			</button>
+																			<div className="shrink-0">
+																				{norm.type === "urgente" ? (
+																					<span className="bg-red-100 text-red-600 p-2.5 rounded-xl block">
+																						<AlertTriangle size={20} />
+																					</span>
+																				) : norm.type === "acabando" ? (
+																					<span className="bg-amber-100 text-amber-600 p-2.5 rounded-xl block">
+																						<AlertCircle size={20} />
+																					</span>
+																				) : (
+																					<span className="bg-blue-100 text-blue-600 p-2.5 rounded-xl block">
+																						<Hourglass size={20} />
+																					</span>
+																				)}
+																			</div>
 																		</div>
 																	</div>
 																	<div className="flex items-center justify-between border-t border-slate-200/50 pt-4">
 																		<span
 																			className={`text-[10px] font-black px-3 py-1 rounded-full uppercase flex items-center gap-1.5 ${
-																				norm.type === "urgente"
-																					? "bg-red-50 text-red-700"
-																					: norm.type === "acabando"
-																						? "bg-amber-50 text-amber-700"
-																						: "bg-blue-50 text-blue-700"
+																				isChecked
+																					? "bg-slate-200 text-slate-500"
+																					: norm.type === "urgente"
+																						? "bg-red-50 text-red-700"
+																						: norm.type === "acabando"
+																							? "bg-amber-50 text-amber-700"
+																							: "bg-blue-50 text-blue-700"
 																			}`}>
 																			{norm.label}
 																		</span>
 																		{order.quantity && (
-																			<span className="text-sm font-black text-slate-800">
+																			<span
+																				className={`text-sm font-black ${isChecked ? "text-slate-400" : "text-slate-800"}`}>
 																				Qtd: {order.quantity}
 																			</span>
 																		)}

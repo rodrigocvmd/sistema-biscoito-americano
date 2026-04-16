@@ -70,6 +70,7 @@ export interface SupplyOrder {
 	urgency: UrgencyLevel;
 	quantity?: string;
 	status: "pending" | "delivered" | "cancelled";
+	checkedByGerencia?: boolean; // Novo campo para o check do administrador
 	createdAt: any; // Firestore Timestamp
 	deliveredAt?: any; // Firestore Timestamp
 	expireAt?: any; // Firestore Timestamp
