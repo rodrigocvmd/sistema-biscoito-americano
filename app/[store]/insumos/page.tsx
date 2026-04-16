@@ -14,7 +14,7 @@ import {
 	serverTimestamp,
 	Timestamp,
 } from "firebase/firestore";
-import { SupplyOrder, UrgencyLevel } from "@/types";
+import { SupplyOrder, UrgencyLevel, formatDate, formatOnlyDate } from "@/types";
 import {
 	Plus,
 	CheckCircle2,
@@ -188,7 +188,7 @@ export default function SuppliesPage({ params }: { params: Promise<{ store: stri
 			{/* Add New Section */}
 			<section className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
 				<h2 className="text-xl font-bold text-slate-800 mb-6 flex items-center gap-2">
-					<Plus className="text-red-600" size={24} />
+					<Plus className="text-green-600" size={24} />
 					Solicitar Novo Insumo
 				</h2>
 				<form onSubmit={handleAddOrder} className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
@@ -227,7 +227,7 @@ export default function SuppliesPage({ params }: { params: Promise<{ store: stri
 					<button
 						type="submit"
 						disabled={adding}
-						className="cursor-pointer bg-red-600 hover:bg-red-700 text-white font-bold h-[50px] rounded-xl shadow-md shadow-red-100 transition-all flex items-center justify-center gap-2 disabled:opacity-50">
+						className="cursor-pointer bg-green-600 hover:bg-green-700 text-white font-bold h-[50px] rounded-xl shadow-md shadow-red-100 transition-all flex items-center justify-center gap-2 disabled:opacity-50">
 						{adding ? <RefreshCw className="animate-spin" size={20} /> : <Plus size={20} />}
 						Adicionar
 					</button>
@@ -266,7 +266,7 @@ export default function SuppliesPage({ params }: { params: Promise<{ store: stri
 										)}
 										<span className="flex items-center gap-1.5 text-[11px] text-slate-400 font-bold uppercase tracking-wider">
 											<Calendar size={14} />
-											{order.createdAt?.toDate().toLocaleDateString("pt-BR")}
+											{formatDate(order.createdAt?.toDate())}
 										</span>
 									</div>
 								</div>
@@ -329,7 +329,7 @@ export default function SuppliesPage({ params }: { params: Promise<{ store: stri
 									</p>
 									<p className="text-[12px] text-slate-400 font-bold uppercase">
 										{order.status === "cancelled" ? "Cancelado em: " : "Entregue em: "}
-										{order.deliveredAt?.toDate().toLocaleDateString("pt-BR")}
+										{formatDate(order.deliveredAt?.toDate())}
 									</p>
 								</div>
 								<div className={order.status === "cancelled" ? "text-red-500" : "text-emerald-600"}>

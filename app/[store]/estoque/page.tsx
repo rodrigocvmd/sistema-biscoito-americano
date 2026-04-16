@@ -3,9 +3,8 @@
 import { useEffect, useState } from "react";
 import { db } from "@/lib/firebase";
 import { doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
-import { STOCK_LABELS, StockData, StoreId } from "@/types";
+import { STOCK_LABELS, StockData, StoreId, formatDate } from "@/types";
 import { Save, RefreshCw, AlertCircle } from "lucide-react";
-
 import { use } from "react";
 
 export default function StockPage({ params }: { params: Promise<{ store: string }> }) {
@@ -15,6 +14,7 @@ export default function StockPage({ params }: { params: Promise<{ store: string 
 	const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
 	const [stock, setStock] = useState<Partial<StockData>>({});
 	const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+	const [sortBy, setSortBy] = useState<"default" | "name" | "quantity">("default");
 
 	useEffect(() => {
 		const fetchStock = async () => {
@@ -38,8 +38,6 @@ export default function StockPage({ params }: { params: Promise<{ store: string 
 
 		fetchStock();
 	}, [store]);
-
-	const [sortBy, setSortBy] = useState<"default" | "name" | "quantity">("default");
 
 	const handleInputChange = (key: keyof StockData, value: string) => {
 		const numValue = value === "" ? 0 : parseInt(value, 10);
@@ -100,26 +98,26 @@ export default function StockPage({ params }: { params: Promise<{ store: string 
 	}
 
 	return (
-		<div className="space-y-6 w-full">
+		<div className="space-y-6 w-full overflow-hidden">
 			{/* Sorting Navbar */}
-			<div className="bg-white p-2 rounded-xl border border-slate-200 shadow-sm flex items-center gap-4">
-				<span className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-3">
+			<div className="bg-white p-2 rounded-xl border border-slate-200 shadow-sm flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
+				<span className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2 sm:ml-3">
 					Ordenar por:
 				</span>
-				<div id="orderContainer" className="flex bg-slate-100 p-1 rounded-lg gap-1">
+				<div id="orderContainer" className="flex bg-slate-100 p-1 rounded-lg gap-1 overflow-x-auto no-scrollbar">
 					<button
 						onClick={() => setSortBy("default")}
-						className={`cursor-pointer px-3 py-1.5 rounded-md text-xs font-bold transition-all ${sortBy === "default" ? "bg-white text-red-600 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}>
+						className={`cursor-pointer px-3 py-1.5 rounded-md text-xs font-bold transition-all whitespace-nowrap ${sortBy === "default" ? "bg-white text-blue-600 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}>
 						Padrão
 					</button>
 					<button
 						onClick={() => setSortBy("name")}
-						className={`cursor-pointer px-3 py-1.5 rounded-md text-xs font-bold transition-all ${sortBy === "name" ? "bg-white text-red-600 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}>
+						className={`cursor-pointer px-3 py-1.5 rounded-md text-xs font-bold transition-all whitespace-nowrap ${sortBy === "name" ? "bg-white text-red-600 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}>
 						Alfabética
 					</button>
 					<button
 						onClick={() => setSortBy("quantity")}
-						className={`cursor-pointer px-3 py-1.5 rounded-md text-xs font-bold transition-all ${sortBy === "quantity" ? "bg-white text-red-600 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}>
+						className={`cursor-pointer px-3 py-1.5 rounded-md text-xs font-bold transition-all whitespace-nowrap ${sortBy === "quantity" ? "bg-white text-red-600 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}>
 						Quantidade
 					</button>
 				</div>
@@ -139,8 +137,8 @@ export default function StockPage({ params }: { params: Promise<{ store: string 
 						<span className="text-[10px] uppercase tracking-widest font-bold text-slate-400 block mb-1">
 							ÚLTIMA ATUALIZAÇÃO
 						</span>
-						<span className="text-sm font-bold text-red-600">
-							{lastUpdate ? lastUpdate.toLocaleString("pt-BR") : "Nunca atualizado"}
+						<span className="text-sm font-bold text-blue-600">
+							{formatDate(lastUpdate)}
 						</span>
 					</div>
 				</div>
@@ -151,7 +149,7 @@ export default function StockPage({ params }: { params: Promise<{ store: string 
 							<div
 								key={key}
 								className="flex items-center justify-between gap-3 p-4 bg-slate-50 rounded-2xl border border-transparent hover:border-red-200 hover:bg-white hover:shadow-md transition-all group">
-								<label className="text-[14px] font-bold text-slate-500 group-hover:text-red-700 transition-colors uppercase leading-tight pr-2">
+								<label className="text-[11px] font-black text-slate-500 group-hover:text-red-700 transition-colors uppercase leading-tight pr-2">
 									{label}
 								</label>
 								<input
@@ -160,7 +158,9 @@ export default function StockPage({ params }: { params: Promise<{ store: string 
 									value={stock[key] ?? ""}
 									onChange={(e) => handleInputChange(key, e.target.value)}
 									onFocus={(e) => e.target.select()}
-									className="w-20 px-3 py-2.5 bg-white border-2 border-slate-200 rounded-xl text-center font-black text-slate-800 focus:outline-none focus:ring-4 focus:ring-red-50/50 focus:border-red-500 transition-all text-lg cursor-pointer"
+									className={`w-20 px-3 py-2.5 bg-white border-2 border-slate-200 rounded-xl text-center font-black focus:outline-none focus:ring-4 focus:ring-red-50/50 focus:border-red-500 transition-all text-lg cursor-pointer ${
+										(stock[key] ?? 0) === 0 ? "text-slate-400" : "text-slate-900"
+									}`}
 									placeholder="0"
 								/>
 							</div>
@@ -179,7 +179,7 @@ export default function StockPage({ params }: { params: Promise<{ store: string 
 						<button
 							type="submit"
 							disabled={saving}
-							className="cursor-pointer ml-auto flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-8 py-3 rounded-xl font-bold shadow-md shadow-red-100 transition-all disabled:opacity-50 disabled:cursor-not-allowed">
+							className="cursor-pointer ml-auto flex items-center gap-2 bg-green-700 hover:bg-green-800 text-white px-8 py-4 rounded-2xl font-black shadow-lg shadow-red-100 transition-all disabled:opacity-50 disabled:cursor-not-allowed">
 							{saving ? <RefreshCw className="animate-spin" size={20} /> : <Save size={20} />}
 							{saving ? "Salvando..." : "Salvar Contagem"}
 						</button>

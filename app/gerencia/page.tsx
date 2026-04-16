@@ -13,7 +13,15 @@ import {
 	updateDoc,
 	collectionGroup,
 } from "firebase/firestore";
-import { STOCK_LABELS, StockData, STORE_NAMES, StoreId, SupplyOrder } from "@/types";
+import {
+	STOCK_LABELS,
+	StockData,
+	STORE_NAMES,
+	StoreId,
+	SupplyOrder,
+	formatDate,
+	formatOnlyDate,
+} from "@/types";
 import {
 	LayoutDashboard,
 	Store,
@@ -171,21 +179,20 @@ export default function GerenciaPage() {
 
 					<div className="flex bg-slate-100 p-1 rounded-xl">
 						<button
-							onClick={() => setView("general")}
-							className={`cursor-pointer px-4 py-2 rounded-lg text-xs font-black transition-all flex items-center gap-2 ${
-								view === "general" ? "bg-white text-blue-600 shadow-sm" : "text-slate-500"
-							}`}>
-							<Package size={16} /> Estoque
-						</button>
-					
-						<button
 							onClick={() => setView("insumos")}
 							className={`cursor-pointer px-4 py-2 rounded-lg text-xs font-black transition-all flex items-center gap-2 ${
 								view === "insumos" ? "bg-white text-blue-600 shadow-sm" : "text-slate-500"
 							}`}>
 							<LayoutDashboard size={16} /> Insumos
 						</button>
-							<button
+						<button
+							onClick={() => setView("general")}
+							className={`cursor-pointer px-4 py-2 rounded-lg text-xs font-black transition-all flex items-center gap-2 ${
+								view === "general" ? "bg-white text-blue-600 shadow-sm" : "text-slate-500"
+							}`}>
+							<Package size={16} /> Estoque
+						</button>
+						<button
 							onClick={() => setView("byStore")}
 							className={`cursor-pointer px-4 py-2 rounded-lg text-xs font-black transition-all flex items-center gap-2 ${
 								view === "byStore" ? "bg-white text-blue-600 shadow-sm" : "text-slate-500"
@@ -241,9 +248,7 @@ export default function GerenciaPage() {
 													<div className="flex flex-col items-center gap-1">
 														<span className="leading-tight">{store.name}</span>
 														<span className="text-[11px] font-bold text-slate-600 lowercase tracking-normal bg-white px-2 py-0.5 rounded-full border border-slate-100 whitespace-nowrap">
-															{store.lastStockUpdate
-																? store.lastStockUpdate.toLocaleDateString("pt-BR")
-																: "n/a"}
+															{formatOnlyDate(store.lastStockUpdate)}
 														</span>
 													</div>
 												</th>
@@ -299,10 +304,7 @@ export default function GerenciaPage() {
 									<div className="flex items-center gap-2 mt-1">
 										<Calendar size={14} className="text-slate-400" />
 										<span className="text-[10px] font-bold text-slate-400 uppercase">
-											Último estoque:{" "}
-											{store.lastStockUpdate
-												? store.lastStockUpdate.toLocaleString("pt-BR")
-												: "Nunca"}
+											Último estoque: {formatDate(store.lastStockUpdate)}
 										</span>
 									</div>
 								</div>
@@ -319,7 +321,12 @@ export default function GerenciaPage() {
 													<div
 														key={order.id}
 														className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100">
-														<span className="text-xs font-bold text-slate-700">{order.name}</span>
+														<div className="flex flex-col">
+															<span className="text-xs font-bold text-slate-700">{order.name}</span>
+															<span className="text-[8px] font-bold text-slate-400 uppercase">
+																{formatOnlyDate(order.createdAt?.toDate())}
+															</span>
+														</div>
 														{order.quantity && (
 															<span className="text-[10px] font-black text-blue-600 bg-blue-50 px-2 py-1 rounded-md">
 																{order.quantity}
@@ -467,7 +474,7 @@ export default function GerenciaPage() {
 																	<div className="flex items-start justify-between gap-3">
 																		<div className="flex-1 min-w-0">
 																			<p
-																				className={`text-md font-black leading-tight truncate ${
+																				className={`text-xl font-black leading-tight truncate ${
 																					isChecked
 																						? "text-slate-400 line-through"
 																						: "text-slate-800"
@@ -475,7 +482,7 @@ export default function GerenciaPage() {
 																				{order.name}
 																			</p>
 																			<p className="text-[10px] font-bold text-slate-400 uppercase mt-1">
-																				{order.createdAt?.toDate().toLocaleDateString("pt-BR")}
+																				{formatDate(order.createdAt?.toDate())}
 																			</p>
 																		</div>
 																		<div className="flex items-center gap-2 shrink-0">
@@ -523,8 +530,8 @@ export default function GerenciaPage() {
 																		</span>
 																		{order.quantity && (
 																			<span
-																				className={`text-sm font-black ${isChecked ? "text-slate-400" : "text-slate-800"}`}>
-																				Qtd: {order.quantity}
+																				className={`text-lg font-extrabold ${isChecked ? "text-slate-400" : "text-slate-800"}`}>
+																				<span className="text-md text-gray-600 font-medium">Qtd:</span> {order.quantity}
 																			</span>
 																		)}
 																	</div>

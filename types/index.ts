@@ -3,7 +3,7 @@ export type StoreId = "conjunto" | "terraco" | "lago" | "noroeste";
 export const STORE_NAMES: Record<StoreId, string> = {
 	conjunto: "Conjunto",
 	terraco: "Terraço",
-	lago: "Lago Sul",
+	lago: "Lago",
 	noroeste: "Noroeste",
 };
 
@@ -63,6 +63,28 @@ export interface StoreDocument {
 
 // Padronização dos termos de urgência
 export type UrgencyLevel = "Urgente" | "Acabando" | "Adiantando";
+
+// Padronização de data e hora
+export const formatDate = (date: Date | null) => {
+	if (!date) return "n/a";
+	const d = new Date(date);
+	const day = String(d.getDate()).padStart(2, "0");
+	const month = String(d.getMonth() + 1).padStart(2, "0");
+	const hours = String(d.getHours()).padStart(2, "0");
+	const minutes = String(d.getMinutes()).padStart(2, "0");
+
+	return `${day}/${month} às ${hours}h${minutes}m`;
+};
+
+// Padronização apenas de data
+export const formatOnlyDate = (date: Date | null) => {
+	if (!date) return "n/a";
+	const d = new Date(date);
+	const day = String(d.getDate()).padStart(2, "0");
+	const month = String(d.getMonth() + 1).padStart(2, "0");
+
+	return `${day}/${month}`;
+};
 
 export interface SupplyOrder {
 	id: string;
