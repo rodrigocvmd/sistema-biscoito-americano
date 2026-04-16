@@ -2,7 +2,17 @@
 
 import { useEffect, useState } from "react";
 import { db } from "@/lib/firebase";
-import { collection, getDocs, onSnapshot, query, where, orderBy, doc, updateDoc, collectionGroup } from "firebase/firestore";
+import {
+	collection,
+	getDocs,
+	onSnapshot,
+	query,
+	where,
+	orderBy,
+	doc,
+	updateDoc,
+	collectionGroup,
+} from "firebase/firestore";
 import { STOCK_LABELS, StockData, STORE_NAMES, StoreId, SupplyOrder } from "@/types";
 import {
 	LayoutDashboard,
@@ -71,7 +81,8 @@ export default function GerenciaPage() {
 	): { label: string; type: "urgente" | "acabando" | "adiantando" } => {
 		const u = urgency.toLowerCase();
 		if (u.includes("urgente")) return { label: "Urgente", type: "urgente" };
-		if (u.includes("acabando") || u.includes("normal")) return { label: "Acabando", type: "acabando" };
+		if (u.includes("acabando") || u.includes("normal"))
+			return { label: "Acabando", type: "acabando" };
 		return { label: "Adiantando", type: "adiantando" };
 	};
 
@@ -86,7 +97,10 @@ export default function GerenciaPage() {
 			});
 
 			// 2. Ouvinte Global para TODOS os pedidos pendentes
-			const ordersQuery = query(collectionGroup(db, "supplyOrders"), where("status", "==", "pending"));
+			const ordersQuery = query(
+				collectionGroup(db, "supplyOrders"),
+				where("status", "==", "pending"),
+			);
 
 			const unsubscribeOrders = onSnapshot(ordersQuery, (ordersSnapshot) => {
 				const allOrders = ordersSnapshot.docs.map((doc) => ({
@@ -161,21 +175,22 @@ export default function GerenciaPage() {
 							className={`cursor-pointer px-4 py-2 rounded-lg text-xs font-black transition-all flex items-center gap-2 ${
 								view === "general" ? "bg-white text-blue-600 shadow-sm" : "text-slate-500"
 							}`}>
-							<LayoutDashboard size={16} /> Visão Geral
+							<Package size={16} /> Estoque
 						</button>
-						<button
-							onClick={() => setView("byStore")}
-							className={`cursor-pointer px-4 py-2 rounded-lg text-xs font-black transition-all flex items-center gap-2 ${
-								view === "byStore" ? "bg-white text-blue-600 shadow-sm" : "text-slate-500"
-							}`}>
-							<Store size={16} /> Por Loja
-						</button>
+					
 						<button
 							onClick={() => setView("insumos")}
 							className={`cursor-pointer px-4 py-2 rounded-lg text-xs font-black transition-all flex items-center gap-2 ${
 								view === "insumos" ? "bg-white text-blue-600 shadow-sm" : "text-slate-500"
 							}`}>
-							<Package size={16} /> Insumos
+							<LayoutDashboard size={16} /> Insumos
+						</button>
+							<button
+							onClick={() => setView("byStore")}
+							className={`cursor-pointer px-4 py-2 rounded-lg text-xs font-black transition-all flex items-center gap-2 ${
+								view === "byStore" ? "bg-white text-blue-600 shadow-sm" : "text-slate-500"
+							}`}>
+							<Store size={16} /> Por Loja
 						</button>
 					</div>
 				</div>
@@ -225,7 +240,7 @@ export default function GerenciaPage() {
 													className="p-4 text-center text-[10px] font-black text-blue-600 uppercase tracking-widest border-l border-slate-200 min-w-[120px]">
 													<div className="flex flex-col items-center gap-1">
 														<span className="leading-tight">{store.name}</span>
-														<span className="text-[8px] font-bold text-slate-400 lowercase tracking-normal bg-white px-2 py-0.5 rounded-full border border-slate-100 whitespace-nowrap">
+														<span className="text-[11px] font-bold text-slate-600 lowercase tracking-normal bg-white px-2 py-0.5 rounded-full border border-slate-100 whitespace-nowrap">
 															{store.lastStockUpdate
 																? store.lastStockUpdate.toLocaleDateString("pt-BR")
 																: "n/a"}
@@ -238,23 +253,34 @@ export default function GerenciaPage() {
 									<tbody>
 										{[...(Object.entries(STOCK_LABELS) as [keyof StockData, string][])]
 											.sort((a, b) => (tableSort === "name" ? a[1].localeCompare(b[1]) : 0))
-											.map(([key, label]) => (
-												<tr
-													key={key}
-													className="border-b border-slate-100 hover:bg-blue-50/30 transition-colors group">
-													<td className="p-4 text-xs font-black text-slate-600 uppercase sticky left-0 bg-white group-hover:bg-blue-50/30 z-10 border-r border-slate-50">
-														{label}
-													</td>
-													{allData.map((store) => (
-														<td key={store.id} className="p-4 text-center border-l border-slate-100">
-															<span
-																className={`text-lg font-black ${(store.stock[key] || 0) < 5 ? "text-red-600" : "text-slate-800"}`}>
-																{store.stock[key] || 0}
-															</span>
+											.map(([key, label]) => {
+												// Encontrar o maior valor desta linha para o gradiente
+												const rowValues = allData.map((store) => store.stock[key] || 0);
+												const rowMax = Math.max(...rowValues);
+
+												return (
+													<tr
+														key={key}
+														className="border-b border-slate-100 hover:bg-blue-50/30 transition-colors group">
+														<td className="p-4 text-xs font-black text-slate-600 uppercase sticky left-0 bg-white group-hover:bg-blue-50/30 z-10 border-r border-slate-50">
+															{label}
 														</td>
-													))}
-												</tr>
-											))}
+														{allData.map((store) => {
+															const value = store.stock[key] || 0;
+															return (
+																<td
+																	key={store.id}
+																	className="p-4 text-center border-l border-slate-100">
+																	<span
+																		className={`text-lg font-black ${value === 0 ? "text-slate-400" : "text-slate-900"}`}>
+																		{value}
+																	</span>
+																</td>
+															);
+														})}
+													</tr>
+												);
+											})}
 									</tbody>
 								</table>
 							</div>
@@ -442,7 +468,9 @@ export default function GerenciaPage() {
 																		<div className="flex-1 min-w-0">
 																			<p
 																				className={`text-md font-black leading-tight truncate ${
-																					isChecked ? "text-slate-400 line-through" : "text-slate-800"
+																					isChecked
+																						? "text-slate-400 line-through"
+																						: "text-slate-800"
 																				}`}>
 																				{order.name}
 																			</p>
@@ -452,7 +480,9 @@ export default function GerenciaPage() {
 																		</div>
 																		<div className="flex items-center gap-2 shrink-0">
 																			<button
-																				onClick={() => handleToggleCheck(store.id, order.id, isChecked)}
+																				onClick={() =>
+																					handleToggleCheck(store.id, order.id, isChecked)
+																				}
 																				className={`p-2 rounded-xl border transition-all cursor-pointer ${
 																					isChecked
 																						? "bg-blue-600 border-blue-600 text-white"

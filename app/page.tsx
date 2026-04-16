@@ -31,6 +31,19 @@ export default function Home() {
 					<p className="text-slate-500 font-medium">Selecione sua unidade para iniciar</p>
 				</div>
 
+				{/* Gerência Card - Password Protected */}
+				<button
+					onClick={() => setShowPassModal(true)}
+					className="cursor-pointer group bg-white p-7 rounded-2xl shadow-sm border border-slate-200 hover:border-blue-300 hover:shadow-md transition-all flex items-center gap-6 md:col-span-2 md:mx-auto md:w-[calc(50%-12px)] w-full">
+					<div className="bg-blue-50 text-blue-600 p-4 rounded-xl group-hover:bg-blue-600 group-hover:text-white transition-colors">
+						<Settings size={32} />
+					</div>
+					<div className="text-left">
+						<h2 className="text-xl font-bold text-slate-800">Gerência</h2>
+						<p className="text-slate-400 text-sm">Acesso administrativo</p>
+					</div>
+				</button>
+
 				<div className="grid grid-cols-1 md:grid-cols-2 gap-6">
 					{stores.map(([id, name]) => (
 						<Link
@@ -46,18 +59,6 @@ export default function Home() {
 							</div>
 						</Link>
 					))}
-					{/* Gerência Card - Password Protected */}
-					<button
-						onClick={() => setShowPassModal(true)}
-						className="cursor-pointer group bg-white p-7 rounded-2xl shadow-sm border border-slate-200 hover:border-blue-300 hover:shadow-md transition-all flex items-center gap-6 md:col-span-2 md:mx-auto md:w-[calc(50%-12px)] w-full">
-						<div className="bg-blue-50 text-blue-600 p-4 rounded-xl group-hover:bg-blue-600 group-hover:text-white transition-colors">
-							<Settings size={32} />
-						</div>
-						<div className="text-left text-left">
-							<h2 className="text-xl font-bold text-slate-800">Gerência</h2>
-							<p className="text-slate-400 text-sm">Acesso administrativo</p>
-						</div>
-					</button>
 				</div>
 			</div>
 

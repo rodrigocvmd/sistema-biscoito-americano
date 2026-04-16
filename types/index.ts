@@ -1,8 +1,8 @@
 export type StoreId = "conjunto" | "terraco" | "lago" | "noroeste";
 
 export const STORE_NAMES: Record<StoreId, string> = {
-	conjunto: "Conjunto Nacional",
-	terraco: "Terraço Shopping",
+	conjunto: "Conjunto",
+	terraco: "Terraço",
 	lago: "Lago Sul",
 	noroeste: "Noroeste",
 };
