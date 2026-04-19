@@ -36,6 +36,9 @@ import {
 	Coffee,
 	Check,
 	ArrowLeftRight,
+	ZoomIn,
+	ZoomOut,
+	Maximize2,
 } from "lucide-react";
 import Link from "next/link";
 
@@ -50,6 +53,7 @@ interface FullStoreData {
 export default function GerenciaPage() {
 	const [loading, setLoading] = useState(true);
 	const [view, setView] = useState<"general" | "byStore" | "insumos">("general");
+	const [uiScale, setUiScale] = useState(1);
 	const [allData, setAllData] = useState<FullStoreData[]>([]);
 	const [expandedStores, setExpandedStores] = useState<Record<string, boolean>>({
 		conjunto: true,
@@ -157,75 +161,124 @@ export default function GerenciaPage() {
 	}
 
 	return (
-		<div className="min-h-screen bg-slate-50 flex flex-col">
+		<div className="min-h-screen bg-slate-50 flex flex-col w-full overflow-x-hidden">
 			{/* Header */}
-			<header className="bg-white border-b border-slate-200 sticky top-0 z-40 shadow-sm">
-				<div className="max-w-7xl mx-auto px-4 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-					<div className="flex items-center gap-4">
-						<Link
-							href="/"
-							className="p-2 hover:bg-slate-100 rounded-lg text-slate-500 transition-colors">
-							<ChevronLeft size={24} />
-						</Link>
-						<div>
-							<h1 className="text-xl font-black text-blue-700 uppercase tracking-tight">
-								PAINEL DE GERÊNCIA
-							</h1>
-							<p className="text-[10px] font-bold text-slate-400 -mt-1 tracking-widest uppercase">
-								Resumo Geral de Operações
-							</p>
+			<header className="bg-white border-b border-slate-200 sticky top-0 z-40 shadow-sm w-full">
+				<div className="w-full mx-auto px-4 py-3 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+					<div className="flex items-center justify-between w-full lg:w-auto">
+						<div className="flex items-center gap-4">
+							<Link
+								href="/"
+								className="p-2 hover:bg-slate-100 rounded-lg text-slate-500 transition-colors">
+								<ChevronLeft size={24} />
+							</Link>
+							<div>
+								<h1 className="text-xl font-black text-blue-700 uppercase tracking-tight leading-none">
+									GERÊNCIA
+								</h1>
+								<p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">
+									PAINEL ADMINISTRATIVO
+								</p>
+							</div>
+						</div>
+
+						{/* Zoom Controls for Mobile */}
+						<div className="flex lg:hidden items-center bg-slate-50 p-1 rounded-xl border border-slate-200 shadow-sm">
+							<button
+								onClick={() => setUiScale((s) => Math.max(0.7, s - 0.1))}
+								className="cursor-pointer p-2 hover:bg-white hover:text-blue-600 rounded-lg text-slate-400 transition-all">
+								<ZoomOut size={18} />
+							</button>
+							<span className="text-[10px] font-black text-slate-600 w-12 text-center">
+								{Math.round(uiScale * 100)}%
+							</span>
+							<button
+								onClick={() => setUiScale((s) => Math.min(1.5, s + 0.1))}
+								className="cursor-pointer p-2 hover:bg-white hover:text-blue-600 rounded-lg text-slate-400 transition-all">
+								<ZoomIn size={18} />
+							</button>
 						</div>
 					</div>
 
-						<div className="flex bg-slate-100 p-1.5 rounded-2xl">
-						<button
-							onClick={() => setView("insumos")}
-							className={`cursor-pointer px-6 py-3 rounded-xl text-sm font-black transition-all flex items-center gap-3 ${
-								view === "insumos" ? "bg-white text-blue-600 shadow-sm" : "text-slate-500"
-							}`}>
-							<LayoutDashboard size={20} /> Insumos
-						</button>
-						<button
-							onClick={() => setView("general")}
-							className={`cursor-pointer px-6 py-3 rounded-xl text-sm font-black transition-all flex items-center gap-3 ${
-								view === "general" ? "bg-white text-blue-600 shadow-sm" : "text-slate-500"
-							}`}>
-							<Package size={20} /> Estoque
-						</button>
-						<button
-							onClick={() => setView("byStore")}
-							className={`cursor-pointer px-6 py-3 rounded-xl text-sm font-black transition-all flex items-center gap-3 ${
-								view === "byStore" ? "bg-white text-blue-600 shadow-sm" : "text-slate-500"
-							}`}>
-							<Store size={20} /> Resumos
-						</button>
+					<div className="flex items-center justify-between lg:justify-end gap-4 w-full lg:w-auto">
+						{/* Zoom Controls for Desktop */}
+						<div className="hidden lg:flex items-center bg-slate-50 p-1 rounded-xl border border-slate-200 shadow-sm">
+							<button
+								onClick={() => setUiScale((s) => Math.max(0.7, s - 0.1))}
+								className="cursor-pointer p-2 hover:bg-white hover:text-blue-600 rounded-lg text-slate-400 transition-all">
+								<ZoomOut size={18} />
+							</button>
+							<span className="text-xs font-black text-slate-600 w-16 text-center">
+								{Math.round(uiScale * 100)}%
+							</span>
+							<button
+								onClick={() => setUiScale((s) => Math.min(1.5, s + 0.1))}
+								className="cursor-pointer p-2 hover:bg-white hover:text-blue-600 rounded-lg text-slate-400 transition-all">
+								<ZoomIn size={18} />
+							</button>
+						</div>
+
+						<div className="flex bg-slate-100 p-1 rounded-xl w-full sm:w-auto">
+							<button
+								onClick={() => setView("insumos")}
+								className={`flex-1 sm:flex-none cursor-pointer px-4 py-3 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-3 ${
+									view === "insumos" ? "bg-white text-blue-600 shadow-sm" : "text-slate-500"
+								}`}>
+								<LayoutDashboard size={20} /> <span className="hidden xs:inline">Insumos</span>
+								<span className="xs:hidden">Insumos</span>
+							</button>
+							<button
+								onClick={() => setView("general")}
+								className={`flex-1 sm:flex-none cursor-pointer px-4 py-3 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-3 ${
+									view === "general" ? "bg-white text-blue-600 shadow-sm" : "text-slate-500"
+								}`}>
+								<Package size={20} /> <span className="hidden xs:inline">Estoque</span>
+								<span className="xs:hidden">Estoque</span>
+							</button>
+							<button
+								onClick={() => setView("byStore")}
+								className={`flex-1 sm:flex-none cursor-pointer px-4 py-3 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-3 ${
+									view === "byStore" ? "bg-white text-blue-600 shadow-sm" : "text-slate-500"
+								}`}>
+								<Store size={20} /> <span className="hidden xs:inline">Resumos</span>
+								<span className="xs:hidden">Resumos</span>
+							</button>
+						</div>
 					</div>
 				</div>
 			</header>
 
-			<main className="flex-1 max-w-7xl w-full mx-auto p-4 md:p-8 space-y-8">
-				{view === "general" ? (
-					<div className="space-y-6">
-						{/* Table Sorting Navbar */}
-						<div className="bg-white p-3 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-4 w-fit">
-							<span className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-2">
-								Itens:
-							</span>
-							<div className="flex bg-slate-100 p-1 rounded-xl gap-1">
-								<button
-									onClick={() => setTableSort("default")}
-									className={`cursor-pointer px-4 py-2 rounded-lg text-xs font-black transition-all ${tableSort === "default" ? "bg-white text-blue-600 shadow-sm" : "text-slate-500"}`}>
-									Padrão
-								</button>
-								<button
-									onClick={() => setTableSort("name")}
-									className={`cursor-pointer px-4 py-2 rounded-lg text-xs font-black transition-all ${tableSort === "name" ? "bg-white text-blue-600 shadow-sm" : "text-slate-500"}`}>
-									A-Z
-								</button>
+			<div className="flex-1 w-full overflow-x-hidden">
+				<main
+					className="w-full mx-auto p-4 md:p-8 space-y-8 origin-top"
+					style={{ 
+						zoom: uiScale,
+						maxWidth: "100%"
+					}}>
+					{view === "general" ? (
+						<div className="space-y-6">
+							{/* Actions Bar: Sorting */}
+							<div className="flex items-center justify-between gap-4">
+								<div className="bg-white p-3 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-4 w-fit">
+									<span className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-2">
+										Itens:
+									</span>
+									<div className="flex bg-slate-100 p-1 rounded-xl gap-1">
+										<button
+											onClick={() => setTableSort("default")}
+											className={`cursor-pointer px-4 py-2 rounded-lg text-xs font-black transition-all ${tableSort === "default" ? "bg-white text-blue-600 shadow-sm" : "text-slate-500"}`}>
+											Padrão
+										</button>
+										<button
+											onClick={() => setTableSort("name")}
+											className={`cursor-pointer px-4 py-2 rounded-lg text-xs font-black transition-all ${tableSort === "name" ? "bg-white text-blue-600 shadow-sm" : "text-slate-500"}`}>
+											A-Z
+										</button>
+									</div>
+								</div>
 							</div>
-						</div>
 
-						<div className="bg-white rounded-[32px] border border-slate-200 shadow-sm overflow-hidden">
+							<div className="bg-white rounded-[32px] border border-slate-200 shadow-sm overflow-hidden">
 							<div className="overflow-x-auto">
 								<table className="w-full border-collapse">
 									<thead>
@@ -556,6 +609,7 @@ export default function GerenciaPage() {
 					</div>
 				)}
 			</main>
+			</div>
 		</div>
 	);
 }
