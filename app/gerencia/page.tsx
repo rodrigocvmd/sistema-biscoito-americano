@@ -20,7 +20,6 @@ import {
 	StoreId,
 	SupplyOrder,
 	formatDate,
-	formatOnlyDate,
 } from "@/types";
 import {
 	LayoutDashboard,
@@ -36,6 +35,7 @@ import {
 	Hourglass,
 	Coffee,
 	Check,
+	ArrowLeftRight,
 } from "lucide-react";
 import Link from "next/link";
 
@@ -159,7 +159,7 @@ export default function GerenciaPage() {
 	return (
 		<div className="min-h-screen bg-slate-50 flex flex-col">
 			{/* Header */}
-			<header className="bg-white border-b border-slate-200 sticky top-0 z-10 shadow-sm">
+			<header className="bg-white border-b border-slate-200 sticky top-0 z-40 shadow-sm">
 				<div className="max-w-7xl mx-auto px-4 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
 					<div className="flex items-center gap-4">
 						<Link
@@ -234,10 +234,11 @@ export default function GerenciaPage() {
 												<div className="flex items-center gap-2">
 													ITEM
 													<button
+													id="btnMoverLojas"
 														onClick={rotateStores}
 														className="cursor-pointer p-1.5 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-600 hover:text-white transition-all shadow-sm"
 														title="Mover primeira loja para o final">
-														<RefreshCw size={12} />
+														<ArrowLeftRight size={12} />
 													</button>
 												</div>
 											</th>
@@ -248,7 +249,7 @@ export default function GerenciaPage() {
 													<div className="flex flex-col items-center gap-1">
 														<span className="leading-tight">{store.name}</span>
 														<span className="text-[11px] font-bold text-slate-600 lowercase tracking-normal bg-white px-2 py-0.5 rounded-full border border-slate-100 whitespace-nowrap">
-															{formatOnlyDate(store.lastStockUpdate)}
+															{formatDate(store.lastStockUpdate)}
 														</span>
 													</div>
 												</th>
@@ -324,7 +325,7 @@ export default function GerenciaPage() {
 														<div className="flex flex-col">
 															<span className="text-xs font-bold text-slate-700">{order.name}</span>
 															<span className="text-[8px] font-bold text-slate-400 uppercase">
-																{formatOnlyDate(order.createdAt?.toDate())}
+																{formatDate(order.createdAt?.toDate())}
 															</span>
 														</div>
 														{order.quantity && (

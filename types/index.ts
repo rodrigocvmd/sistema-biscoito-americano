@@ -27,6 +27,7 @@ export interface StockData {
 	classicoRed: number;
 	jackDaniels: number;
 	eclipse: number;
+	americanCookie: number;
 	sorvete: number;
 	acai: number;
 }
@@ -51,6 +52,7 @@ export const STOCK_LABELS: Record<keyof StockData, string> = {
 	classicoRed: "CLÁSSICO RED",
 	jackDaniels: "JACK DANIELS",
 	eclipse: "ECLIPSE",
+	americanCookie: "AMERICAN COOKIE",
 	sorvete: "SORVETE",
 	acai: "AÇAÍ",
 };
