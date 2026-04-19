@@ -15,6 +15,9 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
 	title: "Sistema Biscoito Americano",
 	description: "Sistema de contagem de estoque e pedidos de insumos",
+	icons: {
+		icon: "/amcLogo.png",
+	},
 };
 
 export default function RootLayout({
@@ -24,6 +27,9 @@ export default function RootLayout({
 }>) {
 	return (
 		<html lang="en" className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}>
+			<head>
+				<link rel="icon" href="/amcLogo.png" />
+			</head>
 			<body className="min-h-full flex flex-col">{children}</body>
 		</html>
 	);
