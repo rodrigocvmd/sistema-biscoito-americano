@@ -82,11 +82,11 @@ export default function GerenciaLayout({
 									<Link
 										key={tab.id}
 										href={tab.href}
-										className={`flex-1 sm:flex-none cursor-pointer px-4 py-3 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-3 ${
+										className={`flex-1 sm:flex-none cursor-pointer px-2 sm:px-4 py-3 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-2 sm:gap-3 ${
 											isActive ? "bg-white text-blue-600 shadow-sm" : "text-slate-500"
 										}`}>
-										<Icon size={20} /> <span className="hidden xs:inline">{tab.label}</span>
-										<span className="xs:hidden pr-1">{tab.label}</span>
+										<Icon size={20} /> 
+										<span className="hidden sm:inline">{tab.label}</span>
 									</Link>
 								);
 							})}
