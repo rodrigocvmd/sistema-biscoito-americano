@@ -51,10 +51,13 @@ const INVENTORY_DATA = [
 			"SODA MAÇÃ VERDE",
 			"SODA CRAMBERRY",
 			"SODA LIMÃO",
-			"SODA MARACUJÁ",
-			"XAROPE MORANGO",
-			"XAROPE LIMÃO",
-			"XAROPE FRAMBOESA",
+			"SODA MARACUJÁ VERMELHA",
+			"SODA TANGERINA",
+			"SODA PESSEGO",
+			"SODA JABUTICABA",
+			"SODA BLUEBERRY",
+			"SODA CURAÇAO",
+			"SODA FRAMBOESA",
 		],
 	},
 	{
@@ -63,14 +66,12 @@ const INVENTORY_DATA = [
 			"SORVETE",
 			"NUTELLA",
 			"LEITE NINHO",
-			"LEITE LÍQUIDO TAMPA PRETA",
-			"PÓ DE CACAU",
+			"LEITE LÍQUIDO",
+			"PÓ DE CACAU 50%",
 			"M&M",
-			"GRANULADOS MILK",
-			"GRANULADO DARK",
+			"GRANULADO",
 			"CHANTILLY",
 			"DOCE DE LEITE",
-			"SACO NEGRESCO MOÍDO",
 			"OVOMALTINE CREMOSO",
 			"OVOMALTINE CROCANTE",
 			"CHOCOLATE PICADO",
@@ -80,59 +81,49 @@ const INVENTORY_DATA = [
 	},
 	{
 		category: "CALDAS",
-		items: [
-			"CALDA DE MORANGO BATIDA",
-			"CALDA DE CARAMELO",
-			"CALDA CHOCOLATE DA VINCI",
-			"CALDA DECORAR COPO CARAMELO",
-			"CALDA DECORAR COPO MORANGO",
-			"CALDA DECORAR COPO CHOCOLATE",
-		],
+		items: ["CALDA DE FRUTAS VERMELHAS", "CALDA DE CARAMELO", "CALDA CHOCOLATE"],
 	},
 	{
 		category: "CAFETERIA E MATINAL",
 		items: [
 			"CÁPSULA DE CAFÉ",
-			"COPO PARA CAFÉ",
 			"NESCAFÉ MATINAL SUAVE",
 			"PO DE CAPUCCINO",
 			"SACHE CHOCOLATE QUENTE",
-			"CHÁ MATTE",
-			"SACHÉ AÇÚCAR NORMAL/ADOÇANTE/MASCAVO",
+			"SACHÉ AÇÚCAR",
+			"SACHÉ ADOÇANTE",
 		],
 	},
 	{
 		category: "EMBALAGENS E DESCARTÁVEIS",
 		items: [
-			"SAQUINHO UNITÁRIO / COOKIES",
-			"KRAFT PEQUENO FINO BALCÃO",
-			"KRAFT PEQUENO GROSSO DELIVERY",
-			"KRAFT GRANDE",
-			"CAIXA PEQUENA",
-			"CAIXA GRANDE",
+			"SAQUINHO UNITÁRIO",
+			"KRAFT P",
+			"KRAFT G",
+			"CAIXA P",
+			"CAIXA G",
 			"HAMBURGUEIRA",
 			"PAPEL INTERFOLHADO",
 			"PAPEL MANTEIGA",
 			"SACOLA PLÁSTICA",
-			"COPO DE ISOPOR",
-			"COPO DESCARTÁVEL (GERAL)",
-			"COPOS PARA CALDA, DELIVERY E POTINHOS",
+			"COPO DE ISOPOR 100ML",
+			"COPO DE ISOPOR 180ML",
+			"COPO DESCARTÁVEL",
+			"COPO PARA DELIVERY (CALDA)",
 			"COPO 180 ML",
-			"COPO 300 ML COM LOGO",
-			"COPO 300 ML SEM LOGO",
-			"COPO 400 ML COM LOGO",
-			"COPO 400 ML SEM LOGO",
-			"TAMPA BOLHA",
-			"TAMPA PARA COPO 300 ML SEM FURO",
-			"TAMPA PARA COPO 300 ML COM FURO",
-			"TAMPA PARA COPO 400 ML SEM FURO",
-			"TAMPA PARA COPO 400 ML COM FURO",
+			"COPO 300 ML",
+			"COPO 400 ML",
+			"COPO FLURY",
+			"TAMPA PARA COPO 300 ML",
+			"TAMPA PARA COPO 400 ML",
+			"TAMPA PARA COPO FLURY",
 			"CANUDO NORMAL",
-			"CANUDO BUBBLES",
+			"CANUDO BUBBLE",
 			"CANUDO SHAKE",
 			"COLHER DESCARTÁVEL",
 			"GUARDANAPO",
 			"SUPORTE SHAKE",
+			"SUPORTE FLURY",
 		],
 	},
 	{
@@ -140,7 +131,6 @@ const INVENTORY_DATA = [
 		items: [
 			"ETIQUETA VERMELHA",
 			"ETIQUETA BRANCA",
-			"BILHETE DELIVERY FONDUE",
 			"BILHETE RECADO DELIVERY",
 			"BILHETE TELEFONE DELIVERY",
 			"BOBINA IMPRESSORA",
@@ -152,14 +142,18 @@ const INVENTORY_DATA = [
 	{
 		category: "HIGIENE E SEGURANÇA",
 		items: [
-			"CAIXA LUVAS",
-			"MÁSCARAS",
+			"LUVAS",
 			"DESINFETANTE",
 			"DETERGENTE",
 			"VEJA",
 			"ÁLCOOL",
 			"SACO DE LIXO",
 			"PANO DE PRATO",
+			"SABÃO LÍQUIDO",
+			"BUXA",
+			"PERFEX",
+			"KIBOA",
+			"PAPEL TOALHA",
 		],
 	},
 ];
@@ -361,40 +355,38 @@ export default function SuppliesPage({ params }: { params: Promise<{ store: stri
 							{/* Dropdown Results */}
 							{isDropdownOpen && (
 								<div className="absolute z-50 w-full mt-2 max-h-[300px] overflow-y-auto bg-white border border-slate-200 rounded-2xl shadow-2xl animate-in fade-in zoom-in-95 duration-200">
-									{filteredInventory.length > 0 ? (
-										filteredInventory.map((category) => (
-											<div key={category.category}>
-												<div className="px-4 py-2 bg-slate-50 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] border-y border-slate-100 first:border-t-0">
-													{category.category}
-												</div>
-												{category.items.map((item) => (
-													<div
-														key={item}
-														onMouseDown={(e) => {
-															e.preventDefault();
-															setNewName(item);
-															setIsDropdownOpen(false);
-														}}
-														className="px-4 py-3 hover:bg-red-50 hover:text-red-600 cursor-pointer text-sm font-bold text-slate-700 transition-colors flex items-center justify-between group">
-														{item}
-														<Plus
-															size={14}
-															className="opacity-0 group-hover:opacity-100 transition-opacity"
-														/>
+									{filteredInventory.length > 0
+										? filteredInventory.map((category) => (
+												<div key={category.category}>
+													<div className="px-4 py-2 bg-slate-50 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] border-y border-slate-100 first:border-t-0">
+														{category.category}
 													</div>
-												))}
-											</div>
-										))
-									) : (
-										newName.trim() !== "" && (
-											<div className="px-4 py-4 text-center">
-												<p className="text-xs font-bold text-slate-400 uppercase">
-													Pressione Adicionar para:
-												</p>
-												<p className="text-sm font-black text-red-600 mt-1">"{newName}"</p>
-											</div>
-										)
-									)}
+													{category.items.map((item) => (
+														<div
+															key={item}
+															onMouseDown={(e) => {
+																e.preventDefault();
+																setNewName(item);
+																setIsDropdownOpen(false);
+															}}
+															className="px-4 py-3 hover:bg-red-50 hover:text-red-600 cursor-pointer text-sm font-bold text-slate-700 transition-colors flex items-center justify-between group">
+															{item}
+															<Plus
+																size={14}
+																className="opacity-0 group-hover:opacity-100 transition-opacity"
+															/>
+														</div>
+													))}
+												</div>
+											))
+										: newName.trim() !== "" && (
+												<div className="px-4 py-4 text-center">
+													<p className="text-xs font-bold text-slate-400 uppercase">
+														Pressione Adicionar para:
+													</p>
+													<p className="text-sm font-black text-red-600 mt-1">"{newName}"</p>
+												</div>
+											)}
 								</div>
 							)}
 						</div>
