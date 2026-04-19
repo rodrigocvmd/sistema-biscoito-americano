@@ -169,9 +169,6 @@ export default function GerenciaPage() {
 								<h1 className="text-xl font-black text-blue-700 uppercase tracking-tight leading-none">
 									GERÊNCIA
 								</h1>
-								<p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">
-									PAINEL ADMINISTRATIVO
-								</p>
 							</div>
 						</div>
 
@@ -182,7 +179,7 @@ export default function GerenciaPage() {
 								className="cursor-pointer p-2 hover:bg-white hover:text-blue-600 rounded-lg text-slate-400 transition-all">
 								<ZoomOut size={18} />
 							</button>
-							<span className="text-[10px] font-black text-slate-600 w-12 text-center">
+							<span className="text-[11px] font-black text-slate-600 w-12 text-center">
 								{Math.round(uiScale * 100)}%
 							</span>
 							<button
@@ -214,11 +211,11 @@ export default function GerenciaPage() {
 						<div className="flex bg-slate-100 p-1 rounded-xl w-full sm:w-auto">
 							<button
 								onClick={() => setView("insumos")}
-								className={`flex-1 sm:flex-none cursor-pointer px-4 py-3 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-3 ${
+								className={`flex-1 sm:flex-none cursor-pointer px-2 py-2 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1	 ${
 									view === "insumos" ? "bg-white text-blue-600 shadow-sm" : "text-slate-500"
 								}`}>
 								<LayoutDashboard size={20} /> <span className="hidden xs:inline">Insumos</span>
-								<span className="xs:hidden">Insumos</span>
+								<span className="xs:hidden pr-1">Insumos</span>
 							</button>
 							<button
 								onClick={() => setView("general")}
@@ -226,7 +223,7 @@ export default function GerenciaPage() {
 									view === "general" ? "bg-white text-blue-600 shadow-sm" : "text-slate-500"
 								}`}>
 								<Package size={20} /> <span className="hidden xs:inline">Estoque</span>
-								<span className="xs:hidden">Estoque</span>
+								<span className="xs:hidden pr-1">Estoque</span>
 							</button>
 							<button
 								onClick={() => setView("byStore")}
@@ -234,7 +231,7 @@ export default function GerenciaPage() {
 									view === "byStore" ? "bg-white text-blue-600 shadow-sm" : "text-slate-500"
 								}`}>
 								<Store size={20} /> <span className="hidden xs:inline">Resumos</span>
-								<span className="xs:hidden">Resumos</span>
+								<span className="xs:hidden pr-1">Resumos</span>
 							</button>
 						</div>
 					</div>
@@ -436,7 +433,7 @@ export default function GerenciaPage() {
 														<h3 className="text-3xl font-black text-slate-800 uppercase tracking-tight leading-none">
 															{store.name}
 														</h3>
-														<p className="text-xs font-bold text-blue-600 uppercase tracking-[0.2em] mt-3">
+														<p className="text-sm font-bold text-blue-600 uppercase tracking-[0.2em] mt-3">
 															{store.pendingOrders.length}{" "}
 															{store.pendingOrders.length === 1
 																? "Pedido Pendente"
@@ -456,11 +453,11 @@ export default function GerenciaPage() {
 											{expandedStores[store.id] && (
 												<div className="p-8 pt-0 border-t border-slate-50 animate-in slide-in-from-top-2 duration-300">
 													{/* Store-specific Sorting Navbar */}
-													<div className="flex flex-col sm:flex-row sm:items-center gap-4 py-6 border-b border-slate-50 mb-3">
-														<span className="text-[11px] font-black text-slate-400 uppercase tracking-widest">
+													<div className="flex items-center gap-4 py-6 border-b border-slate-50 mb-3">
+														<span className="text-[12px] font-black text-slate-400 uppercase tracking-widest">
 															Ordenar:
 														</span>
-														<div className="flex bg-slate-100 p-1.5 rounded-xl gap-1 w-fit">
+														<div className="flex bg-slate-100 p-1.5 rounded-xl gap-1 w-fit text-lg">
 															<button
 																onClick={() => setInsumosSort("default")}
 																className={`cursor-pointer px-4 py-2 rounded-lg text-xs font-black transition-all whitespace-nowrap ${insumosSort === "default" ? "bg-white text-blue-600 shadow-sm" : "text-slate-500"}`}>
@@ -573,7 +570,9 @@ export default function GerenciaPage() {
 																						{norm.label}
 																					</span>
 																				</div>
-																				<p id="textoDataInsumo" className="text-xs font-bold text-slate-400 whitespace-nowrap">
+																				<p
+																					id="textoDataInsumo"
+																					className="text-xs font-bold text-slate-400 whitespace-nowrap">
 																					{formatDate(order.createdAt?.toDate())}
 																				</p>
 																			</div>
