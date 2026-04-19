@@ -173,7 +173,6 @@ export default function SuppliesPage({ params }: { params: Promise<{ store: stri
 	// Form State
 	const [newName, setNewName] = useState("");
 	const [newUrgency, setNewUrgency] = useState<UrgencyLevel>("Acabando");
-	const [newQuantity, setNewQuantity] = useState("");
 	const [adding, setAdding] = useState(false);
 	const [showDelivered, setShowDelivered] = useState(false);
 	const [orderToCancel, setOrderToCancel] = useState<string | null>(null);
@@ -247,13 +246,11 @@ export default function SuppliesPage({ params }: { params: Promise<{ store: stri
 			await addDoc(ordersRef, {
 				name: newName,
 				urgency: newUrgency,
-				quantity: newQuantity,
 				status: "pending",
 				createdAt: serverTimestamp(),
 			});
 
 			setNewName("");
-			setNewQuantity("");
 			setNewUrgency("Acabando");
 		} catch (error) {
 			console.error("Erro ao adicionar insumo:", error);
@@ -338,7 +335,7 @@ export default function SuppliesPage({ params }: { params: Promise<{ store: stri
 					<Plus className="text-green-600" size={24} />
 					Solicitar Novo Insumo
 				</h2>
-				<form onSubmit={handleAddOrder} className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+				<form onSubmit={handleAddOrder} className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
 					<div className="space-y-1 md:col-span-1 relative">
 						<label className="text-xs font-bold text-slate-400 uppercase ml-1">Insumo</label>
 						<div className="relative">
@@ -403,18 +400,6 @@ export default function SuppliesPage({ params }: { params: Promise<{ store: stri
 						</div>
 					</div>
 					<div className="space-y-1">
-						<label className="text-xs font-bold text-slate-400 uppercase ml-1">
-							Qtd (opcional)
-						</label>
-						<input
-							type="text"
-							placeholder="Ex: 5 caixas"
-							value={newQuantity}
-							onChange={(e) => setNewQuantity(e.target.value)}
-							className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500 transition-all text-slate-800 font-medium"
-						/>
-					</div>
-					<div className="space-y-1">
 						<label className="text-xs font-bold text-slate-400 uppercase ml-1">Urgência</label>
 						<select
 							value={newUrgency}
@@ -457,12 +442,6 @@ export default function SuppliesPage({ params }: { params: Promise<{ store: stri
 										<div className="shrink-0">{getUrgencyBadge(order.urgency)}</div>
 									</div>
 									<div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-										{order.quantity && (
-											<span className="text-md font-extrabold text-red-600 bg-red-50 px-2 py-0.5 rounded-lg border border-red-100 flex items-center gap-1.5">
-												<Package size={14} />
-												{order.quantity}
-											</span>
-										)}
 										<span className="flex items-center gap-1.5 text-[11px] text-slate-400 font-bold uppercase tracking-wider">
 											<Calendar size={14} />
 											{formatDate(order.createdAt?.toDate())}

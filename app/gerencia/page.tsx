@@ -294,7 +294,7 @@ export default function GerenciaPage() {
 														className="p-6 text-center text-[11px] font-black text-blue-600 uppercase tracking-widest border-l border-slate-200 min-w-[140px]">
 														<div className="flex flex-col items-center gap-2">
 															<span className="leading-tight text-sm">{store.name}</span>
-															<span className="text-[11px] font-bold text-slate-600 lowercase tracking-normal bg-white px-3 py-1 rounded-full border border-slate-100 whitespace-nowrap">
+															<span className="text-[11px] font-bold text-slate-600 bg-white px-3 py-1 rounded-full border border-slate-100 whitespace-nowrap">
 																{formatDate(store.lastStockUpdate)}
 															</span>
 														</div>
@@ -346,7 +346,7 @@ export default function GerenciaPage() {
 										</h3>
 										<div className="flex items-center gap-2 mt-2">
 											<Calendar size={18} className="text-slate-400" />
-											<span className="text-xs font-bold text-slate-400 uppercase">
+											<span className="text-xs font-bold text-slate-400">
 												Último estoque: {formatDate(store.lastStockUpdate)}
 											</span>
 										</div>
@@ -368,15 +368,10 @@ export default function GerenciaPage() {
 																<span className="text-sm font-bold text-slate-700">
 																	{order.name}
 																</span>
-																<span className="text-xs font-bold text-slate-400 uppercase mt-0.5">
+																<span className="text-xs font-bold text-slate-400 mt-0.5">
 																	{formatDate(order.createdAt?.toDate())}
 																</span>
 															</div>
-															{order.quantity && (
-																<span className="text-xs font-black text-blue-600 bg-blue-50 px-3 py-1.5 rounded-lg">
-																	{order.quantity}
-																</span>
-															)}
 														</div>
 													))}
 													<button
@@ -578,27 +573,11 @@ export default function GerenciaPage() {
 																						{norm.label}
 																					</span>
 																				</div>
-																				<p id="textoDataInsumo" className="text-xs font-bold text-slate-400 uppercase whitespace-nowrap">
+																				<p id="textoDataInsumo" className="text-xs font-bold text-slate-400 whitespace-nowrap">
 																					{formatDate(order.createdAt?.toDate())}
 																				</p>
 																			</div>
 																		</div>
-
-																		{order.quantity && (
-																			<div className="border-t border-slate-200/50 pt-3 mt-1 flex justify-center">
-																				<span
-																					className={`text-sm font-black px-3 py-1 rounded-lg ${
-																						isChecked
-																							? "text-slate-300 bg-slate-50"
-																							: "text-slate-500 bg-slate-100"
-																					}`}>
-																					<span className="text-[10px] opacity-60 mr-1 uppercase font-bold">
-																						Qtd:
-																					</span>
-																					{order.quantity}
-																				</span>
-																			</div>
-																		)}
 																	</div>
 																);
 															})}
