@@ -87,10 +87,10 @@ export default function ResumosPage() {
 						<h3 className="text-2xl font-black text-slate-800 uppercase tracking-tight">
 							{store.name}
 						</h3>
-						<div className="flex items-center gap-2 mt-2">
+						<div className="flex items-center gap-2 mt-4">
 							<Calendar size={18} className="text-slate-400" />
-							<span className="text-xs font-bold text-slate-400">
-								Último estoque: {formatDate(store.lastStockUpdate)}
+							<span className="text-md font-bold text-slate-400">
+								Atualizado: {formatDate(store.lastStockUpdate)}
 							</span>
 						</div>
 					</div>

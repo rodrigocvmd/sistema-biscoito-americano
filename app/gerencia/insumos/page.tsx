@@ -112,7 +112,7 @@ export default function InsumosPage() {
 					<button
 						onClick={() => toggleStore(store.id)}
 						className="w-full flex items-center justify-between p-8 hover:bg-slate-50 transition-all cursor-pointer group">
-						<div className="flex items-center gap-6 text-left">
+						<div className="flex items-center gap-4 text-left">
 							<div
 								className={`${store.pendingOrders.length > 0 ? "bg-blue-600 shadow-blue-100" : "bg-slate-300 shadow-slate-100"} text-white p-5 rounded-[24px] shadow-lg group-hover:scale-105 transition-all`}>
 								<Store size={36} />
@@ -122,17 +122,17 @@ export default function InsumosPage() {
 									{store.name}
 								</h3>
 								<p
-									className={`text-sm font-bold uppercase tracking-[0.2em] mt-3 ${store.pendingOrders.length > 0 ? "text-blue-600" : "text-slate-400"}`}>
-									{store.pendingOrders.length}{" "}
+									className={`font-bold uppercase tracking-[0.2em] mt-3 ${store.pendingOrders.length > 0 ? "text-black-600" : "text-slate-400"}`}>
+									<span className="text-xl font-extrabold text-blue-600">{store.pendingOrders.length}</span>{" "}
 									{store.pendingOrders.length === 1 ? "Pedido Pendente" : "Pedidos Pendentes"}
 								</p>
 							</div>
 						</div>
 						<div className="bg-slate-50 p-3 rounded-full border border-slate-100 group-hover:bg-white group-hover:border-blue-200 transition-all">
 							{expandedStores[store.id] ? (
-								<ChevronUp size={32} className="text-blue-600" />
+								<ChevronUp size={24} className="text-blue-600" />
 							) : (
-								<ChevronDown size={32} className="text-slate-400" />
+								<ChevronDown size={24} className="text-slate-400" />
 							)}
 						</div>
 					</button>
@@ -145,17 +145,13 @@ export default function InsumosPage() {
 										<span className="text-[12px] font-black text-slate-400 uppercase tracking-widest">
 											Ordenar:
 										</span>
-										<div className="flex bg-slate-100 p-1.5 rounded-xl gap-1 w-fit text-lg">
+										<div className="flex bg-slate-100 p-1.5 rounded-xl gap-1 w-fit">
 											{["default", "urgency", "date"].map((sort) => (
 												<button
 													key={sort}
 													onClick={() => setInsumosSort(sort as any)}
-													className={`cursor-pointer px-4 py-2 rounded-lg text-xs font-black transition-all whitespace-nowrap ${insumosSort === sort ? "bg-white text-blue-600 shadow-sm" : "text-slate-500"}`}>
-													{sort === "default"
-														? "Padrão"
-														: sort === "urgency"
-															? "Urgência"
-															: "Data"}
+													className={`cursor-pointer px-4 py-2 rounded-lg text-sm font-black transition-all whitespace-nowrap ${insumosSort === sort ? "bg-white text-blue-600 shadow-sm" : "text-slate-500"}`}>
+													{sort === "default" ? "Padrão" : sort === "urgency" ? "Urgência" : "Data"}
 												</button>
 											))}
 										</div>
@@ -176,9 +172,7 @@ export default function InsumosPage() {
 													return (weight[b.urgency] || 0) - (weight[a.urgency] || 0);
 												}
 												if (insumosSort === "date") {
-													return (
-														(a.createdAt?.toMillis() || 0) - (b.createdAt?.toMillis() || 0)
-													);
+													return (a.createdAt?.toMillis() || 0) - (b.createdAt?.toMillis() || 0);
 												}
 												return 0;
 											})
@@ -198,44 +192,40 @@ export default function InsumosPage() {
 															<div className="flex items-center justify-between gap-4">
 																<p
 																	className={`text-2xl font-black leading-tight ${
-																		isChecked
-																			? "text-slate-400 line-through"
-																			: "text-slate-800"
+																		isChecked ? "text-slate-400 line-through" : "text-slate-800"
 																	}`}>
 																	{order.name}
 																</p>
 																<button
-																	onClick={() =>
-																		handleToggleCheck(store.id, order.id, isChecked)
-																	}
+																	onClick={() => handleToggleCheck(store.id, order.id, isChecked)}
 																	className={`p-3 rounded-2xl border transition-all shrink-0 cursor-pointer ${
 																		isChecked
-																			? "bg-blue-600 border-blue-600 text-white"
-																			: "bg-white border-slate-200 text-slate-300 hover:border-blue-400 hover:text-blue-500"
+																			? "bg-green-600 border-green-600 text-white"
+																			: "bg-white border-slate-200 text-slate-300 hover:green-blue-400 hover:text-green-500"
 																	}`}>
 																	<Check size={24} strokeWidth={isChecked ? 5 : 3} />
 																</button>
 															</div>
 
-															<div className="flex items-center justify-between gap-4">
+															<div className="flex items-center justify-between gap-4 mt-8">
 																<div className="flex items-center gap-2">
 																	<div className="shrink-0 opacity-80">
 																		{norm.type === "urgente" ? (
 																			<span className="text-red-600">
-																				<AlertTriangle size={16} />
+																				<AlertTriangle size={25} />
 																			</span>
 																		) : norm.type === "acabando" ? (
 																			<span className="text-amber-600">
-																				<AlertCircle size={16} />
+																				<AlertCircle size={25} />
 																			</span>
 																		) : (
 																			<span className="text-blue-600">
-																				<Hourglass size={16} />
+																				<Hourglass size={35} />
 																			</span>
 																		)}
 																	</div>
 																	<span
-																		className={`text-[10px] font-black px-2 py-0.5 rounded-full uppercase whitespace-nowrap ${
+																		className={`text-[14px] font-black px-2 py-0.5 rounded-full uppercase whitespace-nowrap ${
 																			isChecked
 																				? "bg-slate-200 text-slate-500"
 																				: norm.type === "urgente"
@@ -247,7 +237,7 @@ export default function InsumosPage() {
 																		{norm.label}
 																	</span>
 																</div>
-																<p className="text-xs font-bold text-slate-400 whitespace-nowrap">
+																<p className="text-lg font-bold text-slate-400 whitespace-nowrap">
 																	{formatDate(order.createdAt?.toDate())}
 																</p>
 															</div>
@@ -271,7 +261,6 @@ export default function InsumosPage() {
 			))}
 
 			{allData.length === 0 && (
-
 				<div className="bg-white rounded-3xl p-12 text-center border border-slate-200 border-dashed">
 					<Package className="mx-auto text-slate-200 mb-4" size={64} />
 					<p className="text-slate-400 font-bold">

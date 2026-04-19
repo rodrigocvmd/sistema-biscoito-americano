@@ -75,7 +75,7 @@ export const formatDate = (date: Date | null) => {
 	const hours = String(d.getHours()).padStart(2, "0");
 	const minutes = String(d.getMinutes()).padStart(2, "0");
 
-	return `${day}/${month} às ${hours}h${minutes}`;
+	return `${day}/${month} - ${hours}:${minutes}`;
 };
 
 // Padronização apenas de data

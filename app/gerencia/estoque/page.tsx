@@ -96,8 +96,8 @@ export default function EstoquePage() {
 					<table className="w-full border-collapse">
 						<thead>
 							<tr className="bg-slate-50 border-b border-slate-200">
-								<th className="p-6 text-left text-[11px] font-black text-slate-400 uppercase tracking-widest sticky left-0 bg-slate-50 z-20 min-w-[180px]">
-									<div className="flex items-center gap-3">
+								<th className="p-6 text-left text-[15px] font-black text-slate-400 uppercase tracking-widest sticky left-0 bg-slate-50 z-20 min-w-[180px]">
+									<div className="flex items-center gap-9">
 										ITEM
 										<button
 											onClick={rotateStores}
@@ -112,8 +112,8 @@ export default function EstoquePage() {
 										key={store.id}
 										className="p-6 text-center text-[11px] font-black text-blue-600 uppercase tracking-widest border-l border-slate-200 min-w-[140px]">
 										<div className="flex flex-col items-center gap-2">
-											<span className="leading-tight text-sm">{store.name}</span>
-											<span className="text-[11px] font-bold text-slate-600 bg-white px-3 py-1 rounded-full border border-slate-100 whitespace-nowrap">
+											<span className="leading-tight text-lg">{store.name}</span>
+											<span className="text-[13px] font-extrabold text-slate-600 bg-white px-3 py-1 rounded-full border border-slate-100 whitespace-nowrap">
 												{formatDate(store.lastStockUpdate)}
 											</span>
 										</div>
