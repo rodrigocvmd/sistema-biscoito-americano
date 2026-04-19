@@ -317,7 +317,7 @@ export default function GerenciaPage() {
 										</h4>
 										{store.pendingOrders.length > 0 ? (
 											<div className="space-y-2">
-												{store.pendingOrders.slice(0, 3).map((order) => (
+												{store.pendingOrders.map((order) => (
 													<div
 														key={order.id}
 														className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100">
@@ -334,25 +334,28 @@ export default function GerenciaPage() {
 														)}
 													</div>
 												))}
-												{store.pendingOrders.length > 3 && (
-													<p className="text-[10px] text-slate-400 font-bold text-center mt-2 italic">
-														... e mais {store.pendingOrders.length - 3} pedidos
-													</p>
-												)}
+												<button
+													onClick={() => {
+														setView("insumos");
+														setExpandedStores({ [store.id]: true });
+													}}
+													className="w-full mt-4 text-[10px] font-black text-emerald-600 hover:text-emerald-700 uppercase tracking-widest cursor-pointer text-center">
+													Gerenciar Insumos da {store.name}
+												</button>
 											</div>
 										) : (
 											<p className="text-xs text-slate-400 italic">Nenhum pedido pendente.</p>
 										)}
 									</div>
 
-									{/* Estoque Resumo (Top 5 baixos ou todos) */}
+									{/* Estoque Resumo (Todos com Qtd > 0) */}
 									<div>
 										<h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">
-											Resumo Estoque
+											Itens em Estoque
 										</h4>
 										<div className="grid grid-cols-2 gap-2">
 											{Object.entries(store.stock)
-												.slice(0, 6)
+												.filter(([_, qty]) => (qty as number) > 0)
 												.map(([key, qty]) => (
 													<div
 														key={key}
@@ -364,11 +367,11 @@ export default function GerenciaPage() {
 													</div>
 												))}
 										</div>
-										<Link
-											href={`/${store.id}/estoque`}
-											className="block text-center mt-4 text-[10px] font-black text-blue-600 hover:text-blue-700 uppercase tracking-widest">
-											Ver Detalhes Completos
-										</Link>
+										<button
+											onClick={() => setView("general")}
+											className="w-full text-center mt-6 text-[10px] font-black text-blue-600 hover:text-blue-700 uppercase tracking-widest cursor-pointer">
+											Ver Estoque Completo
+										</button>
 									</div>
 								</div>
 							</div>

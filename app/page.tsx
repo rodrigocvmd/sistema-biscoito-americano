@@ -76,14 +76,16 @@ export default function Home() {
 						<form onSubmit={handleGerenciaAccess} className="space-y-4">
 							<input
 								type="password"
+								inputMode="numeric"
+								pattern="[0-9]*"
 								autoFocus
 								value={passInput}
 								onChange={(e) => {
-									setPassInput(e.target.value);
+									setPassInput(e.target.value.replace(/\D/g, ""));
 									setPassError(false);
 								}}
-								placeholder="Senha"
-								className={`w-full px-4 py-4 bg-slate-50 border-2 rounded-2xl text-center text-2xl font-black tracking-widest focus:outline-none transition-all ${
+								placeholder="Insira a senha"
+								className={`w-full px-4 py-4 bg-slate-50 border-2 rounded-2xl text-center text-2xl font-black tracking-widest focus:outline-none transition-all cursor-pointer caret-transparent ${
 									passError
 										? "border-red-500 animate-shake"
 										: "border-slate-100 focus:border-blue-500"
