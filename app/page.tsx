@@ -15,7 +15,7 @@ export default function Home() {
 
 	const handleGerenciaAccess = (e: React.FormEvent) => {
 		e.preventDefault();
-		if (passInput === "457224") {
+		if (passInput === "4572") {
 			window.location.href = "/gerencia";
 		} else {
 			setPassError(true);

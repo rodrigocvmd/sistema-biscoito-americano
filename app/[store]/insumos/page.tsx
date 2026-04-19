@@ -28,9 +28,141 @@ import {
 	RefreshCw,
 	Hourglass,
 	Coffee,
+	Search,
+	ChevronDown,
 } from "lucide-react";
 
 import { use } from "react";
+
+const INVENTORY_DATA = [
+	{
+		category: "BEBIDAS E SODAS",
+		items: [
+			"ÁGUA NORMAL",
+			"ÁGUA COM GÁS",
+			"COCA NORMAL",
+			"COCA ZERO",
+			"BUBBLE MAÇÃ VERDE",
+			"BUBBLE MORANGO",
+			"BUBBLE LICHIA",
+			"BUBBLE BLUEBERRY",
+			"SODA FRUTAS VERMELHAS",
+			"SODA MORANGO",
+			"SODA MAÇÃ VERDE",
+			"SODA CRAMBERRY",
+			"SODA LIMÃO",
+			"SODA MARACUJÁ",
+			"XAROPE MORANGO",
+			"XAROPE LIMÃO",
+			"XAROPE FRAMBOESA",
+		],
+	},
+	{
+		category: "INSUMOS E CONFEITARIA",
+		items: [
+			"SORVETE",
+			"NUTELLA",
+			"LEITE NINHO",
+			"LEITE LÍQUIDO TAMPA PRETA",
+			"PÓ DE CACAU",
+			"M&M",
+			"GRANULADOS MILK",
+			"GRANULADO DARK",
+			"CHANTILLY",
+			"DOCE DE LEITE",
+			"SACO NEGRESCO MOÍDO",
+			"OVOMALTINE CREMOSO",
+			"OVOMALTINE CROCANTE",
+			"CHOCOLATE PICADO",
+			"FLOR DE SAL",
+			"GELO",
+		],
+	},
+	{
+		category: "CALDAS",
+		items: [
+			"CALDA DE MORANGO BATIDA",
+			"CALDA DE CARAMELO",
+			"CALDA CHOCOLATE DA VINCI",
+			"CALDA DECORAR COPO CARAMELO",
+			"CALDA DECORAR COPO MORANGO",
+			"CALDA DECORAR COPO CHOCOLATE",
+		],
+	},
+	{
+		category: "CAFETERIA E MATINAL",
+		items: [
+			"CÁPSULA DE CAFÉ",
+			"COPO PARA CAFÉ",
+			"NESCAFÉ MATINAL SUAVE",
+			"PO DE CAPUCCINO",
+			"SACHE CHOCOLATE QUENTE",
+			"CHÁ MATTE",
+			"SACHÉ AÇÚCAR NORMAL/ADOÇANTE/MASCAVO",
+		],
+	},
+	{
+		category: "EMBALAGENS E DESCARTÁVEIS",
+		items: [
+			"SAQUINHO UNITÁRIO / COOKIES",
+			"KRAFT PEQUENO FINO BALCÃO",
+			"KRAFT PEQUENO GROSSO DELIVERY",
+			"KRAFT GRANDE",
+			"CAIXA PEQUENA",
+			"CAIXA GRANDE",
+			"HAMBURGUEIRA",
+			"PAPEL INTERFOLHADO",
+			"PAPEL MANTEIGA",
+			"SACOLA PLÁSTICA",
+			"COPO DE ISOPOR",
+			"COPO DESCARTÁVEL (GERAL)",
+			"COPOS PARA CALDA, DELIVERY E POTINHOS",
+			"COPO 180 ML",
+			"COPO 300 ML COM LOGO",
+			"COPO 300 ML SEM LOGO",
+			"COPO 400 ML COM LOGO",
+			"COPO 400 ML SEM LOGO",
+			"TAMPA BOLHA",
+			"TAMPA PARA COPO 300 ML SEM FURO",
+			"TAMPA PARA COPO 300 ML COM FURO",
+			"TAMPA PARA COPO 400 ML SEM FURO",
+			"TAMPA PARA COPO 400 ML COM FURO",
+			"CANUDO NORMAL",
+			"CANUDO BUBBLES",
+			"CANUDO SHAKE",
+			"COLHER DESCARTÁVEL",
+			"GUARDANAPO",
+			"SUPORTE SHAKE",
+		],
+	},
+	{
+		category: "OPERACIONAL E DELIVERY",
+		items: [
+			"ETIQUETA VERMELHA",
+			"ETIQUETA BRANCA",
+			"BILHETE DELIVERY FONDUE",
+			"BILHETE RECADO DELIVERY",
+			"BILHETE TELEFONE DELIVERY",
+			"BOBINA IMPRESSORA",
+			"BOBINA CIELO",
+			"ENVELOPE",
+			"TROCO",
+		],
+	},
+	{
+		category: "HIGIENE E SEGURANÇA",
+		items: [
+			"CAIXA LUVAS",
+			"MÁSCARAS",
+			"DESINFETANTE",
+			"DETERGENTE",
+			"VEJA",
+			"ÁLCOOL",
+			"SACO DE LIXO",
+			"PANO DE PRATO",
+		],
+	},
+];
 
 export default function SuppliesPage({ params }: { params: Promise<{ store: string }> }) {
 	const { store } = use(params);
@@ -45,6 +177,21 @@ export default function SuppliesPage({ params }: { params: Promise<{ store: stri
 	const [adding, setAdding] = useState(false);
 	const [showDelivered, setShowDelivered] = useState(false);
 	const [orderToCancel, setOrderToCancel] = useState<string | null>(null);
+
+	// Combobox State
+	const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+
+	const normalizeString = (str: string) =>
+		str
+			.normalize("NFD")
+			.replace(/[\u0300-\u036f]/g, "")
+			.toLowerCase()
+			.replace(/[^a-z0-9]/g, "");
+
+	const filteredInventory = INVENTORY_DATA.map((cat) => ({
+		...cat,
+		items: cat.items.filter((item) => normalizeString(item).includes(normalizeString(newName))),
+	})).filter((cat) => cat.items.length > 0);
 
 	useEffect(() => {
 		const ordersRef = collection(db, "stores", store, "supplyOrders");
@@ -192,19 +339,73 @@ export default function SuppliesPage({ params }: { params: Promise<{ store: stri
 					Solicitar Novo Insumo
 				</h2>
 				<form onSubmit={handleAddOrder} className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
-					<div className="space-y-1 md:col-span-1">
+					<div className="space-y-1 md:col-span-1 relative">
 						<label className="text-xs font-bold text-slate-400 uppercase ml-1">Insumo</label>
-						<input
-							type="text"
-							required
-							placeholder="Ex: Copo 300ml"
-							value={newName}
-							onChange={(e) => setNewName(e.target.value)}
-							className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500 transition-all text-slate-800 font-medium"
-						/>
+						<div className="relative">
+							<input
+								id="listaInsumos"
+								type="text"
+								required
+								placeholder="BUSCAR OU DIGITAR..."
+								value={newName}
+								onFocus={() => setIsDropdownOpen(true)}
+								onBlur={() => setTimeout(() => setIsDropdownOpen(false), 200)}
+								onChange={(e) => {
+									setNewName(e.target.value.toUpperCase());
+									setIsDropdownOpen(true);
+								}}
+								autoComplete="off"
+								className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500 transition-all text-slate-800 font-bold placeholder:font-medium uppercase"
+							/>
+							<div className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none">
+								<ChevronDown size={18} />
+							</div>
+
+							{/* Dropdown Results */}
+							{isDropdownOpen && (
+								<div className="absolute z-50 w-full mt-2 max-h-[300px] overflow-y-auto bg-white border border-slate-200 rounded-2xl shadow-2xl animate-in fade-in zoom-in-95 duration-200">
+									{filteredInventory.length > 0 ? (
+										filteredInventory.map((category) => (
+											<div key={category.category}>
+												<div className="px-4 py-2 bg-slate-50 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] border-y border-slate-100 first:border-t-0">
+													{category.category}
+												</div>
+												{category.items.map((item) => (
+													<div
+														key={item}
+														onMouseDown={(e) => {
+															e.preventDefault();
+															setNewName(item);
+															setIsDropdownOpen(false);
+														}}
+														className="px-4 py-3 hover:bg-red-50 hover:text-red-600 cursor-pointer text-sm font-bold text-slate-700 transition-colors flex items-center justify-between group">
+														{item}
+														<Plus
+															size={14}
+															className="opacity-0 group-hover:opacity-100 transition-opacity"
+														/>
+													</div>
+												))}
+											</div>
+										))
+									) : (
+										newName.trim() !== "" && (
+											<div className="px-4 py-4 text-center">
+												<p className="text-xs font-bold text-slate-400 uppercase">
+													Pressione Adicionar para:
+												</p>
+												<p className="text-sm font-black text-red-600 mt-1">"{newName}"</p>
+											</div>
+										)
+									)}
+								</div>
+							)}
+						</div>
 					</div>
 					<div className="space-y-1">
-						<label className="text-xs font-bold text-slate-400 uppercase ml-1">Qtd (opcional)</label>
+						<label className="text-xs font-bold text-slate-400 uppercase ml-1">
+							Qtd (opcional)
+						</label>
 						<input
 							type="text"
 							placeholder="Ex: 5 caixas"
@@ -252,9 +453,7 @@ export default function SuppliesPage({ params }: { params: Promise<{ store: stri
 								className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4 group hover:border-red-200 transition-all">
 								<div className="flex-1 min-w-0">
 									<div className="flex flex-wrap items-center gap-2 mb-2">
-										<span className="text-lg font-black text-slate-800 truncate">
-											{order.name}
-										</span>
+										<span className="text-lg font-black text-slate-800 truncate">{order.name}</span>
 										<div className="shrink-0">{getUrgencyBadge(order.urgency)}</div>
 									</div>
 									<div className="flex flex-wrap items-center gap-x-4 gap-y-2">
@@ -357,8 +556,8 @@ export default function SuppliesPage({ params }: { params: Promise<{ store: stri
 							Confirmar Cancelamento
 						</h3>
 						<p className="text-slate-500 text-center font-medium mb-8">
-							Tem certeza que deseja cancelar este pedido de insumo? Ele será movido para o histórico
-							como cancelado.
+							Tem certeza que deseja cancelar este pedido de insumo? Ele será movido para o
+							histórico como cancelado.
 						</p>
 						<div className="flex flex-col gap-3">
 							<button
