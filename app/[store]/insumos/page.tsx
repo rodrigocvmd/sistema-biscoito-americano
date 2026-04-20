@@ -38,8 +38,14 @@ const INVENTORY_DATA = [
 	{
 		category: "BEBIDAS E SODAS",
 		items: [
-			"ÁGUA NORMAL",
-			"ÁGUA COM GÁS",
+			"ÁGUA NORMAL 1 FARDO",
+			"ÁGUA NORMAL 2 FARDOS",
+			"ÁGUA NORMAL 3 FARDOS",
+			"ÁGUA NORMAL 4 FARDOS",
+			"ÁGUA COM GÁS 1 FARDO",
+			"ÁGUA COM GÁS 2 FARDOS",
+			"ÁGUA COM GÁS 3 FARDOS",
+			"ÁGUA COM GÁS 4 FARDOS",
 			"COCA NORMAL",
 			"COCA ZERO",
 			"BUBBLE MAÇÃ VERDE",

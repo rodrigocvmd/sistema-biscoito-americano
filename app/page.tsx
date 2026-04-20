@@ -48,7 +48,7 @@ export default function Home() {
 					{stores.map(([id, name]) => (
 						<Link
 							key={id}
-							href={`/${id}/estoque`}
+							href={`/${id}/insumos`}
 							className="group bg-white p-7 rounded-2xl shadow-sm border border-slate-200 hover:border-red-300 hover:shadow-md transition-all flex items-center gap-6">
 							<div className="bg-red-50 text-red-600 p-4 rounded-xl group-hover:bg-red-600 group-hover:text-white transition-colors">
 								<Store size={32} />

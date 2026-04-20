@@ -38,8 +38,8 @@ export default async function StoreLayout({
 						</div>
 					</div>
 					<nav id="estoqueInsumosBtn" className="flex gap-6 sm:gap-8 border-t sm:border-t-0 border-slate-100 justify-center sm:justify-start">
-						<TabLink href={`/${store}/estoque`} icon={<ClipboardList size={20} />} label="Estoque" />
 						<TabLink href={`/${store}/insumos`} icon={<Package size={20} />} label="Insumos" />
+						<TabLink href={`/${store}/estoque`} icon={<ClipboardList size={20} />} label="Estoque" />
 					</nav>
 				</div>
 			</header>
