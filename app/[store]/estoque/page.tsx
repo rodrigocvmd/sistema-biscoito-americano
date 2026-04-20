@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { db } from "@/lib/firebase";
 import { doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
 import { STOCK_LABELS, StockData, StoreId, formatDate } from "@/types";
-import { Save, RefreshCw, AlertCircle } from "lucide-react";
+import { Save, RefreshCw, AlertCircle, CheckCircle2 } from "lucide-react";
 import { use } from "react";
 
 export default function StockPage({ params }: { params: Promise<{ store: string }> }) {
@@ -15,6 +15,18 @@ export default function StockPage({ params }: { params: Promise<{ store: string 
 	const [stock, setStock] = useState<Partial<StockData>>({});
 	const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
 	const [sortBy, setSortBy] = useState<"default" | "name" | "quantity">("default");
+	const [isDirty, setIsDirty] = useState(false);
+
+	useEffect(() => {
+		const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+			if (isDirty) {
+				e.preventDefault();
+				e.returnValue = "";
+			}
+		};
+		window.addEventListener("beforeunload", handleBeforeUnload);
+		return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+	}, [isDirty]);
 
 	useEffect(() => {
 		const fetchStock = async () => {
@@ -33,6 +45,7 @@ export default function StockPage({ params }: { params: Promise<{ store: string 
 				console.error("Erro ao buscar estoque:", error);
 			} finally {
 				setLoading(false);
+				setIsDirty(false);
 			}
 		};
 
@@ -45,6 +58,7 @@ export default function StockPage({ params }: { params: Promise<{ store: string 
 			...prev,
 			[key]: numValue,
 		}));
+		setIsDirty(true);
 	};
 
 	const sortedItems = (Object.entries(STOCK_LABELS) as [keyof StockData, string][]).sort((a, b) => {
@@ -76,6 +90,7 @@ export default function StockPage({ params }: { params: Promise<{ store: string 
 			);
 
 			setLastUpdate(new Date());
+			setIsDirty(false);
 			setMessage({ type: "success", text: "Estoque atualizado com sucesso!" });
 
 			// Limpar mensagem após 3 segundos
@@ -168,10 +183,9 @@ export default function StockPage({ params }: { params: Promise<{ store: string 
 					</div>
 
 					<div className="pt-6 border-t border-slate-100 flex items-center justify-between gap-4">
-						{message && (
-							<div
-								className={`flex items-center gap-2 text-sm font-semibold ${message.type === "success" ? "text-green-600" : "text-red-600"}`}>
-								{message.type === "error" && <AlertCircle size={18} />}
+						{message && message.type === "error" && (
+							<div className="flex items-center gap-2 text-sm font-semibold text-red-600">
+								<AlertCircle size={18} />
 								{message.text}
 							</div>
 						)}
@@ -180,8 +194,18 @@ export default function StockPage({ params }: { params: Promise<{ store: string 
 							type="submit"
 							disabled={saving}
 							className="cursor-pointer ml-auto flex items-center gap-2 bg-green-700 hover:bg-green-800 text-white px-8 py-4 rounded-2xl font-black shadow-lg shadow-red-100 transition-all disabled:opacity-50 disabled:cursor-not-allowed">
-							{saving ? <RefreshCw className="animate-spin" size={20} /> : <Save size={20} />}
-							{saving ? "Salvando..." : "Salvar Contagem"}
+							{saving ? (
+								<RefreshCw className="animate-spin" size={20} />
+							) : message?.type === "success" ? (
+								<CheckCircle2 size={20} />
+							) : (
+								<Save size={20} />
+							)}
+							{saving
+								? "Salvando..."
+								: message?.type === "success"
+									? message.text
+									: "Salvar Contagem"}
 						</button>
 					</div>
 				</form>
