@@ -25,7 +25,6 @@ export interface StockData {
 	redNutella: number;
 	oreo: number;
 	classicoRed: number;
-	jackDaniels: number;
 	eclipse: number;
 	americanCookie: number;
 	sorvete: number;
@@ -40,7 +39,7 @@ export const STOCK_LABELS: Record<keyof StockData, string> = {
 	macadamia: "MACADAMIA",
 	ovomaltine: "OVOMALTINE",
 	newYork: "NEW YORK",
-	mms: "M'MS",
+	mms: "M&M'S",
 	cremeBrulle: "CREME BRÜLLE",
 	kinderBueno: "KINDER BUENO",
 	lotus: "LÓTUS",
@@ -50,7 +49,6 @@ export const STOCK_LABELS: Record<keyof StockData, string> = {
 	redNutella: "RED NUTELLA",
 	oreo: "OREO",
 	classicoRed: "CLÁSSICO RED",
-	jackDaniels: "JACK DANIELS",
 	eclipse: "ECLIPSE",
 	americanCookie: "AMERICAN COOKIE",
 	sorvete: "SORVETE",

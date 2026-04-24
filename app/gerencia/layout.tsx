@@ -19,6 +19,23 @@ export default function GerenciaLayout({
 		{ id: "resumos", label: "Resumos", href: "/gerencia/resumos", icon: Store },
 	];
 
+	useEffect(() => {
+		const savedScale = localStorage.getItem("gerencia-ui-scale");
+		if (savedScale) {
+			setUiScale(parseFloat(savedScale));
+		}
+	}, []);
+
+	useEffect(() => {
+		// Ajusta o font-size do root para escalar tudo que usa rem (Tailwind padrão)
+		// Multiplicamos por 0.85 para manter a proporção original desejada
+		document.documentElement.style.fontSize = `${uiScale * 85}%`;
+		localStorage.setItem("gerencia-ui-scale", uiScale.toString());
+		return () => {
+			document.documentElement.style.fontSize = "";
+		};
+	}, [uiScale]);
+
 	return (
 		<div className="min-h-screen bg-slate-50 flex flex-col w-full overflow-x-hidden">
 			{/* Header */}
@@ -96,12 +113,7 @@ export default function GerenciaLayout({
 			</header>
 
 			<div className="flex-1 w-full overflow-x-hidden">
-				<main
-					className="w-full mx-auto p-4 md:p-8 space-y-8 origin-top"
-					style={{
-						zoom: uiScale * 0.8,
-						maxWidth: "100%",
-					}}>
+				<main className="w-full mx-auto p-4 md:p-8 space-y-8">
 					{children}
 				</main>
 			</div>

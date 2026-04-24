@@ -30,6 +30,7 @@ import {
 	Coffee,
 	Search,
 	ChevronDown,
+	Edit2,
 } from "lucide-react";
 
 import { use } from "react";
@@ -82,6 +83,8 @@ const INVENTORY_DATA = [
 			"OVOMALTINE CROCANTE",
 			"CHOCOLATE PICADO",
 			"FLOR DE SAL",
+			"LOTUS TRITURADO",
+			"CHOCOLATE ALPINO",
 			"GELO",
 		],
 	},
@@ -176,6 +179,7 @@ export default function SuppliesPage({ params }: { params: Promise<{ store: stri
 	const [adding, setAdding] = useState(false);
 	const [showDelivered, setShowDelivered] = useState(false);
 	const [orderToCancel, setOrderToCancel] = useState<string | null>(null);
+	const [editingOrder, setEditingOrder] = useState<{ id: string; urgency: UrgencyLevel } | null>(null);
 
 	// Combobox State
 	const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -189,7 +193,9 @@ export default function SuppliesPage({ params }: { params: Promise<{ store: stri
 
 	const filteredInventory = INVENTORY_DATA.map((cat) => ({
 		...cat,
-		items: cat.items.filter((item) => normalizeString(item).includes(normalizeString(newName))),
+		items: cat.items
+			.filter((item) => normalizeString(item).includes(normalizeString(newName)))
+			.filter((item) => !pendingOrders.some((order) => normalizeString(order.name) === normalizeString(item))),
 	})).filter((cat) => cat.items.length > 0);
 
 	useEffect(() => {
@@ -292,6 +298,19 @@ export default function SuppliesPage({ params }: { params: Promise<{ store: stri
 			setOrderToCancel(null);
 		} catch (error) {
 			console.error("Erro ao cancelar pedido:", error);
+		}
+	};
+
+	const handleUpdateUrgency = async () => {
+		if (!editingOrder) return;
+		try {
+			const orderRef = doc(db, "stores", store, "supplyOrders", editingOrder.id);
+			await updateDoc(orderRef, {
+				urgency: editingOrder.urgency,
+			});
+			setEditingOrder(null);
+		} catch (error) {
+			console.error("Erro ao atualizar urgência:", error);
 		}
 	};
 
@@ -448,6 +467,12 @@ export default function SuppliesPage({ params }: { params: Promise<{ store: stri
 								</div>
 								<div className="flex items-center gap-2 shrink-0 sm:w-auto w-full">
 									<button
+										onClick={() => setEditingOrder({ id: order.id, urgency: order.urgency })}
+										className="flex items-center justify-center p-2.5 bg-slate-50 text-slate-400 hover:bg-blue-50 hover:text-blue-600 rounded-xl transition-all border border-slate-100 cursor-pointer"
+										title="Editar urgência">
+										<Edit2 size={18} />
+									</button>
+									<button
 										onClick={() => setOrderToCancel(order.id)}
 										className="flex items-center justify-center p-2.5 bg-slate-50 text-slate-400 hover:bg-red-50 hover:text-red-600 rounded-xl transition-all border border-slate-100 cursor-pointer"
 										title="Cancelar pedido">
@@ -546,6 +571,51 @@ export default function SuppliesPage({ params }: { params: Promise<{ store: stri
 								onClick={() => setOrderToCancel(null)}
 								className="cursor-pointer w-full bg-slate-100 hover:bg-slate-200 text-slate-600 font-black py-4 rounded-2xl transition-all">
 								Não, manter pedido
+							</button>
+						</div>
+					</div>
+				</div>
+			)}
+
+			{/* Edit Urgency Modal */}
+			{editingOrder && (
+				<div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
+					<div className="bg-white rounded-3xl p-8 max-w-sm w-full shadow-2xl animate-in zoom-in-95 duration-200">
+						<div className="bg-blue-50 text-blue-600 w-16 h-16 rounded-2xl flex items-center justify-center mb-6 mx-auto">
+							<Edit2 size={32} />
+						</div>
+						<h3 className="text-xl font-black text-slate-800 text-center mb-2">
+							Editar Urgência
+						</h3>
+						<p className="text-slate-500 text-center font-medium mb-6">
+							Selecione o novo nível de urgência para este insumo.
+						</p>
+						
+						<div className="space-y-4 mb-8">
+							{(["Urgente", "Acabando", "Adiantando"] as UrgencyLevel[]).map((u) => (
+								<button
+									key={u}
+									onClick={() => setEditingOrder({ ...editingOrder, urgency: u })}
+									className={`w-full p-4 rounded-2xl font-bold text-left transition-all border-2 ${
+										editingOrder.urgency === u
+											? "border-blue-600 bg-blue-50 text-blue-700"
+											: "border-slate-100 bg-slate-50 text-slate-500 hover:border-slate-200"
+									}`}>
+									{u === "Urgente" ? "🚨 Urgente" : u === "Acabando" ? "⚠️ Acabando" : "⏳ Adiantando"}
+								</button>
+							))}
+						</div>
+
+						<div className="flex flex-col gap-3">
+							<button
+								onClick={handleUpdateUrgency}
+								className="cursor-pointer w-full bg-blue-600 hover:bg-blue-700 text-white font-black py-4 rounded-2xl transition-all shadow-lg shadow-blue-100">
+								Salvar Alteração
+							</button>
+							<button
+								onClick={() => setEditingOrder(null)}
+								className="cursor-pointer w-full bg-slate-100 hover:bg-slate-200 text-slate-600 font-black py-4 rounded-2xl transition-all">
+								Cancelar
 							</button>
 						</div>
 					</div>

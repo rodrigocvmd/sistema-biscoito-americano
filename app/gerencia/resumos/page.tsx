@@ -48,7 +48,7 @@ export default function ResumosPage() {
 							name: STORE_NAMES[id],
 							lastStockUpdate: storeDoc.lastStockUpdate?.toDate() || null,
 							stock: storeDoc.stock || {},
-							pendingOrders: allOrders.filter((o) => o.storeId === id),
+							pendingOrders: allOrders.filter((o) => o.storeId === id && !o.checkedByGerencia),
 						};
 					});
 

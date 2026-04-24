@@ -28,6 +28,7 @@ interface FullStoreData {
 	id: StoreId;
 	name: string;
 	pendingOrders: SupplyOrder[];
+	activeCount: number;
 }
 
 export default function InsumosPage() {
@@ -81,11 +82,15 @@ export default function InsumosPage() {
 				...doc.data(),
 			})) as (SupplyOrder & { storeId: string })[];
 
-			const newFullData = storeIds.map((id) => ({
-				id,
-				name: STORE_NAMES[id],
-				pendingOrders: allOrders.filter((o) => o.storeId === id),
-			}));
+			const newFullData = storeIds.map((id) => {
+				const storeOrders = allOrders.filter((o) => o.storeId === id);
+				return {
+					id,
+					name: STORE_NAMES[id],
+					pendingOrders: storeOrders,
+					activeCount: storeOrders.filter((o) => !o.checkedByGerencia).length,
+				};
+			});
 
 			setAllData(newFullData);
 			setLoading(false);
@@ -114,7 +119,7 @@ export default function InsumosPage() {
 						className="w-full flex items-center justify-between p-8 hover:bg-slate-50 transition-all cursor-pointer group">
 						<div className="flex items-center gap-4 text-left">
 							<div
-								className={`${store.pendingOrders.length > 0 ? "bg-blue-600 shadow-blue-100" : "bg-slate-300 shadow-slate-100"} text-white p-5 rounded-[24px] shadow-lg group-hover:scale-105 transition-all`}>
+								className={`${store.activeCount > 0 ? "bg-blue-600 shadow-blue-100" : "bg-slate-300 shadow-slate-100"} text-white p-5 rounded-[24px] shadow-lg group-hover:scale-105 transition-all`}>
 								<Store size={36} />
 							</div>
 							<div>
@@ -122,9 +127,9 @@ export default function InsumosPage() {
 									{store.name}
 								</h3>
 								<p
-									className={`font-bold uppercase tracking-[0.2em] mt-3 ${store.pendingOrders.length > 0 ? "text-black-600" : "text-slate-400"}`}>
-									<span className="text-xl font-extrabold text-blue-600">{store.pendingOrders.length}</span>{" "}
-									{store.pendingOrders.length === 1 ? "Pedido Pendente" : "Pedidos Pendentes"}
+									className={`font-bold uppercase tracking-[0.2em] mt-3 ${store.activeCount > 0 ? "text-black-600" : "text-slate-400"}`}>
+									<span className="text-xl font-extrabold text-blue-600">{store.activeCount}</span>{" "}
+									{store.activeCount === 1 ? "Pedido Pendente" : "Pedidos Pendentes"}
 								</p>
 							</div>
 						</div>
@@ -141,11 +146,11 @@ export default function InsumosPage() {
 						<div className="p-8 pt-0 border-t border-slate-50 animate-in slide-in-from-top-2 duration-300">
 							{store.pendingOrders.length > 0 ? (
 								<>
-									<div className="flex items-center gap-4 py-6 border-b border-slate-50 mb-3">
+									<div className="flex flex-wrap items-center gap-4 py-6 border-b border-slate-50 mb-3">
 										<span className="text-[12px] font-black text-slate-400 uppercase tracking-widest">
 											Ordenar:
 										</span>
-										<div className="flex bg-slate-100 p-1.5 rounded-xl gap-1 w-fit">
+										<div className="flex flex-wrap bg-slate-100 p-1.5 rounded-xl gap-1 w-fit max-w-full">
 											{["default", "urgency", "date"].map((sort) => (
 												<button
 													key={sort}
@@ -197,6 +202,8 @@ export default function InsumosPage() {
 																	{order.name}
 																</p>
 																<button
+																	type="button"
+																	onMouseDown={(e) => e.preventDefault()}
 																	onClick={() => handleToggleCheck(store.id, order.id, isChecked)}
 																	className={`p-3 rounded-2xl border transition-all shrink-0 cursor-pointer ${
 																		isChecked
