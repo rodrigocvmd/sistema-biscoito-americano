@@ -165,6 +165,32 @@ const INVENTORY_DATA = [
 			"PAPEL TOALHA",
 		],
 	},
+	{
+		category: "COOKIES",
+		items: [
+			"CLÁSSICO AO LEITE",
+			"NUTELLA",
+			"BRIGADEIRO",
+			"PISTACHE",
+			"MACADAMIA",
+			"OVOMALTINE",
+			"NEW YORK",
+			"M&M'S",
+			"CREME BRÜLLE",
+			"KINDER BUENO",
+			"LÓTUS",
+			"BROWNIE",
+			"TRIPLO CHOCOLATE",
+			"RED NINHO",
+			"RED NUTELLA",
+			"OREO",
+			"CLÁSSICO RED",
+			"ECLIPSE",
+			"AMERICAN COOKIE",
+			"CAIXA DE SORVETE",
+			"CAIXA DE AÇAÍ",
+		],
+	},
 ];
 
 export default function SuppliesPage({ params }: { params: Promise<{ store: string }> }) {
@@ -179,7 +205,9 @@ export default function SuppliesPage({ params }: { params: Promise<{ store: stri
 	const [adding, setAdding] = useState(false);
 	const [showDelivered, setShowDelivered] = useState(false);
 	const [orderToCancel, setOrderToCancel] = useState<string | null>(null);
-	const [editingOrder, setEditingOrder] = useState<{ id: string; urgency: UrgencyLevel } | null>(null);
+	const [editingOrder, setEditingOrder] = useState<{ id: string; urgency: UrgencyLevel } | null>(
+		null,
+	);
 
 	// Combobox State
 	const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -195,7 +223,10 @@ export default function SuppliesPage({ params }: { params: Promise<{ store: stri
 		...cat,
 		items: cat.items
 			.filter((item) => normalizeString(item).includes(normalizeString(newName)))
-			.filter((item) => !pendingOrders.some((order) => normalizeString(order.name) === normalizeString(item))),
+			.filter(
+				(item) =>
+					!pendingOrders.some((order) => normalizeString(order.name) === normalizeString(item)),
+			),
 	})).filter((cat) => cat.items.length > 0);
 
 	useEffect(() => {
@@ -584,13 +615,11 @@ export default function SuppliesPage({ params }: { params: Promise<{ store: stri
 						<div className="bg-blue-50 text-blue-600 w-16 h-16 rounded-2xl flex items-center justify-center mb-6 mx-auto">
 							<Edit2 size={32} />
 						</div>
-						<h3 className="text-xl font-black text-slate-800 text-center mb-2">
-							Editar Urgência
-						</h3>
+						<h3 className="text-xl font-black text-slate-800 text-center mb-2">Editar Urgência</h3>
 						<p className="text-slate-500 text-center font-medium mb-6">
 							Selecione o novo nível de urgência para este insumo.
 						</p>
-						
+
 						<div className="space-y-4 mb-8">
 							{(["Urgente", "Acabando", "Adiantando"] as UrgencyLevel[]).map((u) => (
 								<button
@@ -601,7 +630,11 @@ export default function SuppliesPage({ params }: { params: Promise<{ store: stri
 											? "border-blue-600 bg-blue-50 text-blue-700"
 											: "border-slate-100 bg-slate-50 text-slate-500 hover:border-slate-200"
 									}`}>
-									{u === "Urgente" ? "🚨 Urgente" : u === "Acabando" ? "⚠️ Acabando" : "⏳ Adiantando"}
+									{u === "Urgente"
+										? "🚨 Urgente"
+										: u === "Acabando"
+											? "⚠️ Acabando"
+											: "⏳ Adiantando"}
 								</button>
 							))}
 						</div>
