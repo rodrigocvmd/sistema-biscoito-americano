@@ -199,7 +199,11 @@ export default function StockPage({ params }: { params: Promise<{ store: string 
 										onChange={(e) => handleInputChange(key, e.target.value)}
 										onFocus={(e) => e.target.select()}
 										className={`w-20 px-3 py-2.5 bg-white border-2 border-slate-200 rounded-xl text-center font-black focus:outline-none focus:ring-4 focus:ring-red-50/50 focus:border-red-500 transition-all text-lg cursor-pointer ${
-											(stock[key] ?? 0) === 0 ? "text-slate-400" : "text-slate-900"
+											(stock[key] ?? 0) === 0 
+												? "text-slate-400" 
+												: isUnits[key] 
+													? "text-slate-500" 
+													: "text-slate-900"
 										}`}
 										placeholder="0"
 									/>

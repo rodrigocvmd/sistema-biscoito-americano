@@ -146,7 +146,15 @@ export default function ResumosPage() {
 												{STOCK_LABELS[key as keyof StockData]}
 											</span>
 											<div className="flex items-center gap-1">
-												<span className="font-black text-slate-800">{qty as number}</span>
+												<span className={`font-black ${
+													(qty as number) === 0 
+														? "text-slate-400" 
+														: store.isUnits?.[key as keyof StockData] 
+															? "text-slate-500" 
+															: "text-slate-800"
+												}`}>
+													{qty as number}
+												</span>
 												{store.isUnits?.[key as keyof StockData] && (
 													<span className="text-[8px] font-black text-red-600 uppercase">
 														un.

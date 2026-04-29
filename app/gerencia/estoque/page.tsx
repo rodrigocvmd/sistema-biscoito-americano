@@ -143,7 +143,13 @@ export default function EstoquePage() {
 														className="p-6 text-center border-l border-slate-100">
 														<div className="flex flex-col items-center">
 															<span
-																className={`text-2xl font-black ${value === 0 ? "text-slate-400" : "text-slate-900"}`}>
+																className={`text-2xl font-black ${
+																	value === 0 
+																		? "text-slate-400" 
+																		: isUnit 
+																			? "text-slate-500" 
+																			: "text-slate-900"
+																}`}>
 																{value}
 															</span>
 															{value > 0 && isUnit && (
