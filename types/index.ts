@@ -59,6 +59,7 @@ export interface StoreDocument {
 	id: StoreId;
 	lastStockUpdate: any; // Firestore Timestamp
 	stock: Partial<StockData>;
+	isUnits?: Partial<Record<keyof StockData, boolean>>;
 }
 
 // Padronização dos termos de urgência

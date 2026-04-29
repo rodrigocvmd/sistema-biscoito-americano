@@ -12,6 +12,7 @@ interface FullStoreData {
 	name: string;
 	lastStockUpdate: Date | null;
 	stock: Partial<StockData>;
+	isUnits: Partial<Record<keyof StockData, boolean>>;
 	pendingOrders: SupplyOrder[];
 }
 
@@ -48,6 +49,7 @@ export default function ResumosPage() {
 							name: STORE_NAMES[id],
 							lastStockUpdate: storeDoc.lastStockUpdate?.toDate() || null,
 							stock: storeDoc.stock || {},
+							isUnits: storeDoc.isUnits || {},
 							pendingOrders: allOrders.filter((o) => o.storeId === id && !o.checkedByGerencia),
 						};
 					});
@@ -143,7 +145,14 @@ export default function ResumosPage() {
 											<span className="font-bold text-slate-500 uppercase truncate pr-3">
 												{STOCK_LABELS[key as keyof StockData]}
 											</span>
-											<span className="font-black text-slate-800">{qty}</span>
+											<div className="flex items-center gap-1">
+												<span className="font-black text-slate-800">{qty as number}</span>
+												{store.isUnits?.[key as keyof StockData] && (
+													<span className="text-[8px] font-black text-red-600 uppercase">
+														un.
+													</span>
+												)}
+											</div>
 										</div>
 									))}
 							</div>

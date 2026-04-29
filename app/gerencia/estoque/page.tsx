@@ -11,6 +11,7 @@ interface FullStoreData {
 	name: string;
 	lastStockUpdate: Date | null;
 	stock: Partial<StockData>;
+	isUnits: Partial<Record<keyof StockData, boolean>>;
 }
 
 export default function EstoquePage() {
@@ -43,6 +44,7 @@ export default function EstoquePage() {
 						name: STORE_NAMES[id],
 						lastStockUpdate: storeDoc.lastStockUpdate?.toDate() || null,
 						stock: storeDoc.stock || {},
+						isUnits: storeDoc.isUnits || {},
 					};
 				});
 
@@ -134,14 +136,22 @@ export default function EstoquePage() {
 											</td>
 											{allData.map((store) => {
 												const value = store.stock[key] || 0;
+												const isUnit = store.isUnits?.[key] || false;
 												return (
 													<td
 														key={store.id}
 														className="p-6 text-center border-l border-slate-100">
-														<span
-															className={`text-2xl font-black ${value === 0 ? "text-slate-400" : "text-slate-900"}`}>
-															{value}
-														</span>
+														<div className="flex flex-col items-center">
+															<span
+																className={`text-2xl font-black ${value === 0 ? "text-slate-400" : "text-slate-900"}`}>
+																{value}
+															</span>
+															{value > 0 && isUnit && (
+																<span className="text-[10px] font-black text-red-600 uppercase tracking-widest mt-1">
+																	Unitários
+																</span>
+															)}
+														</div>
 													</td>
 												);
 											})}

@@ -13,6 +13,7 @@ export default function StockPage({ params }: { params: Promise<{ store: string 
 	const [saving, setSaving] = useState(false);
 	const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
 	const [stock, setStock] = useState<Partial<StockData>>({});
+	const [isUnits, setIsUnits] = useState<Partial<Record<keyof StockData, boolean>>>({});
 	const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
 	const [sortBy, setSortBy] = useState<"default" | "name" | "quantity">("default");
 	const [isDirty, setIsDirty] = useState(false);
@@ -37,6 +38,7 @@ export default function StockPage({ params }: { params: Promise<{ store: string 
 				if (docSnap.exists()) {
 					const data = docSnap.data();
 					setStock(data.stock || {});
+					setIsUnits(data.isUnits || {});
 					if (data.lastStockUpdate) {
 						setLastUpdate(data.lastStockUpdate.toDate());
 					}
@@ -57,6 +59,14 @@ export default function StockPage({ params }: { params: Promise<{ store: string 
 		setStock((prev) => ({
 			...prev,
 			[key]: numValue,
+		}));
+		setIsDirty(true);
+	};
+
+	const handleUnitToggle = (key: keyof StockData, checked: boolean) => {
+		setIsUnits((prev) => ({
+			...prev,
+			[key]: checked,
 		}));
 		setIsDirty(true);
 	};
@@ -84,6 +94,7 @@ export default function StockPage({ params }: { params: Promise<{ store: string 
 				docRef,
 				{
 					stock,
+					isUnits,
 					lastStockUpdate: serverTimestamp(),
 				},
 				{ merge: true },
@@ -119,7 +130,9 @@ export default function StockPage({ params }: { params: Promise<{ store: string 
 				<span className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2 sm:ml-3">
 					Ordenar por:
 				</span>
-				<div id="orderContainer" className="flex bg-slate-100 p-1 rounded-lg gap-1 overflow-x-auto no-scrollbar">
+				<div
+					id="orderContainer"
+					className="flex bg-slate-100 p-1 rounded-lg gap-1 overflow-x-auto no-scrollbar">
 					<button
 						onClick={() => setSortBy("default")}
 						className={`cursor-pointer px-3 py-1.5 rounded-md text-xs font-bold transition-all whitespace-nowrap ${sortBy === "default" ? "bg-white text-blue-600 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}>
@@ -145,16 +158,14 @@ export default function StockPage({ params }: { params: Promise<{ store: string 
 							Contagem de Estoque
 						</h2>
 						<p className="text-sm text-slate-400 font-medium">
-							Insira a quantidade exata de pacotes/unidades em estoque
+							Insira a quantidade de pacotes/unidades em estoque
 						</p>
 					</div>
 					<div className="bg-slate-50 px-4 py-2 rounded-xl border border-slate-100 text-center">
 						<span className="text-[10px] uppercase tracking-widest font-bold text-slate-400 block mb-1">
 							ÚLTIMA ATUALIZAÇÃO
 						</span>
-						<span className="text-sm font-bold text-blue-600">
-							{formatDate(lastUpdate)}
-						</span>
+						<span className="text-sm font-bold text-blue-600">{formatDate(lastUpdate)}</span>
 					</div>
 				</div>
 
@@ -164,20 +175,40 @@ export default function StockPage({ params }: { params: Promise<{ store: string 
 							<div
 								key={key}
 								className="flex items-center justify-between gap-3 p-4 bg-slate-50 rounded-2xl border border-transparent hover:border-red-200 hover:bg-white hover:shadow-md transition-all group">
-								<label className="text-[11px] font-black text-slate-500 group-hover:text-red-700 transition-colors uppercase leading-tight pr-2">
-									{label}
-								</label>
-								<input
-									type="number"
-									min="0"
-									value={stock[key] ?? ""}
-									onChange={(e) => handleInputChange(key, e.target.value)}
-									onFocus={(e) => e.target.select()}
-									className={`w-20 px-3 py-2.5 bg-white border-2 border-slate-200 rounded-xl text-center font-black focus:outline-none focus:ring-4 focus:ring-red-50/50 focus:border-red-500 transition-all text-lg cursor-pointer ${
-										(stock[key] ?? 0) === 0 ? "text-slate-400" : "text-slate-900"
-									}`}
-									placeholder="0"
-								/>
+								<div className="flex flex-col gap-1.5 flex-1 min-w-0">
+									<label className="text-[11px] font-black text-slate-500 group-hover:text-red-700 transition-colors uppercase leading-tight truncate pr-2">
+										{label}
+									</label>
+									<label className="flex items-center gap-2 cursor-pointer w-fit">
+										<input
+											type="checkbox"
+											checked={isUnits[key] || false}
+											onChange={(e) => handleUnitToggle(key, e.target.checked)}
+											className="w-4 h-4 rounded border-slate-300 text-red-600 focus:ring-red-500 cursor-pointer"
+										/>
+										<span className="text-[9px] font-black text-slate-400 uppercase tracking-wider">
+											Unitários
+										</span>
+									</label>
+								</div>
+								<div className="relative">
+									<input
+										type="number"
+										min="0"
+										value={stock[key] ?? ""}
+										onChange={(e) => handleInputChange(key, e.target.value)}
+										onFocus={(e) => e.target.select()}
+										className={`w-20 px-3 py-2.5 bg-white border-2 border-slate-200 rounded-xl text-center font-black focus:outline-none focus:ring-4 focus:ring-red-50/50 focus:border-red-500 transition-all text-lg cursor-pointer ${
+											(stock[key] ?? 0) === 0 ? "text-slate-400" : "text-slate-900"
+										}`}
+										placeholder="0"
+									/>
+									{isUnits[key] && (
+										<span className="absolute -top-2 -right-1 bg-red-600 text-white text-[8px] font-black px-1.5 py-0.5 rounded-full uppercase tracking-tighter shadow-sm">
+											Un.
+										</span>
+									)}
+								</div>
 							</div>
 						))}
 					</div>
