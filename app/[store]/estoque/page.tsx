@@ -170,13 +170,13 @@ export default function StockPage({ params }: { params: Promise<{ store: string 
 				</div>
 
 				<form onSubmit={handleSave} className="space-y-10">
-					<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+					<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
 						{sortedItems.map(([key, label]) => (
 							<div
 								key={key}
 								className="flex items-center justify-between gap-3 p-4 bg-slate-50 rounded-2xl border border-transparent hover:border-red-200 hover:bg-white hover:shadow-md transition-all group">
 								<div className="flex flex-col gap-1.5 flex-1 min-w-0">
-									<label className="text-[11px] font-black text-slate-500 group-hover:text-red-700 transition-colors uppercase leading-tight truncate pr-2">
+									<label className="text-[14px] font-black text-slate-500 group-hover:text-red-700 transition-colors uppercase leading-tight truncate pr-2">
 										{label}
 									</label>
 									<label className="flex items-center gap-2 cursor-pointer w-fit">
@@ -186,7 +186,7 @@ export default function StockPage({ params }: { params: Promise<{ store: string 
 											onChange={(e) => handleUnitToggle(key, e.target.checked)}
 											className="w-4 h-4 rounded border-slate-300 text-red-600 focus:ring-red-500 cursor-pointer"
 										/>
-										<span className="text-[9px] font-black text-slate-400 uppercase tracking-wider">
+										<span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">
 											Unitários
 										</span>
 									</label>
