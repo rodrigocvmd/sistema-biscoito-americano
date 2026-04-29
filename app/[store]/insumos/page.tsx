@@ -187,9 +187,13 @@ const INVENTORY_DATA = [
 			"COOKIE CLÁSSICO RED",
 			"COOKIE ECLIPSE",
 			"COOKIE AMERICAN COOKIE",
-			"COOKIE CAIXA DE SORVETE",
-			"COOKIE CAIXA DE AÇAÍ",
+			"CAIXA DE SORVETE",
+			"CAIXA DE AÇAÍ",
 		],
+	},
+	{
+		category: "OUTROS",
+		items: ["CAIXA DE SORVETE", "CAIXA DE AÇAÍ"],
 	},
 ];
 
