@@ -191,35 +191,42 @@ export default function StockPage({ params }: { params: Promise<{ store: string 
 										<input
 											type="checkbox"
 											checked={isUnits[key] || false}
-											onChange={(e) => handleUnitToggle(key, e.target.checked)}
+											onChange={(e) => {
+												handleUnitToggle(key, e.target.checked);
+												if (e.target.checked) {
+													handleInputChange(key, "0");
+												}
+											}}
 											className="w-4 h-4 rounded border-slate-300 text-red-600 focus:ring-red-500 cursor-pointer"
 										/>
 										<span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">
-											Unitários
+											Menos de 1
 										</span>
 									</label>
 								</div>
 								<div className="relative">
 									<input
-										type="number"
-										min="0"
-										value={stock[key] ?? ""}
-										onChange={(e) => handleInputChange(key, e.target.value)}
-										onFocus={(e) => e.target.select()}
+										type={isUnits[key] ? "text" : "number"}
+										min="1"
+										value={isUnits[key] ? "< 1" : (stock[key] || "")}
+										readOnly={isUnits[key]}
+										onChange={(e) => !isUnits[key] && handleInputChange(key, e.target.value)}
+										onFocus={(e) => !isUnits[key] && e.target.select()}
 										className={`w-20 px-3 py-2.5 bg-white border-2 border-slate-200 rounded-xl text-center font-black focus:outline-none focus:ring-4 focus:ring-red-50/50 focus:border-red-500 transition-all text-lg cursor-pointer ${
-											(stock[key] ?? 0) === 0 
-												? "text-slate-400" 
-												: isUnits[key] 
-													? "text-slate-500" 
+											isUnits[key] 
+												? "text-orange-500" 
+												: (stock[key] ?? 0) === 0
+													? "text-slate-400"
 													: "text-slate-900"
 										}`}
 										placeholder="0"
-									/>
-									{isUnits[key] && (
-										<span className="absolute -top-2 -right-1 bg-red-600 text-white text-[8px] font-black px-1.5 py-0.5 rounded-full uppercase tracking-tighter shadow-sm">
-											Un.
+										/>
+										{isUnits[key] && (
+										<span className="absolute -top-2 -right-1 bg-orange-500 text-white text-[8px] font-black px-1.5 py-0.5 rounded-full uppercase tracking-tighter shadow-sm">
+											Parcial
 										</span>
-									)}
+										)}
+
 								</div>
 							</div>
 						))}

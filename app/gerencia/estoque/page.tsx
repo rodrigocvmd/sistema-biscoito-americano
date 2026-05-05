@@ -405,19 +405,16 @@ export default function EstoquePage() {
 																<div className="flex flex-col items-center">
 																	<span
 																		className={`text-2xl font-black ${
-																			value === 0 
-																				? "text-slate-400" 
-																				: isUnit 
-																					? "text-slate-500" 
+																			isUnit
+																				? "text-orange-500" 
+																				: value === 0
+																					? "text-slate-400" 
 																					: "text-slate-900"
 																		}`}>
-																		{value}
+																		{isUnit ? "< 1" : value}
 																	</span>
-																	{value > 0 && isUnit && (
-																		<span className="text-[10px] font-black text-red-600 uppercase tracking-widest mt-1">
-																			Unitários
-																		</span>
-																	)}
+																	
+
 																</div>
 															</td>
 														);
@@ -533,13 +530,19 @@ export default function EstoquePage() {
 											
 											const v1 = s1?.stock[key as keyof StockData] || 0;
 											const v2 = s2?.stock[key as keyof StockData] || 0;
+											const u1 = s1?.isUnits?.[key as keyof StockData] || false;
+											const u2 = s2?.isUnits?.[key as keyof StockData] || false;
 											const diff = v2 - v1;
 
 											return (
 												<tr key={key} className="border-b border-slate-100 hover:bg-slate-50 transition-colors">
 													<td className="p-6 text-sm font-black text-slate-600 uppercase">{label}</td>
-													<td className="p-6 text-center text-lg font-bold text-slate-400">{v1}</td>
-													<td className="p-6 text-center text-lg font-bold text-slate-900">{v2}</td>
+													<td className="p-6 text-center text-lg font-bold text-slate-400">
+														{u1 ? "< 1" : v1}
+													</td>
+													<td className="p-6 text-center text-lg font-bold text-slate-900">
+														{u2 ? "< 1" : v2}
+													</td>
 													<td className="p-6 text-center">
 														<div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-black ${
 															diff > 0 ? "bg-green-50 text-green-600" : 
@@ -548,7 +551,7 @@ export default function EstoquePage() {
 														}`}>
 															{diff > 0 && <TrendingUp size={14} />}
 															{diff < 0 && <TrendingDown size={14} />}
-															{diff > 0 ? `+${diff}` : diff}
+															{u1 !== u2 ? (u2 ? "Entrou < 1" : "Saiu < 1") : (diff > 0 ? `+${diff}` : diff)}
 														</div>
 													</td>
 												</tr>
@@ -642,9 +645,13 @@ export default function EstoquePage() {
 													</td>
 													<td className="p-6 text-center">
 														<div className="flex flex-col items-center">
-															<span className={`text-xl font-black ${vA !== initialA ? "text-blue-600" : "text-slate-900"}`}>{vA}</span>
+															<span className={`text-xl font-black ${vA !== initialA ? "text-blue-600" : (allData.find(d => d.id === storeA)?.isUnits?.[itemKey] ? "text-orange-500" : (initialA === 0 ? "text-slate-400" : "text-slate-900"))}`}>
+																{allData.find(d => d.id === storeA)?.isUnits?.[itemKey] && vA === 0 ? "< 1" : vA}
+															</span>
 															{vA !== initialA && (
-																<span className="text-[10px] font-bold text-slate-400">Início: {initialA}</span>
+																<span className="text-[10px] font-bold text-slate-400">
+																	Início: {allData.find(d => d.id === storeA)?.isUnits?.[itemKey] ? "< 1" : initialA}
+																</span>
 															)}
 														</div>
 													</td>
@@ -652,8 +659,8 @@ export default function EstoquePage() {
 														<div className="flex items-center justify-center gap-3">
 															<button
 																onClick={() => applyMovement(itemKey, "BtoA")}
-																disabled={!inputValue}
-																className={`p-2 rounded-xl border-2 transition-all ${!inputValue ? "border-slate-100 text-slate-200 cursor-not-allowed" : "border-blue-100 text-blue-600 hover:bg-blue-600 hover:text-white cursor-pointer"}`}
+																disabled={!inputValue || (allData.find(d => d.id === storeB)?.isUnits?.[itemKey] && vB === 0)}
+																className={`p-2 rounded-xl border-2 transition-all ${!inputValue || (allData.find(d => d.id === storeB)?.isUnits?.[itemKey] && vB === 0) ? "border-slate-100 text-slate-200 cursor-not-allowed" : "border-blue-100 text-blue-600 hover:bg-blue-600 hover:text-white cursor-pointer"}`}
 																title="Mover de B para A">
 																<ArrowRight className="rotate-180" size={20} />
 															</button>
@@ -667,8 +674,8 @@ export default function EstoquePage() {
 															/>
 															<button
 																onClick={() => applyMovement(itemKey, "AtoB")}
-																disabled={!inputValue}
-																className={`p-2 rounded-xl border-2 transition-all ${!inputValue ? "border-slate-100 text-slate-200 cursor-not-allowed" : "border-blue-100 text-blue-600 hover:bg-blue-600 hover:text-white cursor-pointer"}`}
+																disabled={!inputValue || (allData.find(d => d.id === storeA)?.isUnits?.[itemKey] && vA === 0)}
+																className={`p-2 rounded-xl border-2 transition-all ${!inputValue || (allData.find(d => d.id === storeA)?.isUnits?.[itemKey] && vA === 0) ? "border-slate-100 text-slate-200 cursor-not-allowed" : "border-blue-100 text-blue-600 hover:bg-blue-600 hover:text-white cursor-pointer"}`}
 																title="Mover de A para B">
 																<ArrowRight size={20} />
 															</button>
@@ -676,9 +683,13 @@ export default function EstoquePage() {
 													</td>
 													<td className="p-6 text-center">
 														<div className="flex flex-col items-center">
-															<span className={`text-xl font-black ${vB !== initialB ? "text-blue-600" : "text-slate-900"}`}>{vB}</span>
+															<span className={`text-xl font-black ${vB !== initialB ? "text-blue-600" : (allData.find(d => d.id === storeB)?.isUnits?.[itemKey] ? "text-orange-500" : (initialB === 0 ? "text-slate-400" : "text-slate-900"))}`}>
+																{allData.find(d => d.id === storeB)?.isUnits?.[itemKey] && vB === 0 ? "< 1" : vB}
+															</span>
 															{vB !== initialB && (
-																<span className="text-[10px] font-bold text-slate-400">Início: {initialB}</span>
+																<span className="text-[10px] font-bold text-slate-400">
+																	Início: {allData.find(d => d.id === storeB)?.isUnits?.[itemKey] ? "< 1" : initialB}
+																</span>
 															)}
 														</div>
 													</td>

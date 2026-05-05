@@ -130,39 +130,40 @@ export default function ResumosPage() {
 							)}
 						</div>
 
-						{/* Estoque Resumo (Todos com Qtd > 0) */}
+						{/* Estoque Resumo (Todos com Qtd > 0 ou Menos de 1) */}
 						<div>
 							<h4 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-4">
 								Itens em Estoque
 							</h4>
 							<div className="grid grid-cols-2 gap-3">
-								{Object.entries(store.stock)
-									.filter(([_, qty]) => (qty as number) > 0)
-									.map(([key, qty]) => (
+								{Object.entries(STOCK_LABELS).map(([key, label]) => {
+									const itemKey = key as keyof StockData;
+									const qty = store.stock[itemKey] || 0;
+									const isUnit = store.isUnits?.[itemKey] || false;
+
+									if (qty === 0 && !isUnit) return null;
+
+									return (
 										<div
-											key={key}
+											key={itemKey}
 											className="flex items-center justify-between p-3 bg-slate-50/50 rounded-xl text-xs">
 											<span className="font-bold text-slate-500 uppercase truncate pr-3">
-												{STOCK_LABELS[key as keyof StockData]}
+												{label}
 											</span>
 											<div className="flex items-center gap-1">
 												<span className={`font-black ${
-													(qty as number) === 0 
-														? "text-slate-400" 
-														: store.isUnits?.[key as keyof StockData] 
-															? "text-slate-500" 
+													isUnit
+														? "text-orange-500" 
+														: qty === 0 
+															? "text-slate-400" 
 															: "text-slate-800"
 												}`}>
-													{qty as number}
+													{isUnit ? "< 1" : qty}
 												</span>
-												{store.isUnits?.[key as keyof StockData] && (
-													<span className="text-[8px] font-black text-red-600 uppercase">
-														un.
-													</span>
-												)}
 											</div>
 										</div>
-									))}
+									);
+								})}
 							</div>
 							<Link
 								href="/gerencia/estoque"
