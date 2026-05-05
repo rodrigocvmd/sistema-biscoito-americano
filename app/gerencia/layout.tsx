@@ -16,7 +16,6 @@ export default function GerenciaLayout({
 	const tabs = [
 		{ id: "insumos", label: "Insumos", href: "/gerencia/insumos", icon: LayoutDashboard },
 		{ id: "estoque", label: "Estoque", href: "/gerencia/estoque", icon: Package },
-		{ id: "resumos", label: "Resumos", href: "/gerencia/resumos", icon: Store },
 	];
 
 	useEffect(() => {
@@ -39,7 +38,7 @@ export default function GerenciaLayout({
 	return (
 		<div className="min-h-screen bg-slate-50 flex flex-col w-full overflow-x-hidden">
 			{/* Header */}
-			<header className="bg-white border-b border-slate-200 sticky top-0 z-40 shadow-sm w-full">
+			<header className="bg-white border-b border-slate-200 sticky top-0 z-40 shadow-sm w-full print:hidden">
 				<div className="w-full mx-auto px-4 py-3 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
 					<div className="flex items-center justify-between w-full lg:w-auto">
 						<div className="flex items-center gap-4">
@@ -94,7 +93,7 @@ export default function GerenciaLayout({
 						<div className="flex bg-slate-100 p-1 rounded-xl w-full sm:w-auto">
 							{tabs.map((tab) => {
 								const Icon = tab.icon;
-								const isActive = pathname === tab.href;
+								const isActive = pathname.startsWith(tab.href);
 								return (
 									<Link
 										key={tab.id}
