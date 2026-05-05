@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { db } from "@/lib/firebase";
-import { doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
+import { doc, getDoc, setDoc, serverTimestamp, collection, addDoc } from "firebase/firestore";
 import { STOCK_LABELS, StockData, StoreId, formatDate } from "@/types";
 import { Save, RefreshCw, AlertCircle, CheckCircle2 } from "lucide-react";
 import { use } from "react";
@@ -99,6 +99,14 @@ export default function StockPage({ params }: { params: Promise<{ store: string 
 				},
 				{ merge: true },
 			);
+
+			// Save snapshot in stockHistory subcollection
+			const historyRef = collection(db, "stores", store, "stockHistory");
+			await addDoc(historyRef, {
+				stock,
+				isUnits,
+				timestamp: serverTimestamp(),
+			});
 
 			setLastUpdate(new Date());
 			setIsDirty(false);

@@ -64,6 +64,26 @@ export interface StoreDocument {
 	isUnits?: Partial<Record<keyof StockData, boolean>>;
 }
 
+export interface StockSnapshot {
+	id?: string;
+	timestamp: any; // Firestore Timestamp
+	stock: Partial<StockData>;
+	isUnits: Partial<Record<keyof StockData, boolean>>;
+}
+
+export interface RepositionHistory {
+	id?: string;
+	timestamp: any; // Firestore Timestamp
+	itemId: keyof StockData;
+	fromStore: StoreId;
+	toStore: StoreId;
+	beforeFrom: number;
+	afterFrom: number;
+	beforeTo: number;
+	afterTo: number;
+	difference: number;
+}
+
 // Padronização dos termos de urgência
 export type UrgencyLevel = "Urgente" | "Acabando" | "Adiantando";
 
