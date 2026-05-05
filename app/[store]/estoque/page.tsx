@@ -200,7 +200,7 @@ export default function StockPage({ params }: { params: Promise<{ store: string 
 											className="w-4 h-4 rounded border-slate-300 text-red-600 focus:ring-red-500 cursor-pointer"
 										/>
 										<span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">
-											Menos de 1
+											Menos de 1 (Aberto)
 										</span>
 									</label>
 								</div>
