@@ -27,13 +27,14 @@ export default function RootLayout({
 	children: React.ReactNode;
 }>) {
 	return (
-		<html lang="en" className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`} suppressHydrationWarning>
-			<body className="min-h-full flex flex-col">
+		<html lang="en" className="h-full antialiased" suppressHydrationWarning>
+			<body className={`${geistSans.variable} ${geistMono.variable} min-h-full flex flex-col`}>
 				<ThemeProvider
 					attribute="class"
 					defaultTheme="light"
-					enableSystem
+					enableSystem={false}
 					disableTransitionOnChange
+					storageKey="biscoito-theme"
 				>
 					{children}
 				</ThemeProvider>
