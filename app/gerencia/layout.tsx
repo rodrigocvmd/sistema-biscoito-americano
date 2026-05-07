@@ -37,7 +37,7 @@ export default function GerenciaLayout({
 	}, [uiScale]);
 
 	return (
-		<div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col w-full overflow-x-hidden transition-colors">
+		<div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col w-full transition-colors">
 			{/* Header */}
 			<header className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 sticky top-0 z-40 shadow-sm w-full print:hidden transition-colors">
 				<div className="w-full mx-auto px-4 py-3 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
@@ -118,7 +118,7 @@ export default function GerenciaLayout({
 				</div>
 			</header>
 
-			<div className="flex-1 w-full overflow-x-hidden">
+			<div className="flex-1 w-full">
 				<main className="w-full mx-auto p-4 md:p-8 space-y-8">
 					{children}
 				</main>

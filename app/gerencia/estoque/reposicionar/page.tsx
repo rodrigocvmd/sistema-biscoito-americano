@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, Fragment, useRef } from "react";
 import { db } from "@/lib/firebase";
 import {
 	collection,
@@ -46,6 +46,7 @@ const STORE_ORDER: StoreId[] = ["lago", "conjunto", "terraco", "noroeste"];
 export default function EstoqueReposicionarPage() {
 	const [loading, setLoading] = useState(true);
 	const [allData, setAllData] = useState<FullStoreData[]>([]);
+	const isInitialized = useRef(false);
 
 	// Transfer state per item
 	const [itemTransfers, setItemTransfers] = useState<
@@ -63,6 +64,36 @@ export default function EstoqueReposicionarPage() {
 	const [lastRepoForItem, setLastRepoForItem] = useState<RepositionHistory | null>(null);
 	const [loadingLastRepo, setLoadingLastRepo] = useState(false);
 	const [showSummary, setShowSummary] = useState(false);
+	const [negativeStockWarning, setNegativeStockWarning] = useState<{
+		store: StoreId;
+		item: keyof StockData;
+		qty: number;
+		onConfirm: () => void;
+	} | null>(null);
+
+	// Load from localStorage on mount
+	useEffect(() => {
+		const savedProjected = localStorage.getItem("repos_projected_stocks");
+		const savedTransfers = localStorage.getItem("repos_item_transfers");
+		if (savedProjected) {
+			setProjectedStocks(JSON.parse(savedProjected));
+			isInitialized.current = true;
+		}
+		if (savedTransfers) setItemTransfers(JSON.parse(savedTransfers));
+	}, []);
+
+	// Save to localStorage on change
+	useEffect(() => {
+		if (Object.keys(projectedStocks.lago).length > 0) {
+			localStorage.setItem("repos_projected_stocks", JSON.stringify(projectedStocks));
+		}
+	}, [projectedStocks]);
+
+	useEffect(() => {
+		if (Object.keys(itemTransfers).length > 0) {
+			localStorage.setItem("repos_item_transfers", JSON.stringify(itemTransfers));
+		}
+	}, [itemTransfers]);
 
 	useEffect(() => {
 		const unsubscribeStores = onSnapshot(collection(db, "stores"), (storesSnapshot) => {
@@ -88,7 +119,7 @@ export default function EstoqueReposicionarPage() {
 	}, []);
 
 	useEffect(() => {
-		if (allData.length > 0) {
+		if (allData.length > 0 && !isInitialized.current) {
 			const initialProjected: any = {};
 			allData.forEach((store) => {
 				initialProjected[store.id] = { ...store.stock };
@@ -101,6 +132,7 @@ export default function EstoqueReposicionarPage() {
 				initialTransfers[key] = { from: "lago", to: "conjunto", qty: 0 };
 			});
 			setItemTransfers(initialTransfers);
+			isInitialized.current = true;
 		}
 	}, [allData]);
 
@@ -124,27 +156,44 @@ export default function EstoqueReposicionarPage() {
 		const transfer = itemTransfers[key];
 		if (!transfer || transfer.qty <= 0 || transfer.from === transfer.to) return;
 
-		setProjectedStocks((prev) => {
-			const next = { ...prev };
-			const stockFrom = { ...next[transfer.from] };
-			const stockTo = { ...next[transfer.to] };
+		const currentFromStock = projectedStocks[transfer.from][key] || 0;
+		const resultQty = currentFromStock - transfer.qty;
 
-			const vFrom = stockFrom[key] || 0;
-			const vTo = stockTo[key] || 0;
+		const performUpdate = () => {
+			setProjectedStocks((prev) => {
+				const next = { ...prev };
+				const stockFrom = { ...next[transfer.from] };
+				const stockTo = { ...next[transfer.to] };
 
-			stockFrom[key] = vFrom - transfer.qty;
-			stockTo[key] = vTo + transfer.qty;
+				const vFrom = stockFrom[key] || 0;
+				const vTo = stockTo[key] || 0;
 
-			next[transfer.from] = stockFrom;
-			next[transfer.to] = stockTo;
-			return next;
-		});
+				stockFrom[key] = vFrom - transfer.qty;
+				stockTo[key] = vTo + transfer.qty;
 
-		// Reset quantity for this item after applying
-		setItemTransfers((prev) => ({
-			...prev,
-			[key]: { ...prev[key], qty: 0 },
-		}));
+				next[transfer.from] = stockFrom;
+				next[transfer.to] = stockTo;
+				return next;
+			});
+
+			// Reset quantity for this item after applying
+			setItemTransfers((prev) => ({
+				...prev,
+				[key]: { ...prev[key], qty: 0 },
+			}));
+			setNegativeStockWarning(null);
+		};
+
+		if (resultQty < 0) {
+			setNegativeStockWarning({
+				store: transfer.from,
+				item: key,
+				qty: resultQty,
+				onConfirm: performUpdate,
+			});
+		} else {
+			performUpdate();
+		}
 	};
 
 	const calculateOptimizedSummary = () => {
@@ -291,28 +340,28 @@ export default function EstoqueReposicionarPage() {
 				</button>
 			</div>
 
-			<div className="bg-white dark:bg-slate-900 rounded-[32px] border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden transition-colors print:hidden">
-				<div className="overflow-x-auto">
-					<table className="w-full border-collapse">
+			<div className="bg-white dark:bg-slate-900 rounded-[32px] border border-slate-200 dark:border-slate-800 shadow-sm transition-colors print:hidden">
+				<div className="overflow-x-auto overflow-y-visible">
+					<table className="w-full border-separate border-spacing-0">
 						<thead>
-							<tr className="bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700">
-								<th className="p-4 text-left text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest sticky left-0 bg-slate-50 dark:bg-slate-800 z-20">
+							<tr className="bg-slate-50 dark:bg-slate-800">
+								<th className="p-4 text-left text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest sticky left-0 bg-slate-50 dark:bg-slate-800 z-20 border-b border-slate-200 dark:border-slate-700">
 									Item
 								</th>
 								{STORE_ORDER.map((id) => (
 									<th
 										key={id}
-										className="p-4 text-center text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest min-w-[100px] border-l border-slate-100 dark:border-slate-700">
+										className="p-4 text-center text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest min-w-[100px] border-l border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700">
 										{STORE_NAMES[id]}
 									</th>
 								))}
-								<th className="p-4 text-center text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest min-w-[280px] border-l border-slate-100 dark:border-slate-700 bg-blue-50/50 dark:bg-blue-900/10">
+								<th className="p-4 text-center text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest min-w-[280px] border-l border-slate-100 dark:border-slate-700 bg-blue-50/50 dark:bg-blue-900/10 border-b border-slate-200 dark:border-slate-700">
 									Movimentar
 								</th>
 							</tr>
 						</thead>
 						<tbody>
-							{Object.entries(STOCK_LABELS).map(([key, label]) => {
+							{Object.entries(STOCK_LABELS).map(([key, label], index) => {
 								const itemKey = key as keyof StockData;
 								const transfers = itemTransfers[itemKey] || {
 									from: "lago",
@@ -320,13 +369,30 @@ export default function EstoqueReposicionarPage() {
 									qty: 0,
 								};
 								const isExpanded = expandedItem === itemKey;
+								const showRepeatedHeader = index > 0 && index % 8 === 0;
 
 								return (
-									<>
+									<Fragment key={itemKey}>
+										{showRepeatedHeader && (
+											<tr className="bg-slate-100 dark:bg-slate-800/80">
+												<th className="p-2 text-left text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest sticky left-0 bg-slate-100 dark:bg-slate-800/80 z-20 border-y border-slate-200 dark:border-slate-700">
+													Item
+												</th>
+												{STORE_ORDER.map((id) => (
+													<th
+														key={`header-${id}-${index}`}
+														className="p-2 text-center text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest border-l border-slate-200 dark:border-slate-700 border-y">
+														{STORE_NAMES[id]}
+													</th>
+												))}
+												<th className="p-2 text-center text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest border-l border-slate-200 dark:border-slate-700 bg-blue-100/30 dark:bg-blue-900/20 border-y">
+													Movimentar
+												</th>
+											</tr>
+										)}
 										<tr
-											key={itemKey}
 											className={`border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50/50 dark:hover:bg-slate-800/50 transition-colors ${isExpanded ? "bg-blue-50/30 dark:bg-blue-900/20" : ""}`}>
-											<td className="p-4 sticky left-0 bg-white dark:bg-slate-900 group-hover:bg-slate-50/50 dark:group-hover:bg-slate-800/50 z-10 border-r border-slate-50 dark:border-slate-800 transition-colors">
+											<td className="p-4 sticky left-0 bg-white dark:bg-slate-900 group-hover:bg-slate-50/50 dark:group-hover:bg-slate-800/50 z-10 border-r border-slate-50 dark:border-slate-800 border-b border-slate-100 dark:border-slate-800 transition-colors">
 												<button
 													onClick={() => setExpandedItem(isExpanded ? null : itemKey)}
 													className="flex items-center gap-2 text-[13px] font-black text-slate-600 dark:text-slate-400 uppercase hover:text-blue-600 dark:hover:text-blue-400 transition-colors cursor-pointer text-left">
@@ -340,18 +406,19 @@ export default function EstoqueReposicionarPage() {
 												const initial = allData.find((d) => d.id === id)?.stock[itemKey] || 0;
 												const isUnit =
 													allData.find((d) => d.id === id)?.isUnits?.[itemKey] || false;
-												const changed = v !== initial;
+												const receiving = v > initial;
+												const sending = v < initial;
 
 												return (
 													<td
 														key={id}
-														className="p-4 text-center border-l border-slate-50 dark:border-slate-800">
+														className="p-4 text-center border-l border-slate-50 dark:border-slate-800 border-b border-slate-100 dark:border-slate-800">
 														<div className="flex flex-col items-center">
 															<span
-																className={`text-2xl font-black ${changed ? "text-blue-600 dark:text-blue-400" : isUnit ? "text-orange-500 dark:text-orange-400" : initial === 0 ? "text-slate-400 dark:text-slate-600" : "text-slate-900 dark:text-slate-200"}`}>
+																className={`text-2xl font-black ${receiving ? "text-green-600 dark:text-green-400" : sending ? "text-red-600 dark:text-red-400" : isUnit ? "text-orange-500 dark:text-orange-400" : initial === 0 ? "text-slate-400 dark:text-slate-600" : "text-slate-900 dark:text-slate-200"}`}>
 																{isUnit && v === 0 ? "< 1" : v}
 															</span>
-															{changed && (
+															{(receiving || sending) && (
 																<span className="text-[12px] font-bold text-slate-400 dark:text-slate-500 uppercase">
 																	Inicial:{" "}
 																	<span className="text-[14px] font-bold text-slate-900 dark:text-slate-200 uppercase">
@@ -364,7 +431,7 @@ export default function EstoqueReposicionarPage() {
 												);
 											})}
 
-											<td className="p-4 text-center border-l border-slate-50 dark:border-slate-800 bg-blue-50/20 dark:bg-blue-900/5">
+											<td className="p-4 text-center border-l border-slate-50 dark:border-slate-800 bg-blue-50/20 dark:bg-blue-900/5 border-b border-slate-100 dark:border-slate-800">
 												<div className="flex items-center justify-center gap-2">
 													<div className="flex items-center gap-1 bg-white dark:bg-slate-800 p-1 rounded-xl border border-slate-200 dark:border-slate-700">
 														<select
@@ -493,7 +560,7 @@ export default function EstoqueReposicionarPage() {
 												</td>
 											</tr>
 										)}
-									</>
+									</Fragment>
 								);
 							})}
 						</tbody>
@@ -574,6 +641,26 @@ export default function EstoqueReposicionarPage() {
 								<Printer size={16} />
 								IMPRIMIR RESUMO
 							</button>
+						</div>
+					</div>
+				</div>
+			)}
+			{negativeStockWarning && (
+				<div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[60] flex items-center justify-center p-4 animate-in fade-in duration-200">
+					<div className="bg-white dark:bg-slate-900 rounded-[32px] w-full max-w-md shadow-2xl overflow-hidden flex flex-col border border-red-200 dark:border-red-900/30">
+						<div className="p-8 text-center space-y-4">
+							<div className="mx-auto w-16 h-16 bg-red-100 dark:bg-red-900/20 rounded-full flex items-center justify-center">
+								<Save className="text-red-600 dark:text-red-400" size={32} />
+							</div>
+							<h3 className="text-xl font-black text-slate-800 dark:text-slate-200 tracking-tight">Atenção: Estoque Negativo</h3>
+							<p className="text-slate-500 dark:text-slate-400 font-bold text-sm leading-relaxed">
+								Esta movimentação resultará em <span className="text-red-600 dark:text-red-400 font-black">{negativeStockWarning.qty}</span> unidades de <span className="font-black">{STOCK_LABELS[negativeStockWarning.item]}</span> na unidade <span className="font-black">{STORE_NAMES[negativeStockWarning.store]}</span>.
+							</p>
+							<p className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">Deseja prosseguir mesmo assim?</p>
+						</div>
+						<div className="p-6 bg-slate-50 dark:bg-slate-800/50 border-t border-slate-100 dark:border-slate-800 flex gap-3">
+							<button onClick={() => setNegativeStockWarning(null)} className="flex-1 px-6 py-4 rounded-2xl font-black text-[12px] uppercase tracking-widest text-slate-500 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-800 transition-all border border-transparent hover:border-slate-200 dark:hover:border-slate-700">Desfazer</button>
+							<button onClick={negativeStockWarning.onConfirm} className="flex-1 px-6 py-4 rounded-2xl font-black text-[12px] uppercase tracking-widest bg-red-600 hover:bg-red-700 text-white shadow-lg shadow-red-100 dark:shadow-none transition-all">Confirmar</button>
 						</div>
 					</div>
 				</div>
