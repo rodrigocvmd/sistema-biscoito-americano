@@ -13,6 +13,7 @@ import {
 	runTransaction,
 	doc,
 	collectionGroup,
+	limit,
 } from "firebase/firestore";
 import {
 	STOCK_LABELS,
@@ -31,7 +32,10 @@ import {
 	Save,
 	Send,
 	Printer,
+	MessageCircle,
+	History,
 } from "lucide-react";
+
 
 interface FullStoreData {
 	id: StoreId;
@@ -61,9 +65,13 @@ export default function EstoqueReposicionarPage() {
 	});
 	const [savingRepos, setSavingRepos] = useState(false);
 	const [expandedItem, setExpandedItem] = useState<keyof StockData | null>(null);
-	const [lastRepoForItem, setLastRepoForItem] = useState<RepositionHistory | null>(null);
+	const [historyForItem, setHistoryForItem] = useState<RepositionHistory[]>([]);
 	const [loadingLastRepo, setLoadingLastRepo] = useState(false);
+	const [showAllHistory, setShowAllHistory] = useState(false);
+	const [allHistory, setAllHistory] = useState<RepositionHistory[]>([]);
+	const [loadingAllHistory, setLoadingAllHistory] = useState(false);
 	const [showSummary, setShowSummary] = useState(false);
+	const [showResetConfirm, setShowResetConfirm] = useState(false);
 	const [negativeStockWarning, setNegativeStockWarning] = useState<{
 		store: StoreId;
 		item: keyof StockData;
@@ -137,19 +145,22 @@ export default function EstoqueReposicionarPage() {
 	}, [allData]);
 
 	const resetProjectedStocks = () => {
-		if (window.confirm("Deseja redefinir todas as quantidades baseadas no estoque atual?")) {
-			const initialProjected: any = {};
-			allData.forEach((store) => {
-				initialProjected[store.id] = { ...store.stock };
-			});
-			setProjectedStocks(initialProjected);
+		setShowResetConfirm(true);
+	};
 
-			const resetTransfers: any = {};
-			Object.keys(STOCK_LABELS).forEach((key) => {
-				resetTransfers[key] = { from: "lago", to: "conjunto", qty: 0 };
-			});
-			setItemTransfers(resetTransfers);
-		}
+	const confirmResetProjectedStocks = () => {
+		const initialProjected: any = {};
+		allData.forEach((store) => {
+			initialProjected[store.id] = { ...store.stock };
+		});
+		setProjectedStocks(initialProjected);
+
+		const resetTransfers: any = {};
+		Object.keys(STOCK_LABELS).forEach((key) => {
+			resetTransfers[key] = { from: "lago", to: "conjunto", qty: 0 };
+		});
+		setItemTransfers(resetTransfers);
+		setShowResetConfirm(false);
 	};
 
 	const applyMovement = (key: keyof StockData) => {
@@ -270,32 +281,168 @@ export default function EstoqueReposicionarPage() {
 		window.print();
 	};
 
-	const fetchLastRepo = async (itemId: keyof StockData) => {
-		setLoadingLastRepo(true);
-		setLastRepoForItem(null);
+	const handleWhatsApp = () => {
+		const movements = calculateOptimizedSummary();
+		if (movements.length === 0) return;
+
+		const grouped = new Map<
+			string,
+			{ from: StoreId; to: StoreId; items: { label: string; qty: number }[] }
+		>();
+		movements.forEach((move) => {
+			const key = `${move.from}-${move.to}`;
+			if (!grouped.has(key)) {
+				grouped.set(key, { from: move.from, to: move.to, items: [] });
+			}
+			grouped.get(key)!.items.push({
+				label: STOCK_LABELS[move.item],
+				qty: move.qty,
+			});
+		});
+
+		let text = `*Resumo de Reposicionamento - ${new Date().toLocaleDateString("pt-BR")}*\n\n`;
+
+		Array.from(grouped.values()).forEach((group) => {
+			text += `*${STORE_NAMES[group.from]} → ${STORE_NAMES[group.to]}:*\n`;
+			group.items.forEach((item) => {
+				text += `• ${item.qty} ${item.label}\n`;
+			});
+			text += `\n`;
+		});
+
+		const encodedText = encodeURIComponent(text);
+		window.open(`https://web.whatsapp.com/send?text=${encodedText}`, "_blank");
+	};
+
+	const fetchAllHistory = async () => {
+		setLoadingAllHistory(true);
 		try {
-			// Usando collectionGroup para buscar o histórico de qualquer loja
+			const fourWeeksAgo = new Date();
+			fourWeeksAgo.setDate(fourWeeksAgo.getDate() - 28);
+			const tsLimit = Timestamp.fromDate(fourWeeksAgo);
+
+			const q = query(
+				collectionGroup(db, "repositions"),
+				where("timestamp", ">=", tsLimit),
+				orderBy("timestamp", "desc"),
+				limit(200)
+			);
+			const snap = await getDocs(q);
+			const seen = new Set();
+			const history = snap.docs
+				.map(doc => ({ id: doc.id, ...doc.data() } as RepositionHistory))
+				.filter(item => {
+					const uniqueKey = `${item.timestamp.toMillis()}-${item.itemId}-${item.fromStore}-${item.toStore}`;
+					if (seen.has(uniqueKey)) return false;
+					seen.add(uniqueKey);
+					return true;
+				});
+			setAllHistory(history);
+			setShowAllHistory(true);
+		} catch (error) {
+			console.error("Erro ao buscar histórico completo:", error);
+			// Fallback: buscar das lojas principais sem orderBy (evita erro de índice)
+			try {
+				const fourWeeksAgo = new Date();
+				fourWeeksAgo.setDate(fourWeeksAgo.getDate() - 28);
+				const tsLimit = Timestamp.fromDate(fourWeeksAgo);
+
+				const allRepos: RepositionHistory[] = [];
+				for (const storeId of STORE_ORDER) {
+					const qStore = query(
+						collection(db, "stores", storeId, "repositions"),
+						where("timestamp", ">=", tsLimit),
+						limit(100)
+					);
+					const snapStore = await getDocs(qStore);
+					snapStore.docs.forEach(doc => {
+						allRepos.push({ id: doc.id, ...doc.data() } as RepositionHistory);
+					});
+				}
+				const seen = new Set();
+				const sortedUnique = allRepos
+					.sort((a, b) => b.timestamp.toMillis() - a.timestamp.toMillis())
+					.filter(item => {
+						const uniqueKey = `${item.timestamp.toMillis()}-${item.itemId}-${item.fromStore}-${item.toStore}`;
+						if (seen.has(uniqueKey)) return false;
+						seen.add(uniqueKey);
+						return true;
+					});
+				setAllHistory(sortedUnique);
+				setShowAllHistory(true);
+			} catch (err) {
+				console.error("Erro no fallback de histórico completo:", err);
+				alert("Não foi possível carregar o histórico. Verifique sua conexão.");
+			}
+		} finally {
+			setLoadingAllHistory(false);
+		}
+	};
+
+	const fetchItemHistory = async (itemId: keyof StockData) => {
+		setLoadingLastRepo(true);
+		setHistoryForItem([]);
+		try {
+			const fourWeeksAgo = new Date();
+			fourWeeksAgo.setDate(fourWeeksAgo.getDate() - 28);
+			const tsLimit = Timestamp.fromDate(fourWeeksAgo);
+
+			// Esta query requer um índice de Collection Group (itemId ASC, timestamp DESC)
+			// O link para criação aparece no console do navegador/terminal em caso de erro
 			const q = query(
 				collectionGroup(db, "repositions"),
 				where("itemId", "==", itemId),
+				where("timestamp", ">=", tsLimit),
 				orderBy("timestamp", "desc"),
+				limit(20)
 			);
 			const snap = await getDocs(q);
-			if (!snap.empty) setLastRepoForItem(snap.docs[0].data() as RepositionHistory);
+			const history = snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as RepositionHistory));
+			const seen = new Set();
+			const uniqueHistory = history.filter(item => {
+				const uniqueKey = `${item.timestamp.toMillis()}-${item.itemId}-${item.fromStore}-${item.toStore}`;
+				if (seen.has(uniqueKey)) return false;
+				seen.add(uniqueKey);
+				return true;
+			});
+			setHistoryForItem(uniqueHistory);
 		} catch (error) {
-			console.error("Erro ao buscar último reposicionamento:", error);
-			// Fallback: se o collectionGroup falhar (falta de índice), tenta na loja Lago
+			console.error("Erro ao buscar histórico do item (tentando fallback):", error);
+			// Fallback: buscar por loja e filtrar em memória para evitar erro de índice
 			try {
-				const qFallback = query(
-					collection(db, "stores", "lago", "repositions"),
-					where("itemId", "==", itemId),
-					orderBy("timestamp", "desc"),
-				);
-				const snapFallback = await getDocs(qFallback);
-				if (!snapFallback.empty)
-					setLastRepoForItem(snapFallback.docs[0].data() as RepositionHistory);
+				const fourWeeksAgo = new Date();
+				fourWeeksAgo.setDate(fourWeeksAgo.getDate() - 28);
+				const tsLimitMillis = fourWeeksAgo.getTime();
+
+				const allRepos: RepositionHistory[] = [];
+				for (const storeId of STORE_ORDER) {
+					// Consultamos apenas pelo itemId (índice padrão)
+					// Filtramos a data em memória para não exigir índice composto (itemId + timestamp)
+					const qStore = query(
+						collection(db, "stores", storeId, "repositions"),
+						where("itemId", "==", itemId),
+						limit(50)
+					);
+					const snapStore = await getDocs(qStore);
+					snapStore.docs.forEach(doc => {
+						const data = doc.data() as RepositionHistory;
+						if (data.timestamp.toMillis() >= tsLimitMillis) {
+							allRepos.push({ id: doc.id, ...data });
+						}
+					});
+				}
+				const seen = new Set();
+				const sortedUnique = allRepos
+					.sort((a, b) => b.timestamp.toMillis() - a.timestamp.toMillis())
+					.filter(item => {
+						const uniqueKey = `${item.timestamp.toMillis()}-${item.itemId}-${item.fromStore}-${item.toStore}`;
+						if (seen.has(uniqueKey)) return false;
+						seen.add(uniqueKey);
+						return true;
+					});
+				setHistoryForItem(sortedUnique);
 			} catch (err) {
-				console.error("Erro no fallback de histórico:", err);
+				console.error("Erro no fallback de histórico por item:", err);
 			}
 		} finally {
 			setLoadingLastRepo(false);
@@ -303,7 +450,7 @@ export default function EstoqueReposicionarPage() {
 	};
 
 	useEffect(() => {
-		if (expandedItem) fetchLastRepo(expandedItem);
+		if (expandedItem) fetchItemHistory(expandedItem);
 	}, [expandedItem]);
 
 	if (loading)
@@ -333,11 +480,20 @@ export default function EstoqueReposicionarPage() {
 						GERAR RESUMO DE REPOSICIONAMENTO
 					</button>
 				</div>
-				<button
-					onClick={resetProjectedStocks}
-					className="cursor-pointer bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-400 px-6 py-4 rounded-2xl font-black text-[10px] transition-all border border-slate-200 dark:border-slate-700 uppercase tracking-widest">
-					Redefinir para Estoque Atual
-				</button>
+				<div className="flex items-center gap-3">
+					<button
+						onClick={fetchAllHistory}
+						disabled={loadingAllHistory}
+						className="cursor-pointer flex items-center gap-2 bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/30 text-blue-600 dark:text-blue-400 px-6 py-4 rounded-2xl font-black text-[10px] transition-all border border-blue-200 dark:border-blue-800 uppercase tracking-widest disabled:opacity-50">
+						{loadingAllHistory ? <RefreshCw className="animate-spin" size={14} /> : <History size={14} />}
+						Ver Histórico Completo
+					</button>
+					<button
+						onClick={resetProjectedStocks}
+						className="cursor-pointer bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-400 px-6 py-4 rounded-2xl font-black text-[10px] transition-all border border-slate-200 dark:border-slate-700 uppercase tracking-widest">
+						Redefinir para Estoque Atual
+					</button>
+				</div>
 			</div>
 
 			<div className="bg-white dark:bg-slate-900 rounded-[32px] border border-slate-200 dark:border-slate-800 shadow-sm transition-colors print:hidden">
@@ -499,61 +655,65 @@ export default function EstoqueReposicionarPage() {
 													className="p-4 border-b border-slate-200 dark:border-slate-800">
 													<div className="bg-white dark:bg-slate-800 rounded-2xl p-6 border border-blue-100 dark:border-blue-900 shadow-sm transition-colors">
 														<h4 className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-4">
-															Último Reposicionamento Gerencial
+															Histórico de Reposicionamento (últimas 5)
 														</h4>
 														{loadingLastRepo ? (
 															<div className="flex items-center gap-3 text-slate-400 dark:text-slate-500">
 																<RefreshCw className="animate-spin" size={16} />
 																<span className="text-xs font-bold">Buscando histórico...</span>
 															</div>
-														) : lastRepoForItem ? (
-															<div className="flex flex-wrap items-center gap-8">
-																<div className="flex flex-col gap-1">
-																	<span className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase">
-																		Data
-																	</span>
-																	<span className="text-xs font-black text-slate-700 dark:text-slate-300">
-																		{formatDate(lastRepoForItem.timestamp.toDate())}
-																	</span>
-																</div>
-																<div className="flex flex-col gap-1">
-																	<span className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase">
-																		Movimentação
-																	</span>
-																	<span className="text-xs font-black text-blue-600 dark:text-blue-400">
-																		{STORE_NAMES[lastRepoForItem.fromStore]} →{" "}
-																		{STORE_NAMES[lastRepoForItem.toStore]}
-																	</span>
-																</div>
-																<div className="flex flex-col gap-1">
-																	<span className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase">
-																		Quantidade
-																	</span>
-																	<span className="text-xs font-black text-green-600 dark:text-green-400">
-																		{lastRepoForItem.difference} itens
-																	</span>
-																</div>
-																<div className="flex flex-col gap-1">
-																	<span className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase">
-																		Origem
-																	</span>
-																	<span className="text-xs font-black text-slate-500 dark:text-slate-400">
-																		De {lastRepoForItem.beforeFrom} → {lastRepoForItem.afterFrom}
-																	</span>
-																</div>
-																<div className="flex flex-col gap-1">
-																	<span className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase">
-																		Destino
-																	</span>
-																	<span className="text-xs font-black text-slate-500 dark:text-slate-400">
-																		De {lastRepoForItem.beforeTo} → {lastRepoForItem.afterTo}
-																	</span>
-																</div>
+														) : historyForItem.length > 0 ? (
+															<div className="space-y-4">
+																{historyForItem.map((item, hIdx) => (
+																	<div key={item.id || hIdx} className="flex flex-wrap items-center gap-8 pb-4 border-b border-slate-50 dark:border-slate-700 last:border-0 last:pb-0">
+																		<div className="flex flex-col gap-1 min-w-[100px]">
+																			<span className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase">
+																				Data
+																			</span>
+																			<span className="text-xs font-black text-slate-700 dark:text-slate-300">
+																				{formatDate(item.timestamp.toDate())}
+																			</span>
+																		</div>
+																		<div className="flex flex-col gap-1 min-w-[150px]">
+																			<span className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase">
+																				Movimentação
+																			</span>
+																			<span className="text-xs font-black text-blue-600 dark:text-blue-400 flex items-center gap-1.5">
+																				{STORE_NAMES[item.fromStore]}
+																				<ArrowRight size={12} className="text-blue-400 dark:text-blue-500" />
+																				{STORE_NAMES[item.toStore]}
+																			</span>
+																		</div>
+																		<div className="flex flex-col gap-1">
+																			<span className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase">
+																				Quantidade
+																			</span>
+																			<span className="text-xs font-black text-green-600 dark:text-green-400">
+																				{item.difference} itens
+																			</span>
+																		</div>
+																		<div className="flex flex-col gap-1">
+																			<span className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase">
+																				Origem
+																			</span>
+																			<span className="text-xs font-black text-slate-500 dark:text-slate-400">
+																				De {item.beforeFrom} → {item.afterFrom}
+																			</span>
+																		</div>
+																		<div className="flex flex-col gap-1">
+																			<span className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase">
+																				Destino
+																			</span>
+																			<span className="text-xs font-black text-slate-500 dark:text-slate-400">
+																				De {item.beforeTo} → {item.afterTo}
+																			</span>
+																		</div>
+																	</div>
+																))}
 															</div>
 														) : (
 															<p className="text-xs font-bold text-slate-400 dark:text-slate-500">
-																Nenhum reposicionamento registrado para este item nas lojas
-																selecionadas.
+																Nenhum reposicionamento registrado para este item.
 															</p>
 														)}
 													</div>
@@ -604,8 +764,10 @@ export default function EstoqueReposicionarPage() {
 												key={idx}
 												className="p-6 bg-slate-50 dark:bg-slate-800 rounded-3xl border border-slate-100 dark:border-slate-700 print:bg-white print:border-black print:p-4 print:rounded-none">
 												<div className="flex items-center gap-2 mb-3">
-													<span className="text-sm font-black text-blue-600 dark:text-blue-400 uppercase tracking-tight print:text-black">
-														{STORE_NAMES[group.from]} para {STORE_NAMES[group.to]}:
+													<span className="text-sm font-black text-blue-600 dark:text-blue-400 uppercase tracking-tight print:text-black flex items-center gap-2">
+														{STORE_NAMES[group.from]}
+														<ArrowRight size={16} className="text-blue-400 dark:text-blue-500 print:text-black" />
+														{STORE_NAMES[group.to]}:
 													</span>
 												</div>
 												<p className="text-slate-600 dark:text-slate-300 font-bold text-sm leading-relaxed print:text-black">
@@ -629,17 +791,33 @@ export default function EstoqueReposicionarPage() {
 							)}
 						</div>
 
-						<div className="p-8 bg-slate-50 dark:bg-slate-800/50 border-t border-slate-100 dark:border-slate-800 flex gap-4 transition-colors print:hidden">
+						<div className="p-8 bg-slate-50 dark:bg-slate-800/50 border-t border-slate-100 dark:border-slate-800 flex flex-col gap-4 transition-colors print:hidden">
+							<div className="flex flex-wrap gap-4 w-full">
+								<button
+									onClick={saveReposition}
+									disabled={calculateOptimizedSummary().length === 0 || savingRepos}
+									className="flex-1 min-w-[180px] flex items-center justify-center gap-3 bg-green-600 hover:bg-green-700 text-white px-6 py-4 rounded-2xl font-black text-[12px] uppercase tracking-widest shadow-lg shadow-green-100 dark:shadow-none transition-all disabled:opacity-50 cursor-pointer">
+									{savingRepos ? <RefreshCw className="animate-spin" size={16} /> : <Save size={16} />}
+									salvar no histórico
+								</button>
+								<button
+									onClick={handleWhatsApp}
+									disabled={calculateOptimizedSummary().length === 0}
+									className="flex-1 min-w-[180px] flex items-center justify-center gap-3 bg-emerald-500 hover:bg-emerald-600 text-white px-6 py-4 rounded-2xl font-black text-[12px] uppercase tracking-widest shadow-lg shadow-emerald-100 dark:shadow-none transition-all disabled:opacity-50 cursor-pointer">
+									<MessageCircle size={16} />
+									WhatsApp
+								</button>
+								<button
+									onClick={handlePrint}
+									className="flex-1 min-w-[180px] flex items-center justify-center gap-3 bg-blue-600 hover:bg-blue-700 text-white px-6 py-4 rounded-2xl font-black text-[12px] uppercase tracking-widest shadow-lg shadow-blue-100 dark:shadow-none transition-all cursor-pointer">
+									<Printer size={16} />
+									IMPRIMIR
+								</button>
+							</div>
 							<button
 								onClick={() => setShowSummary(false)}
-								className="flex-1 px-8 py-4 rounded-2xl font-black text-[14px] uppercase tracking-widest text-slate-500 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-800 hover:shadow-sm transition-all cursor-pointer border border-transparent hover:border-slate-200 dark:hover:border-slate-700">
+								className="w-full px-6 py-4 rounded-2xl font-black text-[12px] uppercase tracking-widest text-slate-500 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-800 hover:shadow-sm transition-all cursor-pointer border border-transparent hover:border-slate-200 dark:hover:border-slate-700">
 								Fechar
-							</button>
-							<button
-								onClick={handlePrint}
-								className="flex-1 flex items-center justify-center gap-3 bg-blue-600 hover:bg-blue-700 text-white px-8 py-4 rounded-2xl font-black text-[14px] uppercase tracking-widest shadow-lg shadow-blue-100 dark:shadow-none transition-all cursor-pointer">
-								<Printer size={16} />
-								IMPRIMIR RESUMO
 							</button>
 						</div>
 					</div>
@@ -661,6 +839,86 @@ export default function EstoqueReposicionarPage() {
 						<div className="p-6 bg-slate-50 dark:bg-slate-800/50 border-t border-slate-100 dark:border-slate-800 flex gap-3">
 							<button onClick={() => setNegativeStockWarning(null)} className="flex-1 px-6 py-4 rounded-2xl font-black text-[12px] uppercase tracking-widest text-slate-500 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-800 transition-all border border-transparent hover:border-slate-200 dark:hover:border-slate-700">Desfazer</button>
 							<button onClick={negativeStockWarning.onConfirm} className="flex-1 px-6 py-4 rounded-2xl font-black text-[12px] uppercase tracking-widest bg-red-600 hover:bg-red-700 text-white shadow-lg shadow-red-100 dark:shadow-none transition-all">Confirmar</button>
+						</div>
+					</div>
+				</div>
+			)}
+			{showResetConfirm && (
+				<div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[60] flex items-center justify-center p-4 animate-in fade-in duration-200">
+					<div className="bg-white dark:bg-slate-900 rounded-[32px] w-full max-w-md shadow-2xl overflow-hidden flex flex-col border border-blue-200 dark:border-blue-900/30">
+						<div className="p-8 text-center space-y-4">
+							<div className="mx-auto w-16 h-16 bg-blue-100 dark:bg-blue-900/20 rounded-full flex items-center justify-center">
+								<RefreshCw className="text-blue-600 dark:text-blue-400" size={32} />
+							</div>
+							<h3 className="text-xl font-black text-slate-800 dark:text-slate-200 tracking-tight">Redefinir Estoque</h3>
+							<p className="text-slate-500 dark:text-slate-400 font-bold text-md leading-relaxed">
+								Deseja redefinir todas as quantidades baseadas no estoque atual? Todas as movimentações pendentes serão zeradas e as quantidades refletirão o estoque atual informado pelas lojas.
+							</p>
+						</div>
+						<div className="p-6 bg-slate-50 dark:bg-slate-800/50 border-t border-slate-100 dark:border-slate-800 flex gap-3">
+							<button onClick={() => setShowResetConfirm(false)} className="flex-1 px-6 py-4 rounded-2xl font-black text-[12px] uppercase tracking-widest text-slate-500 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-800 transition-all border border-transparent hover:border-slate-200 dark:hover:border-slate-700">Cancelar</button>
+							<button onClick={confirmResetProjectedStocks} className="flex-1 px-6 py-4 rounded-2xl font-black text-[12px] uppercase tracking-widest bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-100 dark:shadow-none transition-all">Confirmar</button>
+						</div>
+					</div>
+				</div>
+			)}
+			{showAllHistory && (
+				<div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[70] flex items-center justify-center p-4 animate-in fade-in duration-200">
+					<div className="bg-white dark:bg-slate-900 rounded-[32px] w-full max-w-4xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh] border border-slate-200 dark:border-slate-800">
+						<div className="p-8 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+							<div className="flex items-center gap-3">
+								<History className="text-blue-600 dark:text-blue-400" size={24} />
+								<h2 className="text-2xl font-black text-slate-800 dark:text-slate-200 tracking-tight uppercase">
+									Histórico Completo de Reposicionamento
+								</h2>
+							</div>
+							<button onClick={() => setShowAllHistory(false)} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer">
+								<ChevronUp size={24} className="rotate-180" />
+							</button>
+						</div>
+
+						<div className="p-8 overflow-y-auto flex-1 bg-slate-50/50 dark:bg-slate-900/50">
+							{allHistory.length > 0 ? (
+								<div className="space-y-4">
+									{allHistory.map((item, hIdx) => (
+										<div key={item.id || hIdx} className="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-100 dark:border-slate-700 shadow-sm flex flex-wrap items-center justify-between gap-6 transition-all hover:shadow-md">
+											<div className="flex flex-col gap-1 min-w-[120px]">
+												<span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Data</span>
+												<span className="text-sm font-black text-slate-700 dark:text-slate-300">{formatDate(item.timestamp.toDate())}</span>
+											</div>
+											<div className="flex flex-col gap-1 min-w-[180px]">
+												<span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Item</span>
+												<span className="text-sm font-black text-blue-600 dark:text-blue-400 uppercase">{STOCK_LABELS[item.itemId]}</span>
+											</div>
+											<div className="flex flex-col gap-1 min-w-[180px]">
+												<span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Movimentação</span>
+												<div className="flex items-center gap-2">
+													<span className="text-sm font-black text-slate-700 dark:text-slate-200">{STORE_NAMES[item.fromStore]}</span>
+													<ArrowRight size={14} className="text-slate-400" />
+													<span className="text-sm font-black text-slate-700 dark:text-slate-200">{STORE_NAMES[item.toStore]}</span>
+												</div>
+											</div>
+											<div className="flex flex-col gap-1 items-center">
+												<span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Qtd</span>
+												<span className="text-lg font-black text-green-600 dark:text-green-400">{item.difference}</span>
+											</div>
+										</div>
+									))}
+								</div>
+							) : (
+								<div className="flex flex-col items-center justify-center p-12 text-slate-400">
+									<History size={48} className="mb-4 opacity-20" />
+									<p className="font-black uppercase tracking-widest">Nenhum histórico encontrado</p>
+								</div>
+							)}
+						</div>
+
+						<div className="p-8 bg-white dark:bg-slate-900 border-t border-slate-100 dark:border-slate-800 flex justify-center">
+							<button
+								onClick={() => setShowAllHistory(false)}
+								className="px-12 py-4 rounded-2xl font-black text-[12px] uppercase tracking-widest bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700 transition-all border border-slate-200 dark:border-slate-700 cursor-pointer">
+								Fechar Histórico
+							</button>
 						</div>
 					</div>
 				</div>
