@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { ChevronLeft, ZoomIn, ZoomOut, LayoutDashboard, Package, Store } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 export default function GerenciaLayout({
 	children,
@@ -36,61 +37,67 @@ export default function GerenciaLayout({
 	}, [uiScale]);
 
 	return (
-		<div className="min-h-screen bg-slate-50 flex flex-col w-full overflow-x-hidden">
+		<div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col w-full overflow-x-hidden transition-colors">
 			{/* Header */}
-			<header className="bg-white border-b border-slate-200 sticky top-0 z-40 shadow-sm w-full print:hidden">
+			<header className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 sticky top-0 z-40 shadow-sm w-full print:hidden transition-colors">
 				<div className="w-full mx-auto px-4 py-3 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
 					<div className="flex items-center justify-between w-full lg:w-auto">
 						<div className="flex items-center gap-4">
 							<Link
 								href="/"
-								className="p-2 hover:bg-slate-100 rounded-lg text-slate-500 transition-colors">
+								className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-500 dark:text-slate-400 transition-colors">
 								<ChevronLeft size={24} />
 							</Link>
 							<div>
-								<h1 className="text-xl font-black text-blue-700 uppercase tracking-tight leading-none">
+								<h1 className="text-xl font-black text-blue-700 dark:text-blue-500 uppercase tracking-tight leading-none">
 									GERÊNCIA
 								</h1>
 							</div>
 						</div>
 
-						{/* Zoom Controls for Mobile */}
-						<div className="flex lg:hidden items-center bg-slate-50 p-1 rounded-xl border border-slate-200 shadow-sm">
-							<button
-								onClick={() => setUiScale((s) => Math.max(0.7, s - 0.1))}
-								className="cursor-pointer p-2 hover:bg-white hover:text-blue-600 rounded-lg text-slate-400 transition-all">
-								<ZoomOut size={18} />
-							</button>
-							<span className="text-[11px] font-black text-slate-600 w-12 text-center">
-								{Math.round(uiScale * 100)}%
-							</span>
-							<button
-								onClick={() => setUiScale((s) => Math.min(1.5, s + 0.1))}
-								className="cursor-pointer p-2 hover:bg-white hover:text-blue-600 rounded-lg text-slate-400 transition-all">
-								<ZoomIn size={18} />
-							</button>
+						{/* Zoom & Theme Controls for Mobile */}
+						<div className="flex lg:hidden items-center gap-2">
+							<ThemeToggle />
+							<div className="flex items-center bg-slate-50 dark:bg-slate-800 p-1 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
+								<button
+									onClick={() => setUiScale((s) => Math.max(0.7, s - 0.1))}
+									className="cursor-pointer p-2 hover:bg-white dark:hover:bg-slate-700 hover:text-blue-600 rounded-lg text-slate-400 transition-all">
+									<ZoomOut size={18} />
+								</button>
+								<span className="text-[11px] font-black text-slate-600 dark:text-slate-400 w-12 text-center">
+									{Math.round(uiScale * 100)}%
+								</span>
+								<button
+									onClick={() => setUiScale((s) => Math.min(1.5, s + 0.1))}
+									className="cursor-pointer p-2 hover:bg-white dark:hover:bg-slate-700 hover:text-blue-600 rounded-lg text-slate-400 transition-all">
+									<ZoomIn size={18} />
+								</button>
+							</div>
 						</div>
 					</div>
 
 					<div className="flex items-center justify-between lg:justify-end gap-4 w-full lg:w-auto">
-						{/* Zoom Controls for Desktop */}
-						<div className="hidden lg:flex items-center bg-slate-50 p-1 rounded-xl border border-slate-200 shadow-sm">
-							<button
-								onClick={() => setUiScale((s) => Math.max(0.7, s - 0.1))}
-								className="cursor-pointer p-2 hover:bg-white hover:text-blue-600 rounded-lg text-slate-400 transition-all">
-								<ZoomOut size={18} />
-							</button>
-							<span className="text-xs font-black text-slate-600 w-16 text-center">
-								{Math.round(uiScale * 100)}%
-							</span>
-							<button
-								onClick={() => setUiScale((s) => Math.min(1.5, s + 0.1))}
-								className="cursor-pointer p-2 hover:bg-white hover:text-blue-600 rounded-lg text-slate-400 transition-all">
-								<ZoomIn size={18} />
-							</button>
+						<div className="hidden lg:flex items-center gap-4">
+							<ThemeToggle />
+							{/* Zoom Controls for Desktop */}
+							<div className="flex items-center bg-slate-50 dark:bg-slate-800 p-1 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
+								<button
+									onClick={() => setUiScale((s) => Math.max(0.7, s - 0.1))}
+									className="cursor-pointer p-2 hover:bg-white dark:hover:bg-slate-700 hover:text-blue-600 rounded-lg text-slate-400 transition-all">
+									<ZoomOut size={18} />
+								</button>
+								<span className="text-xs font-black text-slate-600 dark:text-slate-400 w-16 text-center">
+									{Math.round(uiScale * 100)}%
+								</span>
+								<button
+									onClick={() => setUiScale((s) => Math.min(1.5, s + 0.1))}
+									className="cursor-pointer p-2 hover:bg-white dark:hover:bg-slate-700 hover:text-blue-600 rounded-lg text-slate-400 transition-all">
+									<ZoomIn size={18} />
+								</button>
+							</div>
 						</div>
 
-						<div className="flex bg-slate-100 p-1 rounded-xl w-full sm:w-auto">
+						<div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-xl w-full sm:w-auto">
 							{tabs.map((tab) => {
 								const Icon = tab.icon;
 								const isActive = pathname.startsWith(tab.href);
@@ -99,7 +106,7 @@ export default function GerenciaLayout({
 										key={tab.id}
 										href={tab.href}
 										className={`flex-1 sm:flex-none cursor-pointer px-2 sm:px-4 py-3 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-2 sm:gap-3 ${
-											isActive ? "bg-white text-blue-600 shadow-sm" : "text-slate-500"
+											isActive ? "bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-sm" : "text-slate-500 dark:text-slate-400"
 										}`}>
 										<Icon size={20} /> 
 										<span className="hidden sm:inline">{tab.label}</span>

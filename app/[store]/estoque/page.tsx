@@ -124,7 +124,7 @@ export default function StockPage({ params }: { params: Promise<{ store: string 
 
 	if (loading) {
 		return (
-			<div className="flex flex-col items-center justify-center py-20 text-slate-400">
+			<div className="flex flex-col items-center justify-center py-20 text-slate-400 dark:text-slate-600">
 				<RefreshCw className="animate-spin mb-4" size={32} />
 				<p>Carregando contagem...</p>
 			</div>
@@ -134,46 +134,46 @@ export default function StockPage({ params }: { params: Promise<{ store: string 
 	return (
 		<div className="space-y-6 w-full overflow-hidden">
 			{/* Sorting Navbar */}
-			<div className="bg-white p-2 rounded-xl border border-slate-200 shadow-sm flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
-				<span className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2 sm:ml-3">
+			<div className="bg-white dark:bg-slate-900 p-2 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 transition-colors">
+				<span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest ml-2 sm:ml-3">
 					Ordenar por:
 				</span>
 				<div
 					id="orderContainer"
-					className="flex bg-slate-100 p-1 rounded-lg gap-1 overflow-x-auto no-scrollbar">
+					className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-lg gap-1 overflow-x-auto no-scrollbar">
 					<button
 						onClick={() => setSortBy("default")}
-						className={`cursor-pointer px-3 py-1.5 rounded-md text-xs font-bold transition-all whitespace-nowrap ${sortBy === "default" ? "bg-white text-blue-600 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}>
+						className={`cursor-pointer px-3 py-1.5 rounded-md text-xs font-bold transition-all whitespace-nowrap ${sortBy === "default" ? "bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-sm" : "text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300"}`}>
 						Padrão
 					</button>
 					<button
 						onClick={() => setSortBy("name")}
-						className={`cursor-pointer px-3 py-1.5 rounded-md text-xs font-bold transition-all whitespace-nowrap ${sortBy === "name" ? "bg-white text-red-600 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}>
+						className={`cursor-pointer px-3 py-1.5 rounded-md text-xs font-bold transition-all whitespace-nowrap ${sortBy === "name" ? "bg-white dark:bg-slate-700 text-red-600 dark:text-red-400 shadow-sm" : "text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300"}`}>
 						Alfabética
 					</button>
 					<button
 						onClick={() => setSortBy("quantity")}
-						className={`cursor-pointer px-3 py-1.5 rounded-md text-xs font-bold transition-all whitespace-nowrap ${sortBy === "quantity" ? "bg-white text-red-600 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}>
+						className={`cursor-pointer px-3 py-1.5 rounded-md text-xs font-bold transition-all whitespace-nowrap ${sortBy === "quantity" ? "bg-white dark:bg-slate-700 text-red-600 dark:text-red-400 shadow-sm" : "text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300"}`}>
 						Quantidade
 					</button>
 				</div>
 			</div>
 
-			<div className="bg-white p-4 md:p-8 rounded-2xl shadow-sm border border-slate-200">
-				<div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8 pb-6 border-b border-slate-100">
+			<div className="bg-white dark:bg-slate-900 p-4 md:p-8 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 transition-colors">
+				<div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8 pb-6 border-b border-slate-100 dark:border-slate-800">
 					<div>
-						<h2 className="text-2xl font-black text-slate-800 tracking-tight">
+						<h2 className="text-2xl font-black text-slate-800 dark:text-slate-200 tracking-tight">
 							Contagem de Estoque
 						</h2>
-						<p className="text-sm text-slate-400 font-medium">
+						<p className="text-sm text-slate-400 dark:text-slate-500 font-medium">
 							Insira a quantidade de pacotes/unidades em estoque
 						</p>
 					</div>
-					<div className="bg-slate-50 px-4 py-2 rounded-xl border border-slate-100 text-center">
-						<span className="text-[10px] uppercase tracking-widest font-bold text-slate-400 block mb-1">
+					<div className="bg-slate-50 dark:bg-slate-800 px-4 py-2 rounded-xl border border-slate-100 dark:border-slate-700 text-center">
+						<span className="text-[10px] uppercase tracking-widest font-bold text-slate-400 dark:text-slate-500 block mb-1">
 							ÚLTIMA ATUALIZAÇÃO
 						</span>
-						<span className="text-sm font-bold text-blue-600">{formatDate(lastUpdate)}</span>
+						<span className="text-sm font-bold text-blue-600 dark:text-blue-400">{formatDate(lastUpdate)}</span>
 					</div>
 				</div>
 
@@ -182,9 +182,9 @@ export default function StockPage({ params }: { params: Promise<{ store: string 
 						{sortedItems.map(([key, label]) => (
 							<div
 								key={key}
-								className="flex items-center justify-between gap-3 p-4 bg-slate-50 rounded-2xl border border-transparent hover:border-red-200 hover:bg-white hover:shadow-md transition-all group">
+								className="flex items-center justify-between gap-3 p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl border border-transparent hover:border-red-200 dark:hover:border-red-900/50 hover:bg-white dark:hover:bg-slate-700 hover:shadow-md transition-all group">
 								<div className="flex flex-col gap-1.5 flex-1 min-w-0">
-									<label className="text-[14px] font-black text-slate-500 group-hover:text-red-700 transition-colors uppercase leading-tight truncate pr-2">
+									<label className="text-[14px] font-black text-slate-500 dark:text-slate-400 group-hover:text-red-700 dark:group-hover:text-red-400 transition-colors uppercase leading-tight truncate pr-2">
 										{label}
 									</label>
 									<label className="flex items-center gap-2 cursor-pointer w-fit">
@@ -197,9 +197,9 @@ export default function StockPage({ params }: { params: Promise<{ store: string 
 													handleInputChange(key, "0");
 												}
 											}}
-											className="w-4 h-4 rounded border-slate-300 text-red-600 focus:ring-red-500 cursor-pointer"
+											className="w-4 h-4 rounded border-slate-300 dark:border-slate-700 text-red-600 dark:text-red-500 focus:ring-red-500 cursor-pointer"
 										/>
-										<span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">
+										<span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider">
 											Menos de 1 (Aberto)
 										</span>
 									</label>
@@ -212,12 +212,12 @@ export default function StockPage({ params }: { params: Promise<{ store: string 
 										readOnly={isUnits[key]}
 										onChange={(e) => !isUnits[key] && handleInputChange(key, e.target.value)}
 										onFocus={(e) => !isUnits[key] && e.target.select()}
-										className={`w-20 px-3 py-2.5 bg-white border-2 border-slate-200 rounded-xl text-center font-black focus:outline-none focus:ring-4 focus:ring-red-50/50 focus:border-red-500 transition-all text-lg cursor-pointer ${
+										className={`w-20 px-3 py-2.5 bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-700 rounded-xl text-center font-black focus:outline-none focus:ring-4 focus:ring-red-50/50 focus:border-red-500 dark:focus:border-red-400 transition-all text-lg cursor-pointer ${
 											isUnits[key] 
-												? "text-orange-500" 
+												? "text-orange-500 dark:text-orange-400" 
 												: (stock[key] ?? 0) === 0
-													? "text-slate-400"
-													: "text-slate-900"
+													? "text-slate-400 dark:text-slate-600"
+													: "text-slate-900 dark:text-slate-100"
 										}`}
 										placeholder="0"
 										/>
@@ -232,9 +232,9 @@ export default function StockPage({ params }: { params: Promise<{ store: string 
 						))}
 					</div>
 
-					<div className="pt-6 border-t border-slate-100 flex items-center justify-between gap-4">
+					<div className="pt-6 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-4">
 						{message && message.type === "error" && (
-							<div className="flex items-center gap-2 text-sm font-semibold text-red-600">
+							<div className="flex items-center gap-2 text-sm font-semibold text-red-600 dark:text-red-400">
 								<AlertCircle size={18} />
 								{message.text}
 							</div>
@@ -243,7 +243,7 @@ export default function StockPage({ params }: { params: Promise<{ store: string 
 						<button
 							type="submit"
 							disabled={saving}
-							className="cursor-pointer ml-auto flex items-center gap-2 bg-green-700 hover:bg-green-800 text-white px-8 py-4 rounded-2xl font-black shadow-lg shadow-red-100 transition-all disabled:opacity-50 disabled:cursor-not-allowed">
+							className="cursor-pointer ml-auto flex items-center gap-2 bg-green-700 hover:bg-green-800 text-white px-8 py-4 rounded-2xl font-black shadow-lg shadow-red-100 dark:shadow-none transition-all disabled:opacity-50 disabled:cursor-not-allowed">
 							{saving ? (
 								<RefreshCw className="animate-spin" size={20} />
 							) : message?.type === "success" ? (

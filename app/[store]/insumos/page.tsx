@@ -373,7 +373,7 @@ export default function SuppliesPage({ params }: { params: Promise<{ store: stri
 
 	if (loading) {
 		return (
-			<div className="flex flex-col items-center justify-center py-20 text-slate-400">
+			<div className="flex flex-col items-center justify-center py-20 text-slate-400 dark:text-slate-600">
 				<RefreshCw className="animate-spin mb-4" size={32} />
 				<p>Carregando insumos...</p>
 			</div>
@@ -383,14 +383,14 @@ export default function SuppliesPage({ params }: { params: Promise<{ store: stri
 	return (
 		<div className="space-y-10">
 			{/* Add New Section */}
-			<section className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
-				<h2 className="text-xl font-bold text-slate-800 mb-6 flex items-center gap-2">
-					<Plus className="text-green-600" size={24} />
+			<section className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 transition-colors">
+				<h2 className="text-xl font-bold text-slate-800 dark:text-slate-200 mb-6 flex items-center gap-2">
+					<Plus className="text-green-600 dark:text-green-500" size={24} />
 					Solicitar Novo Insumo
 				</h2>
 				<form onSubmit={handleAddOrder} className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
 					<div className="space-y-1 md:col-span-1 relative">
-						<label className="text-xs font-bold text-slate-400 uppercase ml-1">Insumo</label>
+						<label className="text-xs font-bold text-slate-400 dark:text-slate-500 ml-1">Insumo</label>
 						<div className="relative">
 							<input
 								id="listaInsumos"
@@ -405,19 +405,19 @@ export default function SuppliesPage({ params }: { params: Promise<{ store: stri
 									setIsDropdownOpen(true);
 								}}
 								autoComplete="off"
-								className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500 transition-all text-slate-800 font-bold placeholder:font-medium uppercase"
+								className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500 transition-all text-slate-800 dark:text-slate-200 font-bold placeholder:font-medium uppercase"
 							/>
-							<div className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none">
+							<div className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-300 dark:text-slate-600 pointer-events-none">
 								<ChevronDown size={18} />
 							</div>
 
 							{/* Dropdown Results */}
 							{isDropdownOpen && (
-								<div className="absolute z-50 w-full mt-2 max-h-[300px] overflow-y-auto bg-white border border-slate-200 rounded-2xl shadow-2xl animate-in fade-in zoom-in-95 duration-200">
+								<div className="absolute z-50 w-full mt-2 max-h-[300px] overflow-y-auto bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl animate-in fade-in zoom-in-95 duration-200">
 									{filteredInventory.length > 0
 										? filteredInventory.map((category) => (
 												<div key={category.category}>
-													<div className="px-4 py-2 bg-slate-50 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] border-y border-slate-100 first:border-t-0">
+													<div className="px-4 py-2 bg-slate-50 dark:bg-slate-800 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] border-y border-slate-100 dark:border-slate-800 first:border-t-0">
 														{category.category}
 													</div>
 													{category.items.map((item) => (
@@ -428,7 +428,7 @@ export default function SuppliesPage({ params }: { params: Promise<{ store: stri
 																setNewName(item);
 																setIsDropdownOpen(false);
 															}}
-															className="px-4 py-3 hover:bg-red-50 hover:text-red-600 cursor-pointer text-sm font-bold text-slate-700 transition-colors flex items-center justify-between group">
+															className="px-4 py-3 hover:bg-red-50 dark:hover:bg-red-900/30 hover:text-red-600 dark:hover:text-red-400 cursor-pointer text-sm font-bold text-slate-700 dark:text-slate-300 transition-colors flex items-center justify-between group">
 															{item}
 															<Plus
 																size={14}
@@ -440,10 +440,10 @@ export default function SuppliesPage({ params }: { params: Promise<{ store: stri
 											))
 										: newName.trim() !== "" && (
 												<div className="px-4 py-4 text-center">
-													<p className="text-xs font-bold text-slate-400 uppercase">
+													<p className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase">
 														Pressione Adicionar para:
 													</p>
-													<p className="text-sm font-black text-red-600 mt-1">"{newName}"</p>
+													<p className="text-sm font-black text-red-600 dark:text-red-400 mt-1">"{newName}"</p>
 												</div>
 											)}
 								</div>
@@ -451,11 +451,11 @@ export default function SuppliesPage({ params }: { params: Promise<{ store: stri
 						</div>
 					</div>
 					<div className="space-y-1">
-						<label className="text-xs font-bold text-slate-400 uppercase ml-1">Urgência</label>
+						<label className="text-xs font-bold text-slate-400 dark:text-slate-500 ml-1">Urgência</label>
 						<select
 							value={newUrgency}
 							onChange={(e) => setNewUrgency(e.target.value as UrgencyLevel)}
-							className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500 transition-all text-slate-800 font-medium appearance-none cursor-pointer">
+							className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500 transition-all text-slate-800 dark:text-slate-200 font-medium appearance-none cursor-pointer">
 							<option value="Urgente">🚨 Urgente</option>
 							<option value="Acabando">⚠️ Acabando</option>
 							<option value="Adiantando">⏳ Adiantando</option>
@@ -464,7 +464,7 @@ export default function SuppliesPage({ params }: { params: Promise<{ store: stri
 					<button
 						type="submit"
 						disabled={adding}
-						className="cursor-pointer bg-green-600 hover:bg-green-700 text-white font-bold h-[50px] rounded-xl shadow-md shadow-red-100 transition-all flex items-center justify-center gap-2 disabled:opacity-50">
+						className="cursor-pointer bg-green-600 hover:bg-green-700 text-white font-bold h-[50px] rounded-xl shadow-md shadow-red-100 dark:shadow-none transition-all flex items-center justify-center gap-2 disabled:opacity-50">
 						{adding ? <RefreshCw className="animate-spin" size={20} /> : <Plus size={20} />}
 						Adicionar
 					</button>
@@ -473,27 +473,27 @@ export default function SuppliesPage({ params }: { params: Promise<{ store: stri
 
 			{/* Pending List */}
 			<section className="space-y-4">
-				<h3 className="text-lg font-bold text-slate-700 flex items-center gap-2 ml-1">
-					<Package className="text-slate-400" size={20} />
+				<h3 className="text-lg font-bold text-slate-700 dark:text-slate-300 flex items-center gap-2 ml-1">
+					<Package className="text-slate-400 dark:text-slate-600" size={20} />
 					Insumos Pendentes ({pendingOrders.length})
 				</h3>
 				{pendingOrders.length === 0 ? (
-					<div className="bg-slate-100/50 border-2 border-dashed border-slate-200 rounded-2xl p-10 text-center">
-						<p className="text-slate-400 font-medium">Nenhum insumo pendente no momento.</p>
+					<div className="bg-slate-100/50 dark:bg-slate-800/50 border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-2xl p-10 text-center">
+						<p className="text-slate-400 dark:text-slate-500 font-medium">Nenhum insumo pendente no momento.</p>
 					</div>
 				) : (
 					<div className="grid gap-3">
 						{pendingOrders.map((order) => (
 							<div
 								key={order.id}
-								className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4 group hover:border-red-200 transition-all">
+								className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4 group hover:border-red-200 dark:hover:border-red-900/50 transition-all">
 								<div className="flex-1 min-w-0">
 									<div className="flex flex-wrap items-center gap-2 mb-2">
-										<span className="text-lg font-black text-slate-800 truncate">{order.name}</span>
+										<span className="text-lg font-black text-slate-800 dark:text-slate-200 truncate">{order.name}</span>
 										<div className="shrink-0">{getUrgencyBadge(order.urgency)}</div>
 									</div>
 									<div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-										<span className="flex items-center gap-1.5 text-[11px] text-slate-400 font-bold uppercase tracking-wider">
+										<span className="flex items-center gap-1.5 text-[11px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-wider">
 											<Calendar size={14} />
 											{formatDate(order.createdAt?.toDate())}
 										</span>
@@ -502,19 +502,19 @@ export default function SuppliesPage({ params }: { params: Promise<{ store: stri
 								<div className="flex items-center gap-2 shrink-0 sm:w-auto w-full">
 									<button
 										onClick={() => setEditingOrder({ id: order.id, urgency: order.urgency })}
-										className="flex items-center justify-center p-2.5 bg-slate-50 text-slate-400 hover:bg-blue-50 hover:text-blue-600 rounded-xl transition-all border border-slate-100 cursor-pointer"
+										className="flex items-center justify-center p-2.5 bg-slate-50 dark:bg-slate-800 text-slate-400 dark:text-slate-500 hover:bg-blue-50 dark:hover:bg-blue-900/30 hover:text-blue-600 dark:hover:text-blue-400 rounded-xl transition-all border border-slate-100 dark:border-slate-700 cursor-pointer"
 										title="Editar urgência">
 										<Edit2 size={18} />
 									</button>
 									<button
 										onClick={() => setOrderToCancel(order.id)}
-										className="flex items-center justify-center p-2.5 bg-slate-50 text-slate-400 hover:bg-red-50 hover:text-red-600 rounded-xl transition-all border border-slate-100 cursor-pointer"
+										className="flex items-center justify-center p-2.5 bg-slate-50 dark:bg-slate-800 text-slate-400 dark:text-slate-500 hover:bg-red-50 dark:hover:bg-red-900/30 hover:text-red-600 dark:hover:text-red-400 rounded-xl transition-all border border-slate-100 dark:border-slate-700 cursor-pointer"
 										title="Cancelar pedido">
 										<Trash2 size={18} />
 									</button>
 									<button
 										onClick={() => handleMarkAsDelivered(order.id)}
-										className="flex-1 flex items-center justify-center gap-2 bg-emerald-50 text-emerald-600 hover:bg-emerald-600 hover:text-white px-4 py-2.5 rounded-xl font-black text-xs transition-all border border-emerald-100 cursor-pointer active:scale-95 shadow-sm active:shadow-none">
+										className="flex-1 flex items-center justify-center gap-2 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-600 hover:text-white px-4 py-2.5 rounded-xl font-black text-xs transition-all border border-emerald-100 dark:border-emerald-800/50 cursor-pointer active:scale-95 shadow-sm active:shadow-none">
 										<CheckCircle2 size={16} />
 										Entregue
 									</button>
@@ -526,54 +526,54 @@ export default function SuppliesPage({ params }: { params: Promise<{ store: stri
 			</section>
 
 			{/* Delivered List (Last 14 days) */}
-			<section className="space-y-4 pt-6 border-t border-slate-200">
+			<section className="space-y-4 pt-6 border-t border-slate-200 dark:border-slate-800">
 				<button
 					onClick={() => setShowDelivered(!showDelivered)}
-					className="w-full flex items-center justify-between p-2 hover:bg-slate-100 rounded-xl transition-all cursor-pointer group">
-					<h3 className="text-lg font-bold text-slate-500 flex items-center gap-2">
+					className="w-full flex items-center justify-between p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-all cursor-pointer group">
+					<h3 className="text-lg font-bold text-slate-500 dark:text-slate-400 flex items-center gap-2">
 						<CheckCircle2
-							className={`${showDelivered ? "text-emerald-500" : "text-slate-300"}`}
+							className={`${showDelivered ? "text-emerald-500" : "text-slate-300 dark:text-slate-700"}`}
 							size={20}
 						/>
 						({deliveredOrders.length}) Insumos Entregues (Últimas 2 Semanas)
 					</h3>
-					<span className="text-slate-400 font-bold text-xs uppercase tracking-widest group-hover:text-slate-600">
+					<span className="text-slate-400 dark:text-slate-500 font-bold text-xs uppercase tracking-widest group-hover:text-slate-600 dark:group-hover:text-slate-300">
 						{showDelivered ? "Esconder" : "Mostrar"}
 					</span>
 				</button>
 
 				{showDelivered && (
-					<div className="grid grid-cols-1 md:grid-cols-2 gap-3 opacity-60 animate-in fade-in slide-in-from-top-2 duration-300">
+					<div className="grid grid-cols-1 md:grid-cols-2 gap-3 opacity-60 dark:opacity-70 animate-in fade-in slide-in-from-top-2 duration-300">
 						{deliveredOrders.map((order) => (
 							<div
 								key={order.id}
 								className={`p-3 rounded-lg border flex items-center justify-between ${
 									order.status === "cancelled"
-										? "bg-red-50 border-red-100 opacity-80"
-										: "bg-slate-50 border-slate-200"
+										? "bg-red-50 dark:bg-red-900/20 border-red-100 dark:border-red-900/30 opacity-80"
+										: "bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700"
 								}`}>
 								<div>
 									<p
 										className={`text-md font-bold ${
 											order.status === "cancelled"
-												? "text-red-700"
-												: "text-slate-700 line-through decoration-slate-400"
+												? "text-red-700 dark:text-red-400"
+												: "text-slate-700 dark:text-slate-300 line-through decoration-slate-400 dark:decoration-slate-600"
 										}`}>
 										{order.name}
 										{order.status === "cancelled" && " (CANCELADO)"}
 									</p>
-									<p className="text-[12px] text-slate-400 font-bold uppercase">
+									<p className="text-[12px] text-slate-400 dark:text-slate-500 font-bold uppercase">
 										{order.status === "cancelled" ? "Cancelado em: " : "Entregue em: "}
 										{formatDate(order.deliveredAt?.toDate())}
 									</p>
 								</div>
-								<div className={order.status === "cancelled" ? "text-red-500" : "text-emerald-600"}>
+								<div className={order.status === "cancelled" ? "text-red-500 dark:text-red-400" : "text-emerald-600 dark:text-emerald-400"}>
 									{order.status === "cancelled" ? <Trash2 size={16} /> : <CheckCircle2 size={16} />}
 								</div>
 							</div>
 						))}
 						{deliveredOrders.length === 0 && (
-							<p className="text-sm text-slate-400 italic ml-1 py-4">
+							<p className="text-sm text-slate-400 dark:text-slate-500 italic ml-1 py-4">
 								Nenhuma entrega recente para exibir nas últimas 2 semanas.
 							</p>
 						)}
@@ -584,26 +584,26 @@ export default function SuppliesPage({ params }: { params: Promise<{ store: stri
 			{/* Cancellation Modal */}
 			{orderToCancel && (
 				<div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
-					<div className="bg-white rounded-3xl p-8 max-w-sm w-full shadow-2xl animate-in zoom-in-95 duration-200">
-						<div className="bg-red-50 text-red-600 w-16 h-16 rounded-2xl flex items-center justify-center mb-6 mx-auto">
+					<div className="bg-white dark:bg-slate-900 rounded-3xl p-8 max-w-sm w-full shadow-2xl animate-in zoom-in-95 duration-200 border border-slate-200 dark:border-slate-800">
+						<div className="bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 w-16 h-16 rounded-2xl flex items-center justify-center mb-6 mx-auto">
 							<AlertTriangle size={32} />
 						</div>
-						<h3 className="text-xl font-black text-slate-800 text-center mb-2">
+						<h3 className="text-xl font-black text-slate-800 dark:text-slate-200 text-center mb-2">
 							Confirmar Cancelamento
 						</h3>
-						<p className="text-slate-500 text-center font-medium mb-8">
+						<p className="text-slate-500 dark:text-slate-400 text-center font-medium mb-8">
 							Tem certeza que deseja cancelar este pedido de insumo? Ele será movido para o
 							histórico como cancelado.
 						</p>
 						<div className="flex flex-col gap-3">
 							<button
 								onClick={handleCancelOrder}
-								className="cursor-pointer w-full bg-red-600 hover:bg-red-700 text-white font-black py-4 rounded-2xl transition-all shadow-lg shadow-red-100">
+								className="cursor-pointer w-full bg-red-600 hover:bg-red-700 text-white font-black py-4 rounded-2xl transition-all shadow-lg shadow-red-100 dark:shadow-none">
 								Sim, cancelar pedido
 							</button>
 							<button
 								onClick={() => setOrderToCancel(null)}
-								className="cursor-pointer w-full bg-slate-100 hover:bg-slate-200 text-slate-600 font-black py-4 rounded-2xl transition-all">
+								className="cursor-pointer w-full bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-400 font-black py-4 rounded-2xl transition-all">
 								Não, manter pedido
 							</button>
 						</div>
@@ -614,12 +614,12 @@ export default function SuppliesPage({ params }: { params: Promise<{ store: stri
 			{/* Edit Urgency Modal */}
 			{editingOrder && (
 				<div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
-					<div className="bg-white rounded-3xl p-8 max-w-sm w-full shadow-2xl animate-in zoom-in-95 duration-200">
-						<div className="bg-blue-50 text-blue-600 w-16 h-16 rounded-2xl flex items-center justify-center mb-6 mx-auto">
+					<div className="bg-white dark:bg-slate-900 rounded-3xl p-8 max-w-sm w-full shadow-2xl animate-in zoom-in-95 duration-200 border border-slate-200 dark:border-slate-800">
+						<div className="bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 w-16 h-16 rounded-2xl flex items-center justify-center mb-6 mx-auto">
 							<Edit2 size={32} />
 						</div>
-						<h3 className="text-xl font-black text-slate-800 text-center mb-2">Editar Urgência</h3>
-						<p className="text-slate-500 text-center font-medium mb-6">
+						<h3 className="text-xl font-black text-slate-800 dark:text-slate-200 text-center mb-2">Editar Urgência</h3>
+						<p className="text-slate-500 dark:text-slate-400 text-center font-medium mb-6">
 							Selecione o novo nível de urgência para este insumo.
 						</p>
 
@@ -630,8 +630,8 @@ export default function SuppliesPage({ params }: { params: Promise<{ store: stri
 									onClick={() => setEditingOrder({ ...editingOrder, urgency: u })}
 									className={`w-full p-4 rounded-2xl font-bold text-left transition-all border-2 ${
 										editingOrder.urgency === u
-											? "border-blue-600 bg-blue-50 text-blue-700"
-											: "border-slate-100 bg-slate-50 text-slate-500 hover:border-slate-200"
+											? "border-blue-600 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400"
+											: "border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:border-slate-200 dark:hover:border-slate-600"
 									}`}>
 									{u === "Urgente"
 										? "🚨 Urgente"
@@ -645,12 +645,12 @@ export default function SuppliesPage({ params }: { params: Promise<{ store: stri
 						<div className="flex flex-col gap-3">
 							<button
 								onClick={handleUpdateUrgency}
-								className="cursor-pointer w-full bg-blue-600 hover:bg-blue-700 text-white font-black py-4 rounded-2xl transition-all shadow-lg shadow-blue-100">
+								className="cursor-pointer w-full bg-blue-600 hover:bg-blue-700 text-white font-black py-4 rounded-2xl transition-all shadow-lg shadow-blue-100 dark:shadow-none">
 								Salvar Alteração
 							</button>
 							<button
 								onClick={() => setEditingOrder(null)}
-								className="cursor-pointer w-full bg-slate-100 hover:bg-slate-200 text-slate-600 font-black py-4 rounded-2xl transition-all">
+								className="cursor-pointer w-full bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-400 font-black py-4 rounded-2xl transition-all">
 								Cancelar
 							</button>
 						</div>

@@ -64,8 +64,8 @@ export default function EstoqueAtualPage() {
 	if (loading) {
 		return (
 			<div className="flex flex-col items-center justify-center p-12">
-				<RefreshCw className="animate-spin text-blue-600 mb-4" size={48} />
-				<p className="text-slate-500 font-bold">Carregando estoque...</p>
+				<RefreshCw className="animate-spin text-blue-600 dark:text-blue-400 mb-4" size={48} />
+				<p className="text-slate-500 dark:text-slate-400 font-bold">Carregando estoque...</p>
 			</div>
 		);
 	}
@@ -125,24 +125,24 @@ export default function EstoqueAtualPage() {
 			` }} />
 
 			<div className="hidden print:block mb-6">
-				<h1 className="text-2xl font-black text-blue-700 uppercase">Estoque Atual - {new Date().toLocaleDateString('pt-BR')}</h1>
+				<h1 className="text-2xl font-black text-blue-700 dark:text-blue-500 uppercase">Estoque Atual - {new Date().toLocaleDateString('pt-BR')}</h1>
 			</div>
 
 			{/* Actions Bar: Sorting & Print */}
 			<div className="flex items-center justify-between gap-4 print:hidden">
-				<div className="bg-white p-3 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-4 w-fit">
-					<span className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-2">
+				<div className="bg-white dark:bg-slate-900 p-3 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex items-center gap-4 w-fit transition-colors">
+					<span className="text-[11px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest ml-2">
 						Itens:
 					</span>
-					<div className="flex bg-slate-100 p-1 rounded-xl gap-1">
+					<div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-xl gap-1">
 						<button
 							onClick={() => setTableSort("default")}
-							className={`cursor-pointer px-4 py-2 rounded-lg text-xs font-black transition-all ${tableSort === "default" ? "bg-white text-blue-600 shadow-sm" : "text-slate-500"}`}>
+							className={`cursor-pointer px-4 py-2 rounded-lg text-xs font-black transition-all ${tableSort === "default" ? "bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-sm" : "text-slate-500 dark:text-slate-400"}`}>
 							Padrão
 						</button>
 						<button
 							onClick={() => setTableSort("name")}
-							className={`cursor-pointer px-4 py-2 rounded-lg text-xs font-black transition-all ${tableSort === "name" ? "bg-white text-blue-600 shadow-sm" : "text-slate-500"}`}>
+							className={`cursor-pointer px-4 py-2 rounded-lg text-xs font-black transition-all ${tableSort === "name" ? "bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-sm" : "text-slate-500 dark:text-slate-400"}`}>
 							A-Z
 						</button>
 					</div>
@@ -150,23 +150,23 @@ export default function EstoqueAtualPage() {
 
 				<button
 					onClick={() => window.print()}
-					className="flex items-center gap-3 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-2xl font-black shadow-lg shadow-blue-100 transition-all cursor-pointer">
+					className="flex items-center gap-3 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-2xl font-black shadow-lg shadow-blue-100 dark:shadow-none transition-all cursor-pointer">
 					<Printer size={20} />
 					IMPRIMIR TABELA
 				</button>
 			</div>
 
-			<div className="bg-white rounded-[32px] border border-slate-200 shadow-sm overflow-hidden">
+			<div className="bg-white dark:bg-slate-900 rounded-[32px] border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden transition-colors">
 				<div className="overflow-x-auto">
 					<table className="w-full border-collapse">
 						<thead>
-							<tr className="bg-slate-50 border-b border-slate-200">
-								<th className="p-6 text-left text-[15px] font-black text-slate-400 uppercase tracking-widest sticky left-0 bg-slate-50 z-20 min-w-[180px]">
+							<tr className="bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700">
+								<th className="p-6 text-left text-[15px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest sticky left-0 bg-slate-50 dark:bg-slate-800 z-20 min-w-[180px]">
 									<div className="flex items-center gap-9">
 										ITEM
 										<button
 											onClick={rotateStores}
-											className="cursor-pointer p-2 bg-blue-50 text-blue-600 rounded-xl hover:bg-blue-600 hover:text-white transition-all shadow-sm print:hidden"
+											className="cursor-pointer p-2 bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-xl hover:bg-blue-600 dark:hover:bg-blue-500 hover:text-white transition-all shadow-sm print:hidden"
 											title="Mover primeira loja para o final">
 											<ArrowLeftRight size={16} />
 										</button>
@@ -175,10 +175,10 @@ export default function EstoqueAtualPage() {
 								{allData.map((store) => (
 									<th
 										key={store.id}
-										className="p-6 text-center text-[11px] font-black text-blue-600 uppercase tracking-widest border-l border-slate-200 min-w-[140px]">
+										className="p-6 text-center text-[11px] font-black text-blue-600 dark:text-blue-400 uppercase tracking-widest border-l border-slate-200 dark:border-slate-700 min-w-[140px]">
 										<div className="flex flex-col items-center gap-2">
 											<span className="leading-tight text-lg">{store.name}</span>
-											<span className="text-[13px] font-extrabold text-slate-600 bg-white px-3 py-1 rounded-full border border-slate-100 whitespace-nowrap">
+											<span className="text-[13px] font-extrabold text-slate-600 dark:text-slate-400 bg-white dark:bg-slate-900 px-3 py-1 rounded-full border border-slate-100 dark:border-slate-700 whitespace-nowrap">
 												{formatDate(store.lastStockUpdate)}
 											</span>
 										</div>
@@ -193,8 +193,8 @@ export default function EstoqueAtualPage() {
 									return (
 										<tr
 											key={key}
-											className="border-b border-slate-100 hover:bg-blue-50/30 transition-colors group">
-											<td className="p-6 text-sm font-black text-slate-600 uppercase sticky left-0 bg-white group-hover:bg-blue-50/30 z-10 border-r border-slate-50">
+											className="border-b border-slate-100 dark:border-slate-800 hover:bg-blue-50/30 dark:hover:bg-blue-900/20 transition-colors group">
+											<td className="p-6 text-sm font-black text-slate-600 dark:text-slate-400 uppercase sticky left-0 bg-white dark:bg-slate-900 group-hover:bg-blue-50/30 dark:group-hover:bg-blue-900/20 z-10 border-r border-slate-50 dark:border-slate-800 transition-colors">
 												{label}
 											</td>
 											{allData.map((store) => {
@@ -203,15 +203,15 @@ export default function EstoqueAtualPage() {
 												return (
 													<td
 														key={store.id}
-														className="p-6 text-center border-l border-slate-100">
+														className="p-6 text-center border-l border-slate-100 dark:border-slate-800">
 														<div className="flex flex-col items-center">
 															<span
 																className={`text-2xl font-black ${
 																	isUnit
-																		? "text-orange-500" 
+																		? "text-orange-500 dark:text-orange-400" 
 																		: value === 0
-																			? "text-slate-400" 
-																			: "text-slate-900"
+																			? "text-slate-400 dark:text-slate-600" 
+																			: "text-slate-900 dark:text-slate-100"
 																}`}>
 																{isUnit ? "< 1" : value}
 															</span>
