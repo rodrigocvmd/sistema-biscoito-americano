@@ -242,14 +242,14 @@ export default function SuppliesPage({ params }: { params: Promise<{ store: stri
 			orderBy("createdAt", "desc"),
 		);
 
-		// Query for Delivered or Cancelled (last 14 days)
-		const fourteenDaysAgo = new Date();
-		fourteenDaysAgo.setDate(fourteenDaysAgo.getDate() - 14);
+		// Query for Delivered or Cancelled (last 28 days / 4 weeks)
+		const twentyEightDaysAgo = new Date();
+		twentyEightDaysAgo.setDate(twentyEightDaysAgo.getDate() - 28);
 
 		const qDelivered = query(
 			ordersRef,
 			where("status", "in", ["delivered", "cancelled"]),
-			where("deliveredAt", ">=", Timestamp.fromDate(fourteenDaysAgo)),
+			where("deliveredAt", ">=", Timestamp.fromDate(twentyEightDaysAgo)),
 			orderBy("deliveredAt", "desc"),
 		);
 
@@ -525,7 +525,7 @@ export default function SuppliesPage({ params }: { params: Promise<{ store: stri
 				)}
 			</section>
 
-			{/* Delivered List (Last 14 days) */}
+			{/* Delivered List (Last 4 weeks) */}
 			<section className="space-y-4 pt-6 border-t border-slate-200 dark:border-slate-800">
 				<button
 					onClick={() => setShowDelivered(!showDelivered)}
@@ -535,7 +535,7 @@ export default function SuppliesPage({ params }: { params: Promise<{ store: stri
 							className={`${showDelivered ? "text-emerald-500" : "text-slate-300 dark:text-slate-700"}`}
 							size={20}
 						/>
-						({deliveredOrders.length}) Insumos Entregues (Últimas 2 Semanas)
+						({deliveredOrders.length}) Insumos Finalizados (Últimas 4 Semanas)
 					</h3>
 					<span className="text-slate-400 dark:text-slate-500 font-bold text-xs uppercase tracking-widest group-hover:text-slate-600 dark:group-hover:text-slate-300">
 						{showDelivered ? "Esconder" : "Mostrar"}
@@ -574,7 +574,7 @@ export default function SuppliesPage({ params }: { params: Promise<{ store: stri
 						))}
 						{deliveredOrders.length === 0 && (
 							<p className="text-sm text-slate-400 dark:text-slate-500 italic ml-1 py-4">
-								Nenhuma entrega recente para exibir nas últimas 2 semanas.
+								Nenhuma entrega recente para exibir nas últimas 4 semanas.
 							</p>
 						)}
 					</div>

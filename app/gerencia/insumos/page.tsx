@@ -10,6 +10,8 @@ import {
 	doc,
 	updateDoc,
 	collectionGroup,
+	Timestamp,
+	orderBy,
 } from "firebase/firestore";
 import { STOCK_LABELS, StoreId, STORE_NAMES, SupplyOrder, formatDate } from "@/types";
 import {
@@ -22,12 +24,15 @@ import {
 	AlertCircle,
 	Hourglass,
 	Package,
+	CheckCircle2,
+	Trash2,
 } from "lucide-react";
 
 interface FullStoreData {
 	id: StoreId;
 	name: string;
 	pendingOrders: SupplyOrder[];
+	historicalOrders: SupplyOrder[];
 	activeCount: number;
 }
 
@@ -37,10 +42,18 @@ export default function InsumosPage() {
 	const [expandedStores, setExpandedStores] = useState<Record<string, boolean>>({
 		conjunto: true,
 	});
+	const [showHistory, setShowHistory] = useState<Record<string, boolean>>({});
 	const [insumosSort, setInsumosSort] = useState<"default" | "urgency" | "date">("urgency");
 
 	const toggleStore = (storeId: string) => {
 		setExpandedStores((prev) => ({
+			...prev,
+			[storeId]: !prev[storeId],
+		}));
+	};
+
+	const toggleHistory = (storeId: string) => {
+		setShowHistory((prev) => ({
 			...prev,
 			[storeId]: !prev[storeId],
 		}));
@@ -70,33 +83,71 @@ export default function InsumosPage() {
 	useEffect(() => {
 		const storeIds = Object.keys(STORE_NAMES) as StoreId[];
 
-		const ordersQuery = query(
+		// Query for Pending - CollectionGroup is fine for single field
+		const pendingQuery = query(
 			collectionGroup(db, "supplyOrders"),
 			where("status", "==", "pending"),
 		);
 
-		const unsubscribeOrders = onSnapshot(ordersQuery, (ordersSnapshot) => {
-			const allOrders = ordersSnapshot.docs.map((doc) => ({
-				id: doc.id,
-				storeId: doc.ref.parent.parent?.id,
-				...doc.data(),
-			})) as (SupplyOrder & { storeId: string })[];
+		const fourWeeksAgo = new Date();
+		fourWeeksAgo.setDate(fourWeeksAgo.getDate() - 28);
 
+		const storePendingData: Record<string, SupplyOrder[]> = {};
+		const storeHistoryData: Record<string, SupplyOrder[]> = {};
+
+		const updateAllData = () => {
 			const newFullData = storeIds.map((id) => {
-				const storeOrders = allOrders.filter((o) => o.storeId === id);
+				const sPending = storePendingData[id] || [];
+				const sHistory = storeHistoryData[id] || [];
 				return {
 					id,
 					name: STORE_NAMES[id],
-					pendingOrders: storeOrders,
-					activeCount: storeOrders.filter((o) => !o.checkedByGerencia).length,
+					pendingOrders: sPending,
+					historicalOrders: sHistory,
+					activeCount: sPending.filter((o) => !o.checkedByGerencia).length,
 				};
 			});
-
 			setAllData(newFullData);
 			setLoading(false);
+		};
+
+		// 1. Pending Listener (Global)
+		const unsubscribePending = onSnapshot(pendingQuery, (snapshot) => {
+			// Clear current pending data to re-fill
+			storeIds.forEach(id => storePendingData[id] = []);
+			
+			snapshot.docs.forEach((doc) => {
+				const storeId = doc.ref.parent.parent?.id;
+				if (storeId && storePendingData[storeId]) {
+					storePendingData[storeId].push({ id: doc.id, ...doc.data() } as SupplyOrder);
+				}
+			});
+			updateAllData();
+		}, (error) => console.error("Error fetching pending orders:", error));
+
+		// 2. History Listeners (Per Store - for exact parity)
+		const historyUnsubs = storeIds.map((id) => {
+			const historyRef = collection(db, "stores", id, "supplyOrders");
+			const qHistory = query(
+				historyRef,
+				where("status", "in", ["delivered", "cancelled"]),
+				where("deliveredAt", ">=", Timestamp.fromDate(fourWeeksAgo)),
+				orderBy("deliveredAt", "desc")
+			);
+
+			return onSnapshot(qHistory, (snapshot) => {
+				storeHistoryData[id] = snapshot.docs.map(doc => ({
+					id: doc.id,
+					...doc.data()
+				})) as SupplyOrder[];
+				updateAllData();
+			}, (error) => console.error(`Error fetching history for store ${id}:`, error));
 		});
 
-		return () => unsubscribeOrders();
+		return () => {
+			unsubscribePending();
+			historyUnsubs.forEach(unsub => unsub());
+		};
 	}, []);
 
 	if (loading) {
@@ -262,6 +313,66 @@ export default function InsumosPage() {
 									</p>
 								</div>
 							)}
+
+							{/* History Toggle Section */}
+							<div className="mt-8 pt-6 border-t border-slate-50 dark:border-slate-800">
+								<button
+									onClick={() => toggleHistory(store.id)}
+									className="w-full flex items-center justify-between p-4 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-2xl transition-all cursor-pointer group">
+									<h4 className="text-lg font-bold text-slate-500 dark:text-slate-400 flex items-center gap-2">
+										<CheckCircle2
+											className={`${showHistory[store.id] ? "text-emerald-500" : "text-slate-300 dark:text-slate-700"}`}
+											size={20}
+										/>
+										({store.historicalOrders.length}) Insumos Finalizados (Últimas 4 Semanas)
+									</h4>
+									<span className="text-slate-400 dark:text-slate-500 font-bold text-xs uppercase tracking-widest group-hover:text-slate-600 dark:group-hover:text-slate-300 transition-colors">
+										{showHistory[store.id] ? "Esconder" : "Mostrar"}
+									</span>
+								</button>
+
+								{showHistory[store.id] && (
+									<div className="mt-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 opacity-70 dark:opacity-80 animate-in fade-in slide-in-from-top-2 duration-300">
+										{store.historicalOrders
+											.sort((a, b) => (b.deliveredAt?.toMillis() || 0) - (a.deliveredAt?.toMillis() || 0))
+											.map((order) => (
+											<div
+												key={order.id}
+												className={`p-4 rounded-2xl border flex items-center justify-between transition-all ${
+													order.status === "cancelled"
+														? "bg-red-50/50 dark:bg-red-900/10 border-red-100 dark:border-red-900/30"
+														: "bg-slate-50 dark:bg-slate-800/50 border-slate-100 dark:border-slate-700"
+												}`}>
+												<div className="min-w-0 flex-1">
+													<p
+														className={`text-sm font-bold truncate ${
+															order.status === "cancelled"
+																? "text-red-700 dark:text-red-400"
+																: "text-slate-700 dark:text-slate-300 line-through decoration-slate-400 dark:decoration-slate-600"
+														}`}>
+														{order.name}
+														{order.status === "cancelled" && " (CANCELADO)"}
+													</p>
+													<p className="text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase mt-1">
+														{order.status === "cancelled" ? "Cancelado em: " : "Entregue em: "}
+														{formatDate(order.deliveredAt?.toDate())}
+													</p>
+												</div>
+												<div className={`ml-3 shrink-0 ${order.status === "cancelled" ? "text-red-500 dark:text-red-400" : "text-emerald-600 dark:text-emerald-500"}`}>
+													{order.status === "cancelled" ? <Trash2 size={16} /> : <CheckCircle2 size={16} />}
+												</div>
+											</div>
+										))}
+										{store.historicalOrders.length === 0 && (
+											<div className="col-span-full py-8 text-center bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-dashed border-slate-200 dark:border-slate-700">
+												<p className="text-sm text-slate-400 dark:text-slate-500 italic">
+													Nenhum histórico recente para exibir.
+												</p>
+											</div>
+										)}
+									</div>
+								)}
+							</div>
 						</div>
 					)}
 				</div>
