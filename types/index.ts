@@ -29,7 +29,6 @@ export interface StockData {
 	alpino: number;
 	americanCookie: number;
 	sorvete: number;
-	acai: number;
 }
 
 export const STOCK_LABELS: Record<keyof StockData, string> = {
@@ -54,7 +53,6 @@ export const STOCK_LABELS: Record<keyof StockData, string> = {
 	alpino: "ALPINO",
 	americanCookie: "AMERICAN COOKIE",
 	sorvete: "SORVETE",
-	acai: "AÇAÍ",
 };
 
 export interface StoreDocument {

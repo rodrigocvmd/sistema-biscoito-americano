@@ -192,7 +192,7 @@ const INVENTORY_DATA = [
 	},
 	{
 		category: "OUTROS",
-		items: ["CAIXA DE SORVETE", "CAIXA DE AÇAÍ"],
+		items: ["CAIXA DE SORVETE"],
 	},
 ];
 
