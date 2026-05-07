@@ -247,7 +247,7 @@ export default function EstoqueReposicionarPage() {
 			if (optimizedMovements.length === 0) {
 				alert("Não há movimentações para salvar.");
 				setSavingRepos(false);
-				return;
+				return false;
 			}
 			await runTransaction(db, async (transaction) => {
 				for (const move of optimizedMovements) {
@@ -267,11 +267,12 @@ export default function EstoqueReposicionarPage() {
 					transaction.set(doc(db, "stores", move.to, "repositions", newId), historyEntry);
 				}
 			});
-			alert("Plano de reposicionamento salvo com sucesso no histórico!");
-			setShowSummary(false);
+			// Removido o alert de sucesso para não interromper o fluxo de WhatsApp/Impressão
+			return true;
 		} catch (error) {
 			console.error("Erro ao salvar reposicionamento:", error);
-			alert("Erro ao salvar. Verifique o console.");
+			alert("Erro ao salvar no histórico. Verifique o console.");
+			return false;
 		} finally {
 			setSavingRepos(false);
 		}
@@ -794,23 +795,23 @@ export default function EstoqueReposicionarPage() {
 						<div className="p-8 bg-slate-50 dark:bg-slate-800/50 border-t border-slate-100 dark:border-slate-800 flex flex-col gap-4 transition-colors print:hidden">
 							<div className="flex flex-wrap gap-4 w-full">
 								<button
-									onClick={saveReposition}
+									onClick={async () => {
+										const success = await saveReposition();
+										if (success) handleWhatsApp();
+									}}
 									disabled={calculateOptimizedSummary().length === 0 || savingRepos}
-									className="flex-1 min-w-[180px] flex items-center justify-center gap-3 bg-green-600 hover:bg-green-700 text-white px-6 py-4 rounded-2xl font-black text-[12px] uppercase tracking-widest shadow-lg shadow-green-100 dark:shadow-none transition-all disabled:opacity-50 cursor-pointer">
-									{savingRepos ? <RefreshCw className="animate-spin" size={16} /> : <Save size={16} />}
-									salvar no histórico
-								</button>
-								<button
-									onClick={handleWhatsApp}
-									disabled={calculateOptimizedSummary().length === 0}
 									className="flex-1 min-w-[180px] flex items-center justify-center gap-3 bg-emerald-500 hover:bg-emerald-600 text-white px-6 py-4 rounded-2xl font-black text-[12px] uppercase tracking-widest shadow-lg shadow-emerald-100 dark:shadow-none transition-all disabled:opacity-50 cursor-pointer">
-									<MessageCircle size={16} />
-									WhatsApp
+									{savingRepos ? <RefreshCw className="animate-spin" size={16} /> : <MessageCircle size={16} />}
+									Enviar no WhatsApp
 								</button>
 								<button
-									onClick={handlePrint}
-									className="flex-1 min-w-[180px] flex items-center justify-center gap-3 bg-blue-600 hover:bg-blue-700 text-white px-6 py-4 rounded-2xl font-black text-[12px] uppercase tracking-widest shadow-lg shadow-blue-100 dark:shadow-none transition-all cursor-pointer">
-									<Printer size={16} />
+									onClick={async () => {
+										const success = await saveReposition();
+										if (success) handlePrint();
+									}}
+									disabled={calculateOptimizedSummary().length === 0 || savingRepos}
+									className="flex-1 min-w-[180px] flex items-center justify-center gap-3 bg-blue-600 hover:bg-blue-700 text-white px-6 py-4 rounded-2xl font-black text-[12px] uppercase tracking-widest shadow-lg shadow-blue-100 dark:shadow-none transition-all disabled:opacity-50 cursor-pointer">
+									{savingRepos ? <RefreshCw className="animate-spin" size={16} /> : <Printer size={16} />}
 									IMPRIMIR
 								</button>
 							</div>
