@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { db } from "@/lib/firebase";
 import { collection, getDocs, query, orderBy, where, Timestamp, limit } from "firebase/firestore";
 import { STOCK_LABELS, StockData, STORE_NAMES, StoreId, formatDate, StockSnapshot } from "@/types";
-import { RefreshCw, Calendar, ArrowRight, TrendingUp, TrendingDown } from "lucide-react";
+import { RefreshCw, Calendar, ArrowRight, TrendingUp, TrendingDown, ChevronDown } from "lucide-react";
 
 export default function EstoqueHistoricoPage() {
 	const [historyStore, setHistoryStore] = useState<StoreId>("conjunto");
@@ -20,28 +20,47 @@ export default function EstoqueHistoricoPage() {
 			const q = query(
 				historyRef,
 				orderBy("timestamp", "desc"),
-				limit(15)
+				limit(100)
 			);
 
 			const querySnapshot = await getDocs(q);
-			const docs = querySnapshot.docs.map((doc) => ({
+			const allDocs = querySnapshot.docs.map((doc) => ({
 				id: doc.id,
 				...doc.data(),
 			})) as StockSnapshot[];
 
-			setSnapshots(docs);
-			if (docs.length >= 2) {
-				setSelectedSnapshot1(docs[1].id!); // Segundo mais recente (penúltimo salvo entre os 15 se ordenado desc)
-				setSelectedSnapshot2(docs[0].id!); // Mais recente
-			} else if (docs.length === 1) {
-				setSelectedSnapshot1(docs[0].id!);
-				setSelectedSnapshot2(docs[0].id!);
+			// Filtrar para manter apenas a última atualização de cada dia
+			const seenDates = new Set();
+			const dailyDocs = allDocs.filter((doc) => {
+				const date = doc.timestamp.toDate();
+				// Normalizamos para o início do dia para garantir unicidade por data
+				const normalizedDate = new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
+				if (seenDates.has(normalizedDate)) return false;
+				seenDates.add(normalizedDate);
+				return true;
+			});
+
+			setSnapshots(dailyDocs);
+			if (dailyDocs.length >= 2) {
+				setSelectedSnapshot1(dailyDocs[1].id!); // Segundo dia mais recente
+				setSelectedSnapshot2(dailyDocs[0].id!); // Dia mais recente
+			} else if (dailyDocs.length === 1) {
+				setSelectedSnapshot1(dailyDocs[0].id!);
+				setSelectedSnapshot2(dailyDocs[0].id!);
 			}
 		} catch (error) {
 			console.error("Erro ao buscar histórico:", error);
 		} finally {
 			setLoadingHistory(false);
 		}
+	};
+
+	const formatHistoryLabel = (date: Date) => {
+		const day = String(date.getDate()).padStart(2, "0");
+		const month = String(date.getMonth() + 1).padStart(2, "0");
+		const weekDays = ["Domingo", "Segunda-Feira", "Terça-Feira", "Quarta-Feira", "Quinta-Feira", "Sexta-Feira", "Sábado"];
+		const weekDay = weekDays[date.getDay()];
+		return `${day}/${month} - ${weekDay}`;
 	};
 
 	useEffect(() => {
@@ -54,21 +73,29 @@ export default function EstoqueHistoricoPage() {
 			<div className="bg-white dark:bg-slate-900 p-6 rounded-[32px] border border-slate-200 dark:border-slate-800 shadow-sm flex flex-wrap items-center gap-6 justify-center transition-colors">
 				<div className="flex flex-col gap-2">
 					<span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest ml-2">Loja para Histórico</span>
-					<select
-						value={historyStore}
-						onChange={(e) => setHistoryStore(e.target.value as StoreId)}
-						className="bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-xl px-4 py-2 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all dark:text-slate-200">
-						{Object.entries(STORE_NAMES).map(([id, name]) => (
-							<option key={id} value={id}>{name}</option>
-						))}
-					</select>
+					<div className="relative group">
+						<select
+							value={historyStore}
+							onChange={(e) => setHistoryStore(e.target.value as StoreId)}
+							className="appearance-none w-full bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-2xl px-5 py-3 pr-12 text-sm font-bold text-slate-700 dark:text-slate-200 cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all hover:bg-slate-100 dark:hover:bg-slate-800">
+							{Object.entries(STORE_NAMES).map(([id, name]) => (
+								<option key={id} value={id} className="dark:bg-slate-900 text-center">{name}</option>
+							))}
+						</select>
+						<ChevronDown size={18} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 group-hover:text-blue-500 transition-colors pointer-events-none" />
+					</div>
 				</div>
 
 				<button
 					onClick={fetchHistory}
 					disabled={loadingHistory}
-					className="mt-6 bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-xl text-sm font-black transition-all shadow-md shadow-blue-100 dark:shadow-none disabled:opacity-50">
-					{loadingHistory ? <RefreshCw className="animate-spin" size={18} /> : "ATUALIZAR"}
+					className="mt-6 bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-2xl text-sm font-black transition-all shadow-lg shadow-blue-500/20 dark:shadow-none disabled:opacity-50 flex items-center gap-3">
+					{loadingHistory ? <RefreshCw className="animate-spin" size={18} /> : (
+						<>
+							<RefreshCw size={18} />
+							<span>ATUALIZAR</span>
+						</>
+					)}
 				</button>
 			</div>
 
@@ -76,33 +103,39 @@ export default function EstoqueHistoricoPage() {
 				<div className="bg-white dark:bg-slate-900 rounded-[32px] border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden transition-colors">
 					<div className="p-6 bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800 flex flex-wrap items-center justify-between gap-6">
 						<div className="flex items-center gap-4">
-							<div className="flex flex-col gap-1">
-								<span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Comparar de</span>
-								<select
-									value={selectedSnapshot1}
-									onChange={(e) => setSelectedSnapshot1(e.target.value)}
-									className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-1.5 text-[13px] font-bold focus:outline-none focus:ring-2 focus:ring-blue-500 dark:text-slate-200">
-									{snapshots.map((s) => (
-										<option key={s.id} value={s.id}>{formatDate(s.timestamp.toDate())}</option>
-									))}
-								</select>
+							<div className="flex flex-col gap-2">
+								<span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest ml-1 text-center">Comparar de</span>
+								<div className="relative group">
+									<select
+										value={selectedSnapshot1}
+										onChange={(e) => setSelectedSnapshot1(e.target.value)}
+										className="appearance-none bg-white dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-700 rounded-xl px-4 py-2 pr-10 text-[13px] font-black text-slate-600 dark:text-slate-300 cursor-pointer focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all hover:border-blue-200 dark:hover:border-blue-800 hover:shadow-sm">
+										{snapshots.map((s) => (
+											<option key={s.id} value={s.id} className="dark:bg-slate-900">{formatHistoryLabel(s.timestamp.toDate())}</option>
+										))}
+									</select>
+									<ChevronDown size={16} strokeWidth={3} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 group-hover:text-blue-500 pointer-events-none transition-colors" />
+								</div>
 							</div>
-							<ArrowRight className="text-slate-300 dark:text-slate-600 mt-4" size={20} />
-							<div className="flex flex-col gap-1">
-								<span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Para</span>
-								<select
-									value={selectedSnapshot2}
-									onChange={(e) => setSelectedSnapshot2(e.target.value)}
-									className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-1.5 text-[13px] font-bold focus:outline-none focus:ring-2 focus:ring-blue-500 dark:text-slate-200">
-									{snapshots.map((s) => (
-										<option key={s.id} value={s.id}>{formatDate(s.timestamp.toDate())}</option>
-									))}
-								</select>
+							<ArrowRight className="text-slate-300 dark:text-slate-600 mt-6" size={20} />
+							<div className="flex flex-col gap-2">
+								<span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest ml-1 text-center">Para</span>
+								<div className="relative group">
+									<select
+										value={selectedSnapshot2}
+										onChange={(e) => setSelectedSnapshot2(e.target.value)}
+										className="appearance-none bg-white dark:bg-slate-900 border-2 border-slate-100 dark:border-slate-700 rounded-xl px-4 py-2 pr-10 text-[13px] font-black text-slate-600 dark:text-slate-300 cursor-pointer focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all hover:border-blue-200 dark:hover:border-blue-800 hover:shadow-sm">
+										{snapshots.map((s) => (
+											<option key={s.id} value={s.id} className="dark:bg-slate-900">{formatHistoryLabel(s.timestamp.toDate())}</option>
+										))}
+									</select>
+									<ChevronDown size={16} strokeWidth={3} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 group-hover:text-blue-500 pointer-events-none transition-colors" />
+								</div>
 							</div>
 						</div>
-						<div className="text-right">
-							<span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest block">Loja Selecionada</span>
-							<span className="text-lg font-black text-blue-600 dark:text-blue-400">{STORE_NAMES[historyStore]}</span>
+						<div className="text-center">
+							<span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest block mb-1">Loja Selecionada</span>
+							<span className="text-xl font-black text-blue-600 dark:text-blue-400 tracking-tight">{STORE_NAMES[historyStore]}</span>
 						</div>
 					</div>
 

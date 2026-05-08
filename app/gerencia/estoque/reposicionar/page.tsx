@@ -502,7 +502,7 @@ export default function EstoqueReposicionarPage() {
 					<table className="w-full border-separate border-spacing-0">
 						<thead>
 							<tr className="bg-slate-50 dark:bg-slate-800">
-								<th className="p-4 text-left text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest sticky left-0 bg-slate-50 dark:bg-slate-800 z-20 border-b border-slate-200 dark:border-slate-700">
+								<th className="p-4 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest sticky left-0 bg-slate-50 dark:bg-slate-800 z-20 border-b border-slate-200 dark:border-slate-700 text-center">
 									Item
 								</th>
 								{STORE_ORDER.map((id) => (
@@ -532,7 +532,7 @@ export default function EstoqueReposicionarPage() {
 									<Fragment key={itemKey}>
 										{showRepeatedHeader && (
 											<tr className="bg-slate-100 dark:bg-slate-800/80">
-												<th className="p-2 text-left text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest sticky left-0 bg-slate-100 dark:bg-slate-800/80 z-20 border-y border-slate-200 dark:border-slate-700">
+												<th className="p-2 text-center text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest sticky left-0 bg-slate-100 dark:bg-slate-800/80 z-20 border-y border-slate-200 dark:border-slate-700">
 													Item
 												</th>
 												{STORE_ORDER.map((id) => (
@@ -589,41 +589,47 @@ export default function EstoqueReposicionarPage() {
 											})}
 
 											<td className="p-4 text-center border-l border-slate-50 dark:border-slate-800 bg-blue-50/20 dark:bg-blue-900/5 border-b border-slate-100 dark:border-slate-800">
-												<div className="flex items-center justify-center gap-2">
-													<div className="flex items-center gap-1 bg-white dark:bg-slate-800 p-1 rounded-xl border border-slate-200 dark:border-slate-700">
-														<select
-															value={transfers.from}
-															onChange={(e) =>
-																setItemTransfers((prev) => ({
-																	...prev,
-																	[itemKey]: { ...transfers, from: e.target.value as StoreId },
-																}))
-															}
-															className="bg-transparent text-[14px] font-black text-red-600 dark:text-red-400 focus:outline-none cursor-pointer p-1">
-															{STORE_ORDER.map((id) => (
-																<option key={id} value={id} className="dark:bg-slate-800">
-																	{STORE_NAMES[id]}
-																</option>
-															))}
-														</select>
+												<div className="flex items-center justify-center gap-3">
+													<div className="flex items-center gap-2 bg-white dark:bg-slate-800 p-1.5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm">
+														<div className="relative group">
+															<select
+																value={transfers.from}
+																onChange={(e) =>
+																	setItemTransfers((prev) => ({
+																		...prev,
+																		[itemKey]: { ...transfers, from: e.target.value as StoreId },
+																	}))
+																}
+																className="appearance-none bg-slate-50 dark:bg-slate-900/50 text-[12px] font-black text-red-600 dark:text-red-400 focus:outline-none cursor-pointer pl-3 pr-8 py-1.5 rounded-xl border border-transparent focus:border-red-500/30 transition-all hover:bg-red-50 dark:hover:bg-red-900/20">
+																{STORE_ORDER.map((id) => (
+																	<option key={id} value={id} className="dark:bg-slate-800 cursor-pointer text-center">
+																		{STORE_NAMES[id]}
+																	</option>
+																))}
+															</select>
+															<ChevronDown size={12} strokeWidth={3} className="absolute right-2 top-1/2 -translate-y-1/2 text-red-400 pointer-events-none transition-colors group-hover:text-red-600" />
+														</div>
 
-														<ArrowRight className="text-slate-300 dark:text-slate-600" size={12} />
+														<ArrowRight className="text-slate-300 dark:text-slate-600" size={14} />
 
-														<select
-															value={transfers.to}
-															onChange={(e) =>
-																setItemTransfers((prev) => ({
-																	...prev,
-																	[itemKey]: { ...transfers, to: e.target.value as StoreId },
-																}))
-															}
-															className="bg-transparent text-[14px] font-black text-emerald-600 dark:text-emerald-400 focus:outline-none cursor-pointer p-1">
-															{STORE_ORDER.map((id) => (
-																<option key={id} value={id} className="dark:bg-slate-800">
-																	{STORE_NAMES[id]}
-																</option>
-															))}
-														</select>
+														<div className="relative group">
+															<select
+																value={transfers.to}
+																onChange={(e) =>
+																	setItemTransfers((prev) => ({
+																		...prev,
+																		[itemKey]: { ...transfers, to: e.target.value as StoreId },
+																	}))
+																}
+																className="appearance-none bg-slate-50 dark:bg-slate-900/50 text-[12px] font-black text-emerald-600 dark:text-emerald-400 focus:outline-none cursor-pointer pl-3 pr-8 py-1.5 rounded-xl border border-transparent focus:border-emerald-500/30 transition-all hover:bg-emerald-50 dark:hover:bg-emerald-900/20">
+																{STORE_ORDER.map((id) => (
+																	<option key={id} value={id} className="dark:bg-slate-800 text-center">
+																		{STORE_NAMES[id]}
+																	</option>
+																))}
+															</select>
+															<ChevronDown size={12} strokeWidth={3} className="absolute right-2 top-1/2 -translate-y-1/2 text-emerald-400 pointer-events-none transition-colors group-hover:text-emerald-600" />
+														</div>
 													</div>
 
 													<input
@@ -643,7 +649,7 @@ export default function EstoqueReposicionarPage() {
 													<button
 														onClick={() => applyMovement(itemKey)}
 														disabled={transfers.qty <= 0 || transfers.from === transfers.to}
-														className={`p-2 rounded-xl transition-all ${transfers.qty <= 0 || transfers.from === transfers.to ? "bg-slate-100 dark:bg-slate-800 text-slate-300 dark:text-slate-600 cursor-not-allowed" : "bg-blue-600 hover:bg-blue-700 text-white shadow-md shadow-blue-100 dark:shadow-none cursor-pointer"}`}>
+														className={`p-2.5 rounded-xl transition-all ${transfers.qty <= 0 || transfers.from === transfers.to ? "bg-slate-100 dark:bg-slate-800 text-slate-300 dark:text-slate-600 cursor-not-allowed" : "bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-500/20 dark:shadow-none cursor-pointer scale-100 hover:scale-105 active:scale-95"}`}>
 														<Send size={16} />
 													</button>
 												</div>
