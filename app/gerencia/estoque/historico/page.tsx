@@ -73,13 +73,13 @@ export default function EstoqueHistoricoPage() {
 			<div className="bg-white dark:bg-slate-900 p-6 rounded-[32px] border border-slate-200 dark:border-slate-800 shadow-sm flex flex-wrap items-center gap-6 justify-center transition-colors">
 				<div className="flex flex-col gap-2">
 					<span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest ml-2">Loja para Histórico</span>
-					<div className="relative group">
+					<div className="relative group flex">
 						<select
 							value={historyStore}
 							onChange={(e) => setHistoryStore(e.target.value as StoreId)}
-							className="appearance-none w-full bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-2xl px-5 py-3 pr-12 text-sm font-bold text-slate-700 dark:text-slate-200 cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all hover:bg-slate-100 dark:hover:bg-slate-800">
+							className="flex justify-center items-center align-middle appearance-none w-full bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-2xl px-5 py-3 pr-12 text-sm font-bold text-slate-700 dark:text-slate-200 cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all hover:bg-slate-100 dark:hover:bg-slate-800">
 							{Object.entries(STORE_NAMES).map(([id, name]) => (
-								<option key={id} value={id} className="dark:bg-slate-900 text-center">{name}</option>
+								<option key={id} value={id} className="dark:bg-slate-900">{name}</option>
 							))}
 						</select>
 						<ChevronDown size={18} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 group-hover:text-blue-500 transition-colors pointer-events-none" />
