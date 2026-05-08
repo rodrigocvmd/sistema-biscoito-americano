@@ -16,6 +16,16 @@ export default function StockPage({ params }: { params: Promise<{ store: string 
 	const [isUnits, setIsUnits] = useState<Partial<Record<keyof StockData, boolean>>>({});
 	const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
 	const [sortBy, setSortBy] = useState<"default" | "name" | "quantity">("default");
+
+	// Persistir ordenação
+	useEffect(() => {
+		const savedSort = localStorage.getItem("biscoito_store_sort");
+		if (savedSort) setSortBy(savedSort as any);
+	}, []);
+
+	useEffect(() => {
+		localStorage.setItem("biscoito_store_sort", sortBy);
+	}, [sortBy]);
 	const [isDirty, setIsDirty] = useState(false);
 
 	useEffect(() => {

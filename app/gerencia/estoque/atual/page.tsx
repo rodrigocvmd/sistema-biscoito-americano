@@ -19,6 +19,16 @@ export default function EstoqueAtualPage() {
 	const [allData, setAllData] = useState<FullStoreData[]>([]);
 	const [tableSort, setTableSort] = useState<"default" | "name">("default");
 
+	// Persistir ordenação
+	useEffect(() => {
+		const savedSort = localStorage.getItem("biscoito_admin_stock_sort");
+		if (savedSort) setTableSort(savedSort as any);
+	}, []);
+
+	useEffect(() => {
+		localStorage.setItem("biscoito_admin_stock_sort", tableSort);
+	}, [tableSort]);
+
 	const rotateStores = () => {
 		setAllData((prev) => {
 			if (prev.length < 2) return prev;

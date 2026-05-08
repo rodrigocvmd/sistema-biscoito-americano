@@ -45,6 +45,16 @@ export default function InsumosPage() {
 	const [showHistory, setShowHistory] = useState<Record<string, boolean>>({});
 	const [insumosSort, setInsumosSort] = useState<"default" | "urgency" | "date">("urgency");
 
+	// Persistir ordenação
+	useEffect(() => {
+		const savedSort = localStorage.getItem("biscoito_admin_insumos_sort");
+		if (savedSort) setInsumosSort(savedSort as any);
+	}, []);
+
+	useEffect(() => {
+		localStorage.setItem("biscoito_admin_insumos_sort", insumosSort);
+	}, [insumosSort]);
+
 	const toggleStore = (storeId: string) => {
 		setExpandedStores((prev) => ({
 			...prev,
