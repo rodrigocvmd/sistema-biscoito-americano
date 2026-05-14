@@ -79,15 +79,20 @@ export default function EstoqueReposicionarPage() {
 		onConfirm: () => void;
 	} | null>(null);
 
+	const [sortBy, setSortBy] = useState<"default" | "name" | "lago">("default");
+
 	// Load from localStorage on mount
 	useEffect(() => {
 		const savedProjected = localStorage.getItem("repos_projected_stocks");
 		const savedTransfers = localStorage.getItem("repos_item_transfers");
+		const savedSort = localStorage.getItem("biscoito_admin_repos_sort");
+		
 		if (savedProjected) {
 			setProjectedStocks(JSON.parse(savedProjected));
 			isInitialized.current = true;
 		}
 		if (savedTransfers) setItemTransfers(JSON.parse(savedTransfers));
+		if (savedSort) setSortBy(savedSort as any);
 	}, []);
 
 	// Save to localStorage on change
@@ -102,6 +107,10 @@ export default function EstoqueReposicionarPage() {
 			localStorage.setItem("repos_item_transfers", JSON.stringify(itemTransfers));
 		}
 	}, [itemTransfers]);
+
+	useEffect(() => {
+		localStorage.setItem("biscoito_admin_repos_sort", sortBy);
+	}, [sortBy]);
 
 	useEffect(() => {
 		const unsubscribeStores = onSnapshot(collection(db, "stores"), (storesSnapshot) => {
@@ -207,9 +216,21 @@ export default function EstoqueReposicionarPage() {
 		}
 	};
 
+	const sortedItems = (Object.entries(STOCK_LABELS) as [keyof StockData, string][]).sort((a, b) => {
+		if (sortBy === "name") {
+			return a[1].localeCompare(b[1]);
+		}
+		if (sortBy === "lago") {
+			const stockA = allData.find((d) => d.id === "lago")?.stock[a[0]] || 0;
+			const stockB = allData.find((d) => d.id === "lago")?.stock[b[0]] || 0;
+			return stockB - stockA;
+		}
+		return 0;
+	});
+
 	const calculateOptimizedSummary = () => {
 		const movements: { item: keyof StockData; from: StoreId; to: StoreId; qty: number }[] = [];
-		(Object.keys(STOCK_LABELS) as (keyof StockData)[]).forEach((itemKey) => {
+		sortedItems.forEach(([itemKey, _]) => {
 			const storeChanges: { storeId: StoreId; diff: number }[] = [];
 			allData.forEach((store) => {
 				const initial = store.stock[itemKey] || 0;
@@ -497,6 +518,32 @@ export default function EstoqueReposicionarPage() {
 				</div>
 			</div>
 
+			{/* Sorting Bar */}
+			<div className="flex items-center justify-between gap-4 print:hidden">
+				<div className="bg-white dark:bg-slate-900 p-3 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex items-center gap-4 w-fit transition-colors">
+					<span className="text-[11px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest ml-2">
+						Ordenação:
+					</span>
+					<div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-xl gap-1">
+						<button
+							onClick={() => setSortBy("default")}
+							className={`cursor-pointer px-4 py-2 rounded-lg text-xs font-black transition-all ${sortBy === "default" ? "bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-sm" : "text-slate-500 dark:text-slate-400"}`}>
+							Padrão
+						</button>
+						<button
+							onClick={() => setSortBy("name")}
+							className={`cursor-pointer px-4 py-2 rounded-lg text-xs font-black transition-all ${sortBy === "name" ? "bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-sm" : "text-slate-500 dark:text-slate-400"}`}>
+							A-Z
+						</button>
+						<button
+							onClick={() => setSortBy("lago")}
+							className={`cursor-pointer px-4 py-2 rounded-lg text-xs font-black transition-all ${sortBy === "lago" ? "bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-sm" : "text-slate-500 dark:text-slate-400"}`}>
+							Qtd (Lago)
+						</button>
+					</div>
+				</div>
+			</div>
+
 			<div className="bg-white dark:bg-slate-900 rounded-[32px] border border-slate-200 dark:border-slate-800 shadow-sm transition-colors print:hidden">
 				<div className="overflow-x-auto overflow-y-visible">
 					<table className="w-full border-separate border-spacing-0">
@@ -518,7 +565,7 @@ export default function EstoqueReposicionarPage() {
 							</tr>
 						</thead>
 						<tbody>
-							{Object.entries(STOCK_LABELS).map(([key, label], index) => {
+							{sortedItems.map(([key, label], index) => {
 								const itemKey = key as keyof StockData;
 								const transfers = itemTransfers[itemKey] || {
 									from: "lago",
