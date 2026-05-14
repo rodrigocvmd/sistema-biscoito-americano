@@ -89,6 +89,7 @@ export default function EstoqueReposicionarPage() {
 		
 		if (savedProjected) {
 			setProjectedStocks(JSON.parse(savedProjected));
+			// Se carregamos do localStorage, marcamos como inicializado para evitar sobreposição
 			isInitialized.current = true;
 		}
 		if (savedTransfers) setItemTransfers(JSON.parse(savedTransfers));
@@ -97,13 +98,14 @@ export default function EstoqueReposicionarPage() {
 
 	// Save to localStorage on change
 	useEffect(() => {
-		if (Object.keys(projectedStocks.lago).length > 0) {
+		// Apenas salvamos se já foi inicializado (seja via localStorage ou via allData pela primeira vez)
+		if (isInitialized.current && Object.keys(projectedStocks.lago).length > 0) {
 			localStorage.setItem("repos_projected_stocks", JSON.stringify(projectedStocks));
 		}
 	}, [projectedStocks]);
 
 	useEffect(() => {
-		if (Object.keys(itemTransfers).length > 0) {
+		if (isInitialized.current && Object.keys(itemTransfers).length > 0) {
 			localStorage.setItem("repos_item_transfers", JSON.stringify(itemTransfers));
 		}
 	}, [itemTransfers]);
@@ -135,6 +137,7 @@ export default function EstoqueReposicionarPage() {
 		return () => unsubscribeStores();
 	}, []);
 
+	// Inicialização única baseada no allData (apenas se não houver dados no localStorage)
 	useEffect(() => {
 		if (allData.length > 0 && !isInitialized.current) {
 			const initialProjected: any = {};
@@ -149,6 +152,8 @@ export default function EstoqueReposicionarPage() {
 				initialTransfers[key] = { from: "lago", to: "conjunto", qty: 0 };
 			});
 			setItemTransfers(initialTransfers);
+			
+			// Marcamos como inicializado IMEDIATAMENTE após a primeira carga do Firestore
 			isInitialized.current = true;
 		}
 	}, [allData]);
