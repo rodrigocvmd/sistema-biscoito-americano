@@ -86,6 +86,7 @@ const INVENTORY_DATA = [
 			"LOTUS TRITURADO",
 			"CHOCOLATE ALPINO",
 			"GELO",
+			"BARRA KINDER BUENO",
 		],
 	},
 	{
@@ -163,6 +164,7 @@ const INVENTORY_DATA = [
 			"PERFEX",
 			"KIBOA",
 			"PAPEL TOALHA",
+			"PAPEL HIGIÊNICO",
 		],
 	},
 ];
@@ -361,7 +363,9 @@ export default function SuppliesPage({ params }: { params: Promise<{ store: stri
 				</h2>
 				<form onSubmit={handleAddOrder} className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
 					<div className="space-y-1 md:col-span-1 relative">
-						<label className="text-xs font-bold text-slate-400 dark:text-slate-500 ml-1">Insumo</label>
+						<label className="text-xs font-bold text-slate-400 dark:text-slate-500 ml-1">
+							Insumo
+						</label>
 						<div className="relative">
 							<input
 								id="listaInsumos"
@@ -414,7 +418,9 @@ export default function SuppliesPage({ params }: { params: Promise<{ store: stri
 													<p className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase">
 														Pressione Adicionar para:
 													</p>
-													<p className="text-sm font-black text-red-600 dark:text-red-400 mt-1">"{newName}"</p>
+													<p className="text-sm font-black text-red-600 dark:text-red-400 mt-1">
+														"{newName}"
+													</p>
 												</div>
 											)}
 								</div>
@@ -422,7 +428,9 @@ export default function SuppliesPage({ params }: { params: Promise<{ store: stri
 						</div>
 					</div>
 					<div className="space-y-1">
-						<label className="text-xs font-bold text-slate-400 dark:text-slate-500 ml-1">Urgência</label>
+						<label className="text-xs font-bold text-slate-400 dark:text-slate-500 ml-1">
+							Urgência
+						</label>
 						<select
 							value={newUrgency}
 							onChange={(e) => setNewUrgency(e.target.value as UrgencyLevel)}
@@ -450,7 +458,9 @@ export default function SuppliesPage({ params }: { params: Promise<{ store: stri
 				</h3>
 				{pendingOrders.length === 0 ? (
 					<div className="bg-slate-100/50 dark:bg-slate-800/50 border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-2xl p-10 text-center">
-						<p className="text-slate-400 dark:text-slate-500 font-medium">Nenhum insumo pendente no momento.</p>
+						<p className="text-slate-400 dark:text-slate-500 font-medium">
+							Nenhum insumo pendente no momento.
+						</p>
 					</div>
 				) : (
 					<div className="grid gap-3">
@@ -460,7 +470,9 @@ export default function SuppliesPage({ params }: { params: Promise<{ store: stri
 								className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4 group hover:border-red-200 dark:hover:border-red-900/50 transition-all">
 								<div className="flex-1 min-w-0">
 									<div className="flex flex-wrap items-center gap-2 mb-2">
-										<span className="text-lg font-black text-slate-800 dark:text-slate-200 truncate">{order.name}</span>
+										<span className="text-lg font-black text-slate-800 dark:text-slate-200 truncate">
+											{order.name}
+										</span>
 										<div className="shrink-0">{getUrgencyBadge(order.urgency)}</div>
 									</div>
 									<div className="flex flex-wrap items-center gap-x-4 gap-y-2">
@@ -538,7 +550,12 @@ export default function SuppliesPage({ params }: { params: Promise<{ store: stri
 										{formatDate(order.deliveredAt?.toDate())}
 									</p>
 								</div>
-								<div className={order.status === "cancelled" ? "text-red-500 dark:text-red-400" : "text-emerald-600 dark:text-emerald-400"}>
+								<div
+									className={
+										order.status === "cancelled"
+											? "text-red-500 dark:text-red-400"
+											: "text-emerald-600 dark:text-emerald-400"
+									}>
 									{order.status === "cancelled" ? <Trash2 size={16} /> : <CheckCircle2 size={16} />}
 								</div>
 							</div>
@@ -589,7 +606,9 @@ export default function SuppliesPage({ params }: { params: Promise<{ store: stri
 						<div className="bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 w-16 h-16 rounded-2xl flex items-center justify-center mb-6 mx-auto">
 							<Edit2 size={32} />
 						</div>
-						<h3 className="text-xl font-black text-slate-800 dark:text-slate-200 text-center mb-2">Editar Urgência</h3>
+						<h3 className="text-xl font-black text-slate-800 dark:text-slate-200 text-center mb-2">
+							Editar Urgência
+						</h3>
 						<p className="text-slate-500 dark:text-slate-400 text-center font-medium mb-6">
 							Selecione o novo nível de urgência para este insumo.
 						</p>
