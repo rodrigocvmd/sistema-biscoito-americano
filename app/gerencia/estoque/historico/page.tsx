@@ -171,14 +171,14 @@ export default function GlobalStockHistoryPage() {
 									{filteredMovements.length > 0 ? (
 										filteredMovements.map((m) => (
 											<tr key={m.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
-												<td className="px-6 py-4 whitespace-nowrap text-xs font-bold text-slate-400 dark:text-slate-500">
+												<td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-slate-400 dark:text-slate-500">
 													{formatDate(m.timestamp?.toDate())}
 												</td>
-												<td className="px-6 py-4 whitespace-nowrap text-sm font-black text-slate-700 dark:text-slate-200 uppercase">
+												<td className="px-6 py-4 whitespace-nowrap text-md font-black text-slate-700 dark:text-slate-200 uppercase">
 													{m.itemName}
 												</td>
 												<td className="px-6 py-4 whitespace-nowrap text-center">
-													<span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-black uppercase ${
+													<span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-black uppercase ${
 														m.type === 'recebido' 
 															? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' 
 															: m.type === 'saida'
@@ -187,20 +187,20 @@ export default function GlobalStockHistoryPage() {
 																	? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
 																	: 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-400'
 													}`}>
-														{m.type === 'recebido' ? <ArrowUpCircle size={12} /> : m.type === 'saida' ? <ArrowDownCircle size={12} /> : m.type === 'abertura' ? <ExternalLink size={12} /> : <XCircle size={12} />}
-														{m.type === 'recebido' ? 'recebido' : m.type === 'saida' ? 'saída' : m.type === 'abertura' ? 'abertura' : 'fechamento'}
+														{m.type === 'recebido' ? <ArrowDownCircle size={12} /> : m.type === 'saida' ? <ArrowUpCircle size={12} /> : m.type === 'abertura' ? <ExternalLink size={12} /> : <XCircle size={12} />}
+														{m.type === 'recebido' ? 'recebido' : m.type === 'saida' ? 'saída' : m.type === 'abertura' ? 'pacote aberto' : 'pacote finalizado'}
 													</span>
 												</td>
-												<td className="px-6 py-4 whitespace-nowrap text-center text-sm font-black text-slate-700 dark:text-slate-200">
+												<td className="px-6 py-4 whitespace-nowrap text-center text-lg font-black text-slate-600 dark:text-slate-200">
 													{m.quantity}
 												</td>
-												<td className="px-6 py-4 whitespace-nowrap text-center text-sm font-bold text-slate-400 dark:text-slate-500">
+												<td className="px-6 py-4 whitespace-nowrap text-center text-lg font-bold text-slate-500 dark:text-slate-400">
 													{m.beforeStock !== undefined ? formatStockCompact(m.beforeStock, m.beforeOpen || false) : "-"}
 												</td>
-												<td className="px-6 py-4 whitespace-nowrap text-center text-sm font-black text-blue-600 dark:text-blue-400">
+												<td className="px-6 py-4 whitespace-nowrap text-center text-lg font-black text-slate-800 dark:text-white">
 													{m.afterStock !== undefined ? formatStockCompact(m.afterStock, m.afterOpen || false) : "-"}
 												</td>
-												<td className="px-6 py-4 text-xs font-medium text-slate-500 dark:text-slate-400 max-w-xs truncate">
+												<td className="px-6 py-4 text-md font-medium text-slate-500 dark:text-slate-300 max-w-xs truncate">
 													{m.obs || "-"}
 												</td>
 											</tr>

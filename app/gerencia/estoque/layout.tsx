@@ -2,9 +2,39 @@
 
 import { useEffect, useState } from "react";
 import { db } from "@/lib/firebase";
-import { collection, onSnapshot, getDocs, query, orderBy, where, Timestamp, runTransaction, doc, serverTimestamp } from "firebase/firestore";
-import { STOCK_LABELS, StockData, STORE_NAMES, StoreId, formatDate, StockSnapshot, RepositionHistory } from "@/types";
-import { RefreshCw, ArrowLeftRight, Calendar, ArrowRight, TrendingUp, TrendingDown, ArrowRightLeft, ChevronDown, ChevronUp, Save } from "lucide-react";
+import {
+	collection,
+	onSnapshot,
+	getDocs,
+	query,
+	orderBy,
+	where,
+	Timestamp,
+	runTransaction,
+	doc,
+	serverTimestamp,
+} from "firebase/firestore";
+import {
+	STOCK_LABELS,
+	StockData,
+	STORE_NAMES,
+	StoreId,
+	formatDate,
+	StockSnapshot,
+	RepositionHistory,
+} from "@/types";
+import {
+	RefreshCw,
+	ArrowLeftRight,
+	Calendar,
+	ArrowRight,
+	TrendingUp,
+	TrendingDown,
+	ArrowRightLeft,
+	ChevronDown,
+	ChevronUp,
+	Save,
+} from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -16,11 +46,7 @@ export interface FullStoreData {
 	isUnits: Partial<Record<keyof StockData, boolean>>;
 }
 
-export default function EstoqueLayout({
-	children,
-}: {
-	children: React.ReactNode;
-}) {
+export default function EstoqueLayout({ children }: { children: React.ReactNode }) {
 	const pathname = usePathname();
 
 	const tabs = [
@@ -39,8 +65,8 @@ export default function EstoqueLayout({
 						key={tab.id}
 						href={tab.href}
 						className={`cursor-pointer px-4 py-2 rounded-xl text-sm font-black transition-all ${
-							pathname === tab.href 
-								? "bg-blue-600 text-white shadow-md shadow-blue-100 dark:shadow-none" 
+							pathname === tab.href
+								? "bg-blue-600 text-white shadow-md shadow-blue-100 dark:shadow-none"
 								: "text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800"
 						}`}>
 						{tab.label}

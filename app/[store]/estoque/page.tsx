@@ -51,6 +51,7 @@ export default function StockMovementsPage({ params }: { params: Promise<{ store
 	// Abertura Form State
 	const [openItemId, setOpenItemId] = useState<keyof StockData | "">("");
 	const [openSearchTerm, setOpenSearchTerm] = useState("");
+	const [openObs, setOpenObs] = useState("");
 	const [openSubmitting, setOpenSubmitting] = useState(false);
 	const [finishSubmitting, setFinishSubmitting] = useState(false);
 	const [openMessage, setOpenMessage] = useState<{
@@ -232,7 +233,7 @@ export default function StockMovementsPage({ params }: { params: Promise<{ store
 				afterStock,
 				beforeOpen,
 				afterOpen: true,
-				obs: "Abertura de pacote (Início de consumo)",
+				obs: openObs.trim(),
 				timestamp: serverTimestamp(),
 			});
 
@@ -246,6 +247,7 @@ export default function StockMovementsPage({ params }: { params: Promise<{ store
 			setOpenMessage({ type: "success", text: "Abertura registrada com sucesso!" });
 			setOpenItemId("");
 			setOpenSearchTerm("");
+			setOpenObs("");
 			setTimeout(() => setOpenMessage(null), 3000);
 		} catch (error) {
 			console.error("Erro ao registrar abertura:", error);
@@ -286,7 +288,7 @@ export default function StockMovementsPage({ params }: { params: Promise<{ store
 				afterStock: currentQty,
 				beforeOpen: true,
 				afterOpen: false,
-				obs: "Pacote aberto finalizado",
+				obs: openObs.trim(),
 				timestamp: serverTimestamp(),
 			});
 
@@ -300,6 +302,7 @@ export default function StockMovementsPage({ params }: { params: Promise<{ store
 			setOpenMessage({ type: "success", text: "Consumo de pacote finalizado!" });
 			setOpenItemId("");
 			setOpenSearchTerm("");
+			setOpenObs("");
 			setTimeout(() => setOpenMessage(null), 3000);
 		} catch (error) {
 			console.error("Erro ao finalizar pacote:", error);
@@ -333,6 +336,130 @@ export default function StockMovementsPage({ params }: { params: Promise<{ store
 					Contagem Atual
 				</Link>
 			</div>
+
+			{/* Opening Section */}
+			<section className="bg-slate-50 dark:bg-slate-800/30 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 transition-colors">
+				<h2 className="text-xl font-bold text-slate-800 dark:text-slate-200 mb-6 flex items-center gap-2">
+					<ExternalLink className="text-blue-600 dark:text-blue-500" size={24} />
+					Registrar Abertura ou Fim de Pacote
+				</h2>
+
+				<div className="space-y-6">
+					<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
+						{/* Item Selection */}
+						<div className="space-y-1 relative md:col-span-1 lg:col-span-2">
+							<label className="font-bold text-slate-400 dark:text-slate-500 ml-1">
+								Sabor / Item
+							</label>
+							<div className="relative">
+								<input
+									type="text"
+									required
+									placeholder="BUSCAR SABOR..."
+									value={openSearchTerm || (openItemId ? STOCK_LABELS[openItemId] : "")}
+									onFocus={() => setIsOpenDropdownOpen(true)}
+									onBlur={() => setTimeout(() => setIsOpenDropdownOpen(false), 200)}
+									onChange={(e) => {
+										setOpenSearchTerm(e.target.value.toUpperCase());
+										setOpenItemId("");
+										setIsOpenDropdownOpen(true);
+									}}
+									autoComplete="off"
+									className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all text-slate-800 dark:text-slate-200 font-bold placeholder:font-medium uppercase"
+								/>
+								<div className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-300 dark:text-slate-600 pointer-events-none">
+									<ChevronDown size={18} />
+								</div>
+
+								{isOpenDropdownOpen && (
+									<div className="absolute z-50 w-full mt-2 max-h-[300px] overflow-y-auto bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl animate-in fade-in zoom-in-95 duration-200">
+										{filteredOpenItems.length > 0 ? (
+											filteredOpenItems.map(([id, label]) => (
+												<div
+													key={id}
+													onMouseDown={(e) => {
+														e.preventDefault();
+														setOpenItemId(id);
+														setOpenSearchTerm("");
+														setIsOpenDropdownOpen(false);
+													}}
+													className="px-4 py-3 hover:bg-blue-50 dark:hover:bg-blue-900/30 hover:text-blue-600 dark:hover:text-blue-400 cursor-pointer text-sm font-bold text-slate-700 dark:text-slate-300 transition-colors flex items-center justify-between group">
+													<div className="flex flex-col">
+														<span>{label}</span>
+														{isUnits[id] && (
+															<span className="text-[10px] text-orange-500 font-black uppercase">
+																Já possui 1 aberto
+															</span>
+														)}
+													</div>
+													<span className="text-[10px] text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity">
+														{formatStockCompact(stock[id] || 0, isUnits[id] || false)} em estoque
+													</span>
+												</div>
+											))
+										) : (
+											<div className="px-4 py-4 text-center text-xs font-bold text-slate-400">
+												NENHUM SABOR ENCONTRADO
+											</div>
+										)}
+									</div>
+								)}
+							</div>
+						</div>
+
+						{/* Open Button */}
+						<button
+							onClick={handleRegisterOpening}
+							disabled={openSubmitting || !openItemId || (stock[openItemId] || 0) <= 0}
+							className="bg-blue-600 hover:bg-blue-700 text-white font-black h-[50px] rounded-xl shadow-md transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
+							{openSubmitting ? (
+								<RefreshCw className="animate-spin" size={20} />
+							) : (
+								<ExternalLink size={20} />
+							)}
+							{openSubmitting ? "ABRINDO..." : "ABRIR PACOTE"}
+						</button>
+
+						{/* Finish Button */}
+						<button
+							onClick={handleFinishPackage}
+							disabled={finishSubmitting || !openItemId || !isUnits[openItemId]}
+							className="bg-slate-700 hover:bg-slate-800 text-white font-black h-[50px] rounded-xl shadow-md transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
+							{finishSubmitting ? (
+								<RefreshCw className="animate-spin" size={20} />
+							) : (
+								<XCircle size={20} />
+							)}
+							{finishSubmitting ? "FINALIZANDO..." : "FINALIZAR 1 ABERTO"}
+						</button>
+					</div>
+
+					{/* Observations */}
+					<div className="space-y-1">
+						<label className="font-bold text-slate-400 dark:text-slate-500 ml-1 flex items-center gap-1">
+							<MessageSquare size={12} /> Observações (Opcional)
+						</label>
+						<textarea
+							value={openObs}
+							onChange={(e) => setOpenObs(e.target.value)}
+							placeholder="Inserir observação caso necessário."
+							className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all text-slate-800 dark:text-slate-200 font-medium h-20 resize-none"
+						/>
+					</div>
+
+					{openMessage && (
+						<div
+							className={`p-4 rounded-xl flex items-center gap-2 text-sm font-bold ${
+								openMessage.type === "success"
+									? "bg-emerald-50 text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-400"
+									: "bg-red-50 text-red-700 dark:bg-red-900/20 dark:text-red-400"
+							}`}>
+							<AlertCircle size={18} />
+							{openMessage.text}
+						</div>
+					)}
+				</div>
+			</section>
 
 			{/* Movement Section */}
 			<section className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 transition-colors">
@@ -473,7 +600,7 @@ export default function StockMovementsPage({ params }: { params: Promise<{ store
 						<textarea
 							value={obs}
 							onChange={(e) => setObs(e.target.value)}
-							placeholder="Inserir observação caso não seja uma movimentação padrão."
+							placeholder="Inserir observação caso necessário."
 							className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500 transition-all text-slate-800 dark:text-slate-200 font-medium h-20 resize-none"
 						/>
 					</div>
@@ -492,116 +619,7 @@ export default function StockMovementsPage({ params }: { params: Promise<{ store
 				</form>
 			</section>
 
-			{/* Opening Section */}
-			<section className="bg-slate-50 dark:bg-slate-800/30 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 transition-colors">
-				<h2 className="text-xl font-bold text-slate-800 dark:text-slate-200 mb-6 flex items-center gap-2">
-					<ExternalLink className="text-blue-600 dark:text-blue-500" size={24} />
-					Registrar Abertura ou Fim de Pacote
-				</h2>
-
-				<div className="space-y-6">
-					<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
-						{/* Item Selection */}
-						<div className="space-y-1 relative md:col-span-1 lg:col-span-2">
-							<label className="text-xs font-bold text-slate-400 dark:text-slate-500 ml-1">
-								Sabor / Item
-							</label>
-							<div className="relative">
-								<input
-									type="text"
-									required
-									placeholder="BUSCAR SABOR..."
-									value={openSearchTerm || (openItemId ? STOCK_LABELS[openItemId] : "")}
-									onFocus={() => setIsOpenDropdownOpen(true)}
-									onBlur={() => setTimeout(() => setIsOpenDropdownOpen(false), 200)}
-									onChange={(e) => {
-										setOpenSearchTerm(e.target.value.toUpperCase());
-										setOpenItemId("");
-										setIsOpenDropdownOpen(true);
-									}}
-									autoComplete="off"
-									className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all text-slate-800 dark:text-slate-200 font-bold placeholder:font-medium uppercase"
-								/>
-								<div className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-300 dark:text-slate-600 pointer-events-none">
-									<ChevronDown size={18} />
-								</div>
-
-								{isOpenDropdownOpen && (
-									<div className="absolute z-50 w-full mt-2 max-h-[300px] overflow-y-auto bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl animate-in fade-in zoom-in-95 duration-200">
-										{filteredOpenItems.length > 0 ? (
-											filteredOpenItems.map(([id, label]) => (
-												<div
-													key={id}
-													onMouseDown={(e) => {
-														e.preventDefault();
-														setOpenItemId(id);
-														setOpenSearchTerm("");
-														setIsOpenDropdownOpen(false);
-													}}
-													className="px-4 py-3 hover:bg-blue-50 dark:hover:bg-blue-900/30 hover:text-blue-600 dark:hover:text-blue-400 cursor-pointer text-sm font-bold text-slate-700 dark:text-slate-300 transition-colors flex items-center justify-between group">
-													<div className="flex flex-col">
-														<span>{label}</span>
-														{isUnits[id] && (
-															<span className="text-[10px] text-orange-500 font-black uppercase">
-																Já possui 1 aberto
-															</span>
-														)}
-													</div>
-													<span className="text-[10px] text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity">
-														{formatStockCompact(stock[id] || 0, isUnits[id] || false)} em estoque
-													</span>
-												</div>
-											))
-										) : (
-											<div className="px-4 py-4 text-center text-xs font-bold text-slate-400">
-												NENHUM SABOR ENCONTRADO
-											</div>
-										)}
-									</div>
-								)}
-							</div>
-						</div>
-
-						{/* Open Button */}
-						<button
-							onClick={handleRegisterOpening}
-							disabled={openSubmitting || !openItemId || (stock[openItemId] || 0) <= 0}
-							className="bg-blue-600 hover:bg-blue-700 text-white font-black h-[50px] rounded-xl shadow-md transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
-							{openSubmitting ? (
-								<RefreshCw className="animate-spin" size={20} />
-							) : (
-								<ExternalLink size={20} />
-							)}
-							{openSubmitting ? "ABRINDO..." : "ABRIR PACOTE"}
-						</button>
-
-						{/* Finish Button */}
-						<button
-							onClick={handleFinishPackage}
-							disabled={finishSubmitting || !openItemId || !isUnits[openItemId]}
-							className="bg-slate-700 hover:bg-slate-800 text-white font-black h-[50px] rounded-xl shadow-md transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
-							{finishSubmitting ? (
-								<RefreshCw className="animate-spin" size={20} />
-							) : (
-								<XCircle size={20} />
-							)}
-							{finishSubmitting ? "FINALIZANDO..." : "FINALIZAR 1 ABERTO"}
-						</button>
-					</div>
-
-					{openMessage && (
-						<div
-							className={`p-4 rounded-xl flex items-center gap-2 text-sm font-bold ${
-								openMessage.type === "success"
-									? "bg-emerald-50 text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-400"
-									: "bg-red-50 text-red-700 dark:bg-red-900/20 dark:text-red-400"
-							}`}>
-							<AlertCircle size={18} />
-							{openMessage.text}
-						</div>
-					)}
-				</div>
-			</section>
+			
 
 			{/* History Section */}
 			<section className="space-y-4">
@@ -705,15 +723,15 @@ export default function StockMovementsPage({ params }: { params: Promise<{ store
 										<tr
 											key={m.id}
 											className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
-											<td className="px-6 py-4 whitespace-nowrap text-xs font-bold text-slate-400 dark:text-slate-500">
+											<td className="px-6 py-4 whitespace-nowrap font-bold text-slate-400 dark:text-slate-500">
 												{formatDate(m.timestamp?.toDate())}
 											</td>
-											<td className="px-6 py-4 whitespace-nowrap text-sm font-black text-slate-700 dark:text-slate-200 uppercase">
+											<td className="px-6 py-4 whitespace-nowrap font-black text-slate-700 dark:text-slate-200 uppercase">
 												{m.itemName}
 											</td>
 											<td className="px-6 py-4 whitespace-nowrap text-center">
 												<span
-													className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-black uppercase ${
+													className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-black uppercase ${
 														m.type === "recebido"
 															? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
 															: m.type === "saida"
@@ -723,9 +741,9 @@ export default function StockMovementsPage({ params }: { params: Promise<{ store
 																	: "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-400"
 													}`}>
 													{m.type === "recebido" ? (
-														<ArrowUpCircle size={12} />
-													) : m.type === "saida" ? (
 														<ArrowDownCircle size={12} />
+													) : m.type === "saida" ? (
+														<ArrowUpCircle size={12} />
 													) : m.type === "abertura" ? (
 														<ExternalLink size={12} />
 													) : (
@@ -736,24 +754,24 @@ export default function StockMovementsPage({ params }: { params: Promise<{ store
 														: m.type === "saida"
 															? "saída"
 															: m.type === "abertura"
-																? "abertura"
-																: "fechamento"}
+																? "pacote aberto"
+																: "pacote finalizado"}
 												</span>
 											</td>
-											<td className="px-6 py-4 whitespace-nowrap text-center text-sm font-black text-slate-700 dark:text-slate-200">
+											<td className="px-6 py-4 whitespace-nowrap text-center font-black text-slate-700 dark:text-slate-200">
 												{m.quantity}
 											</td>
-											<td className="px-6 py-4 whitespace-nowrap text-center text-sm font-bold text-slate-400 dark:text-slate-500">
+											<td className="px-6 py-4 whitespace-nowrap text-center font-bold text-slate-400 dark:text-slate-500">
 												{m.beforeStock !== undefined
 													? formatStockCompact(m.beforeStock, m.beforeOpen || false)
 													: "-"}
 											</td>
-											<td className="px-6 py-4 whitespace-nowrap text-center text-sm font-black text-blue-600 dark:text-blue-400">
+											<td className="px-6 py-4 whitespace-nowrap text-center font-black text-blue-600 dark:text-blue-400">
 												{m.afterStock !== undefined
 													? formatStockCompact(m.afterStock, m.afterOpen || false)
 													: "-"}
 											</td>
-											<td className="px-6 py-4 text-xs font-medium text-slate-500 dark:text-slate-400 max-w-xs truncate">
+											<td className="px-6 py-4 font-medium text-slate-500 dark:text-slate-400 max-w-xs truncate">
 												{m.obs || "-"}
 											</td>
 										</tr>
