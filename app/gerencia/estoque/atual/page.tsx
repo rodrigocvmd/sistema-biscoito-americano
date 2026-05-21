@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { db } from "@/lib/firebase";
 import { collection, onSnapshot } from "firebase/firestore";
 import { STOCK_LABELS, StockData, STORE_NAMES, StoreId, formatDate } from "@/types";
-import { RefreshCw, ArrowLeftRight, Printer } from "lucide-react";
+import { RefreshCw, ArrowLeftRight, Printer, Search } from "lucide-react";
 
 interface FullStoreData {
 	id: StoreId;
@@ -17,17 +17,7 @@ interface FullStoreData {
 export default function EstoqueAtualPage() {
 	const [loading, setLoading] = useState(true);
 	const [allData, setAllData] = useState<FullStoreData[]>([]);
-	const [tableSort, setTableSort] = useState<"default" | "name">("default");
-
-	// Persistir ordenação
-	useEffect(() => {
-		const savedSort = localStorage.getItem("biscoito_admin_stock_sort");
-		if (savedSort) setTableSort(savedSort as any);
-	}, []);
-
-	useEffect(() => {
-		localStorage.setItem("biscoito_admin_stock_sort", tableSort);
-	}, [tableSort]);
+	const [searchTerm, setSearchTerm] = useState("");
 
 	const rotateStores = () => {
 		setAllData((prev) => {
@@ -138,23 +128,18 @@ export default function EstoqueAtualPage() {
 				<h1 className="text-2xl font-black text-blue-700 dark:text-blue-500 uppercase">Estoque Atual - {new Date().toLocaleDateString('pt-BR')}</h1>
 			</div>
 
-			{/* Actions Bar: Sorting & Print */}
-			<div className="flex items-center justify-between gap-4 print:hidden">
-				<div className="bg-white dark:bg-slate-900 p-3 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex items-center gap-4 w-fit transition-colors">
-					<span className="text-[11px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest ml-2">
-						Itens:
-					</span>
-					<div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-xl gap-1">
-						<button
-							onClick={() => setTableSort("default")}
-							className={`cursor-pointer px-4 py-2 rounded-lg text-xs font-black transition-all ${tableSort === "default" ? "bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-sm" : "text-slate-500 dark:text-slate-400"}`}>
-							Padrão
-						</button>
-						<button
-							onClick={() => setTableSort("name")}
-							className={`cursor-pointer px-4 py-2 rounded-lg text-xs font-black transition-all ${tableSort === "name" ? "bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-sm" : "text-slate-500 dark:text-slate-400"}`}>
-							A-Z
-						</button>
+			{/* Actions Bar: Filter & Print */}
+			<div className="flex flex-wrap items-center justify-between gap-4 print:hidden">
+				<div className="flex items-center gap-4 flex-1 min-w-[300px]">
+					<div className="relative flex-1 group">
+						<Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-500 transition-colors" />
+						<input
+							type="text"
+							placeholder="Filtrar por sabor..."
+							value={searchTerm}
+							onChange={(e) => setSearchTerm(e.target.value)}
+							className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl py-3 pl-12 pr-4 text-sm font-bold text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all shadow-sm"
+						/>
 					</div>
 				</div>
 
@@ -198,7 +183,8 @@ export default function EstoqueAtualPage() {
 						</thead>
 						<tbody>
 							{[...(Object.entries(STOCK_LABELS) as [keyof StockData, string][])]
-								.sort((a, b) => (tableSort === "name" ? a[1].localeCompare(b[1]) : 0))
+								.sort((a, b) => a[1].localeCompare(b[1]))
+								.filter(([_, label]) => label.toLowerCase().includes(searchTerm.toLowerCase()))
 								.map(([key, label]) => {
 									return (
 										<tr

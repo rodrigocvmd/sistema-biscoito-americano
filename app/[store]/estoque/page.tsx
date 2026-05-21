@@ -571,7 +571,7 @@ export default function StockMovementsPage({ params }: { params: Promise<{ store
 							className="bg-slate-700 hover:bg-slate-800 text-white font-black h-[50px] rounded-xl shadow-md transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
 						>
 							{finishSubmitting ? <RefreshCw className="animate-spin" size={20} /> : <XCircle size={20} />}
-							{finishSubmitting ? "FINALIZANDO..." : "FINALIZAR ABERTO"}
+							{finishSubmitting ? "FINALIZANDO..." : "FINALIZAR 1 ABERTO"}
 						</button>
 					</div>
 

@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { db } from "@/lib/firebase";
 import { collection, getDocs, query, orderBy, limit } from "firebase/firestore";
 import { STOCK_LABELS, StockData, STORE_NAMES, StoreId, formatDate, StockSnapshot } from "@/types";
-import { RefreshCw, ArrowRight, TrendingUp, TrendingDown, ChevronDown, Package } from "lucide-react";
+import { RefreshCw, ArrowRight, TrendingUp, TrendingDown, ChevronDown, Package, Search } from "lucide-react";
 
 export default function EstoqueHistoricoPage() {
 	const [historyStore, setHistoryStore] = useState<StoreId>("conjunto");
@@ -12,6 +12,7 @@ export default function EstoqueHistoricoPage() {
 	const [selectedSnapshot1, setSelectedSnapshot1] = useState<string>("");
 	const [selectedSnapshot2, setSelectedSnapshot2] = useState<string>("");
 	const [loadingHistory, setLoadingHistory] = useState(false);
+	const [searchTerm, setSearchTerm] = useState("");
 
 	const fetchHistory = async () => {
 		setLoadingHistory(true);
@@ -74,87 +75,86 @@ export default function EstoqueHistoricoPage() {
 	const renderStockCell = (qty: number, hasOpen: boolean) => {
 		return (
 			<div className="flex flex-col items-center">
-				<span className={`text-lg font-black ${qty === 0 && !hasOpen ? "text-slate-300 dark:text-slate-700" : "text-slate-900 dark:text-slate-100"}`}>
-					{qty}
-				</span>
-				{hasOpen && (
-					<span className="text-[9px] font-black text-orange-500 uppercase whitespace-nowrap bg-orange-50 dark:bg-orange-900/20 px-1.5 py-0.5 rounded mt-0.5">
-						+ 1 aberto
+				<div className="flex items-center gap-1">
+					<span className={`text-lg font-black ${qty === 0 && !hasOpen ? "text-slate-300 dark:text-slate-700" : "text-slate-900 dark:text-slate-100"}`}>
+						{qty}
 					</span>
-				)}
+					{hasOpen && (
+						<span className="text-[13px] font-extrabold text-orange-500 dark:text-orange-400 whitespace-nowrap">
+							+ 1 aberto
+						</span>
+					)}
+				</div>
 			</div>
 		);
 	};
 
 	return (
 		<div className="space-y-6">
-			{/* Filters */}
-			<div className="bg-white dark:bg-slate-900 p-6 rounded-[32px] border border-slate-200 dark:border-slate-800 shadow-sm flex flex-wrap items-center gap-6 justify-center transition-colors">
-				<div className="flex flex-col gap-2">
-					<span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest ml-2">Loja para Histórico</span>
-					<div className="relative group flex min-w-[200px]">
-						<select
-							value={historyStore}
-							onChange={(e) => setHistoryStore(e.target.value as StoreId)}
-							className="flex justify-center items-center align-middle appearance-none w-full bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-2xl px-5 py-3 pr-12 text-sm font-bold text-slate-700 dark:text-slate-200 cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all hover:bg-slate-100 dark:hover:bg-slate-800">
-							{Object.entries(STORE_NAMES).map(([id, name]) => (
-								<option key={id} value={id} className="dark:bg-slate-900">{name}</option>
-							))}
-						</select>
-						<ChevronDown size={18} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 group-hover:text-blue-500 transition-colors pointer-events-none" />
-					</div>
-				</div>
-
-				<button
-					onClick={fetchHistory}
-					disabled={loadingHistory}
-					className="mt-6 bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-2xl text-sm font-black transition-all shadow-lg shadow-blue-500/20 dark:shadow-none disabled:opacity-50 flex items-center gap-3">
-					{loadingHistory ? <RefreshCw className="animate-spin" size={18} /> : (
-						<>
-							<RefreshCw size={18} />
-							<span>ATUALIZAR</span>
-						</>
-					)}
-				</button>
-			</div>
-
 			{snapshots.length > 0 ? (
 				<div className="bg-white dark:bg-slate-900 rounded-[32px] border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden transition-colors">
 					<div className="p-6 bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800 flex flex-wrap items-center justify-between gap-6">
-						<div className="flex items-center gap-4">
+						<div className="flex flex-wrap items-center gap-6">
 							<div className="flex flex-col gap-2">
-								<span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest ml-1 text-center">Comparar de (Última do dia)</span>
-								<div className="relative group">
+								<span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest ml-2 text-center">Loja</span>
+								<div className="relative group flex min-w-[160px]">
 									<select
-										value={selectedSnapshot1}
-										onChange={(e) => setSelectedSnapshot1(e.target.value)}
-										className="appearance-none bg-white dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-700 rounded-xl px-4 py-2 pr-10 text-[12px] font-black text-slate-600 dark:text-slate-300 cursor-pointer focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all hover:border-blue-200 dark:hover:border-blue-800 hover:shadow-sm">
-										{snapshots.map((s) => (
-											<option key={s.id} value={s.id} className="dark:bg-slate-900">{formatHistoryLabel(s.timestamp.toDate())}</option>
+										value={historyStore}
+										onChange={(e) => setHistoryStore(e.target.value as StoreId)}
+										className="appearance-none w-full bg-white dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-700 rounded-xl px-4 py-2 pr-10 text-[12px] font-black text-slate-600 dark:text-slate-300 cursor-pointer focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all hover:border-blue-200 dark:hover:border-blue-800 hover:shadow-sm">
+										{Object.entries(STORE_NAMES).map(([id, name]) => (
+											<option key={id} value={id} className="dark:bg-slate-900">{name}</option>
 										))}
 									</select>
 									<ChevronDown size={14} strokeWidth={3} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 group-hover:text-blue-500 pointer-events-none transition-colors" />
 								</div>
 							</div>
-							<ArrowRight className="text-slate-300 dark:text-slate-600 mt-6" size={20} />
-							<div className="flex flex-col gap-2">
-								<span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest ml-1 text-center">Para</span>
-								<div className="relative group">
-									<select
-										value={selectedSnapshot2}
-										onChange={(e) => setSelectedSnapshot2(e.target.value)}
-										className="appearance-none bg-white dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-700 rounded-xl px-4 py-2 pr-10 text-[12px] font-black text-slate-600 dark:text-slate-300 cursor-pointer focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all hover:border-blue-200 dark:hover:border-blue-800 hover:shadow-sm">
-										{snapshots.map((s) => (
-											<option key={s.id} value={s.id} className="dark:bg-slate-900">{formatHistoryLabel(s.timestamp.toDate())}</option>
-										))}
-									</select>
-									<ChevronDown size={14} strokeWidth={3} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 group-hover:text-blue-500 pointer-events-none transition-colors" />
+
+							<div className="flex items-center gap-4">
+								<div className="flex flex-col gap-2">
+									<span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest ml-1 text-center">Comparar de</span>
+									<div className="relative group">
+										<select
+											value={selectedSnapshot1}
+											onChange={(e) => setSelectedSnapshot1(e.target.value)}
+											className="appearance-none bg-white dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-700 rounded-xl px-4 py-2 pr-10 text-[12px] font-black text-slate-600 dark:text-slate-300 cursor-pointer focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all hover:border-blue-200 dark:hover:border-blue-800 hover:shadow-sm">
+											{snapshots.map((s) => (
+												<option key={s.id} value={s.id} className="dark:bg-slate-900">{formatHistoryLabel(s.timestamp.toDate())}</option>
+											))}
+										</select>
+										<ChevronDown size={14} strokeWidth={3} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 group-hover:text-blue-500 pointer-events-none transition-colors" />
+									</div>
+								</div>
+								<ArrowRight className="text-slate-300 dark:text-slate-600 mt-6" size={16} />
+								<div className="flex flex-col gap-2">
+									<span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest ml-1 text-center">Para</span>
+									<div className="relative group">
+										<select
+											value={selectedSnapshot2}
+											onChange={(e) => setSelectedSnapshot2(e.target.value)}
+											className="appearance-none bg-white dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-700 rounded-xl px-4 py-2 pr-10 text-[12px] font-black text-slate-600 dark:text-slate-300 cursor-pointer focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all hover:border-blue-200 dark:hover:border-blue-800 hover:shadow-sm">
+											{snapshots.map((s) => (
+												<option key={s.id} value={s.id} className="dark:bg-slate-900">{formatHistoryLabel(s.timestamp.toDate())}</option>
+											))}
+										</select>
+										<ChevronDown size={14} strokeWidth={3} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 group-hover:text-blue-500 pointer-events-none transition-colors" />
+									</div>
 								</div>
 							</div>
 						</div>
-						<div className="text-center">
-							<span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest block mb-1">Loja Selecionada</span>
-							<span className="text-xl font-black text-blue-600 dark:text-blue-400 tracking-tight">{STORE_NAMES[historyStore]}</span>
+
+						<div className="flex flex-col gap-2 flex-1 min-w-[250px]">
+							<span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest ml-2">Filtrar por Sabor</span>
+							<div className="relative group">
+								<Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-500 transition-colors" />
+								<input
+									type="text"
+									placeholder="Ex: Nutella..."
+									value={searchTerm}
+									onChange={(e) => setSearchTerm(e.target.value)}
+									className="w-full bg-white dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-700 rounded-xl py-2 pl-12 pr-4 text-[12px] font-black text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all"
+								/>
+							</div>
 						</div>
 					</div>
 
@@ -169,7 +169,10 @@ export default function EstoqueHistoricoPage() {
 								</tr>
 							</thead>
 							<tbody>
-								{Object.entries(STOCK_LABELS).map(([key, label]) => {
+								{(Object.entries(STOCK_LABELS) as [keyof StockData, string][])
+									.sort((a, b) => a[1].localeCompare(b[1]))
+									.filter(([_, label]) => label.toLowerCase().includes(searchTerm.toLowerCase()))
+									.map(([key, label]) => {
 									const s1 = snapshots.find(s => s.id === selectedSnapshot1);
 									const s2 = snapshots.find(s => s.id === selectedSnapshot2);
 									

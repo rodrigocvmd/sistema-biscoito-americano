@@ -34,6 +34,7 @@ import {
 	Printer,
 	MessageCircle,
 	History,
+	Search,
 } from "lucide-react";
 
 
@@ -79,13 +80,12 @@ export default function EstoqueReposicionarPage() {
 		onConfirm: () => void;
 	} | null>(null);
 
-	const [sortBy, setSortBy] = useState<"default" | "name" | "lago">("default");
+	const [searchTerm, setSearchTerm] = useState("");
 
 	// Load from localStorage on mount
 	useEffect(() => {
 		const savedProjected = localStorage.getItem("repos_projected_stocks");
 		const savedTransfers = localStorage.getItem("repos_item_transfers");
-		const savedSort = localStorage.getItem("biscoito_admin_repos_sort");
 		
 		if (savedProjected) {
 			setProjectedStocks(JSON.parse(savedProjected));
@@ -93,7 +93,6 @@ export default function EstoqueReposicionarPage() {
 			isInitialized.current = true;
 		}
 		if (savedTransfers) setItemTransfers(JSON.parse(savedTransfers));
-		if (savedSort) setSortBy(savedSort as any);
 	}, []);
 
 	// Save to localStorage on change
@@ -109,10 +108,6 @@ export default function EstoqueReposicionarPage() {
 			localStorage.setItem("repos_item_transfers", JSON.stringify(itemTransfers));
 		}
 	}, [itemTransfers]);
-
-	useEffect(() => {
-		localStorage.setItem("biscoito_admin_repos_sort", sortBy);
-	}, [sortBy]);
 
 	useEffect(() => {
 		const unsubscribeStores = onSnapshot(collection(db, "stores"), (storesSnapshot) => {
@@ -221,17 +216,9 @@ export default function EstoqueReposicionarPage() {
 		}
 	};
 
-	const sortedItems = (Object.entries(STOCK_LABELS) as [keyof StockData, string][]).sort((a, b) => {
-		if (sortBy === "name") {
-			return a[1].localeCompare(b[1]);
-		}
-		if (sortBy === "lago") {
-			const stockA = allData.find((d) => d.id === "lago")?.stock[a[0]] || 0;
-			const stockB = allData.find((d) => d.id === "lago")?.stock[b[0]] || 0;
-			return stockB - stockA;
-		}
-		return 0;
-	});
+	const sortedItems = (Object.entries(STOCK_LABELS) as [keyof StockData, string][])
+		.filter(([_, label]) => label.toLowerCase().includes(searchTerm.toLowerCase()))
+		.sort((a, b) => a[1].localeCompare(b[1]));
 
 	const calculateOptimizedSummary = () => {
 		const movements: { item: keyof StockData; from: StoreId; to: StoreId; qty: number }[] = [];
@@ -509,42 +496,33 @@ export default function EstoqueReposicionarPage() {
 				</div>
 				<div className="flex items-center gap-3">
 					<button
+						onClick={resetProjectedStocks}
+						className="cursor-pointer bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-400 px-6 py-4 rounded-2xl font-black text-[10px] transition-all border border-slate-200 dark:border-slate-700 uppercase tracking-widest">
+						Redefinir para Estoque Atual
+					</button>
+					<button
 						onClick={fetchAllHistory}
 						disabled={loadingAllHistory}
 						className="cursor-pointer flex items-center gap-2 bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/30 text-blue-600 dark:text-blue-400 px-6 py-4 rounded-2xl font-black text-[10px] transition-all border border-blue-200 dark:border-blue-800 uppercase tracking-widest disabled:opacity-50">
 						{loadingAllHistory ? <RefreshCw className="animate-spin" size={14} /> : <History size={14} />}
 						Ver Histórico Completo
 					</button>
-					<button
-						onClick={resetProjectedStocks}
-						className="cursor-pointer bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-400 px-6 py-4 rounded-2xl font-black text-[10px] transition-all border border-slate-200 dark:border-slate-700 uppercase tracking-widest">
-						Redefinir para Estoque Atual
-					</button>
+					
 				</div>
 			</div>
 
-			{/* Sorting Bar */}
+			{/* Filter Bar */}
 			<div className="flex items-center justify-between gap-4 print:hidden">
-				<div className="bg-white dark:bg-slate-900 p-3 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex items-center gap-4 w-fit transition-colors">
-					<span className="text-[11px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest ml-2">
-						Ordenação:
-					</span>
-					<div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-xl gap-1">
-						<button
-							onClick={() => setSortBy("default")}
-							className={`cursor-pointer px-4 py-2 rounded-lg text-xs font-black transition-all ${sortBy === "default" ? "bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-sm" : "text-slate-500 dark:text-slate-400"}`}>
-							Padrão
-						</button>
-						<button
-							onClick={() => setSortBy("name")}
-							className={`cursor-pointer px-4 py-2 rounded-lg text-xs font-black transition-all ${sortBy === "name" ? "bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-sm" : "text-slate-500 dark:text-slate-400"}`}>
-							A-Z
-						</button>
-						<button
-							onClick={() => setSortBy("lago")}
-							className={`cursor-pointer px-4 py-2 rounded-lg text-xs font-black transition-all ${sortBy === "lago" ? "bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-sm" : "text-slate-500 dark:text-slate-400"}`}>
-							Qtd (Lago)
-						</button>
+				<div className="bg-white dark:bg-slate-900 p-3 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex items-center gap-4 flex-1 transition-colors">
+					<div className="relative flex-1 group">
+						<Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-500 transition-colors" />
+						<input
+							type="text"
+							placeholder="Filtrar por sabor..."
+							value={searchTerm}
+							onChange={(e) => setSearchTerm(e.target.value)}
+							className="w-full bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl py-2.5 pl-12 pr-4 text-sm font-bold text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all shadow-sm"
+						/>
 					</div>
 				</div>
 			</div>
@@ -623,15 +601,22 @@ export default function EstoqueReposicionarPage() {
 														key={id}
 														className="p-4 text-center border-l border-slate-50 dark:border-slate-800 border-b border-slate-100 dark:border-slate-800">
 														<div className="flex flex-col items-center">
-															<span
-																className={`text-2xl font-black ${receiving ? "text-green-600 dark:text-green-400" : sending ? "text-red-600 dark:text-red-400" : isUnit ? "text-orange-500 dark:text-orange-400" : initial === 0 ? "text-slate-400 dark:text-slate-600" : "text-slate-900 dark:text-slate-200"}`}>
-																{isUnit && v === 0 ? "< 1" : v}
-															</span>
+															<div className="flex items-center gap-1">
+																<span
+																	className={`text-2xl font-black ${receiving ? "text-green-600 dark:text-green-400" : sending ? "text-red-600 dark:text-red-400" : isUnit ? "text-orange-500 dark:text-orange-400" : initial === 0 ? "text-slate-400 dark:text-slate-600" : "text-slate-900 dark:text-slate-200"}`}>
+																	{isUnit && v === 0 ? "< 1" : v}
+																</span>
+																{isUnit && (
+																	<span className="text-[13px] font-extrabold text-orange-500 dark:text-orange-400 whitespace-nowrap">
+																		+ 1 aberto
+																	</span>
+																)}
+															</div>
 															{(receiving || sending) && (
 																<span className="text-[12px] font-bold text-slate-400 dark:text-slate-500 uppercase">
 																	Inicial:{" "}
 																	<span className="text-[14px] font-bold text-slate-900 dark:text-slate-200 uppercase">
-																		{isUnit ? "< 1" : initial}
+																		{isUnit ? `${initial} + 1 aberto` : initial}
 																	</span>
 																</span>
 															)}
