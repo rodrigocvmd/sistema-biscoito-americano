@@ -483,31 +483,23 @@ export default function EstoqueReposicionarPage() {
 					<h2 className="text-2xl font-black text-slate-800 dark:text-slate-200 uppercase tracking-tight">
 						Reposicionamento
 					</h2>
-					<p className="text-md font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">
+					<p className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">
 						Movimente itens entre as unidades
 					</p>
-				</div>
-				<div className="flex justify-end p-6">
-					<button
-						onClick={() => setShowSummary(true)}
-						className="flex items-center gap-3 bg-blue-600 hover:bg-blue-700 text-white px-12 py-4 rounded-2xl font-black shadow-lg shadow-blue-100 dark:shadow-none transition-all cursor-pointer text-lg">
-						GERAR RESUMO DE REPOSICIONAMENTO
-					</button>
 				</div>
 				<div className="flex items-center gap-3">
 					<button
 						onClick={resetProjectedStocks}
-						className="cursor-pointer bg-green-500 dark:bg-green-500 hover:bg-green-600 dark:hover:bg-green-600 text-white dark:text-white px-6 py-4 rounded-2xl font-black text-[1.1rem] transition-all border border-slate-200 dark:border-slate-700 uppercase tracking-widest">
+						className="cursor-pointer flex items-center gap-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 px-5 py-2.5 rounded-xl font-black text-xs transition-all border border-slate-200 dark:border-slate-700 uppercase tracking-widest">
+						<RefreshCw size={14} />
 						Redefinir para Estoque Atual
 					</button>
 					<button
-						onClick={fetchAllHistory}
-						disabled={loadingAllHistory}
-						className="cursor-pointer flex items-center gap-2 bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/30 text-blue-600 dark:text-blue-400 px-6 py-4 rounded-2xl font-black text-[1rem] transition-all border border-blue-200 dark:border-blue-800 uppercase tracking-widest disabled:opacity-50">
-						{loadingAllHistory ? <RefreshCw className="animate-spin" size={14} /> : <History size={14} />}
-						Ver Histórico Completo
+						onClick={() => setShowSummary(true)}
+						className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-xl font-black text-xs shadow-md shadow-blue-100 dark:shadow-none transition-all cursor-pointer uppercase tracking-widest">
+						<Save size={14} />
+						Gerar Resumo
 					</button>
-					
 				</div>
 			</div>
 
@@ -525,6 +517,13 @@ export default function EstoqueReposicionarPage() {
 						/>
 					</div>
 				</div>
+				<button
+					onClick={fetchAllHistory}
+					disabled={loadingAllHistory}
+					className="cursor-pointer flex items-center gap-2 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 px-6 py-3.5 rounded-2xl font-black text-xs transition-all border border-slate-200 dark:border-slate-800 uppercase tracking-widest disabled:opacity-50 shadow-sm">
+					{loadingAllHistory ? <RefreshCw className="animate-spin" size={14} /> : <History size={14} />}
+					Histórico Completo
+				</button>
 			</div>
 
 			<div className="bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-200 dark:border-slate-800 shadow-sm transition-colors print:hidden">
@@ -532,17 +531,17 @@ export default function EstoqueReposicionarPage() {
 					<table className="w-full border-separate border-spacing-0">
 						<thead>
 							<tr className="bg-slate-50 dark:bg-slate-800">
-								<th className="p-4 text-[0.625rem] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest sticky left-0 bg-slate-50 dark:bg-slate-800 z-20 border-b border-slate-200 dark:border-slate-700 text-center">
+								<th className="p-5 text-[0.75rem] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest sticky left-0 bg-slate-50 dark:bg-slate-800 z-20 border-b border-slate-200 dark:border-slate-700 text-center">
 									Item
 								</th>
 								{STORE_ORDER.map((id) => (
 									<th
 										key={id}
-										className="p-4 text-center text-[0.625rem] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest min-w-[6.25rem] border-l border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700">
+										className="p-5 text-center text-[0.75rem] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest min-w-[7.5rem] border-l border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700">
 										{STORE_NAMES[id]}
 									</th>
 								))}
-								<th className="p-4 text-center text-[0.625rem] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest min-w-[17.5rem] border-l border-slate-100 dark:border-slate-700 bg-blue-50/50 dark:bg-blue-900/10 border-b border-slate-200 dark:border-slate-700">
+								<th className="p-5 text-center text-[0.75rem] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest min-w-[20rem] border-l border-slate-100 dark:border-slate-700 bg-blue-50/50 dark:bg-blue-900/10 border-b border-slate-200 dark:border-slate-700">
 									Movimentar
 								</th>
 							</tr>
@@ -562,28 +561,28 @@ export default function EstoqueReposicionarPage() {
 									<Fragment key={itemKey}>
 										{showRepeatedHeader && (
 											<tr className="bg-slate-100 dark:bg-slate-800/80">
-												<th className="p-2 text-center text-[0.5625rem] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest sticky left-0 bg-slate-100 dark:bg-slate-800/80 z-20 border-y border-slate-200 dark:border-slate-700">
+												<th className="p-3 text-center text-[0.6875rem] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest sticky left-0 bg-slate-100 dark:bg-slate-800/80 z-20 border-y border-slate-200 dark:border-slate-700">
 													Item
 												</th>
 												{STORE_ORDER.map((id) => (
 													<th
 														key={`header-${id}-${index}`}
-														className="p-2 text-center text-[0.5625rem] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest border-l border-slate-200 dark:border-slate-700 border-y">
+														className="p-3 text-center text-[0.6875rem] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest border-l border-slate-200 dark:border-slate-700 border-y">
 														{STORE_NAMES[id]}
 													</th>
 												))}
-												<th className="p-2 text-center text-[0.5625rem] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest border-l border-slate-200 dark:border-slate-700 bg-blue-100/30 dark:bg-blue-900/20 border-y">
+												<th className="p-3 text-center text-[0.6875rem] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest border-l border-slate-200 dark:border-slate-700 bg-blue-100/30 dark:bg-blue-900/20 border-y">
 													Movimentar
 												</th>
 											</tr>
 										)}
 										<tr
 											className={`border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50/50 dark:hover:bg-slate-800/50 transition-colors ${isExpanded ? "bg-blue-50/30 dark:bg-blue-900/20" : ""}`}>
-											<td className="p-4 sticky left-0 bg-white dark:bg-slate-900 group-hover:bg-slate-50/50 dark:group-hover:bg-slate-800/50 z-10 border-r border-slate-50 dark:border-slate-800 border-b border-slate-100 dark:border-slate-800 transition-colors">
+											<td className="p-5 sticky left-0 bg-white dark:bg-slate-900 group-hover:bg-slate-50/50 dark:group-hover:bg-slate-800/50 z-10 border-r border-slate-50 dark:border-slate-800 border-b border-slate-100 dark:border-slate-800 transition-colors">
 												<button
 													onClick={() => setExpandedItem(isExpanded ? null : itemKey)}
-													className="flex items-center gap-2 text-[0.8125rem] font-black text-slate-600 dark:text-slate-400 uppercase hover:text-blue-600 dark:hover:text-blue-400 transition-colors cursor-pointer text-left">
-													{isExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+													className="flex items-center gap-2 text-[0.9375rem] font-black text-slate-600 dark:text-slate-400 uppercase hover:text-blue-600 dark:hover:text-blue-400 transition-colors cursor-pointer text-left">
+													{isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
 													{label}
 												</button>
 											</td>
@@ -599,12 +598,12 @@ export default function EstoqueReposicionarPage() {
 												return (
 													<td
 														key={id}
-														className="p-4 text-center border-l border-slate-50 dark:border-slate-800 border-b border-slate-100 dark:border-slate-800">
+														className="p-5 text-center border-l border-slate-50 dark:border-slate-800 border-b border-slate-100 dark:border-slate-800">
 														<div className="flex flex-col items-center">
 															<div className="flex items-center gap-1">
 																{(v > 0 || !isUnit) && (
 																	<span
-																		className={`text-2xl font-black ${receiving ? "text-green-600 dark:text-green-400" : sending ? "text-red-600 dark:text-red-400" : isUnit ? "text-orange-500 dark:text-orange-400" : initial === 0 ? "text-slate-400 dark:text-slate-600" : "text-slate-900 dark:text-slate-200"}`}>
+																		className={`text-3xl font-black ${receiving ? "text-green-600 dark:text-green-400" : sending ? "text-red-600 dark:text-red-400" : isUnit ? "text-orange-500 dark:text-orange-400" : initial === 0 ? "text-slate-400 dark:text-slate-600" : "text-slate-900 dark:text-slate-200"}`}>
 																		{isUnit && v === 0 ? "< 1" : v}
 																	</span>
 																)}
@@ -615,9 +614,9 @@ export default function EstoqueReposicionarPage() {
 																)}
 															</div>
 															{(receiving || sending) && (
-																<span className="text-[0.75rem] font-bold text-slate-400 dark:text-slate-500 ">
+																<span className="text-[0.875rem] font-bold text-slate-400 dark:text-slate-500 ">
 																	Inicial:{" "}
-																	<span className="text-[0.875rem] font-bold text-slate-900 dark:text-slate-200 ">
+																	<span className="text-[1rem] font-bold text-slate-900 dark:text-slate-200 ">
 																		{isUnit ? (initial > 0 ? `${initial} + 1 aberto` : "1 aberto") : initial}
 																	</span>
 																</span>
@@ -627,9 +626,9 @@ export default function EstoqueReposicionarPage() {
 												);
 											})}
 
-											<td className="p-4 text-center border-l border-slate-50 dark:border-slate-800 bg-blue-50/20 dark:bg-blue-900/5 border-b border-slate-100 dark:border-slate-800">
-												<div className="flex items-center justify-center gap-3">
-													<div className="flex items-center gap-2 bg-white dark:bg-slate-800 p-1.5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm">
+											<td className="p-5 text-center border-l border-slate-50 dark:border-slate-800 bg-blue-50/20 dark:bg-blue-900/5 border-b border-slate-100 dark:border-slate-800">
+												<div className="flex items-center justify-center gap-4">
+													<div className="flex items-center gap-3 bg-white dark:bg-slate-800 p-2 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm">
 														<div className="relative group">
 															<select
 																value={transfers.from}
@@ -639,17 +638,17 @@ export default function EstoqueReposicionarPage() {
 																		[itemKey]: { ...transfers, from: e.target.value as StoreId },
 																	}))
 																}
-																className="appearance-none bg-slate-50 dark:bg-slate-900/50 text-[0.75rem] font-black text-red-600 dark:text-red-400 focus:outline-none cursor-pointer pl-3 pr-8 py-1.5 rounded-xl border border-transparent focus:border-red-500/30 transition-all hover:bg-red-50 dark:hover:bg-red-900/20">
+																className="appearance-none bg-slate-50 dark:bg-slate-900/50 text-[0.875rem] font-black text-red-600 dark:text-red-400 focus:outline-none cursor-pointer pl-4 pr-10 py-2 rounded-xl border border-transparent focus:border-red-500/30 transition-all hover:bg-red-50 dark:hover:bg-red-900/20">
 																{STORE_ORDER.map((id) => (
 																	<option key={id} value={id} className="dark:bg-slate-800 cursor-pointer text-center">
 																		{STORE_NAMES[id]}
 																	</option>
 																))}
 															</select>
-															<ChevronDown size={12} strokeWidth={3} className="absolute right-2 top-1/2 -translate-y-1/2 text-red-400 pointer-events-none transition-colors group-hover:text-red-600" />
+															<ChevronDown size={14} strokeWidth={3} className="absolute right-3 top-1/2 -translate-y-1/2 text-red-400 pointer-events-none transition-colors group-hover:text-red-600" />
 														</div>
 
-														<ArrowRight className="text-slate-300 dark:text-slate-600" size={14} />
+														<ArrowRight className="text-slate-300 dark:text-slate-600" size={16} />
 
 														<div className="relative group">
 															<select
@@ -660,14 +659,14 @@ export default function EstoqueReposicionarPage() {
 																		[itemKey]: { ...transfers, to: e.target.value as StoreId },
 																	}))
 																}
-																className="appearance-none bg-slate-50 dark:bg-slate-900/50 text-[0.75rem] font-black text-emerald-600 dark:text-emerald-400 focus:outline-none cursor-pointer pl-3 pr-8 py-1.5 rounded-xl border border-transparent focus:border-emerald-500/30 transition-all hover:bg-emerald-50 dark:hover:bg-emerald-900/20">
+																className="appearance-none bg-slate-50 dark:bg-slate-900/50 text-[0.875rem] font-black text-emerald-600 dark:text-emerald-400 focus:outline-none cursor-pointer pl-4 pr-10 py-2 rounded-xl border border-transparent focus:border-emerald-500/30 transition-all hover:bg-emerald-50 dark:hover:bg-emerald-900/20">
 																{STORE_ORDER.map((id) => (
 																	<option key={id} value={id} className="dark:bg-slate-800 text-center">
 																		{STORE_NAMES[id]}
 																	</option>
 																))}
 															</select>
-															<ChevronDown size={12} strokeWidth={3} className="absolute right-2 top-1/2 -translate-y-1/2 text-emerald-400 pointer-events-none transition-colors group-hover:text-emerald-600" />
+															<ChevronDown size={14} strokeWidth={3} className="absolute right-3 top-1/2 -translate-y-1/2 text-emerald-400 pointer-events-none transition-colors group-hover:text-emerald-600" />
 														</div>
 													</div>
 
@@ -682,14 +681,14 @@ export default function EstoqueReposicionarPage() {
 															}))
 														}
 														placeholder="0"
-														className="w-16 px-2 py-2 bg-white dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-xl text-center font-black focus:outline-none focus:border-blue-500 dark:focus:border-blue-400 transition-all text-sm dark:text-slate-200"
+														className="w-20 px-3 py-2.5 bg-white dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-xl text-center font-black focus:outline-none focus:border-blue-500 dark:focus:border-blue-400 transition-all text-lg dark:text-slate-200"
 													/>
 
 													<button
 														onClick={() => applyMovement(itemKey)}
 														disabled={transfers.qty <= 0 || transfers.from === transfers.to}
-														className={`p-2.5 rounded-xl transition-all ${transfers.qty <= 0 || transfers.from === transfers.to ? "bg-slate-100 dark:bg-slate-800 text-slate-300 dark:text-slate-600 cursor-not-allowed" : "bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-500/20 dark:shadow-none cursor-pointer scale-100 hover:scale-105 active:scale-95"}`}>
-														<Send size={16} />
+														className={`p-3 rounded-xl transition-all ${transfers.qty <= 0 || transfers.from === transfers.to ? "bg-slate-100 dark:bg-slate-800 text-slate-300 dark:text-slate-600 cursor-not-allowed" : "bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-500/20 dark:shadow-none cursor-pointer scale-100 hover:scale-105 active:scale-95"}`}>
+														<Send size={20} />
 													</button>
 												</div>
 											</td>

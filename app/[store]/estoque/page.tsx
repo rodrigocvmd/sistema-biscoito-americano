@@ -492,7 +492,7 @@ export default function StockMovementsPage({ params }: { params: Promise<{ store
 			<section className="bg-slate-50 dark:bg-slate-800/30 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 transition-colors">
 				<h2 className="text-xl font-bold text-slate-800 dark:text-slate-200 mb-6 flex items-center gap-2">
 					<ExternalLink className="text-blue-600 dark:text-blue-500" size={24} />
-					Registrar Abertura / Fechamento
+					Registrar Abertura ou Fim de Pacote
 				</h2>
 				
 				<div className="space-y-6">
