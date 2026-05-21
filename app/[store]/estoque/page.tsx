@@ -53,7 +53,10 @@ export default function StockMovementsPage({ params }: { params: Promise<{ store
 	const [openSearchTerm, setOpenSearchTerm] = useState("");
 	const [openSubmitting, setOpenSubmitting] = useState(false);
 	const [finishSubmitting, setFinishSubmitting] = useState(false);
-	const [openMessage, setOpenMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+	const [openMessage, setOpenMessage] = useState<{
+		type: "success" | "error";
+		text: string;
+	} | null>(null);
 
 	// Filter State
 	const [filterItem, setFilterItem] = useState<string>("all");
@@ -111,14 +114,14 @@ export default function StockMovementsPage({ params }: { params: Promise<{ store
 	const filteredMovements = useMemo(() => {
 		return movements.filter((m) => {
 			const matchesItem = filterItem === "all" || m.itemId === filterItem;
-			
+
 			let matchesDate = true;
-			if (filterDate && m.timestamp) {
+			if (filterDate && m.timestamp && filterDate.length === 10) {
 				const movementDate = m.timestamp.toDate();
 				const d = String(movementDate.getDate()).padStart(2, "0");
 				const mth = String(movementDate.getMonth() + 1).padStart(2, "0");
 				const yr = movementDate.getFullYear();
-				const formattedMovementDate = `${yr}-${mth}-${d}`;
+				const formattedMovementDate = `${d}/${mth}/${yr}`;
 				matchesDate = formattedMovementDate === filterDate;
 			}
 
@@ -321,14 +324,12 @@ export default function StockMovementsPage({ params }: { params: Promise<{ store
 			<div className="flex gap-2 bg-slate-100 dark:bg-slate-800 p-1.5 rounded-2xl w-fit">
 				<Link
 					href={`/${store}/estoque`}
-					className="px-6 py-2.5 bg-white dark:bg-slate-700 text-red-600 dark:text-red-400 rounded-xl text-sm font-black shadow-sm transition-all"
-				>
+					className="px-6 py-2.5 bg-white dark:bg-slate-700 text-red-600 dark:text-red-400 rounded-xl text-sm font-black shadow-sm transition-all">
 					Estoque (Movimentação)
 				</Link>
 				<Link
 					href={`/${store}/estoque2`}
-					className="px-6 py-2.5 text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300 rounded-xl text-sm font-black transition-all"
-				>
+					className="px-6 py-2.5 text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300 rounded-xl text-sm font-black transition-all">
 					Contagem Atual
 				</Link>
 			</div>
@@ -339,16 +340,17 @@ export default function StockMovementsPage({ params }: { params: Promise<{ store
 					<Plus className="text-red-600 dark:text-red-500" size={24} />
 					Registrar Movimentação
 				</h2>
-				
+
 				<form onSubmit={handleAddMovement} className="space-y-6">
 					<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
 						{/* Item Selection */}
 						<div className="space-y-1 relative lg:col-span-1">
-							<label className="text-xs font-bold text-slate-400 dark:text-slate-500 ml-1">
+							<label className="font-bold text-slate-400 dark:text-slate-500 ml-1">
 								Sabor / Item
 							</label>
 							<div className="relative">
 								<input
+									id="buscarSabor"
 									type="text"
 									required
 									placeholder="BUSCAR SABOR..."
@@ -361,7 +363,7 @@ export default function StockMovementsPage({ params }: { params: Promise<{ store
 										setIsDropdownOpen(true);
 									}}
 									autoComplete="off"
-									className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500 transition-all text-slate-800 dark:text-slate-200 font-bold placeholder:font-medium uppercase"
+									className="w-full px-4 py-3 h-[50px] bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500 transition-all text-slate-800 dark:text-slate-200 font-bold placeholder:font-medium uppercase"
 								/>
 								<div className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-300 dark:text-slate-600 pointer-events-none">
 									<ChevronDown size={18} />
@@ -379,8 +381,7 @@ export default function StockMovementsPage({ params }: { params: Promise<{ store
 														setSearchTerm("");
 														setIsDropdownOpen(false);
 													}}
-													className="px-4 py-3 hover:bg-red-50 dark:hover:bg-red-900/30 hover:text-red-600 dark:hover:text-red-400 cursor-pointer text-sm font-bold text-slate-700 dark:text-slate-300 transition-colors flex items-center justify-between group"
-												>
+													className="px-4 py-3 hover:bg-red-50 dark:hover:bg-red-900/30 hover:text-red-600 dark:hover:text-red-400 cursor-pointer text-sm font-bold text-slate-700 dark:text-slate-300 transition-colors flex items-center justify-between group">
 													{label}
 													<span className="text-[10px] text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity">
 														{formatStockCompact(stock[id] || 0, isUnits[id] || false)} em estoque
@@ -399,32 +400,30 @@ export default function StockMovementsPage({ params }: { params: Promise<{ store
 
 						{/* Type Toggle */}
 						<div className="space-y-1">
-							<label className="text-xs font-bold text-slate-400 dark:text-slate-500 ml-1">
+							<label className="font-bold text-slate-400 dark:text-slate-500 ml-1">
 								Tipo de Movimento
 							</label>
-							<div className="flex bg-slate-50 dark:bg-slate-800 p-1 rounded-xl border border-slate-200 dark:border-slate-700 h-[50px]">
+							<div id="tipoDeMovimento" className="flex bg-slate-50 dark:bg-slate-800 p-1 rounded-xl border border-slate-200 dark:border-slate-700 h-[50px]">
 								<button
 									type="button"
 									onClick={() => setType("recebido")}
-									className={`flex-1 flex items-center justify-center gap-2 rounded-lg font-black text-xs transition-all ${
+									className={`flex-1 flex items-center justify-center gap-2 rounded-lg font-black	 transition-all ${
 										type === "recebido"
 											? "bg-white dark:bg-slate-700 text-green-600 dark:text-green-400 shadow-sm"
 											: "text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
-									}`}
-								>
-									<ArrowUpCircle size={16} />
+									}`}>
+									<ArrowUpCircle size={28} />
 									RECEBIDO
 								</button>
 								<button
 									type="button"
 									onClick={() => setType("saida")}
-									className={`flex-1 flex items-center justify-center gap-2 rounded-lg font-black text-xs transition-all ${
+									className={`flex-1 flex items-center justify-center gap-2 rounded-lg font-black transition-all ${
 										type === "saida"
 											? "bg-white dark:bg-slate-700 text-red-600 dark:text-red-400 shadow-sm"
 											: "text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
-									}`}
-								>
-									<ArrowDownCircle size={16} />
+									}`}>
+									<ArrowDownCircle size={28} />
 									SAÍDA
 								</button>
 							</div>
@@ -432,16 +431,15 @@ export default function StockMovementsPage({ params }: { params: Promise<{ store
 
 						{/* Quantity Select */}
 						<div className="space-y-1">
-							<label className="text-xs font-bold text-slate-400 dark:text-slate-500 ml-1">
+							<label className="font-bold text-slate-400 dark:text-slate-500 ml-1">
 								Quantidade (Pacotes)
 							</label>
 							<div className="relative">
 								<select
 									value={quantity}
 									onChange={(e) => setQuantity(parseInt(e.target.value))}
-									className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500 transition-all text-slate-800 dark:text-slate-200 font-black appearance-none cursor-pointer"
-								>
-									{Array.from({ length: 20 }, (_, i) => i + 1).map((n) => (
+									className="w-full px-4 py-3 h-[50px] bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500 transition-all text-slate-800 dark:text-slate-200 font-black appearance-none cursor-pointer text-xl">
+									{Array.from({ length: 10 }, (_, i) => i + 1).map((n) => (
 										<option key={n} value={n}>
 											{n} {n === 1 ? "Pacote" : "Pacotes"}
 										</option>
@@ -457,30 +455,36 @@ export default function StockMovementsPage({ params }: { params: Promise<{ store
 						<button
 							type="submit"
 							disabled={submitting || !selectedItemId}
-							className="bg-green-600 hover:bg-green-700 text-white font-black h-[50px] rounded-xl shadow-md transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-						>
-							{submitting ? <RefreshCw className="animate-spin" size={20} /> : <CheckCircle2 size={20} />}
+							className="bg-green-600 hover:bg-green-700 text-white font-black h-[50px] rounded-xl shadow-md transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
+							{submitting ? (
+								<RefreshCw className="animate-spin" size={20} />
+							) : (
+								<CheckCircle2 size={20} />
+							)}
 							{submitting ? "SALVANDO..." : "REGISTRAR"}
 						</button>
 					</div>
 
 					{/* Observations */}
 					<div className="space-y-1">
-						<label className="text-xs font-bold text-slate-400 dark:text-slate-500 ml-1 flex items-center gap-1">
-							<MessageSquare size={12} /> OBSERVAÇÕES (OPCIONAL)
+						<label className="font-bold text-slate-400 dark:text-slate-500 ml-1 flex items-center gap-1">
+							<MessageSquare size={12} /> Observações (Opcional)
 						</label>
 						<textarea
 							value={obs}
 							onChange={(e) => setObs(e.target.value)}
-							placeholder="Inserir observação caso não seja uma movimentação padrão..."
+							placeholder="Inserir observação caso não seja uma movimentação padrão."
 							className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500 transition-all text-slate-800 dark:text-slate-200 font-medium h-20 resize-none"
 						/>
 					</div>
 
 					{message && (
-						<div className={`p-4 rounded-xl flex items-center gap-2 text-sm font-bold ${
-							message.type === 'success' ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-400' : 'bg-red-50 text-red-700 dark:bg-red-900/20 dark:text-red-400'
-						}`}>
+						<div
+							className={`p-4 rounded-xl flex items-center gap-2 text-sm font-bold ${
+								message.type === "success"
+									? "bg-emerald-50 text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-400"
+									: "bg-red-50 text-red-700 dark:bg-red-900/20 dark:text-red-400"
+							}`}>
 							<AlertCircle size={18} />
 							{message.text}
 						</div>
@@ -494,7 +498,7 @@ export default function StockMovementsPage({ params }: { params: Promise<{ store
 					<ExternalLink className="text-blue-600 dark:text-blue-500" size={24} />
 					Registrar Abertura ou Fim de Pacote
 				</h2>
-				
+
 				<div className="space-y-6">
 					<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
 						{/* Item Selection */}
@@ -534,11 +538,14 @@ export default function StockMovementsPage({ params }: { params: Promise<{ store
 														setOpenSearchTerm("");
 														setIsOpenDropdownOpen(false);
 													}}
-													className="px-4 py-3 hover:bg-blue-50 dark:hover:bg-blue-900/30 hover:text-blue-600 dark:hover:text-blue-400 cursor-pointer text-sm font-bold text-slate-700 dark:text-slate-300 transition-colors flex items-center justify-between group"
-												>
+													className="px-4 py-3 hover:bg-blue-50 dark:hover:bg-blue-900/30 hover:text-blue-600 dark:hover:text-blue-400 cursor-pointer text-sm font-bold text-slate-700 dark:text-slate-300 transition-colors flex items-center justify-between group">
 													<div className="flex flex-col">
 														<span>{label}</span>
-														{isUnits[id] && <span className="text-[10px] text-orange-500 font-black uppercase">Já possui 1 aberto</span>}
+														{isUnits[id] && (
+															<span className="text-[10px] text-orange-500 font-black uppercase">
+																Já possui 1 aberto
+															</span>
+														)}
 													</div>
 													<span className="text-[10px] text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity">
 														{formatStockCompact(stock[id] || 0, isUnits[id] || false)} em estoque
@@ -559,9 +566,12 @@ export default function StockMovementsPage({ params }: { params: Promise<{ store
 						<button
 							onClick={handleRegisterOpening}
 							disabled={openSubmitting || !openItemId || (stock[openItemId] || 0) <= 0}
-							className="bg-blue-600 hover:bg-blue-700 text-white font-black h-[50px] rounded-xl shadow-md transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-						>
-							{openSubmitting ? <RefreshCw className="animate-spin" size={20} /> : <ExternalLink size={20} />}
+							className="bg-blue-600 hover:bg-blue-700 text-white font-black h-[50px] rounded-xl shadow-md transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
+							{openSubmitting ? (
+								<RefreshCw className="animate-spin" size={20} />
+							) : (
+								<ExternalLink size={20} />
+							)}
 							{openSubmitting ? "ABRINDO..." : "ABRIR PACOTE"}
 						</button>
 
@@ -569,17 +579,23 @@ export default function StockMovementsPage({ params }: { params: Promise<{ store
 						<button
 							onClick={handleFinishPackage}
 							disabled={finishSubmitting || !openItemId || !isUnits[openItemId]}
-							className="bg-slate-700 hover:bg-slate-800 text-white font-black h-[50px] rounded-xl shadow-md transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-						>
-							{finishSubmitting ? <RefreshCw className="animate-spin" size={20} /> : <XCircle size={20} />}
+							className="bg-slate-700 hover:bg-slate-800 text-white font-black h-[50px] rounded-xl shadow-md transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
+							{finishSubmitting ? (
+								<RefreshCw className="animate-spin" size={20} />
+							) : (
+								<XCircle size={20} />
+							)}
 							{finishSubmitting ? "FINALIZANDO..." : "FINALIZAR 1 ABERTO"}
 						</button>
 					</div>
 
 					{openMessage && (
-						<div className={`p-4 rounded-xl flex items-center gap-2 text-sm font-bold ${
-							openMessage.type === 'success' ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-400' : 'bg-red-50 text-red-700 dark:bg-red-900/20 dark:text-red-400'
-						}`}>
+						<div
+							className={`p-4 rounded-xl flex items-center gap-2 text-sm font-bold ${
+								openMessage.type === "success"
+									? "bg-emerald-50 text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-400"
+									: "bg-red-50 text-red-700 dark:bg-red-900/20 dark:text-red-400"
+							}`}>
 							<AlertCircle size={18} />
 							{openMessage.text}
 						</div>
@@ -594,64 +610,101 @@ export default function StockMovementsPage({ params }: { params: Promise<{ store
 						<History className="text-slate-400 dark:text-slate-600" size={20} />
 						Histórico de Movimentações
 					</h3>
-					
+
 					{/* Filters */}
 					<div className="flex flex-wrap items-center gap-2">
 						<div className="relative group">
-							<Filter size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+							<Filter
+								size={14}
+								className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"
+							/>
 							<select
 								value={filterItem}
 								onChange={(e) => setFilterItem(e.target.value)}
-								className="pl-9 pr-8 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-bold text-slate-600 dark:text-slate-400 appearance-none focus:outline-none focus:ring-2 focus:ring-red-500/20 cursor-pointer"
-							>
+								className="pl-9 pr-8 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-bold text-slate-600 dark:text-slate-400 appearance-none focus:outline-none focus:ring-2 focus:ring-red-500/20 cursor-pointer">
 								<option value="all">TODOS OS ITENS</option>
-								{Object.entries(STOCK_LABELS).sort((a,b) => a[1].localeCompare(b[1])).map(([id, label]) => (
-									<option key={id} value={id}>{label}</option>
-								))}
+								{Object.entries(STOCK_LABELS)
+									.sort((a, b) => a[1].localeCompare(b[1]))
+									.map(([id, label]) => (
+										<option key={id} value={id}>
+											{label}
+										</option>
+									))}
 							</select>
-							<ChevronDown size={14} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+							<ChevronDown
+								size={14}
+								className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"
+							/>
 						</div>
 
 						<div className="relative">
-							<CalendarIcon size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+							<CalendarIcon
+								size={14}
+								className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"
+							/>
 							<input
-								type="date"
+								type="text"
+								placeholder="DD/MM/AAAA"
+								maxLength={10}
 								value={filterDate}
-								onChange={(e) => setFilterDate(e.target.value)}
-								className="pl-9 pr-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-bold text-slate-600 dark:text-slate-400 focus:outline-none focus:ring-2 focus:ring-red-500/20"
+								onChange={(e) => {
+									let val = e.target.value.replace(/\D/g, '');
+									if (val.length > 2) val = val.slice(0, 2) + '/' + val.slice(2);
+									if (val.length > 5) val = val.slice(0, 5) + '/' + val.slice(5, 9);
+									setFilterDate(val);
+								}}
+								className="pl-9 pr-3 py-2 w-[130px] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-bold text-slate-600 dark:text-slate-400 focus:outline-none focus:ring-2 focus:ring-red-500/20"
 							/>
 						</div>
 
 						{(filterItem !== "all" || filterDate !== "") && (
 							<button
-								onClick={() => { setFilterItem("all"); setFilterDate(""); }}
+								onClick={() => {
+									setFilterItem("all");
+									setFilterDate("");
+								}}
 								className="p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
-								title="Limpar filtros"
-							>
+								title="Limpar filtros">
 								<RefreshCw size={14} />
 							</button>
 						)}
 					</div>
 				</div>
-				
+
 				<div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
 					<div className="overflow-x-auto">
 						<table className="w-full border-collapse">
 							<thead>
 								<tr className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800 text-left">
-									<th className="px-6 py-4 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Data / Hora</th>
-									<th className="px-6 py-4 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Item</th>
-									<th className="px-6 py-4 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest text-center">Tipo</th>
-									<th className="px-6 py-4 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest text-center">Qtd</th>
-									<th className="px-6 py-4 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest text-center">Antes</th>
-									<th className="px-6 py-4 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest text-center">Atual</th>
-									<th className="px-6 py-4 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Obs</th>
+									<th className="px-6 py-4 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">
+										Data / Hora
+									</th>
+									<th className="px-6 py-4 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">
+										Item
+									</th>
+									<th className="px-6 py-4 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest text-center">
+										Tipo
+									</th>
+									<th className="px-6 py-4 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest text-center">
+										Qtd
+									</th>
+									<th className="px-6 py-4 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest text-center">
+										Antes
+									</th>
+									<th className="px-6 py-4 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest text-center">
+										Atual
+									</th>
+									<th className="px-6 py-4 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">
+										Obs
+									</th>
 								</tr>
 							</thead>
 							<tbody className="divide-y divide-slate-100 dark:divide-slate-800">
 								{filteredMovements.length > 0 ? (
 									filteredMovements.map((m) => (
-										<tr key={m.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+										<tr
+											key={m.id}
+											className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
 											<td className="px-6 py-4 whitespace-nowrap text-xs font-bold text-slate-400 dark:text-slate-500">
 												{formatDate(m.timestamp?.toDate())}
 											</td>
@@ -659,27 +712,46 @@ export default function StockMovementsPage({ params }: { params: Promise<{ store
 												{m.itemName}
 											</td>
 											<td className="px-6 py-4 whitespace-nowrap text-center">
-												<span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-black uppercase ${
-													m.type === 'recebido' 
-														? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' 
-														: m.type === 'saida'
-															? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
-															: m.type === 'abertura'
-																? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
-																: 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-400'
-												}`}>
-													{m.type === 'recebido' ? <ArrowUpCircle size={12} /> : m.type === 'saida' ? <ArrowDownCircle size={12} /> : m.type === 'abertura' ? <ExternalLink size={12} /> : <XCircle size={12} />}
-													{m.type === 'recebido' ? 'recebido' : m.type === 'saida' ? 'saída' : m.type === 'abertura' ? 'abertura' : 'fechamento'}
+												<span
+													className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-black uppercase ${
+														m.type === "recebido"
+															? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
+															: m.type === "saida"
+																? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
+																: m.type === "abertura"
+																	? "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400"
+																	: "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-400"
+													}`}>
+													{m.type === "recebido" ? (
+														<ArrowUpCircle size={12} />
+													) : m.type === "saida" ? (
+														<ArrowDownCircle size={12} />
+													) : m.type === "abertura" ? (
+														<ExternalLink size={12} />
+													) : (
+														<XCircle size={12} />
+													)}
+													{m.type === "recebido"
+														? "recebido"
+														: m.type === "saida"
+															? "saída"
+															: m.type === "abertura"
+																? "abertura"
+																: "fechamento"}
 												</span>
 											</td>
 											<td className="px-6 py-4 whitespace-nowrap text-center text-sm font-black text-slate-700 dark:text-slate-200">
 												{m.quantity}
 											</td>
 											<td className="px-6 py-4 whitespace-nowrap text-center text-sm font-bold text-slate-400 dark:text-slate-500">
-												{m.beforeStock !== undefined ? formatStockCompact(m.beforeStock, m.beforeOpen || false) : "-"}
+												{m.beforeStock !== undefined
+													? formatStockCompact(m.beforeStock, m.beforeOpen || false)
+													: "-"}
 											</td>
 											<td className="px-6 py-4 whitespace-nowrap text-center text-sm font-black text-blue-600 dark:text-blue-400">
-												{m.afterStock !== undefined ? formatStockCompact(m.afterStock, m.afterOpen || false) : "-"}
+												{m.afterStock !== undefined
+													? formatStockCompact(m.afterStock, m.afterOpen || false)
+													: "-"}
 											</td>
 											<td className="px-6 py-4 text-xs font-medium text-slate-500 dark:text-slate-400 max-w-xs truncate">
 												{m.obs || "-"}
@@ -688,7 +760,9 @@ export default function StockMovementsPage({ params }: { params: Promise<{ store
 									))
 								) : (
 									<tr>
-										<td colSpan={7} className="px-6 py-10 text-center text-slate-400 dark:text-slate-600 font-medium">
+										<td
+											colSpan={7}
+											className="px-6 py-10 text-center text-slate-400 dark:text-slate-600 font-medium">
 											Nenhuma movimentação encontrada com os filtros selecionados.
 										</td>
 									</tr>

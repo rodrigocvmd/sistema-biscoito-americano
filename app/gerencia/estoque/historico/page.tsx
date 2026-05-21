@@ -1,225 +1,223 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { db } from "@/lib/firebase";
-import { collection, getDocs, query, orderBy, limit } from "firebase/firestore";
-import { STOCK_LABELS, StockData, STORE_NAMES, StoreId, formatDate, StockSnapshot } from "@/types";
-import { RefreshCw, ArrowRight, TrendingUp, TrendingDown, ChevronDown, Package, Search } from "lucide-react";
+import {
+	collection,
+	query,
+	orderBy,
+	onSnapshot,
+	limit,
+} from "firebase/firestore";
+import { STOCK_LABELS, StockData, formatDate, StockMovement, STORE_NAMES, StoreId } from "@/types";
+import {
+	RefreshCw,
+	History,
+	ArrowUpCircle,
+	ArrowDownCircle,
+	Filter,
+	Calendar as CalendarIcon,
+	ExternalLink,
+	XCircle,
+	ChevronDown,
+} from "lucide-react";
 
-export default function EstoqueHistoricoPage() {
-	const [historyStore, setHistoryStore] = useState<StoreId>("conjunto");
-	const [snapshots, setSnapshots] = useState<StockSnapshot[]>([]);
-	const [selectedSnapshot1, setSelectedSnapshot1] = useState<string>("");
-	const [selectedSnapshot2, setSelectedSnapshot2] = useState<string>("");
-	const [loadingHistory, setLoadingHistory] = useState(false);
-	const [searchTerm, setSearchTerm] = useState("");
+export default function GlobalStockHistoryPage() {
+	const [selectedStore, setSelectedStore] = useState<StoreId>("conjunto");
+	const [loading, setLoading] = useState(true);
+	const [movements, setMovements] = useState<StockMovement[]>([]);
 
-	const fetchHistory = async () => {
-		setLoadingHistory(true);
-		try {
-			const historyRef = collection(db, "stores", historyStore, "stockHistory");
-			const q = query(
-				historyRef,
-				orderBy("timestamp", "desc"),
-				limit(500) // Puxamos mais para garantir que tenhamos dias suficientes
-			);
-
-			const querySnapshot = await getDocs(q);
-			const allDocs = querySnapshot.docs.map((doc) => ({
-				id: doc.id,
-				...doc.data(),
-			})) as StockSnapshot[];
-
-			// Filtrar para manter apenas a última atualização de cada dia
-			const seenDates = new Set();
-			const dailyDocs = allDocs.filter((doc) => {
-				if (!doc.timestamp) return false;
-				const date = doc.timestamp.toDate();
-				const normalizedDate = new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
-				if (seenDates.has(normalizedDate)) return false;
-				seenDates.add(normalizedDate);
-				return true;
-			});
-
-			setSnapshots(dailyDocs);
-			if (dailyDocs.length >= 2) {
-				setSelectedSnapshot1(dailyDocs[1].id!); // Segundo dia mais recente
-				setSelectedSnapshot2(dailyDocs[0].id!); // Dia mais recente
-			} else if (dailyDocs.length === 1) {
-				setSelectedSnapshot1(dailyDocs[0].id!);
-				setSelectedSnapshot2(dailyDocs[0].id!);
-			}
-		} catch (error) {
-			console.error("Erro ao buscar histórico:", error);
-		} finally {
-			setLoadingHistory(false);
-		}
-	};
-
-	const formatHistoryLabel = (date: Date) => {
-		const day = String(date.getDate()).padStart(2, "0");
-		const month = String(date.getMonth() + 1).padStart(2, "0");
-		const weekDays = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
-		const weekDay = weekDays[date.getDay()];
-		
-		const hours = String(date.getHours()).padStart(2, "0");
-		const minutes = String(date.getMinutes()).padStart(2, "0");
-		
-		return `${day}/${month} (${weekDay}) - ${hours}:${minutes}`;
-	};
+	// Filter State
+	const [filterItem, setFilterItem] = useState<string>("all");
+	const [filterDate, setFilterDate] = useState<string>("");
 
 	useEffect(() => {
-		fetchHistory();
-	}, [historyStore]);
+		setLoading(true);
+		const movementsRef = collection(db, "stores", selectedStore, "stockMovements");
 
-	const renderStockCell = (qty: number, hasOpen: boolean) => {
-		return (
-			<div className="flex flex-col items-center">
-				<div className="flex items-center gap-1">
-					{(qty > 0 || !hasOpen) && (
-						<span className={`text-2xl font-black ${qty === 0 && !hasOpen ? "text-slate-300 dark:text-slate-400" : "text-slate-900 dark:text-slate-100"}`}>
-							{qty}
-						</span>
-					)}
-					{hasOpen && (
-						<span className="text-lg font-black text-orange-500 dark:text-orange-400 whitespace-nowrap">
-							{qty > 0 ? "+ 1 aberto" : "1 aberto"}
-						</span>
-					)}
-				</div>
-			</div>
-		);
+		// Listen to movements (last 100)
+		const qMovements = query(movementsRef, orderBy("timestamp", "desc"), limit(100));
+		const unsubMovements = onSnapshot(qMovements, (snapshot) => {
+			const docs = snapshot.docs.map((doc) => ({
+				id: doc.id,
+				...doc.data(),
+			})) as StockMovement[];
+			setMovements(docs);
+			setLoading(false);
+		});
+
+		return () => unsubMovements();
+	}, [selectedStore]);
+
+	const filteredMovements = useMemo(() => {
+		return movements.filter((m) => {
+			const matchesItem = filterItem === "all" || m.itemId === filterItem;
+			
+			let matchesDate = true;
+			if (filterDate && m.timestamp && filterDate.length === 10) {
+				const movementDate = m.timestamp.toDate();
+				const d = String(movementDate.getDate()).padStart(2, "0");
+				const mth = String(movementDate.getMonth() + 1).padStart(2, "0");
+				const yr = movementDate.getFullYear();
+				const formattedMovementDate = `${d}/${mth}/${yr}`;
+				matchesDate = formattedMovementDate === filterDate;
+			}
+
+			return matchesItem && matchesDate;
+		});
+	}, [movements, filterItem, filterDate]);
+
+	const formatStockCompact = (qty: number, hasOpen: boolean) => {
+		if (qty === 0 && !hasOpen) return "0";
+		const openText = hasOpen ? " + 1 aberto" : "";
+		if (qty === 0 && hasOpen) return "1 aberto";
+		return `${qty}${openText}`;
 	};
 
 	return (
 		<div className="space-y-6">
-			{snapshots.length > 0 ? (
-				<div className="bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden transition-colors">
-					<div className="p-6 bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800 flex flex-wrap items-center justify-between gap-6">
-						<div className="flex flex-wrap items-center gap-6">
-							<div className="flex flex-col gap-2">
-								<span className="text-[0.9rem] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest ml-2 text-center">Loja</span>
-								<div className="relative group flex min-w-[160px]">
-									<select
-										value={historyStore}
-										onChange={(e) => setHistoryStore(e.target.value as StoreId)}
-										className="appearance-none w-full bg-white dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-700 rounded-xl px-4 py-2 pr-10 text-[1rem] font-black text-slate-600 dark:text-blue-500 cursor-pointer focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all hover:border-blue-200 dark:hover:border-blue-800 hover:shadow-sm uppercase">
-										{Object.entries(STORE_NAMES).map(([id, name]) => (
-											<option key={id} value={id} className="dark:bg-slate-900">{name}</option>
-										))}
-									</select>
-									<ChevronDown size={14} strokeWidth={3} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 group-hover:text-blue-500 pointer-events-none transition-colors" />
-								</div>
-							</div>
+			{/* Store Selector */}
+			<div className="flex flex-wrap gap-2 bg-slate-100 dark:bg-slate-800/50 p-1.5 rounded-2xl w-fit">
+				{(Object.entries(STORE_NAMES) as [StoreId, string][]).map(([id, name]) => (
+					<button
+						key={id}
+						onClick={() => setSelectedStore(id)}
+						className={`px-6 py-2.5 rounded-xl text-sm font-black transition-all ${
+							selectedStore === id
+								? "bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-sm"
+								: "text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300"
+						}`}
+					>
+						{name.toUpperCase()}
+					</button>
+				))}
+			</div>
 
-							<div className="flex items-center gap-4">
-								<div className="flex flex-col gap-2">
-									<span className="text-[0.9rem] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest ml-1 text-center">Comparar de</span>
-									<div className="relative group">
-										<select
-											value={selectedSnapshot1}
-											onChange={(e) => setSelectedSnapshot1(e.target.value)}
-											className="appearance-none bg-white dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-700 rounded-xl px-4 py-2 pr-10 text-[1rem] font-black text-slate-600 dark:text-slate-300 cursor-pointer focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all hover:border-blue-200 dark:hover:border-blue-800 hover:shadow-sm">
-											{snapshots.map((s) => (
-												<option key={s.id} value={s.id} className="dark:bg-slate-900">{formatHistoryLabel(s.timestamp.toDate())}</option>
-											))}
-										</select>
-										<ChevronDown size={14} strokeWidth={3} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 group-hover:text-blue-500 pointer-events-none transition-colors" />
-									</div>
-								</div>
-								<ArrowRight className="text-slate-300 dark:text-slate-600 mt-6" size={16} />
-								<div className="flex flex-col gap-2">
-									<span className="text-[0.9rem] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest ml-1 text-center">Para</span>
-									<div className="relative group">
-										<select
-											value={selectedSnapshot2}
-											onChange={(e) => setSelectedSnapshot2(e.target.value)}
-											className="appearance-none bg-white dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-700 rounded-xl px-4 py-2 pr-10 text-[1rem] font-black text-slate-600 dark:text-slate-300 cursor-pointer focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all hover:border-blue-200 dark:hover:border-blue-800 hover:shadow-sm">
-											{snapshots.map((s) => (
-												<option key={s.id} value={s.id} className="dark:bg-slate-900">{formatHistoryLabel(s.timestamp.toDate())}</option>
-											))}
-										</select>
-										<ChevronDown size={14} strokeWidth={3} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 group-hover:text-blue-500 pointer-events-none transition-colors" />
-									</div>
-								</div>
-							</div>
+			{/* History Section */}
+			<section className="space-y-4">
+				<div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 ml-1">
+					<h3 className="text-lg font-bold text-slate-700 dark:text-slate-300 flex items-center gap-2">
+						<History className="text-slate-400 dark:text-slate-600" size={20} />
+						Histórico de Movimentações - {STORE_NAMES[selectedStore]}
+					</h3>
+					
+					{/* Filters */}
+					<div className="flex flex-wrap items-center gap-2">
+						<div className="relative group">
+							<Filter size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+							<select
+								value={filterItem}
+								onChange={(e) => setFilterItem(e.target.value)}
+								className="pl-9 pr-8 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-bold text-slate-600 dark:text-slate-400 appearance-none focus:outline-none focus:ring-2 focus:ring-blue-500/20 cursor-pointer"
+							>
+								<option value="all">TODOS OS ITENS</option>
+								{Object.entries(STOCK_LABELS).sort((a,b) => a[1].localeCompare(b[1])).map(([id, label]) => (
+									<option key={id} value={id}>{label}</option>
+								))}
+							</select>
+							<ChevronDown size={14} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
 						</div>
 
-						<div className="flex flex-col gap-2 flex-1 min-w-[250px]">
-							<span className="text-[0.9rem] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest ml-2">Filtrar por Sabor</span>
-							<div className="relative group">
-								<Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-500 transition-colors" />
-								<input
-									type="text"
-									placeholder="Ex: Nutella..."
-									value={searchTerm}
-									onChange={(e) => setSearchTerm(e.target.value)}
-									className="w-full bg-white dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-700 rounded-xl py-2 pl-12 pr-4 text-[0.95rem] font-black text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all"
-								/>
-							</div>
+						<div className="relative">
+							<CalendarIcon size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+							<input
+								type="text"
+								placeholder="DD/MM/AAAA"
+								maxLength={10}
+								value={filterDate}
+								onChange={(e) => {
+									let val = e.target.value.replace(/\D/g, '');
+									if (val.length > 2) val = val.slice(0, 2) + '/' + val.slice(2);
+									if (val.length > 5) val = val.slice(0, 5) + '/' + val.slice(5, 9);
+									setFilterDate(val);
+								}}
+								className="pl-9 pr-3 py-2 w-[130px] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-bold text-slate-600 dark:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+							/>
 						</div>
-					</div>
 
-					<div className="overflow-x-auto">
-						<table className="w-full border-collapse">
-							<thead>
-								<tr className="bg-slate-50/50 dark:bg-slate-800/30 border-b border-slate-200 dark:border-slate-800">
-									<th className="p-6 text-left text-[0.9rem] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Item</th>
-									<th className="p-6 text-center text-[0.9rem] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Antes</th>
-									<th className="p-6 text-center text-[0.9rem] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Depois</th>
-									<th className="p-6 text-center text-[0.9rem] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Diferença</th>
-								</tr>
-							</thead>
-							<tbody>
-								{(Object.entries(STOCK_LABELS) as [keyof StockData, string][])
-									.sort((a, b) => a[1].localeCompare(b[1]))
-									.filter(([_, label]) => label.toLowerCase().includes(searchTerm.toLowerCase()))
-									.map(([key, label]) => {
-									const s1 = snapshots.find(s => s.id === selectedSnapshot1);
-									const s2 = snapshots.find(s => s.id === selectedSnapshot2);
-									
-									const q1 = s1?.stock[key as keyof StockData] || 0;
-									const q2 = s2?.stock[key as keyof StockData] || 0;
-									const o1 = s1?.isUnits?.[key as keyof StockData] || false;
-									const o2 = s2?.isUnits?.[key as keyof StockData] || false;
-
-									// Diferença apenas de pacotes inteiros
-									const diff = q2 - q1;
-
-									return (
-										<tr key={key} className="border-b border-slate-100 dark:border-slate-800/50 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
-											<td className="p-6 text-lg font-black text-slate-600 dark:text-slate-300 uppercase">{label}</td>
-											<td className="p-4 text-center">
-												{renderStockCell(q1, o1)}
-											</td>
-											<td className="p-4 text-center">
-												{renderStockCell(q2, o2)}
-											</td>
-											<td className="p-6 text-center">
-												<div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-lg font-black ${
-													diff > 0 ? "bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400" : 
-													diff < 0 ? "bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400" : 
-													"bg-slate-50 dark:bg-slate-800 text-slate-400 dark:text-slate-500"
-												}`}>
-													{diff > 0 && <TrendingUp size={14} />}
-													{diff < 0 && <TrendingDown size={14} />}
-													{diff > 0 ? `+${diff}` : diff}
-												</div>
-											</td>
-										</tr>
-									);
-								})}
-							</tbody>
-						</table>
+						{(filterItem !== "all" || filterDate !== "") && (
+							<button
+								onClick={() => { setFilterItem("all"); setFilterDate(""); }}
+								className="p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+								title="Limpar filtros"
+							>
+								<RefreshCw size={14} />
+							</button>
+						)}
 					</div>
 				</div>
-			) : (
-				!loadingHistory && (
-					<div className="bg-white dark:bg-slate-900 p-20 rounded-[2rem] border border-slate-200 dark:border-slate-800 shadow-sm text-center transition-colors">
-						<p className="text-slate-400 dark:text-slate-500 font-bold">Nenhuma movimentação encontrada para esta loja.</p>
-					</div>
-				)
-			)}
+				
+				<div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden min-h-[400px]">
+					{loading ? (
+						<div className="flex flex-col items-center justify-center py-20 text-slate-400 dark:text-slate-600">
+							<RefreshCw className="animate-spin mb-4" size={32} />
+							<p className="font-bold text-sm">Carregando movimentações...</p>
+						</div>
+					) : (
+						<div className="overflow-x-auto">
+							<table className="w-full border-collapse">
+								<thead>
+									<tr className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800 text-left">
+										<th className="px-6 py-4 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Data / Hora</th>
+										<th className="px-6 py-4 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Item</th>
+										<th className="px-6 py-4 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest text-center">Tipo</th>
+										<th className="px-6 py-4 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest text-center">Qtd</th>
+										<th className="px-6 py-4 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest text-center">Antes</th>
+										<th className="px-6 py-4 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest text-center">Atual</th>
+										<th className="px-6 py-4 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Obs</th>
+									</tr>
+								</thead>
+								<tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+									{filteredMovements.length > 0 ? (
+										filteredMovements.map((m) => (
+											<tr key={m.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+												<td className="px-6 py-4 whitespace-nowrap text-xs font-bold text-slate-400 dark:text-slate-500">
+													{formatDate(m.timestamp?.toDate())}
+												</td>
+												<td className="px-6 py-4 whitespace-nowrap text-sm font-black text-slate-700 dark:text-slate-200 uppercase">
+													{m.itemName}
+												</td>
+												<td className="px-6 py-4 whitespace-nowrap text-center">
+													<span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-black uppercase ${
+														m.type === 'recebido' 
+															? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' 
+															: m.type === 'saida'
+																? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+																: m.type === 'abertura'
+																	? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
+																	: 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-400'
+													}`}>
+														{m.type === 'recebido' ? <ArrowUpCircle size={12} /> : m.type === 'saida' ? <ArrowDownCircle size={12} /> : m.type === 'abertura' ? <ExternalLink size={12} /> : <XCircle size={12} />}
+														{m.type === 'recebido' ? 'recebido' : m.type === 'saida' ? 'saída' : m.type === 'abertura' ? 'abertura' : 'fechamento'}
+													</span>
+												</td>
+												<td className="px-6 py-4 whitespace-nowrap text-center text-sm font-black text-slate-700 dark:text-slate-200">
+													{m.quantity}
+												</td>
+												<td className="px-6 py-4 whitespace-nowrap text-center text-sm font-bold text-slate-400 dark:text-slate-500">
+													{m.beforeStock !== undefined ? formatStockCompact(m.beforeStock, m.beforeOpen || false) : "-"}
+												</td>
+												<td className="px-6 py-4 whitespace-nowrap text-center text-sm font-black text-blue-600 dark:text-blue-400">
+													{m.afterStock !== undefined ? formatStockCompact(m.afterStock, m.afterOpen || false) : "-"}
+												</td>
+												<td className="px-6 py-4 text-xs font-medium text-slate-500 dark:text-slate-400 max-w-xs truncate">
+													{m.obs || "-"}
+												</td>
+											</tr>
+										))
+									) : (
+										<tr>
+											<td colSpan={7} className="px-6 py-10 text-center text-slate-400 dark:text-slate-600 font-medium">
+												Nenhuma movimentação encontrada para esta loja.
+											</td>
+										</tr>
+									)}
+								</tbody>
+							</table>
+						</div>
+					)}
+				</div>
+			</section>
 		</div>
 	);
 }

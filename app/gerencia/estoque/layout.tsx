@@ -26,7 +26,8 @@ export default function EstoqueLayout({
 	const tabs = [
 		{ id: "atual", label: "ESTOQUE ATUAL", href: "/gerencia/estoque/atual" },
 		{ id: "reposicionar", label: "REPOSICIONAR", href: "/gerencia/estoque/reposicionar" },
-		{ id: "historico", label: "COMPARATIVO", href: "/gerencia/estoque/historico" },
+		{ id: "comparativo", label: "COMPARATIVO", href: "/gerencia/estoque/comparativo" },
+		{ id: "historico", label: "HISTÓRICO", href: "/gerencia/estoque/historico" },
 	];
 
 	return (

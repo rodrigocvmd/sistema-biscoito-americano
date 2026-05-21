@@ -52,10 +52,10 @@ export default function StoreLayout({
 								<ChevronLeft size={24} />
 							</Link>
 							<div className="overflow-hidden">
-								<h1 id="h1" className="text-xl font-extrabold text-red-700 dark:text-red-500 truncate">
+								<h1 id="h1" className="text-2xl font-extrabold text-red-700 dark:text-red-500 truncate">
 									{storeName.toUpperCase()}
 								</h1>
-								<p className="text-[0.625rem] font-bold text-slate-400 dark:text-slate-500 -mt-1 tracking-widest">
+								<p className="text-[0.9rem] font-bold text-slate-400 dark:text-slate-500 -mt-1 tracking-widest">
 									SISTEMA BISCOITO AMERICANO
 								</p>
 							</div>

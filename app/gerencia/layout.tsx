@@ -108,8 +108,8 @@ export default function GerenciaLayout({
 										className={`flex-1 sm:flex-none cursor-pointer px-2 sm:px-4 py-3 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-2 sm:gap-3 ${
 											isActive ? "bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-sm" : "text-slate-500 dark:text-slate-400"
 										}`}>
-										<Icon size={22} /> 
-										<span className="hidden sm:inline text-lg">{tab.label}</span>
+										<Icon size={32} className="hidden md:inline"/> 
+										<span className="sm:inline text-lg">{tab.label}</span>
 									</Link>
 								);
 							})}

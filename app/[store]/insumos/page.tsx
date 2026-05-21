@@ -363,7 +363,7 @@ export default function SuppliesPage({ params }: { params: Promise<{ store: stri
 				</h2>
 				<form onSubmit={handleAddOrder} className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
 					<div className="space-y-1 md:col-span-1 relative">
-						<label className="text-xs font-bold text-slate-400 dark:text-slate-500 ml-1">
+						<label className="text-lg font-bold text-slate-400 dark:text-slate-500 ml-1">
 							Insumo
 						</label>
 						<div className="relative">
@@ -428,13 +428,13 @@ export default function SuppliesPage({ params }: { params: Promise<{ store: stri
 						</div>
 					</div>
 					<div className="space-y-1">
-						<label className="text-xs font-bold text-slate-400 dark:text-slate-500 ml-1">
+						<label className="text-lg font-bold text-slate-400 dark:text-slate-500 ml-1">
 							Urgência
 						</label>
 						<select
 							value={newUrgency}
 							onChange={(e) => setNewUrgency(e.target.value as UrgencyLevel)}
-							className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500 transition-all text-slate-800 dark:text-slate-200 font-medium appearance-none cursor-pointer">
+							className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500 transition-all text-slate-800 dark:text-slate-200 font-medium appearance-none cursor-pointer text-md">
 							<option value="Urgente">🚨 Urgente</option>
 							<option value="Acabando">⚠️ Acabando</option>
 							<option value="Adiantando">⏳ Adiantando</option>
@@ -443,7 +443,7 @@ export default function SuppliesPage({ params }: { params: Promise<{ store: stri
 					<button
 						type="submit"
 						disabled={adding}
-						className="cursor-pointer bg-green-600 hover:bg-green-700 text-white font-bold h-[50px] rounded-xl shadow-md shadow-red-100 dark:shadow-none transition-all flex items-center justify-center gap-2 disabled:opacity-50">
+						className="cursor-pointer bg-green-600 hover:bg-green-700 text-white font-bold h-[50px] rounded-xl shadow-md shadow-red-100 dark:shadow-none transition-all flex items-center justify-center gap-2 disabled:opacity-50 text-lg">
 						{adding ? <RefreshCw className="animate-spin" size={20} /> : <Plus size={20} />}
 						Adicionar
 					</button>
@@ -463,7 +463,7 @@ export default function SuppliesPage({ params }: { params: Promise<{ store: stri
 						</p>
 					</div>
 				) : (
-					<div className="grid gap-3">
+					<div className="grid md:grid-cols-2 gap-3">
 						{pendingOrders.map((order) => (
 							<div
 								key={order.id}
@@ -476,7 +476,7 @@ export default function SuppliesPage({ params }: { params: Promise<{ store: stri
 										<div className="shrink-0">{getUrgencyBadge(order.urgency)}</div>
 									</div>
 									<div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-										<span className="flex items-center gap-1.5 text-[0.6875rem] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-wider">
+										<span className="flex items-center gap-1.5 text-[0.9rem] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-wider">
 											<Calendar size={14} />
 											{formatDate(order.createdAt?.toDate())}
 										</span>
@@ -497,7 +497,7 @@ export default function SuppliesPage({ params }: { params: Promise<{ store: stri
 									</button>
 									<button
 										onClick={() => handleMarkAsDelivered(order.id)}
-										className="flex-1 flex items-center justify-center gap-2 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-600 hover:text-white px-4 py-2.5 rounded-xl font-black text-xs transition-all border border-emerald-100 dark:border-emerald-800/50 cursor-pointer active:scale-95 shadow-sm active:shadow-none">
+										className="flex-1 flex items-center justify-center gap-2 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-600 hover:text-white px-4 py-2.5 rounded-xl font-black text-lg transition-all border border-emerald-100 dark:border-emerald-800/50 cursor-pointer active:scale-95 shadow-sm active:shadow-none">
 										<CheckCircle2 size={16} />
 										Entregue
 									</button>

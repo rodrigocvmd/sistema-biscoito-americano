@@ -14,11 +14,13 @@ export default function StockPage({ params }: { params: Promise<{ store: string 
 	const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
 	const [stock, setStock] = useState<Partial<StockData>>({});
 	const [isUnits, setIsUnits] = useState<Partial<Record<keyof StockData, boolean>>>({});
-	const [sortBy, setSortBy] = useState<"default" | "name" | "quantity">("default");
+	const [sortBy, setSortBy] = useState<"name" | "quantity">("name");
 
 	useEffect(() => {
 		const savedSort = localStorage.getItem("biscoito_store_sort");
-		if (savedSort) setSortBy(savedSort as any);
+		if (savedSort && (savedSort === "name" || savedSort === "quantity")) {
+			setSortBy(savedSort as any);
+		}
 	}, []);
 
 	useEffect(() => {
@@ -92,11 +94,6 @@ export default function StockPage({ params }: { params: Promise<{ store: string 
 				</span>
 				<div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-lg gap-1 overflow-x-auto no-scrollbar">
 					<button
-						onClick={() => setSortBy("default")}
-						className={`cursor-pointer px-3 py-1.5 rounded-md text-xs font-bold transition-all whitespace-nowrap ${sortBy === "default" ? "bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-sm" : "text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300"}`}>
-						Padrão
-					</button>
-					<button
 						onClick={() => setSortBy("name")}
 						className={`cursor-pointer px-3 py-1.5 rounded-md text-xs font-bold transition-all whitespace-nowrap ${sortBy === "name" ? "bg-white dark:bg-slate-700 text-red-600 dark:text-red-400 shadow-sm" : "text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300"}`}>
 						Alfabética
@@ -114,22 +111,22 @@ export default function StockPage({ params }: { params: Promise<{ store: string 
 					<div>
 						<h2 className="text-2xl font-black text-slate-800 dark:text-slate-200 tracking-tight flex items-center gap-2">
 							<Package className="text-red-600" size={24} />
-							Contagem de Estoque
+							Contagem de Estoque (Pacotes)
 						</h2>
 						<p className="text-sm text-amber-600 dark:text-amber-500 font-bold flex items-center gap-1.5 mt-1">
 							<AlertCircle size={16} />
 							Apenas leitura. Use a aba de movimentações para alterações.
 						</p>
 					</div>
-					<div className="bg-slate-50 dark:bg-slate-800 px-4 py-2 rounded-xl border border-slate-100 dark:border-slate-700 text-center">
-						<span className="text-[0.625rem] uppercase tracking-widest font-bold text-slate-400 dark:text-slate-500 block mb-1">
+					<div className="bg-slate-50 dark:bg-slate-800 px-6 py-3 rounded-xl border border-slate-100 dark:border-slate-700 text-center">
+						<span className="text-xs uppercase tracking-widest font-black text-slate-400 dark:text-slate-500 block mb-1">
 							ÚLTIMA ATUALIZAÇÃO
 						</span>
-						<span className="text-sm font-bold text-blue-600 dark:text-blue-400">{formatDate(lastUpdate)}</span>
+						<span className="text-base font-black text-blue-600 dark:text-blue-400">{formatDate(lastUpdate)}</span>
 					</div>
 				</div>
 
-				<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+				<div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
 					{sortedItems.map(([key, label]) => {
 						const qty = stock[key] || 0;
 						const hasOpen = isUnits[key] || false;
@@ -139,23 +136,23 @@ export default function StockPage({ params }: { params: Promise<{ store: string 
 								key={key}
 								className="flex flex-col p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl border border-transparent hover:border-slate-200 dark:hover:border-slate-700 transition-all group"
 							>
-								<span className="text-[0.625rem] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-1">
+								<span className="text-[1.1rem] font-black text-slate-500 dark:text-slate-200 uppercase tracking-tight mb-2 truncate text-center" title={label}>
 									{label}
 								</span>
-								<div className="flex items-baseline gap-2">
+								<div className="flex items-baseline gap-1.5 flex-wrap justify-center">
 									{qty > 0 || !hasOpen ? (
-										<>
-											<span className={`text-xl font-black ${qty === 0 && !hasOpen ? "text-slate-300 dark:text-slate-700" : "text-slate-900 dark:text-slate-100"}`}>
+										<div className="flex items-baseline gap-1">
+											<span className={`text-2xl font-black ${qty === 0 && !hasOpen ? "text-slate-500 dark:text-slate-400" : "text-slate-900 dark:text-slate-100"}`}>
 												{qty}
 											</span>
-											<span className="text-xs font-bold text-slate-500 dark:text-slate-400">
-												{qty === 1 ? "pacote" : "pacotes"}
-											</span>
-										</>
+											{/* <span className="text-[15px] font-bold text-slate-700 dark:text-slate-400 text-center">
+												{qty === 1 ? "pct" : "pcts"}
+											</span> */}
+										</div>
 									) : null}
 									{hasOpen && (
 										<span className="text-xl font-black text-orange-500 whitespace-nowrap">
-											{qty > 0 ? "+ 1 aberto" : "1 aberto"}
+											{qty > 0 ? "+1 aberto" : "1 aberto"}
 										</span>
 									)}
 								</div>
