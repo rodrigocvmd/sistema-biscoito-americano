@@ -2,9 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { db } from "@/lib/firebase";
-import { collection, getDocs, query, orderBy, where, Timestamp, limit } from "firebase/firestore";
+import { collection, getDocs, query, orderBy, limit } from "firebase/firestore";
 import { STOCK_LABELS, StockData, STORE_NAMES, StoreId, formatDate, StockSnapshot } from "@/types";
-import { RefreshCw, Calendar, ArrowRight, TrendingUp, TrendingDown, ChevronDown } from "lucide-react";
+import { RefreshCw, ArrowRight, TrendingUp, TrendingDown, ChevronDown, Package } from "lucide-react";
 
 export default function EstoqueHistoricoPage() {
 	const [historyStore, setHistoryStore] = useState<StoreId>("conjunto");
@@ -20,7 +20,7 @@ export default function EstoqueHistoricoPage() {
 			const q = query(
 				historyRef,
 				orderBy("timestamp", "desc"),
-				limit(100)
+				limit(500) // Puxamos mais para garantir que tenhamos dias suficientes
 			);
 
 			const querySnapshot = await getDocs(q);
@@ -32,8 +32,8 @@ export default function EstoqueHistoricoPage() {
 			// Filtrar para manter apenas a última atualização de cada dia
 			const seenDates = new Set();
 			const dailyDocs = allDocs.filter((doc) => {
+				if (!doc.timestamp) return false;
 				const date = doc.timestamp.toDate();
-				// Normalizamos para o início do dia para garantir unicidade por data
 				const normalizedDate = new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
 				if (seenDates.has(normalizedDate)) return false;
 				seenDates.add(normalizedDate);
@@ -58,14 +58,33 @@ export default function EstoqueHistoricoPage() {
 	const formatHistoryLabel = (date: Date) => {
 		const day = String(date.getDate()).padStart(2, "0");
 		const month = String(date.getMonth() + 1).padStart(2, "0");
-		const weekDays = ["Domingo", "Segunda-Feira", "Terça-Feira", "Quarta-Feira", "Quinta-Feira", "Sexta-Feira", "Sábado"];
+		const weekDays = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
 		const weekDay = weekDays[date.getDay()];
-		return `${day}/${month} - ${weekDay}`;
+		
+		const hours = String(date.getHours()).padStart(2, "0");
+		const minutes = String(date.getMinutes()).padStart(2, "0");
+		
+		return `${day}/${month} (${weekDay}) - ${hours}:${minutes}`;
 	};
 
 	useEffect(() => {
 		fetchHistory();
 	}, [historyStore]);
+
+	const renderStockCell = (qty: number, hasOpen: boolean) => {
+		return (
+			<div className="flex flex-col items-center">
+				<span className={`text-lg font-black ${qty === 0 && !hasOpen ? "text-slate-300 dark:text-slate-700" : "text-slate-900 dark:text-slate-100"}`}>
+					{qty}
+				</span>
+				{hasOpen && (
+					<span className="text-[9px] font-black text-orange-500 uppercase whitespace-nowrap bg-orange-50 dark:bg-orange-900/20 px-1.5 py-0.5 rounded mt-0.5">
+						+ 1 aberto
+					</span>
+				)}
+			</div>
+		);
+	};
 
 	return (
 		<div className="space-y-6">
@@ -73,7 +92,7 @@ export default function EstoqueHistoricoPage() {
 			<div className="bg-white dark:bg-slate-900 p-6 rounded-[32px] border border-slate-200 dark:border-slate-800 shadow-sm flex flex-wrap items-center gap-6 justify-center transition-colors">
 				<div className="flex flex-col gap-2">
 					<span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest ml-2">Loja para Histórico</span>
-					<div className="relative group flex">
+					<div className="relative group flex min-w-[200px]">
 						<select
 							value={historyStore}
 							onChange={(e) => setHistoryStore(e.target.value as StoreId)}
@@ -104,17 +123,17 @@ export default function EstoqueHistoricoPage() {
 					<div className="p-6 bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800 flex flex-wrap items-center justify-between gap-6">
 						<div className="flex items-center gap-4">
 							<div className="flex flex-col gap-2">
-								<span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest ml-1 text-center">Comparar de</span>
+								<span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest ml-1 text-center">Comparar de (Última do dia)</span>
 								<div className="relative group">
 									<select
 										value={selectedSnapshot1}
 										onChange={(e) => setSelectedSnapshot1(e.target.value)}
-										className="appearance-none bg-white dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-700 rounded-xl px-4 py-2 pr-10 text-[13px] font-black text-slate-600 dark:text-slate-300 cursor-pointer focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all hover:border-blue-200 dark:hover:border-blue-800 hover:shadow-sm">
+										className="appearance-none bg-white dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-700 rounded-xl px-4 py-2 pr-10 text-[12px] font-black text-slate-600 dark:text-slate-300 cursor-pointer focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all hover:border-blue-200 dark:hover:border-blue-800 hover:shadow-sm">
 										{snapshots.map((s) => (
 											<option key={s.id} value={s.id} className="dark:bg-slate-900">{formatHistoryLabel(s.timestamp.toDate())}</option>
 										))}
 									</select>
-									<ChevronDown size={16} strokeWidth={3} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 group-hover:text-blue-500 pointer-events-none transition-colors" />
+									<ChevronDown size={14} strokeWidth={3} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 group-hover:text-blue-500 pointer-events-none transition-colors" />
 								</div>
 							</div>
 							<ArrowRight className="text-slate-300 dark:text-slate-600 mt-6" size={20} />
@@ -124,12 +143,12 @@ export default function EstoqueHistoricoPage() {
 									<select
 										value={selectedSnapshot2}
 										onChange={(e) => setSelectedSnapshot2(e.target.value)}
-										className="appearance-none bg-white dark:bg-slate-900 border-2 border-slate-100 dark:border-slate-700 rounded-xl px-4 py-2 pr-10 text-[13px] font-black text-slate-600 dark:text-slate-300 cursor-pointer focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all hover:border-blue-200 dark:hover:border-blue-800 hover:shadow-sm">
+										className="appearance-none bg-white dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-700 rounded-xl px-4 py-2 pr-10 text-[12px] font-black text-slate-600 dark:text-slate-300 cursor-pointer focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all hover:border-blue-200 dark:hover:border-blue-800 hover:shadow-sm">
 										{snapshots.map((s) => (
 											<option key={s.id} value={s.id} className="dark:bg-slate-900">{formatHistoryLabel(s.timestamp.toDate())}</option>
 										))}
 									</select>
-									<ChevronDown size={16} strokeWidth={3} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 group-hover:text-blue-500 pointer-events-none transition-colors" />
+									<ChevronDown size={14} strokeWidth={3} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 group-hover:text-blue-500 pointer-events-none transition-colors" />
 								</div>
 							</div>
 						</div>
@@ -144,9 +163,9 @@ export default function EstoqueHistoricoPage() {
 							<thead>
 								<tr className="bg-slate-50/50 dark:bg-slate-800/30 border-b border-slate-200 dark:border-slate-800">
 									<th className="p-6 text-left text-[11px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Item</th>
-									<th className="p-6 text-center text-[11px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Antes</th>
-									<th className="p-6 text-center text-[11px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Depois</th>
-									<th className="p-6 text-center text-[11px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Diferença</th>
+									<th className="p-6 text-center text-[11px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Estado Anterior</th>
+									<th className="p-6 text-center text-[11px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Estado Posterior</th>
+									<th className="p-6 text-center text-[11px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Diferença de Pacotes</th>
 								</tr>
 							</thead>
 							<tbody>
@@ -154,25 +173,22 @@ export default function EstoqueHistoricoPage() {
 									const s1 = snapshots.find(s => s.id === selectedSnapshot1);
 									const s2 = snapshots.find(s => s.id === selectedSnapshot2);
 									
-									const u1 = s1?.isUnits?.[key as keyof StockData] || false;
-									const u2 = s2?.isUnits?.[key as keyof StockData] || false;
+									const q1 = s1?.stock[key as keyof StockData] || 0;
+									const q2 = s2?.stock[key as keyof StockData] || 0;
+									const o1 = s1?.isUnits?.[key as keyof StockData] || false;
+									const o2 = s2?.isUnits?.[key as keyof StockData] || false;
 
-									const v1 = u1 ? 0 : (s1?.stock[key as keyof StockData] || 0);
-									const v2 = u2 ? 1 : (s2?.stock[key as keyof StockData] || 0);
-									
-									const displayV1 = s1?.stock[key as keyof StockData] || 0;
-									const displayV2 = s2?.stock[key as keyof StockData] || 0;
-
-									const diff = (u1 && u2) ? 0 : (v2 - v1);
+									// Diferença apenas de pacotes inteiros
+									const diff = q2 - q1;
 
 									return (
 										<tr key={key} className="border-b border-slate-100 dark:border-slate-800/50 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
 											<td className="p-6 text-sm font-black text-slate-600 dark:text-slate-300 uppercase">{label}</td>
-											<td className="p-6 text-center text-lg font-bold text-slate-400 dark:text-slate-500">
-												{u1 ? "< 1" : displayV1}
+											<td className="p-4 text-center">
+												{renderStockCell(q1, o1)}
 											</td>
-											<td className="p-6 text-center text-lg font-bold text-slate-900 dark:text-slate-100">
-												{u2 ? "< 1" : displayV2}
+											<td className="p-4 text-center">
+												{renderStockCell(q2, o2)}
 											</td>
 											<td className="p-6 text-center">
 												<div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-black ${
@@ -195,7 +211,7 @@ export default function EstoqueHistoricoPage() {
 			) : (
 				!loadingHistory && (
 					<div className="bg-white dark:bg-slate-900 p-20 rounded-[32px] border border-slate-200 dark:border-slate-800 shadow-sm text-center transition-colors">
-						<p className="text-slate-400 dark:text-slate-500 font-bold">Nenhum snapshot encontrado para esta loja.</p>
+						<p className="text-slate-400 dark:text-slate-500 font-bold">Nenhuma movimentação encontrada para esta loja.</p>
 					</div>
 				)
 			)}

@@ -1,134 +1,307 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { db } from "@/lib/firebase";
-import { doc, getDoc, setDoc, serverTimestamp, collection, addDoc } from "firebase/firestore";
-import { STOCK_LABELS, StockData, StoreId, formatDate } from "@/types";
-import { Save, RefreshCw, AlertCircle, CheckCircle2 } from "lucide-react";
+import {
+	collection,
+	addDoc,
+	updateDoc,
+	doc,
+	query,
+	orderBy,
+	onSnapshot,
+	serverTimestamp,
+	limit,
+} from "firebase/firestore";
+import { STOCK_LABELS, StockData, formatDate, StockMovement } from "@/types";
+import {
+	Plus,
+	CheckCircle2,
+	RefreshCw,
+	ChevronDown,
+	History,
+	AlertCircle,
+	ArrowUpCircle,
+	ArrowDownCircle,
+	MessageSquare,
+	Filter,
+	Calendar as CalendarIcon,
+	ExternalLink,
+	XCircle,
+} from "lucide-react";
+import Link from "next/link";
 import { use } from "react";
 
-export default function StockPage({ params }: { params: Promise<{ store: string }> }) {
+export default function StockMovementsPage({ params }: { params: Promise<{ store: string }> }) {
 	const { store } = use(params);
 	const [loading, setLoading] = useState(true);
-	const [saving, setSaving] = useState(false);
-	const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
+	const [movements, setMovements] = useState<StockMovement[]>([]);
 	const [stock, setStock] = useState<Partial<StockData>>({});
 	const [isUnits, setIsUnits] = useState<Partial<Record<keyof StockData, boolean>>>({});
+
+	// Movement Form State
+	const [selectedItemId, setSelectedItemId] = useState<keyof StockData | "">("");
+	const [searchTerm, setSearchTerm] = useState("");
+	const [type, setType] = useState<"recebido" | "saida">("recebido");
+	const [quantity, setQuantity] = useState<number>(1);
+	const [obs, setObs] = useState("");
+	const [submitting, setSubmitting] = useState(false);
 	const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
-	const [sortBy, setSortBy] = useState<"default" | "name" | "quantity">("default");
 
-	// Persistir ordenação
-	useEffect(() => {
-		const savedSort = localStorage.getItem("biscoito_store_sort");
-		if (savedSort) setSortBy(savedSort as any);
-	}, []);
+	// Abertura Form State
+	const [openItemId, setOpenItemId] = useState<keyof StockData | "">("");
+	const [openSearchTerm, setOpenSearchTerm] = useState("");
+	const [openSubmitting, setOpenSubmitting] = useState(false);
+	const [finishSubmitting, setFinishSubmitting] = useState(false);
+	const [openMessage, setOpenMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+
+	// Filter State
+	const [filterItem, setFilterItem] = useState<string>("all");
+	const [filterDate, setFilterDate] = useState<string>("");
+
+	// Combobox State
+	const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+	const [isOpenDropdownOpen, setIsOpenDropdownOpen] = useState(false);
+
+	const normalizeString = (str: string) =>
+		str
+			.normalize("NFD")
+			.replace(/[\u0300-\u036f]/g, "")
+			.toLowerCase()
+			.replace(/[^a-z0-9]/g, "");
+
+	const filteredItems = (Object.entries(STOCK_LABELS) as [keyof StockData, string][])
+		.filter(([_, label]) => normalizeString(label).includes(normalizeString(searchTerm)))
+		.sort((a, b) => a[1].localeCompare(b[1]));
+
+	const filteredOpenItems = (Object.entries(STOCK_LABELS) as [keyof StockData, string][])
+		.filter(([_, label]) => normalizeString(label).includes(normalizeString(openSearchTerm)))
+		.sort((a, b) => a[1].localeCompare(b[1]));
 
 	useEffect(() => {
-		localStorage.setItem("biscoito_store_sort", sortBy);
-	}, [sortBy]);
-	const [isDirty, setIsDirty] = useState(false);
+		const storeRef = doc(db, "stores", store);
+		const movementsRef = collection(db, "stores", store, "stockMovements");
 
-	useEffect(() => {
-		const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-			if (isDirty) {
-				e.preventDefault();
-				e.returnValue = "";
+		// Listen to stock
+		const unsubStock = onSnapshot(storeRef, (docSnap) => {
+			if (docSnap.exists()) {
+				const data = docSnap.data();
+				setStock(data.stock || {});
+				setIsUnits(data.isUnits || {});
 			}
+		});
+
+		// Listen to movements (last 100)
+		const qMovements = query(movementsRef, orderBy("timestamp", "desc"), limit(100));
+		const unsubMovements = onSnapshot(qMovements, (snapshot) => {
+			const docs = snapshot.docs.map((doc) => ({
+				id: doc.id,
+				...doc.data(),
+			})) as StockMovement[];
+			setMovements(docs);
+			setLoading(false);
+		});
+
+		return () => {
+			unsubStock();
+			unsubMovements();
 		};
-		window.addEventListener("beforeunload", handleBeforeUnload);
-		return () => window.removeEventListener("beforeunload", handleBeforeUnload);
-	}, [isDirty]);
-
-	useEffect(() => {
-		const fetchStock = async () => {
-			try {
-				const docRef = doc(db, "stores", store);
-				const docSnap = await getDoc(docRef);
-
-				if (docSnap.exists()) {
-					const data = docSnap.data();
-					setStock(data.stock || {});
-					setIsUnits(data.isUnits || {});
-					if (data.lastStockUpdate) {
-						setLastUpdate(data.lastStockUpdate.toDate());
-					}
-				}
-			} catch (error) {
-				console.error("Erro ao buscar estoque:", error);
-			} finally {
-				setLoading(false);
-				setIsDirty(false);
-			}
-		};
-
-		fetchStock();
 	}, [store]);
 
-	const handleInputChange = (key: keyof StockData, value: string) => {
-		const numValue = value === "" ? 0 : parseInt(value, 10);
-		setStock((prev) => ({
-			...prev,
-			[key]: numValue,
-		}));
-		setIsDirty(true);
+	const filteredMovements = useMemo(() => {
+		return movements.filter((m) => {
+			const matchesItem = filterItem === "all" || m.itemId === filterItem;
+			
+			let matchesDate = true;
+			if (filterDate && m.timestamp) {
+				const movementDate = m.timestamp.toDate();
+				const d = String(movementDate.getDate()).padStart(2, "0");
+				const mth = String(movementDate.getMonth() + 1).padStart(2, "0");
+				const yr = movementDate.getFullYear();
+				const formattedMovementDate = `${yr}-${mth}-${d}`;
+				matchesDate = formattedMovementDate === filterDate;
+			}
+
+			return matchesItem && matchesDate;
+		});
+	}, [movements, filterItem, filterDate]);
+
+	const formatStockCompact = (qty: number, hasOpen: boolean) => {
+		if (qty === 0 && !hasOpen) return "0";
+		const openText = hasOpen ? " + 1 aberto" : "";
+		return `${qty}${openText}`;
 	};
 
-	const handleUnitToggle = (key: keyof StockData, checked: boolean) => {
-		setIsUnits((prev) => ({
-			...prev,
-			[key]: checked,
-		}));
-		setIsDirty(true);
-	};
-
-	const sortedItems = (Object.entries(STOCK_LABELS) as [keyof StockData, string][]).sort((a, b) => {
-		if (sortBy === "name") {
-			return a[1].localeCompare(b[1]);
-		}
-		if (sortBy === "quantity") {
-			const qtyA = stock[a[0]] || 0;
-			const qtyB = stock[b[0]] || 0;
-			return qtyB - qtyA; // Maior para menor
-		}
-		return 0; // Ordem padrão (conforme definido no objeto original)
-	});
-
-	const handleSave = async (e: React.FormEvent) => {
+	const handleAddMovement = async (e: React.FormEvent) => {
 		e.preventDefault();
-		setSaving(true);
+		if (!selectedItemId || quantity <= 0) return;
+
+		setSubmitting(true);
 		setMessage(null);
-
 		try {
-			const docRef = doc(db, "stores", store);
-			await setDoc(
-				docRef,
-				{
-					stock,
-					isUnits,
-					lastStockUpdate: serverTimestamp(),
-				},
-				{ merge: true },
-			);
-
-			// Save snapshot in stockHistory subcollection
+			const storeRef = doc(db, "stores", store);
+			const movementsRef = collection(db, "stores", store, "stockMovements");
 			const historyRef = collection(db, "stores", store, "stockHistory");
-			await addDoc(historyRef, {
-				stock,
-				isUnits,
+
+			const beforeStock = stock[selectedItemId] || 0;
+			const afterStock = type === "recebido" ? beforeStock + quantity : beforeStock - quantity;
+			const currentOpenStatus = isUnits[selectedItemId] || false;
+
+			const newStock = { ...stock, [selectedItemId]: afterStock };
+
+			await updateDoc(storeRef, {
+				[`stock.${selectedItemId}`]: afterStock,
+				lastStockUpdate: serverTimestamp(),
+			});
+
+			await addDoc(movementsRef, {
+				itemId: selectedItemId,
+				itemName: STOCK_LABELS[selectedItemId],
+				type,
+				quantity,
+				beforeStock,
+				afterStock,
+				beforeOpen: currentOpenStatus,
+				afterOpen: currentOpenStatus,
+				obs: obs.trim(),
 				timestamp: serverTimestamp(),
 			});
 
-			setLastUpdate(new Date());
-			setIsDirty(false);
-			setMessage({ type: "success", text: "Estoque atualizado com sucesso!" });
+			// Save full snapshot for history comparison
+			await addDoc(historyRef, {
+				stock: newStock,
+				isUnits: isUnits,
+				timestamp: serverTimestamp(),
+			});
 
-			// Limpar mensagem após 3 segundos
+			setMessage({ type: "success", text: "Movimentação registrada com sucesso!" });
+			setSelectedItemId("");
+			setSearchTerm("");
+			setQuantity(1);
+			setObs("");
 			setTimeout(() => setMessage(null), 3000);
 		} catch (error) {
-			console.error("Erro ao salvar estoque:", error);
-			setMessage({ type: "error", text: "Erro ao salvar. Verifique sua conexão." });
+			console.error("Erro ao registrar movimentação:", error);
+			setMessage({ type: "error", text: "Erro ao salvar movimentação." });
 		} finally {
-			setSaving(false);
+			setSubmitting(false);
+		}
+	};
+
+	const handleRegisterOpening = async (e: React.FormEvent) => {
+		e.preventDefault();
+		if (!openItemId) return;
+
+		const currentQty = stock[openItemId] || 0;
+		if (currentQty <= 0) {
+			setOpenMessage({ type: "error", text: "Estoque insuficiente para abrir um pacote." });
+			return;
+		}
+
+		setOpenSubmitting(true);
+		setOpenMessage(null);
+		try {
+			const storeRef = doc(db, "stores", store);
+			const movementsRef = collection(db, "stores", store, "stockMovements");
+			const historyRef = collection(db, "stores", store, "stockHistory");
+
+			const beforeStock = currentQty;
+			const afterStock = currentQty - 1;
+			const beforeOpen = isUnits[openItemId] || false;
+
+			const newStock = { ...stock, [openItemId]: afterStock };
+			const newIsUnits = { ...isUnits, [openItemId]: true };
+
+			// Logic: Subtract 1 package and set isUnits to true
+			await updateDoc(storeRef, {
+				[`stock.${openItemId}`]: afterStock,
+				[`isUnits.${openItemId}`]: true,
+				lastStockUpdate: serverTimestamp(),
+			});
+
+			await addDoc(movementsRef, {
+				itemId: openItemId,
+				itemName: STOCK_LABELS[openItemId],
+				type: "abertura",
+				quantity: 1,
+				beforeStock,
+				afterStock,
+				beforeOpen,
+				afterOpen: true,
+				obs: "Abertura de pacote (Início de consumo)",
+				timestamp: serverTimestamp(),
+			});
+
+			// Save full snapshot for history comparison
+			await addDoc(historyRef, {
+				stock: newStock,
+				isUnits: newIsUnits,
+				timestamp: serverTimestamp(),
+			});
+
+			setOpenMessage({ type: "success", text: "Abertura registrada com sucesso!" });
+			setOpenItemId("");
+			setOpenSearchTerm("");
+			setTimeout(() => setOpenMessage(null), 3000);
+		} catch (error) {
+			console.error("Erro ao registrar abertura:", error);
+			setOpenMessage({ type: "error", text: "Erro ao registrar abertura." });
+		} finally {
+			setOpenSubmitting(false);
+		}
+	};
+
+	const handleFinishPackage = async () => {
+		if (!openItemId) return;
+
+		const hasOpen = isUnits[openItemId] || false;
+		if (!hasOpen) return;
+
+		setFinishSubmitting(true);
+		setOpenMessage(null);
+		try {
+			const storeRef = doc(db, "stores", store);
+			const movementsRef = collection(db, "stores", store, "stockMovements");
+			const historyRef = collection(db, "stores", store, "stockHistory");
+
+			const currentQty = stock[openItemId] || 0;
+			const newIsUnits = { ...isUnits, [openItemId]: false };
+
+			// Logic: Set isUnits to false (package finished)
+			await updateDoc(storeRef, {
+				[`isUnits.${openItemId}`]: false,
+				lastStockUpdate: serverTimestamp(),
+			});
+
+			await addDoc(movementsRef, {
+				itemId: openItemId,
+				itemName: STOCK_LABELS[openItemId],
+				type: "fechamento",
+				quantity: 1,
+				beforeStock: currentQty,
+				afterStock: currentQty,
+				beforeOpen: true,
+				afterOpen: false,
+				obs: "Pacote aberto finalizado",
+				timestamp: serverTimestamp(),
+			});
+
+			// Save full snapshot for history comparison
+			await addDoc(historyRef, {
+				stock: stock,
+				isUnits: newIsUnits,
+				timestamp: serverTimestamp(),
+			});
+
+			setOpenMessage({ type: "success", text: "Consumo de pacote finalizado!" });
+			setOpenItemId("");
+			setOpenSearchTerm("");
+			setTimeout(() => setOpenMessage(null), 3000);
+		} catch (error) {
+			console.error("Erro ao finalizar pacote:", error);
+			setOpenMessage({ type: "error", text: "Erro ao finalizar pacote." });
+		} finally {
+			setFinishSubmitting(false);
 		}
 	};
 
@@ -136,140 +309,394 @@ export default function StockPage({ params }: { params: Promise<{ store: string 
 		return (
 			<div className="flex flex-col items-center justify-center py-20 text-slate-400 dark:text-slate-600">
 				<RefreshCw className="animate-spin mb-4" size={32} />
-				<p>Carregando contagem...</p>
+				<p>Carregando movimentações...</p>
 			</div>
 		);
 	}
 
 	return (
-		<div className="space-y-6 w-full overflow-hidden">
-			{/* Sorting Navbar */}
-			<div className="bg-white dark:bg-slate-900 p-2 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 transition-colors">
-				<span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest ml-2 sm:ml-3">
-					Ordenar por:
-				</span>
-				<div
-					id="orderContainer"
-					className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-lg gap-1 overflow-x-auto no-scrollbar">
-					<button
-						onClick={() => setSortBy("default")}
-						className={`cursor-pointer px-3 py-1.5 rounded-md text-xs font-bold transition-all whitespace-nowrap ${sortBy === "default" ? "bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-sm" : "text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300"}`}>
-						Padrão
-					</button>
-					<button
-						onClick={() => setSortBy("name")}
-						className={`cursor-pointer px-3 py-1.5 rounded-md text-xs font-bold transition-all whitespace-nowrap ${sortBy === "name" ? "bg-white dark:bg-slate-700 text-red-600 dark:text-red-400 shadow-sm" : "text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300"}`}>
-						Alfabética
-					</button>
-					<button
-						onClick={() => setSortBy("quantity")}
-						className={`cursor-pointer px-3 py-1.5 rounded-md text-xs font-bold transition-all whitespace-nowrap ${sortBy === "quantity" ? "bg-white dark:bg-slate-700 text-red-600 dark:text-red-400 shadow-sm" : "text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300"}`}>
-						Quantidade
-					</button>
-				</div>
+		<div className="space-y-6">
+			{/* Tab Switcher */}
+			<div className="flex gap-2 bg-slate-100 dark:bg-slate-800 p-1.5 rounded-2xl w-fit">
+				<Link
+					href={`/${store}/estoque`}
+					className="px-6 py-2.5 bg-white dark:bg-slate-700 text-red-600 dark:text-red-400 rounded-xl text-sm font-black shadow-sm transition-all"
+				>
+					Estoque (Movimentação)
+				</Link>
+				<Link
+					href={`/${store}/estoque2`}
+					className="px-6 py-2.5 text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300 rounded-xl text-sm font-black transition-all"
+				>
+					Contagem Atual
+				</Link>
 			</div>
 
-			<div className="bg-white dark:bg-slate-900 p-4 md:p-8 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 transition-colors">
-				<div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8 pb-6 border-b border-slate-100 dark:border-slate-800">
-					<div>
-						<h2 className="text-2xl font-black text-slate-800 dark:text-slate-200 tracking-tight">
-							Contagem de Estoque
-						</h2>
-						<p className="text-sm text-slate-400 dark:text-slate-500 font-medium">
-							Insira a quantidade de pacotes/unidades em estoque
-						</p>
-					</div>
-					<div className="bg-slate-50 dark:bg-slate-800 px-4 py-2 rounded-xl border border-slate-100 dark:border-slate-700 text-center">
-						<span className="text-[10px] uppercase tracking-widest font-bold text-slate-400 dark:text-slate-500 block mb-1">
-							ÚLTIMA ATUALIZAÇÃO
-						</span>
-						<span className="text-sm font-bold text-blue-600 dark:text-blue-400">{formatDate(lastUpdate)}</span>
-					</div>
-				</div>
-
-				<form onSubmit={handleSave} className="space-y-10">
-					<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-						{sortedItems.map(([key, label]) => (
-							<div
-								key={key}
-								className="flex items-center justify-between gap-3 p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl border border-transparent hover:border-red-200 dark:hover:border-red-900/50 hover:bg-white dark:hover:bg-slate-700 hover:shadow-md transition-all group">
-								<div className="flex flex-col gap-1.5 flex-1 min-w-0">
-									<label className="text-[14px] font-black text-slate-500 dark:text-slate-400 group-hover:text-red-700 dark:group-hover:text-red-400 transition-colors uppercase leading-tight truncate pr-2">
-										{label}
-									</label>
-									<label className="flex items-center gap-2 cursor-pointer w-fit">
-										<input
-											type="checkbox"
-											checked={isUnits[key] || false}
-											onChange={(e) => {
-												handleUnitToggle(key, e.target.checked);
-												if (e.target.checked) {
-													handleInputChange(key, "0");
-												}
-											}}
-											className="w-4 h-4 rounded border-slate-300 dark:border-slate-700 text-red-600 dark:text-red-500 focus:ring-red-500 cursor-pointer"
-										/>
-										<span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider">
-											Último Pacote (Aberto)
-										</span>
-									</label>
+			{/* Movement Section */}
+			<section className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 transition-colors">
+				<h2 className="text-xl font-bold text-slate-800 dark:text-slate-200 mb-6 flex items-center gap-2">
+					<Plus className="text-red-600 dark:text-red-500" size={24} />
+					Registrar Movimentação
+				</h2>
+				
+				<form onSubmit={handleAddMovement} className="space-y-6">
+					<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
+						{/* Item Selection */}
+						<div className="space-y-1 relative lg:col-span-1">
+							<label className="text-xs font-bold text-slate-400 dark:text-slate-500 ml-1">
+								Sabor / Item
+							</label>
+							<div className="relative">
+								<input
+									type="text"
+									required
+									placeholder="BUSCAR SABOR..."
+									value={searchTerm || (selectedItemId ? STOCK_LABELS[selectedItemId] : "")}
+									onFocus={() => setIsDropdownOpen(true)}
+									onBlur={() => setTimeout(() => setIsDropdownOpen(false), 200)}
+									onChange={(e) => {
+										setSearchTerm(e.target.value.toUpperCase());
+										setSelectedItemId("");
+										setIsDropdownOpen(true);
+									}}
+									autoComplete="off"
+									className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500 transition-all text-slate-800 dark:text-slate-200 font-bold placeholder:font-medium uppercase"
+								/>
+								<div className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-300 dark:text-slate-600 pointer-events-none">
+									<ChevronDown size={18} />
 								</div>
-								<div className="relative">
-									<input
-										type={isUnits[key] ? "text" : "number"}
-										min="1"
-										value={isUnits[key] ? "< 1" : (stock[key] || "")}
-										readOnly={isUnits[key]}
-										onChange={(e) => !isUnits[key] && handleInputChange(key, e.target.value)}
-										onFocus={(e) => !isUnits[key] && e.target.select()}
-										className={`w-20 px-3 py-2.5 bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-700 rounded-xl text-center font-black focus:outline-none focus:ring-4 focus:ring-red-50/50 focus:border-red-500 dark:focus:border-red-400 transition-all text-lg cursor-pointer ${
-											isUnits[key] 
-												? "text-orange-500 dark:text-orange-400" 
-												: (stock[key] ?? 0) === 0
-													? "text-slate-400 dark:text-slate-600"
-													: "text-slate-900 dark:text-slate-100"
-										}`}
-										placeholder="0"
-										/>
-										{isUnits[key] && (
-										<span className="absolute -top-2 -right-1 bg-orange-500 text-white text-[8px] font-black px-1.5 py-0.5 rounded-full uppercase tracking-tighter shadow-sm">
-											Parcial
-										</span>
+
+								{isDropdownOpen && (
+									<div className="absolute z-50 w-full mt-2 max-h-[300px] overflow-y-auto bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl animate-in fade-in zoom-in-95 duration-200">
+										{filteredItems.length > 0 ? (
+											filteredItems.map(([id, label]) => (
+												<div
+													key={id}
+													onMouseDown={(e) => {
+														e.preventDefault();
+														setSelectedItemId(id);
+														setSearchTerm("");
+														setIsDropdownOpen(false);
+													}}
+													className="px-4 py-3 hover:bg-red-50 dark:hover:bg-red-900/30 hover:text-red-600 dark:hover:text-red-400 cursor-pointer text-sm font-bold text-slate-700 dark:text-slate-300 transition-colors flex items-center justify-between group"
+												>
+													{label}
+													<span className="text-[10px] text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity">
+														{formatStockCompact(stock[id] || 0, isUnits[id] || false)} em estoque
+													</span>
+												</div>
+											))
+										) : (
+											<div className="px-4 py-4 text-center text-xs font-bold text-slate-400">
+												NENHUM SABOR ENCONTRADO
+											</div>
 										)}
+									</div>
+								)}
+							</div>
+						</div>
 
+						{/* Type Toggle */}
+						<div className="space-y-1">
+							<label className="text-xs font-bold text-slate-400 dark:text-slate-500 ml-1">
+								Tipo de Movimento
+							</label>
+							<div className="flex bg-slate-50 dark:bg-slate-800 p-1 rounded-xl border border-slate-200 dark:border-slate-700 h-[50px]">
+								<button
+									type="button"
+									onClick={() => setType("recebido")}
+									className={`flex-1 flex items-center justify-center gap-2 rounded-lg font-black text-xs transition-all ${
+										type === "recebido"
+											? "bg-white dark:bg-slate-700 text-green-600 dark:text-green-400 shadow-sm"
+											: "text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
+									}`}
+								>
+									<ArrowUpCircle size={16} />
+									RECEBIDO
+								</button>
+								<button
+									type="button"
+									onClick={() => setType("saida")}
+									className={`flex-1 flex items-center justify-center gap-2 rounded-lg font-black text-xs transition-all ${
+										type === "saida"
+											? "bg-white dark:bg-slate-700 text-red-600 dark:text-red-400 shadow-sm"
+											: "text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
+									}`}
+								>
+									<ArrowDownCircle size={16} />
+									SAÍDA
+								</button>
+							</div>
+						</div>
+
+						{/* Quantity Select */}
+						<div className="space-y-1">
+							<label className="text-xs font-bold text-slate-400 dark:text-slate-500 ml-1">
+								Quantidade (Pacotes)
+							</label>
+							<div className="relative">
+								<select
+									value={quantity}
+									onChange={(e) => setQuantity(parseInt(e.target.value))}
+									className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500 transition-all text-slate-800 dark:text-slate-200 font-black appearance-none cursor-pointer"
+								>
+									{Array.from({ length: 20 }, (_, i) => i + 1).map((n) => (
+										<option key={n} value={n}>
+											{n} {n === 1 ? "Pacote" : "Pacotes"}
+										</option>
+									))}
+								</select>
+								<div className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
+									<ChevronDown size={18} />
 								</div>
 							</div>
-						))}
-					</div>
+						</div>
 
-					<div className="pt-6 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-4">
-						{message && message.type === "error" && (
-							<div className="flex items-center gap-2 text-sm font-semibold text-red-600 dark:text-red-400">
-								<AlertCircle size={18} />
-								{message.text}
-							</div>
-						)}
-
+						{/* Submit Button */}
 						<button
 							type="submit"
-							disabled={saving}
-							className="cursor-pointer ml-auto flex items-center gap-2 bg-green-700 hover:bg-green-800 text-white px-8 py-4 rounded-2xl font-black shadow-lg shadow-red-100 dark:shadow-none transition-all disabled:opacity-50 disabled:cursor-not-allowed">
-							{saving ? (
-								<RefreshCw className="animate-spin" size={20} />
-							) : message?.type === "success" ? (
-								<CheckCircle2 size={20} />
-							) : (
-								<Save size={20} />
-							)}
-							{saving
-								? "Salvando..."
-								: message?.type === "success"
-									? message.text
-									: "Salvar Contagem"}
+							disabled={submitting || !selectedItemId}
+							className="bg-green-600 hover:bg-green-700 text-white font-black h-[50px] rounded-xl shadow-md transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+						>
+							{submitting ? <RefreshCw className="animate-spin" size={20} /> : <CheckCircle2 size={20} />}
+							{submitting ? "SALVANDO..." : "REGISTRAR"}
 						</button>
 					</div>
+
+					{/* Observations */}
+					<div className="space-y-1">
+						<label className="text-xs font-bold text-slate-400 dark:text-slate-500 ml-1 flex items-center gap-1">
+							<MessageSquare size={12} /> OBSERVAÇÕES (OPCIONAL)
+						</label>
+						<textarea
+							value={obs}
+							onChange={(e) => setObs(e.target.value)}
+							placeholder="Ex: Recebido via reposição da loja X..."
+							className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500 transition-all text-slate-800 dark:text-slate-200 font-medium h-20 resize-none"
+						/>
+					</div>
+
+					{message && (
+						<div className={`p-4 rounded-xl flex items-center gap-2 text-sm font-bold ${
+							message.type === 'success' ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-400' : 'bg-red-50 text-red-700 dark:bg-red-900/20 dark:text-red-400'
+						}`}>
+							<AlertCircle size={18} />
+							{message.text}
+						</div>
+					)}
 				</form>
-			</div>
+			</section>
+
+			{/* Opening Section */}
+			<section className="bg-slate-50 dark:bg-slate-800/30 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 transition-colors">
+				<h2 className="text-xl font-bold text-slate-800 dark:text-slate-200 mb-6 flex items-center gap-2">
+					<ExternalLink className="text-blue-600 dark:text-blue-500" size={24} />
+					Registrar Abertura / Fechamento
+				</h2>
+				
+				<div className="space-y-6">
+					<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
+						{/* Item Selection */}
+						<div className="space-y-1 relative md:col-span-1 lg:col-span-2">
+							<label className="text-xs font-bold text-slate-400 dark:text-slate-500 ml-1">
+								Sabor / Item
+							</label>
+							<div className="relative">
+								<input
+									type="text"
+									required
+									placeholder="BUSCAR SABOR..."
+									value={openSearchTerm || (openItemId ? STOCK_LABELS[openItemId] : "")}
+									onFocus={() => setIsOpenDropdownOpen(true)}
+									onBlur={() => setTimeout(() => setIsOpenDropdownOpen(false), 200)}
+									onChange={(e) => {
+										setOpenSearchTerm(e.target.value.toUpperCase());
+										setOpenItemId("");
+										setIsOpenDropdownOpen(true);
+									}}
+									autoComplete="off"
+									className="w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all text-slate-800 dark:text-slate-200 font-bold placeholder:font-medium uppercase"
+								/>
+								<div className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-300 dark:text-slate-600 pointer-events-none">
+									<ChevronDown size={18} />
+								</div>
+
+								{isOpenDropdownOpen && (
+									<div className="absolute z-50 w-full mt-2 max-h-[300px] overflow-y-auto bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl animate-in fade-in zoom-in-95 duration-200">
+										{filteredOpenItems.length > 0 ? (
+											filteredOpenItems.map(([id, label]) => (
+												<div
+													key={id}
+													onMouseDown={(e) => {
+														e.preventDefault();
+														setOpenItemId(id);
+														setOpenSearchTerm("");
+														setIsOpenDropdownOpen(false);
+													}}
+													className="px-4 py-3 hover:bg-blue-50 dark:hover:bg-blue-900/30 hover:text-blue-600 dark:hover:text-blue-400 cursor-pointer text-sm font-bold text-slate-700 dark:text-slate-300 transition-colors flex items-center justify-between group"
+												>
+													<div className="flex flex-col">
+														<span>{label}</span>
+														{isUnits[id] && <span className="text-[10px] text-orange-500 font-black uppercase">Já possui 1 aberto</span>}
+													</div>
+													<span className="text-[10px] text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity">
+														{formatStockCompact(stock[id] || 0, isUnits[id] || false)} em estoque
+													</span>
+												</div>
+											))
+										) : (
+											<div className="px-4 py-4 text-center text-xs font-bold text-slate-400">
+												NENHUM SABOR ENCONTRADO
+											</div>
+										)}
+									</div>
+								)}
+							</div>
+						</div>
+
+						{/* Open Button */}
+						<button
+							onClick={handleRegisterOpening}
+							disabled={openSubmitting || !openItemId || (stock[openItemId] || 0) <= 0}
+							className="bg-blue-600 hover:bg-blue-700 text-white font-black h-[50px] rounded-xl shadow-md transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+						>
+							{openSubmitting ? <RefreshCw className="animate-spin" size={20} /> : <ExternalLink size={20} />}
+							{openSubmitting ? "ABRINDO..." : "ABRIR PACOTE"}
+						</button>
+
+						{/* Finish Button */}
+						<button
+							onClick={handleFinishPackage}
+							disabled={finishSubmitting || !openItemId || !isUnits[openItemId]}
+							className="bg-slate-700 hover:bg-slate-800 text-white font-black h-[50px] rounded-xl shadow-md transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+						>
+							{finishSubmitting ? <RefreshCw className="animate-spin" size={20} /> : <XCircle size={20} />}
+							{finishSubmitting ? "FINALIZANDO..." : "FINALIZAR ABERTO"}
+						</button>
+					</div>
+
+					{openMessage && (
+						<div className={`p-4 rounded-xl flex items-center gap-2 text-sm font-bold ${
+							openMessage.type === 'success' ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-400' : 'bg-red-50 text-red-700 dark:bg-red-900/20 dark:text-red-400'
+						}`}>
+							<AlertCircle size={18} />
+							{openMessage.text}
+						</div>
+					)}
+				</div>
+			</section>
+
+			{/* History Section */}
+			<section className="space-y-4">
+				<div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 ml-1">
+					<h3 className="text-lg font-bold text-slate-700 dark:text-slate-300 flex items-center gap-2">
+						<History className="text-slate-400 dark:text-slate-600" size={20} />
+						Histórico de Movimentações
+					</h3>
+					
+					{/* Filters */}
+					<div className="flex flex-wrap items-center gap-2">
+						<div className="relative group">
+							<Filter size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+							<select
+								value={filterItem}
+								onChange={(e) => setFilterItem(e.target.value)}
+								className="pl-9 pr-8 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-bold text-slate-600 dark:text-slate-400 appearance-none focus:outline-none focus:ring-2 focus:ring-red-500/20 cursor-pointer"
+							>
+								<option value="all">TODOS OS ITENS</option>
+								{Object.entries(STOCK_LABELS).sort((a,b) => a[1].localeCompare(b[1])).map(([id, label]) => (
+									<option key={id} value={id}>{label}</option>
+								))}
+							</select>
+							<ChevronDown size={14} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+						</div>
+
+						<div className="relative">
+							<CalendarIcon size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+							<input
+								type="date"
+								value={filterDate}
+								onChange={(e) => setFilterDate(e.target.value)}
+								className="pl-9 pr-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-bold text-slate-600 dark:text-slate-400 focus:outline-none focus:ring-2 focus:ring-red-500/20"
+							/>
+						</div>
+
+						{(filterItem !== "all" || filterDate !== "") && (
+							<button
+								onClick={() => { setFilterItem("all"); setFilterDate(""); }}
+								className="p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+								title="Limpar filtros"
+							>
+								<RefreshCw size={14} />
+							</button>
+						)}
+					</div>
+				</div>
+				
+				<div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
+					<div className="overflow-x-auto">
+						<table className="w-full border-collapse">
+							<thead>
+								<tr className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800 text-left">
+									<th className="px-6 py-4 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Data / Hora</th>
+									<th className="px-6 py-4 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Item</th>
+									<th className="px-6 py-4 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest text-center">Tipo</th>
+									<th className="px-6 py-4 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest text-center">Qtd</th>
+									<th className="px-6 py-4 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest text-center">Antes</th>
+									<th className="px-6 py-4 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest text-center">Atual</th>
+									<th className="px-6 py-4 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Obs</th>
+								</tr>
+							</thead>
+							<tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+								{filteredMovements.length > 0 ? (
+									filteredMovements.map((m) => (
+										<tr key={m.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+											<td className="px-6 py-4 whitespace-nowrap text-xs font-bold text-slate-400 dark:text-slate-500">
+												{formatDate(m.timestamp?.toDate())}
+											</td>
+											<td className="px-6 py-4 whitespace-nowrap text-sm font-black text-slate-700 dark:text-slate-200 uppercase">
+												{m.itemName}
+											</td>
+											<td className="px-6 py-4 whitespace-nowrap text-center">
+												<span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-black uppercase ${
+													m.type === 'recebido' 
+														? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' 
+														: m.type === 'saida'
+															? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+															: m.type === 'abertura'
+																? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
+																: 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-400'
+												}`}>
+													{m.type === 'recebido' ? <ArrowUpCircle size={12} /> : m.type === 'saida' ? <ArrowDownCircle size={12} /> : m.type === 'abertura' ? <ExternalLink size={12} /> : <XCircle size={12} />}
+													{m.type === 'recebido' ? 'recebido' : m.type === 'saida' ? 'saída' : m.type === 'abertura' ? 'abertura' : 'fechamento'}
+												</span>
+											</td>
+											<td className="px-6 py-4 whitespace-nowrap text-center text-sm font-black text-slate-700 dark:text-slate-200">
+												{m.quantity}
+											</td>
+											<td className="px-6 py-4 whitespace-nowrap text-center text-sm font-bold text-slate-400 dark:text-slate-500">
+												{m.beforeStock !== undefined ? formatStockCompact(m.beforeStock, m.beforeOpen || false) : "-"}
+											</td>
+											<td className="px-6 py-4 whitespace-nowrap text-center text-sm font-black text-blue-600 dark:text-blue-400">
+												{m.afterStock !== undefined ? formatStockCompact(m.afterStock, m.afterOpen || false) : "-"}
+											</td>
+											<td className="px-6 py-4 text-xs font-medium text-slate-500 dark:text-slate-400 max-w-xs truncate">
+												{m.obs || "-"}
+											</td>
+										</tr>
+									))
+								) : (
+									<tr>
+										<td colSpan={7} className="px-6 py-10 text-center text-slate-400 dark:text-slate-600 font-medium">
+											Nenhuma movimentação encontrada com os filtros selecionados.
+										</td>
+									</tr>
+								)}
+							</tbody>
+						</table>
+					</div>
+				</div>
+			</section>
 		</div>
 	);
 }

@@ -208,8 +208,8 @@ export default function EstoqueAtualPage() {
 												{label}
 											</td>
 											{allData.map((store) => {
-												const value = store.stock[key] || 0;
-												const isUnit = store.isUnits?.[key] || false;
+												const qty = store.stock[key] || 0;
+												const hasOpen = store.isUnits?.[key] || false;
 												return (
 													<td
 														key={store.id}
@@ -217,14 +217,17 @@ export default function EstoqueAtualPage() {
 														<div className="flex flex-col items-center">
 															<span
 																className={`text-2xl font-black ${
-																	isUnit
-																		? "text-orange-500 dark:text-orange-400" 
-																		: value === 0
-																			? "text-slate-400 dark:text-slate-600" 
-																			: "text-slate-900 dark:text-slate-100"
+																	qty === 0 && !hasOpen
+																		? "text-slate-300 dark:text-slate-700" 
+																		: "text-slate-900 dark:text-slate-100"
 																}`}>
-																{isUnit ? "< 1" : value}
+																{qty}
 															</span>
+															{hasOpen && (
+																<span className="text-[10px] font-black text-orange-500 uppercase whitespace-nowrap bg-orange-50 dark:bg-orange-900/20 px-2 py-0.5 rounded-md mt-1">
+																	+ 1 aberto
+																</span>
+															)}
 														</div>
 													</td>
 												);

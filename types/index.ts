@@ -16,14 +16,12 @@ export interface StockData {
 	ovomaltine: number;
 	newYork: number;
 	mms: number;
-	cremeBrulle: number;
 	kinderBueno: number;
 	lotus: number;
 	brownie: number;
 	triploChocolate: number;
 	redNinho: number;
 	redNutella: number;
-	oreo: number;
 	classicoRed: number;
 	eclipse: number;
 	alpino: number;
@@ -45,14 +43,12 @@ export const STOCK_LABELS: Record<keyof StockData, string> = {
 	ovomaltine: "OVOMALTINE",
 	newYork: "NEW YORK",
 	mms: "M&M'S",
-	cremeBrulle: "CREME BRÜLLE",
 	kinderBueno: "KINDER BUENO",
 	lotus: "LÓTUS",
 	brownie: "BROWNIE",
 	triploChocolate: "TRIPLO CHOCOLATE",
 	redNinho: "RED NINHO",
 	redNutella: "RED NUTELLA",
-	oreo: "OREO",
 	classicoRed: "CLÁSSICO RED",
 	eclipse: "ECLIPSE",
 	alpino: "ALPINO",
@@ -64,6 +60,20 @@ export const STOCK_LABELS: Record<keyof StockData, string> = {
 	novoOreo: "NOVO OREO",
 	sorvete: "SORVETE",
 };
+
+export interface StockMovement {
+	id?: string;
+	itemId: keyof StockData;
+	itemName: string;
+	type: "recebido" | "saida" | "abertura" | "fechamento";
+	quantity: number;
+	beforeStock: number;
+	afterStock: number;
+	beforeOpen?: boolean;
+	afterOpen?: boolean;
+	obs?: string;
+	timestamp: any; // Firestore Timestamp
+}
 
 export interface StoreDocument {
 	id: StoreId;
