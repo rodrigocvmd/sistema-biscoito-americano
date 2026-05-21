@@ -28,6 +28,8 @@ import {
 	Calendar as CalendarIcon,
 	ExternalLink,
 	XCircle,
+	ChevronLeft,
+	ChevronRight,
 } from "lucide-react";
 import Link from "next/link";
 import { use } from "react";
@@ -63,6 +65,10 @@ export default function StockMovementsPage({ params }: { params: Promise<{ store
 	const [filterItem, setFilterItem] = useState<string>("all");
 	const [filterDate, setFilterDate] = useState<string>("");
 
+	// Pagination State
+	const [currentPage, setCurrentPage] = useState(1);
+	const itemsPerPage = 20;
+
 	// Combobox State
 	const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 	const [isOpenDropdownOpen, setIsOpenDropdownOpen] = useState(false);
@@ -95,8 +101,8 @@ export default function StockMovementsPage({ params }: { params: Promise<{ store
 			}
 		});
 
-		// Listen to movements (last 100)
-		const qMovements = query(movementsRef, orderBy("timestamp", "desc"), limit(100));
+		// Listen to movements (last 300)
+		const qMovements = query(movementsRef, orderBy("timestamp", "desc"), limit(300));
 		const unsubMovements = onSnapshot(qMovements, (snapshot) => {
 			const docs = snapshot.docs.map((doc) => ({
 				id: doc.id,
@@ -113,6 +119,7 @@ export default function StockMovementsPage({ params }: { params: Promise<{ store
 	}, [store]);
 
 	const filteredMovements = useMemo(() => {
+		setCurrentPage(1); // Reset to first page on filter change
 		return movements.filter((m) => {
 			const matchesItem = filterItem === "all" || m.itemId === filterItem;
 
@@ -129,6 +136,12 @@ export default function StockMovementsPage({ params }: { params: Promise<{ store
 			return matchesItem && matchesDate;
 		});
 	}, [movements, filterItem, filterDate]);
+
+	const totalPages = Math.ceil(filteredMovements.length / itemsPerPage);
+	const paginatedMovements = filteredMovements.slice(
+		(currentPage - 1) * itemsPerPage,
+		currentPage * itemsPerPage
+	);
 
 	const formatStockCompact = (qty: number, hasOpen: boolean) => {
 		if (qty === 0 && !hasOpen) return "0";
@@ -718,8 +731,8 @@ export default function StockMovementsPage({ params }: { params: Promise<{ store
 								</tr>
 							</thead>
 							<tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-								{filteredMovements.length > 0 ? (
-									filteredMovements.map((m) => (
+								{paginatedMovements.length > 0 ? (
+									paginatedMovements.map((m) => (
 										<tr
 											key={m.id}
 											className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
@@ -788,6 +801,50 @@ export default function StockMovementsPage({ params }: { params: Promise<{ store
 							</tbody>
 						</table>
 					</div>
+
+					{/* Pagination */}
+					{totalPages > 1 && (
+						<div className="flex items-center justify-between px-6 py-4 bg-slate-50 dark:bg-slate-800/30 border-t border-slate-100 dark:border-slate-800">
+							<p className="text-xs font-bold text-slate-500">
+								Mostrando <span className="text-slate-700 dark:text-slate-300">{(currentPage - 1) * itemsPerPage + 1}</span> a <span className="text-slate-700 dark:text-slate-300">{Math.min(currentPage * itemsPerPage, filteredMovements.length)}</span> de <span className="text-slate-700 dark:text-slate-300">{filteredMovements.length}</span> movimentações
+							</p>
+							<div className="flex items-center gap-2">
+								<button
+									onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+									disabled={currentPage === 1}
+									className="p-2 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-white dark:hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-slate-600 dark:text-slate-400"
+								>
+									<ChevronLeft size={20} />
+								</button>
+								<div className="flex items-center gap-1">
+									{Array.from({ length: totalPages }, (_, i) => i + 1)
+										.filter(p => p === 1 || p === totalPages || Math.abs(p - currentPage) <= 1)
+										.map((p, i, arr) => (
+											<div key={p} className="flex items-center gap-1">
+												{i > 0 && arr[i-1] !== p - 1 && <span className="text-slate-400">...</span>}
+												<button
+													onClick={() => setCurrentPage(p)}
+													className={`w-8 h-8 rounded-lg text-xs font-black transition-all ${
+														currentPage === p
+															? "bg-red-600 text-white shadow-md shadow-red-500/20"
+															: "text-slate-500 hover:bg-white dark:hover:bg-slate-800 border border-transparent hover:border-slate-200 dark:hover:border-slate-700"
+													}`}
+												>
+													{p}
+												</button>
+											</div>
+										))}
+								</div>
+								<button
+									onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+									disabled={currentPage === totalPages}
+									className="p-2 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-white dark:hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-slate-600 dark:text-slate-400"
+								>
+									<ChevronRight size={20} />
+								</button>
+							</div>
+						</div>
+					)}
 				</div>
 			</section>
 		</div>

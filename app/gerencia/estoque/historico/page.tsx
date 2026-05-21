@@ -20,6 +20,8 @@ import {
 	ExternalLink,
 	XCircle,
 	ChevronDown,
+	ChevronLeft,
+	ChevronRight,
 } from "lucide-react";
 
 export default function GlobalStockHistoryPage() {
@@ -31,12 +33,16 @@ export default function GlobalStockHistoryPage() {
 	const [filterItem, setFilterItem] = useState<string>("all");
 	const [filterDate, setFilterDate] = useState<string>("");
 
+	// Pagination State
+	const [currentPage, setCurrentPage] = useState(1);
+	const itemsPerPage = 20;
+
 	useEffect(() => {
 		setLoading(true);
 		const movementsRef = collection(db, "stores", selectedStore, "stockMovements");
 
-		// Listen to movements (last 100)
-		const qMovements = query(movementsRef, orderBy("timestamp", "desc"), limit(100));
+		// Listen to movements (last 300)
+		const qMovements = query(movementsRef, orderBy("timestamp", "desc"), limit(300));
 		const unsubMovements = onSnapshot(qMovements, (snapshot) => {
 			const docs = snapshot.docs.map((doc) => ({
 				id: doc.id,
@@ -50,6 +56,7 @@ export default function GlobalStockHistoryPage() {
 	}, [selectedStore]);
 
 	const filteredMovements = useMemo(() => {
+		setCurrentPage(1); // Reset to first page on filter change
 		return movements.filter((m) => {
 			const matchesItem = filterItem === "all" || m.itemId === filterItem;
 			
@@ -66,6 +73,12 @@ export default function GlobalStockHistoryPage() {
 			return matchesItem && matchesDate;
 		});
 	}, [movements, filterItem, filterDate]);
+
+	const totalPages = Math.ceil(filteredMovements.length / itemsPerPage);
+	const paginatedMovements = filteredMovements.slice(
+		(currentPage - 1) * itemsPerPage,
+		currentPage * itemsPerPage
+	);
 
 	const formatStockCompact = (qty: number, hasOpen: boolean) => {
 		if (qty === 0 && !hasOpen) return "0";
@@ -154,67 +167,113 @@ export default function GlobalStockHistoryPage() {
 							<p className="font-bold text-sm">Carregando movimentações...</p>
 						</div>
 					) : (
-						<div className="overflow-x-auto">
-							<table className="w-full border-collapse">
-								<thead>
-									<tr className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800 text-left">
-										<th className="px-6 py-4 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Data / Hora</th>
-										<th className="px-6 py-4 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Item</th>
-										<th className="px-6 py-4 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest text-center">Tipo</th>
-										<th className="px-6 py-4 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest text-center">Qtd</th>
-										<th className="px-6 py-4 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest text-center">Antes</th>
-										<th className="px-6 py-4 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest text-center">Atual</th>
-										<th className="px-6 py-4 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Obs</th>
-									</tr>
-								</thead>
-								<tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-									{filteredMovements.length > 0 ? (
-										filteredMovements.map((m) => (
-											<tr key={m.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
-												<td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-slate-400 dark:text-slate-500">
-													{formatDate(m.timestamp?.toDate())}
-												</td>
-												<td className="px-6 py-4 whitespace-nowrap text-md font-black text-slate-700 dark:text-slate-200 uppercase">
-													{m.itemName}
-												</td>
-												<td className="px-6 py-4 whitespace-nowrap text-center">
-													<span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-black uppercase ${
-														m.type === 'recebido' 
-															? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' 
-															: m.type === 'saida'
-																? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
-																: m.type === 'abertura'
-																	? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
-																	: 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-400'
-													}`}>
-														{m.type === 'recebido' ? <ArrowDownCircle size={12} /> : m.type === 'saida' ? <ArrowUpCircle size={12} /> : m.type === 'abertura' ? <ExternalLink size={12} /> : <XCircle size={12} />}
-														{m.type === 'recebido' ? 'recebido' : m.type === 'saida' ? 'saída' : m.type === 'abertura' ? 'pacote aberto' : 'pacote finalizado'}
-													</span>
-												</td>
-												<td className="px-6 py-4 whitespace-nowrap text-center text-lg font-black text-slate-600 dark:text-slate-200">
-													{m.quantity}
-												</td>
-												<td className="px-6 py-4 whitespace-nowrap text-center text-lg font-bold text-slate-500 dark:text-slate-400">
-													{m.beforeStock !== undefined ? formatStockCompact(m.beforeStock, m.beforeOpen || false) : "-"}
-												</td>
-												<td className="px-6 py-4 whitespace-nowrap text-center text-lg font-black text-slate-800 dark:text-white">
-													{m.afterStock !== undefined ? formatStockCompact(m.afterStock, m.afterOpen || false) : "-"}
-												</td>
-												<td className="px-6 py-4 text-md font-medium text-slate-500 dark:text-slate-300 max-w-xs truncate">
-													{m.obs || "-"}
+						<>
+							<div className="overflow-x-auto">
+								<table className="w-full border-collapse">
+									<thead>
+										<tr className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800 text-left">
+											<th className="px-6 py-4 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Data / Hora</th>
+											<th className="px-6 py-4 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Item</th>
+											<th className="px-6 py-4 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest text-center">Tipo</th>
+											<th className="px-6 py-4 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest text-center">Qtd</th>
+											<th className="px-6 py-4 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest text-center">Antes</th>
+											<th className="px-6 py-4 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest text-center">Atual</th>
+											<th className="px-6 py-4 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Obs</th>
+										</tr>
+									</thead>
+									<tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+										{paginatedMovements.length > 0 ? (
+											paginatedMovements.map((m) => (
+												<tr key={m.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+													<td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-slate-400 dark:text-slate-500">
+														{formatDate(m.timestamp?.toDate())}
+													</td>
+													<td className="px-6 py-4 whitespace-nowrap text-md font-black text-slate-700 dark:text-slate-200 uppercase">
+														{m.itemName}
+													</td>
+													<td className="px-6 py-4 whitespace-nowrap text-center">
+														<span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-black uppercase ${
+															m.type === 'recebido' 
+																? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' 
+																: m.type === 'saida'
+																	? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+																	: m.type === 'abertura'
+																		? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
+																		: 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-400'
+														}`}>
+															{m.type === 'recebido' ? <ArrowDownCircle size={12} /> : m.type === 'saida' ? <ArrowUpCircle size={12} /> : m.type === 'abertura' ? <ExternalLink size={12} /> : <XCircle size={12} />}
+															{m.type === 'recebido' ? 'recebido' : m.type === 'saida' ? 'saída' : m.type === 'abertura' ? 'pacote aberto' : 'pacote finalizado'}
+														</span>
+													</td>
+													<td className="px-6 py-4 whitespace-nowrap text-center text-lg font-black text-slate-600 dark:text-slate-200">
+														{m.quantity}
+													</td>
+													<td className="px-6 py-4 whitespace-nowrap text-center text-lg font-bold text-slate-500 dark:text-slate-400">
+														{m.beforeStock !== undefined ? formatStockCompact(m.beforeStock, m.beforeOpen || false) : "-"}
+													</td>
+													<td className="px-6 py-4 whitespace-nowrap text-center text-lg font-black text-slate-800 dark:text-white">
+														{m.afterStock !== undefined ? formatStockCompact(m.afterStock, m.afterOpen || false) : "-"}
+													</td>
+													<td className="px-6 py-4 text-md font-medium text-slate-500 dark:text-slate-300 max-w-xs truncate">
+														{m.obs || "-"}
+													</td>
+												</tr>
+											))
+										) : (
+											<tr>
+												<td colSpan={7} className="px-6 py-10 text-center text-slate-400 dark:text-slate-600 font-medium">
+													Nenhuma movimentação encontrada para esta loja.
 												</td>
 											</tr>
-										))
-									) : (
-										<tr>
-											<td colSpan={7} className="px-6 py-10 text-center text-slate-400 dark:text-slate-600 font-medium">
-												Nenhuma movimentação encontrada para esta loja.
-											</td>
-										</tr>
-									)}
-								</tbody>
-							</table>
-						</div>
+										)}
+									</tbody>
+								</table>
+							</div>
+
+							{/* Pagination */}
+							{totalPages > 1 && (
+								<div className="flex items-center justify-between px-6 py-4 bg-slate-50 dark:bg-slate-800/30 border-t border-slate-100 dark:border-slate-800">
+									<p className="text-xs font-bold text-slate-500">
+										Mostrando <span className="text-slate-700 dark:text-slate-300">{(currentPage - 1) * itemsPerPage + 1}</span> a <span className="text-slate-700 dark:text-slate-300">{Math.min(currentPage * itemsPerPage, filteredMovements.length)}</span> de <span className="text-slate-700 dark:text-slate-300">{filteredMovements.length}</span> movimentações
+									</p>
+									<div className="flex items-center gap-2">
+										<button
+											onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+											disabled={currentPage === 1}
+											className="p-2 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-white dark:hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-slate-600 dark:text-slate-400"
+										>
+											<ChevronLeft size={20} />
+										</button>
+										<div className="flex items-center gap-1">
+											{Array.from({ length: totalPages }, (_, i) => i + 1)
+												.filter(p => p === 1 || p === totalPages || Math.abs(p - currentPage) <= 1)
+												.map((p, i, arr) => (
+													<div key={p} className="flex items-center gap-1">
+														{i > 0 && arr[i-1] !== p - 1 && <span className="text-slate-400">...</span>}
+														<button
+															onClick={() => setCurrentPage(p)}
+															className={`w-8 h-8 rounded-lg text-xs font-black transition-all ${
+																currentPage === p
+																	? "bg-blue-600 text-white shadow-md shadow-blue-500/20"
+																	: "text-slate-500 hover:bg-white dark:hover:bg-slate-800 border border-transparent hover:border-slate-200 dark:hover:border-slate-700"
+															}`}
+														>
+															{p}
+														</button>
+													</div>
+												))}
+										</div>
+										<button
+											onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+											disabled={currentPage === totalPages}
+											className="p-2 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-white dark:hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-slate-600 dark:text-slate-400"
+										>
+											<ChevronRight size={20} />
+										</button>
+									</div>
+								</div>
+							)}
+						</>
 					)}
 				</div>
 			</section>
