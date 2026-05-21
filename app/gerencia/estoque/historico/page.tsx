@@ -76,12 +76,14 @@ export default function EstoqueHistoricoPage() {
 		return (
 			<div className="flex flex-col items-center">
 				<div className="flex items-center gap-1">
-					<span className={`text-lg font-black ${qty === 0 && !hasOpen ? "text-slate-300 dark:text-slate-700" : "text-slate-900 dark:text-slate-100"}`}>
-						{qty}
-					</span>
+					{(qty > 0 || !hasOpen) && (
+						<span className={`text-lg font-black ${qty === 0 && !hasOpen ? "text-slate-300 dark:text-slate-700" : "text-slate-900 dark:text-slate-100"}`}>
+							{qty}
+						</span>
+					)}
 					{hasOpen && (
-						<span className="text-[13px] font-extrabold text-orange-500 dark:text-orange-400 whitespace-nowrap">
-							+ 1 aberto
+						<span className="text-lg font-black text-slate-300 dark:text-slate-300 whitespace-nowrap">
+							{qty > 0 ? "+ 1 aberto" : "1 aberto"}
 						</span>
 					)}
 				</div>

@@ -602,21 +602,23 @@ export default function EstoqueReposicionarPage() {
 														className="p-4 text-center border-l border-slate-50 dark:border-slate-800 border-b border-slate-100 dark:border-slate-800">
 														<div className="flex flex-col items-center">
 															<div className="flex items-center gap-1">
-																<span
-																	className={`text-2xl font-black ${receiving ? "text-green-600 dark:text-green-400" : sending ? "text-red-600 dark:text-red-400" : isUnit ? "text-orange-500 dark:text-orange-400" : initial === 0 ? "text-slate-400 dark:text-slate-600" : "text-slate-900 dark:text-slate-200"}`}>
-																	{isUnit && v === 0 ? "< 1" : v}
-																</span>
+																{(v > 0 || !isUnit) && (
+																	<span
+																		className={`text-2xl font-black ${receiving ? "text-green-600 dark:text-green-400" : sending ? "text-red-600 dark:text-red-400" : isUnit ? "text-orange-500 dark:text-orange-400" : initial === 0 ? "text-slate-400 dark:text-slate-600" : "text-slate-900 dark:text-slate-200"}`}>
+																		{isUnit && v === 0 ? "< 1" : v}
+																	</span>
+																)}
 																{isUnit && (
-																	<span className="text-[13px] font-extrabold text-orange-500 dark:text-orange-400 whitespace-nowrap">
-																		+ 1 aberto
+																	<span className="text-2xl font-bold text-green-600 dark:text-slate-200 whitespace-nowrap">
+																		{v > 0 ? "+ 1 aberto" : "1 aberto"}
 																	</span>
 																)}
 															</div>
 															{(receiving || sending) && (
-																<span className="text-[12px] font-bold text-slate-400 dark:text-slate-500 uppercase">
+																<span className="text-[12px] font-bold text-slate-400 dark:text-slate-500 ">
 																	Inicial:{" "}
-																	<span className="text-[14px] font-bold text-slate-900 dark:text-slate-200 uppercase">
-																		{isUnit ? `${initial} + 1 aberto` : initial}
+																	<span className="text-[14px] font-bold text-slate-900 dark:text-slate-200 ">
+																		{isUnit ? (initial > 0 ? `${initial} + 1 aberto` : "1 aberto") : initial}
 																	</span>
 																</span>
 															)}

@@ -201,17 +201,19 @@ export default function EstoqueAtualPage() {
 														key={store.id}
 														className="p-6 text-center border-l border-slate-100 dark:border-slate-800">
 														<div className="flex flex-col items-center">
-															<span
-																className={`text-2xl font-black ${
-																	qty === 0 && !hasOpen
-																		? "text-slate-300 dark:text-slate-700" 
-																		: "text-slate-900 dark:text-slate-100"
-																}`}>
-																{qty}
-															</span>
+															{qty > 0 || !hasOpen ? (
+																<span
+																	className={`text-2xl font-black ${
+																		qty === 0 && !hasOpen
+																			? "text-slate-300 dark:text-slate-700" 
+																			: "text-slate-900 dark:text-slate-100"
+																	}`}>
+																	{qty}
+																</span>
+															) : null}
 															{hasOpen && (
-																<span className="text-[10px] font-black text-orange-500 uppercase whitespace-nowrap bg-orange-50 dark:bg-orange-900/20 px-2 py-0.5 rounded-md mt-1">
-																	+ 1 aberto
+																<span className="text-2xl font-black text-slate-400 whitespace-nowrap mt-1">
+																	{qty > 0 ? "+ 1 aberto" : "1 aberto"}
 																</span>
 															)}
 														</div>

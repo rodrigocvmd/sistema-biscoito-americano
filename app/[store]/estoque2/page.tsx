@@ -142,16 +142,20 @@ export default function StockPage({ params }: { params: Promise<{ store: string 
 								<span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-1">
 									{label}
 								</span>
-								<div className="flex items-end gap-2">
-									<span className={`text-xl font-black ${qty === 0 && !hasOpen ? "text-slate-300 dark:text-slate-700" : "text-slate-900 dark:text-slate-100"}`}>
-										{qty}
-									</span>
-									<span className="text-xs font-bold text-slate-500 dark:text-slate-400 mb-1">
-										{qty === 1 ? "pacote" : "pacotes"}
-									</span>
+								<div className="flex items-baseline gap-2">
+									{qty > 0 || !hasOpen ? (
+										<>
+											<span className={`text-xl font-black ${qty === 0 && !hasOpen ? "text-slate-300 dark:text-slate-700" : "text-slate-900 dark:text-slate-100"}`}>
+												{qty}
+											</span>
+											<span className="text-xs font-bold text-slate-500 dark:text-slate-400">
+												{qty === 1 ? "pacote" : "pacotes"}
+											</span>
+										</>
+									) : null}
 									{hasOpen && (
-										<span className="text-xs font-black text-orange-500 mb-1 flex items-center gap-1 whitespace-nowrap">
-											+ 1 aberto
+										<span className="text-xl font-black text-orange-500 whitespace-nowrap">
+											{qty > 0 ? "+ 1 aberto" : "1 aberto"}
 										</span>
 									)}
 								</div>

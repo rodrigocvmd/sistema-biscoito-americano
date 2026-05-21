@@ -8,15 +8,24 @@
   
   --color-primary-600: #dc2626;
   --color-primary-700: #b91c1c;
+
+  /* Redefining palette for slightly darker light mode and slightly lighter dark mode */
+  --color-slate-50: #f1f5f9;
+  --color-slate-100: #e2e8f0;
+  --color-slate-200: #cbd5e1;
+  
+  --color-slate-950: #161f31;
+  --color-slate-900: #1e293b;
+  --color-slate-800: #334155;
 }
 
 :root {
-  --background: #f8fafc;
+  --background: #f1f5f9;
   --foreground: #0f172a;
 }
 
 :root[class~="dark"] {
-  --background: #0f172a;
+  --background: #161f31;
   --foreground: #f1f5f9;
 }
 

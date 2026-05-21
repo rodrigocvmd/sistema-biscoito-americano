@@ -129,6 +129,7 @@ export default function StockMovementsPage({ params }: { params: Promise<{ store
 	const formatStockCompact = (qty: number, hasOpen: boolean) => {
 		if (qty === 0 && !hasOpen) return "0";
 		const openText = hasOpen ? " + 1 aberto" : "";
+		if (qty === 0 && hasOpen) return "1 aberto";
 		return `${qty}${openText}`;
 	};
 
@@ -471,7 +472,7 @@ export default function StockMovementsPage({ params }: { params: Promise<{ store
 						<textarea
 							value={obs}
 							onChange={(e) => setObs(e.target.value)}
-							placeholder="Ex: Recebido via reposição da loja X..."
+							placeholder="Inserir observação caso não seja uma movimentação padrão..."
 							className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500 transition-all text-slate-800 dark:text-slate-200 font-medium h-20 resize-none"
 						/>
 					</div>
