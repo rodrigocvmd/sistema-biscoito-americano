@@ -478,13 +478,13 @@ export default function EstoqueReposicionarPage() {
 	return (
 		<div className="space-y-6">
 			{/* Action Bar */}
-			<div className="flex flex-col md:flex-row gap-4 items-center justify-between bg-white dark:bg-slate-900 p-6 rounded-[32px] border border-slate-200 dark:border-slate-800 shadow-sm transition-colors print:hidden">
+			<div className="flex flex-col md:flex-row gap-4 items-center justify-between bg-white dark:bg-slate-900 p-6 rounded-[2rem] border border-slate-200 dark:border-slate-800 shadow-sm transition-colors print:hidden">
 				<div className="flex flex-col gap-1">
-					<h2 className="text-xl font-black text-slate-800 dark:text-slate-200 uppercase tracking-tight">
+					<h2 className="text-2xl font-black text-slate-800 dark:text-slate-200 uppercase tracking-tight">
 						Reposicionamento
 					</h2>
-					<p className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">
-						Movimente itens entre todas as unidades
+					<p className="text-md font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">
+						Movimente itens entre as unidades
 					</p>
 				</div>
 				<div className="flex justify-end p-6">
@@ -497,13 +497,13 @@ export default function EstoqueReposicionarPage() {
 				<div className="flex items-center gap-3">
 					<button
 						onClick={resetProjectedStocks}
-						className="cursor-pointer bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-400 px-6 py-4 rounded-2xl font-black text-[10px] transition-all border border-slate-200 dark:border-slate-700 uppercase tracking-widest">
+						className="cursor-pointer bg-green-500 dark:bg-green-500 hover:bg-green-600 dark:hover:bg-green-600 text-white dark:text-white px-6 py-4 rounded-2xl font-black text-[1.1rem] transition-all border border-slate-200 dark:border-slate-700 uppercase tracking-widest">
 						Redefinir para Estoque Atual
 					</button>
 					<button
 						onClick={fetchAllHistory}
 						disabled={loadingAllHistory}
-						className="cursor-pointer flex items-center gap-2 bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/30 text-blue-600 dark:text-blue-400 px-6 py-4 rounded-2xl font-black text-[10px] transition-all border border-blue-200 dark:border-blue-800 uppercase tracking-widest disabled:opacity-50">
+						className="cursor-pointer flex items-center gap-2 bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/30 text-blue-600 dark:text-blue-400 px-6 py-4 rounded-2xl font-black text-[1rem] transition-all border border-blue-200 dark:border-blue-800 uppercase tracking-widest disabled:opacity-50">
 						{loadingAllHistory ? <RefreshCw className="animate-spin" size={14} /> : <History size={14} />}
 						Ver Histórico Completo
 					</button>
@@ -527,22 +527,22 @@ export default function EstoqueReposicionarPage() {
 				</div>
 			</div>
 
-			<div className="bg-white dark:bg-slate-900 rounded-[32px] border border-slate-200 dark:border-slate-800 shadow-sm transition-colors print:hidden">
+			<div className="bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-200 dark:border-slate-800 shadow-sm transition-colors print:hidden">
 				<div className="overflow-x-auto overflow-y-visible">
 					<table className="w-full border-separate border-spacing-0">
 						<thead>
 							<tr className="bg-slate-50 dark:bg-slate-800">
-								<th className="p-4 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest sticky left-0 bg-slate-50 dark:bg-slate-800 z-20 border-b border-slate-200 dark:border-slate-700 text-center">
+								<th className="p-4 text-[0.625rem] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest sticky left-0 bg-slate-50 dark:bg-slate-800 z-20 border-b border-slate-200 dark:border-slate-700 text-center">
 									Item
 								</th>
 								{STORE_ORDER.map((id) => (
 									<th
 										key={id}
-										className="p-4 text-center text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest min-w-[100px] border-l border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700">
+										className="p-4 text-center text-[0.625rem] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest min-w-[6.25rem] border-l border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700">
 										{STORE_NAMES[id]}
 									</th>
 								))}
-								<th className="p-4 text-center text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest min-w-[280px] border-l border-slate-100 dark:border-slate-700 bg-blue-50/50 dark:bg-blue-900/10 border-b border-slate-200 dark:border-slate-700">
+								<th className="p-4 text-center text-[0.625rem] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest min-w-[17.5rem] border-l border-slate-100 dark:border-slate-700 bg-blue-50/50 dark:bg-blue-900/10 border-b border-slate-200 dark:border-slate-700">
 									Movimentar
 								</th>
 							</tr>
@@ -562,17 +562,17 @@ export default function EstoqueReposicionarPage() {
 									<Fragment key={itemKey}>
 										{showRepeatedHeader && (
 											<tr className="bg-slate-100 dark:bg-slate-800/80">
-												<th className="p-2 text-center text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest sticky left-0 bg-slate-100 dark:bg-slate-800/80 z-20 border-y border-slate-200 dark:border-slate-700">
+												<th className="p-2 text-center text-[0.5625rem] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest sticky left-0 bg-slate-100 dark:bg-slate-800/80 z-20 border-y border-slate-200 dark:border-slate-700">
 													Item
 												</th>
 												{STORE_ORDER.map((id) => (
 													<th
 														key={`header-${id}-${index}`}
-														className="p-2 text-center text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest border-l border-slate-200 dark:border-slate-700 border-y">
+														className="p-2 text-center text-[0.5625rem] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest border-l border-slate-200 dark:border-slate-700 border-y">
 														{STORE_NAMES[id]}
 													</th>
 												))}
-												<th className="p-2 text-center text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest border-l border-slate-200 dark:border-slate-700 bg-blue-100/30 dark:bg-blue-900/20 border-y">
+												<th className="p-2 text-center text-[0.5625rem] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest border-l border-slate-200 dark:border-slate-700 bg-blue-100/30 dark:bg-blue-900/20 border-y">
 													Movimentar
 												</th>
 											</tr>
@@ -582,7 +582,7 @@ export default function EstoqueReposicionarPage() {
 											<td className="p-4 sticky left-0 bg-white dark:bg-slate-900 group-hover:bg-slate-50/50 dark:group-hover:bg-slate-800/50 z-10 border-r border-slate-50 dark:border-slate-800 border-b border-slate-100 dark:border-slate-800 transition-colors">
 												<button
 													onClick={() => setExpandedItem(isExpanded ? null : itemKey)}
-													className="flex items-center gap-2 text-[13px] font-black text-slate-600 dark:text-slate-400 uppercase hover:text-blue-600 dark:hover:text-blue-400 transition-colors cursor-pointer text-left">
+													className="flex items-center gap-2 text-[0.8125rem] font-black text-slate-600 dark:text-slate-400 uppercase hover:text-blue-600 dark:hover:text-blue-400 transition-colors cursor-pointer text-left">
 													{isExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
 													{label}
 												</button>
@@ -615,9 +615,9 @@ export default function EstoqueReposicionarPage() {
 																)}
 															</div>
 															{(receiving || sending) && (
-																<span className="text-[12px] font-bold text-slate-400 dark:text-slate-500 ">
+																<span className="text-[0.75rem] font-bold text-slate-400 dark:text-slate-500 ">
 																	Inicial:{" "}
-																	<span className="text-[14px] font-bold text-slate-900 dark:text-slate-200 ">
+																	<span className="text-[0.875rem] font-bold text-slate-900 dark:text-slate-200 ">
 																		{isUnit ? (initial > 0 ? `${initial} + 1 aberto` : "1 aberto") : initial}
 																	</span>
 																</span>
@@ -639,7 +639,7 @@ export default function EstoqueReposicionarPage() {
 																		[itemKey]: { ...transfers, from: e.target.value as StoreId },
 																	}))
 																}
-																className="appearance-none bg-slate-50 dark:bg-slate-900/50 text-[12px] font-black text-red-600 dark:text-red-400 focus:outline-none cursor-pointer pl-3 pr-8 py-1.5 rounded-xl border border-transparent focus:border-red-500/30 transition-all hover:bg-red-50 dark:hover:bg-red-900/20">
+																className="appearance-none bg-slate-50 dark:bg-slate-900/50 text-[0.75rem] font-black text-red-600 dark:text-red-400 focus:outline-none cursor-pointer pl-3 pr-8 py-1.5 rounded-xl border border-transparent focus:border-red-500/30 transition-all hover:bg-red-50 dark:hover:bg-red-900/20">
 																{STORE_ORDER.map((id) => (
 																	<option key={id} value={id} className="dark:bg-slate-800 cursor-pointer text-center">
 																		{STORE_NAMES[id]}
@@ -660,7 +660,7 @@ export default function EstoqueReposicionarPage() {
 																		[itemKey]: { ...transfers, to: e.target.value as StoreId },
 																	}))
 																}
-																className="appearance-none bg-slate-50 dark:bg-slate-900/50 text-[12px] font-black text-emerald-600 dark:text-emerald-400 focus:outline-none cursor-pointer pl-3 pr-8 py-1.5 rounded-xl border border-transparent focus:border-emerald-500/30 transition-all hover:bg-emerald-50 dark:hover:bg-emerald-900/20">
+																className="appearance-none bg-slate-50 dark:bg-slate-900/50 text-[0.75rem] font-black text-emerald-600 dark:text-emerald-400 focus:outline-none cursor-pointer pl-3 pr-8 py-1.5 rounded-xl border border-transparent focus:border-emerald-500/30 transition-all hover:bg-emerald-50 dark:hover:bg-emerald-900/20">
 																{STORE_ORDER.map((id) => (
 																	<option key={id} value={id} className="dark:bg-slate-800 text-center">
 																		{STORE_NAMES[id]}
@@ -700,7 +700,7 @@ export default function EstoqueReposicionarPage() {
 													colSpan={STORE_ORDER.length + 2}
 													className="p-4 border-b border-slate-200 dark:border-slate-800">
 													<div className="bg-white dark:bg-slate-800 rounded-2xl p-6 border border-blue-100 dark:border-blue-900 shadow-sm transition-colors">
-														<h4 className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-4">
+														<h4 className="text-[0.625rem] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-4">
 															Histórico de Reposicionamento (últimas 5)
 														</h4>
 														{loadingLastRepo ? (
@@ -712,16 +712,16 @@ export default function EstoqueReposicionarPage() {
 															<div className="space-y-4">
 																{historyForItem.map((item, hIdx) => (
 																	<div key={item.id || hIdx} className="flex flex-wrap items-center gap-8 pb-4 border-b border-slate-50 dark:border-slate-700 last:border-0 last:pb-0">
-																		<div className="flex flex-col gap-1 min-w-[100px]">
-																			<span className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase">
+																		<div className="flex flex-col gap-1 min-w-[6.25rem]">
+																			<span className="text-[0.5625rem] font-bold text-slate-400 dark:text-slate-500 uppercase">
 																				Data
 																			</span>
 																			<span className="text-xs font-black text-slate-700 dark:text-slate-300">
 																				{formatDate(item.timestamp.toDate())}
 																			</span>
 																		</div>
-																		<div className="flex flex-col gap-1 min-w-[150px]">
-																			<span className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase">
+																		<div className="flex flex-col gap-1 min-w-[9.375rem]">
+																			<span className="text-[0.5625rem] font-bold text-slate-400 dark:text-slate-500 uppercase">
 																				Movimentação
 																			</span>
 																			<span className="text-xs font-black text-blue-600 dark:text-blue-400 flex items-center gap-1.5">
@@ -731,7 +731,7 @@ export default function EstoqueReposicionarPage() {
 																			</span>
 																		</div>
 																		<div className="flex flex-col gap-1">
-																			<span className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase">
+																			<span className="text-[0.5625rem] font-bold text-slate-400 dark:text-slate-500 uppercase">
 																				Quantidade
 																			</span>
 																			<span className="text-xs font-black text-green-600 dark:text-green-400">
@@ -739,7 +739,7 @@ export default function EstoqueReposicionarPage() {
 																			</span>
 																		</div>
 																		<div className="flex flex-col gap-1">
-																			<span className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase">
+																			<span className="text-[0.5625rem] font-bold text-slate-400 dark:text-slate-500 uppercase">
 																				Origem
 																			</span>
 																			<span className="text-xs font-black text-slate-500 dark:text-slate-400">
@@ -747,7 +747,7 @@ export default function EstoqueReposicionarPage() {
 																			</span>
 																		</div>
 																		<div className="flex flex-col gap-1">
-																			<span className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase">
+																			<span className="text-[0.5625rem] font-bold text-slate-400 dark:text-slate-500 uppercase">
 																				Destino
 																			</span>
 																			<span className="text-xs font-black text-slate-500 dark:text-slate-400">
@@ -776,7 +776,7 @@ export default function EstoqueReposicionarPage() {
 
 			{showSummary && (
 				<div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-200 print:bg-white print:p-0 print:block print:static">
-					<div className="bg-white dark:bg-slate-900 rounded-[32px] w-full max-w-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh] border border-slate-200 dark:border-slate-800 print:rounded-none print:border-none print:max-w-none print:max-h-none print:h-auto print:shadow-none">
+					<div className="bg-white dark:bg-slate-900 rounded-[2rem] w-full max-w-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh] border border-slate-200 dark:border-slate-800 print:rounded-none print:border-none print:max-w-none print:max-h-none print:h-auto print:shadow-none">
 						<div className="p-8 border-b border-slate-100 dark:border-slate-800 flex items-center justify-center print:border-b-2 print:border-black">
 							<div>
 								<h2 className="text-2xl font-black text-slate-800 dark:text-slate-200 tracking-tight print:text-black">
@@ -845,7 +845,7 @@ export default function EstoqueReposicionarPage() {
 										if (success) handleWhatsApp();
 									}}
 									disabled={calculateOptimizedSummary().length === 0 || savingRepos}
-									className="flex-1 min-w-[180px] flex items-center justify-center gap-3 bg-emerald-500 hover:bg-emerald-600 text-white px-6 py-4 rounded-2xl font-black text-[12px] uppercase tracking-widest shadow-lg shadow-emerald-100 dark:shadow-none transition-all disabled:opacity-50 cursor-pointer">
+									className="flex-1 min-w-[11.25rem] flex items-center justify-center gap-3 bg-emerald-500 hover:bg-emerald-600 text-white px-6 py-4 rounded-2xl font-black text-[0.75rem] uppercase tracking-widest shadow-lg shadow-emerald-100 dark:shadow-none transition-all disabled:opacity-50 cursor-pointer">
 									{savingRepos ? <RefreshCw className="animate-spin" size={16} /> : <MessageCircle size={16} />}
 									Enviar no WhatsApp
 								</button>
@@ -855,14 +855,14 @@ export default function EstoqueReposicionarPage() {
 										if (success) handlePrint();
 									}}
 									disabled={calculateOptimizedSummary().length === 0 || savingRepos}
-									className="flex-1 min-w-[180px] flex items-center justify-center gap-3 bg-blue-600 hover:bg-blue-700 text-white px-6 py-4 rounded-2xl font-black text-[12px] uppercase tracking-widest shadow-lg shadow-blue-100 dark:shadow-none transition-all disabled:opacity-50 cursor-pointer">
+									className="flex-1 min-w-[11.25rem] flex items-center justify-center gap-3 bg-blue-600 hover:bg-blue-700 text-white px-6 py-4 rounded-2xl font-black text-[0.75rem] uppercase tracking-widest shadow-lg shadow-blue-100 dark:shadow-none transition-all disabled:opacity-50 cursor-pointer">
 									{savingRepos ? <RefreshCw className="animate-spin" size={16} /> : <Printer size={16} />}
 									IMPRIMIR
 								</button>
 							</div>
 							<button
 								onClick={() => setShowSummary(false)}
-								className="w-full px-6 py-4 rounded-2xl font-black text-[12px] uppercase tracking-widest text-slate-500 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-800 hover:shadow-sm transition-all cursor-pointer border border-transparent hover:border-slate-200 dark:hover:border-slate-700">
+								className="w-full px-6 py-4 rounded-2xl font-black text-[0.75rem] uppercase tracking-widest text-slate-500 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-800 hover:shadow-sm transition-all cursor-pointer border border-transparent hover:border-slate-200 dark:hover:border-slate-700">
 								Fechar
 							</button>
 						</div>
@@ -871,7 +871,7 @@ export default function EstoqueReposicionarPage() {
 			)}
 			{negativeStockWarning && (
 				<div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[60] flex items-center justify-center p-4 animate-in fade-in duration-200">
-					<div className="bg-white dark:bg-slate-900 rounded-[32px] w-full max-w-md shadow-2xl overflow-hidden flex flex-col border border-red-200 dark:border-red-900/30">
+					<div className="bg-white dark:bg-slate-900 rounded-[2rem] w-full max-w-md shadow-2xl overflow-hidden flex flex-col border border-red-200 dark:border-red-900/30">
 						<div className="p-8 text-center space-y-4">
 							<div className="mx-auto w-16 h-16 bg-red-100 dark:bg-red-900/20 rounded-full flex items-center justify-center">
 								<Save className="text-red-600 dark:text-red-400" size={32} />
@@ -883,15 +883,15 @@ export default function EstoqueReposicionarPage() {
 							<p className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">Deseja prosseguir mesmo assim?</p>
 						</div>
 						<div className="p-6 bg-slate-50 dark:bg-slate-800/50 border-t border-slate-100 dark:border-slate-800 flex gap-3">
-							<button onClick={() => setNegativeStockWarning(null)} className="flex-1 px-6 py-4 rounded-2xl font-black text-[12px] uppercase tracking-widest text-slate-500 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-800 transition-all border border-transparent hover:border-slate-200 dark:hover:border-slate-700">Desfazer</button>
-							<button onClick={negativeStockWarning.onConfirm} className="flex-1 px-6 py-4 rounded-2xl font-black text-[12px] uppercase tracking-widest bg-red-600 hover:bg-red-700 text-white shadow-lg shadow-red-100 dark:shadow-none transition-all">Confirmar</button>
+							<button onClick={() => setNegativeStockWarning(null)} className="flex-1 px-6 py-4 rounded-2xl font-black text-[0.75rem] uppercase tracking-widest text-slate-500 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-800 transition-all border border-transparent hover:border-slate-200 dark:hover:border-slate-700">Desfazer</button>
+							<button onClick={negativeStockWarning.onConfirm} className="flex-1 px-6 py-4 rounded-2xl font-black text-[0.75rem] uppercase tracking-widest bg-red-600 hover:bg-red-700 text-white shadow-lg shadow-red-100 dark:shadow-none transition-all">Confirmar</button>
 						</div>
 					</div>
 				</div>
 			)}
 			{showResetConfirm && (
 				<div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[60] flex items-center justify-center p-4 animate-in fade-in duration-200">
-					<div className="bg-white dark:bg-slate-900 rounded-[32px] w-full max-w-md shadow-2xl overflow-hidden flex flex-col border border-blue-200 dark:border-blue-900/30">
+					<div className="bg-white dark:bg-slate-900 rounded-[2rem] w-full max-w-md shadow-2xl overflow-hidden flex flex-col border border-blue-200 dark:border-blue-900/30">
 						<div className="p-8 text-center space-y-4">
 							<div className="mx-auto w-16 h-16 bg-blue-100 dark:bg-blue-900/20 rounded-full flex items-center justify-center">
 								<RefreshCw className="text-blue-600 dark:text-blue-400" size={32} />
@@ -902,15 +902,15 @@ export default function EstoqueReposicionarPage() {
 							</p>
 						</div>
 						<div className="p-6 bg-slate-50 dark:bg-slate-800/50 border-t border-slate-100 dark:border-slate-800 flex gap-3">
-							<button onClick={() => setShowResetConfirm(false)} className="flex-1 px-6 py-4 rounded-2xl font-black text-[12px] uppercase tracking-widest text-slate-500 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-800 transition-all border border-transparent hover:border-slate-200 dark:hover:border-slate-700">Cancelar</button>
-							<button onClick={confirmResetProjectedStocks} className="flex-1 px-6 py-4 rounded-2xl font-black text-[12px] uppercase tracking-widest bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-100 dark:shadow-none transition-all">Confirmar</button>
+							<button onClick={() => setShowResetConfirm(false)} className="flex-1 px-6 py-4 rounded-2xl font-black text-[0.75rem] uppercase tracking-widest text-slate-500 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-800 transition-all border border-transparent hover:border-slate-200 dark:hover:border-slate-700">Cancelar</button>
+							<button onClick={confirmResetProjectedStocks} className="flex-1 px-6 py-4 rounded-2xl font-black text-[0.75rem] uppercase tracking-widest bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-100 dark:shadow-none transition-all">Confirmar</button>
 						</div>
 					</div>
 				</div>
 			)}
 			{showAllHistory && (
 				<div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[70] flex items-center justify-center p-4 animate-in fade-in duration-200">
-					<div className="bg-white dark:bg-slate-900 rounded-[32px] w-full max-w-4xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh] border border-slate-200 dark:border-slate-800">
+					<div className="bg-white dark:bg-slate-900 rounded-[2rem] w-full max-w-4xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh] border border-slate-200 dark:border-slate-800">
 						<div className="p-8 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
 							<div className="flex items-center gap-3">
 								<History className="text-blue-600 dark:text-blue-400" size={24} />
@@ -928,16 +928,16 @@ export default function EstoqueReposicionarPage() {
 								<div className="space-y-4">
 									{allHistory.map((item, hIdx) => (
 										<div key={item.id || hIdx} className="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-100 dark:border-slate-700 shadow-sm flex flex-wrap items-center justify-between gap-6 transition-all hover:shadow-md">
-											<div className="flex flex-col gap-1 min-w-[120px]">
-												<span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Data</span>
+											<div className="flex flex-col gap-1 min-w-[7.5rem]">
+												<span className="text-[0.625rem] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Data</span>
 												<span className="text-sm font-black text-slate-700 dark:text-slate-300">{formatDate(item.timestamp.toDate())}</span>
 											</div>
-											<div className="flex flex-col gap-1 min-w-[180px]">
-												<span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Item</span>
+											<div className="flex flex-col gap-1 min-w-[11.25rem]">
+												<span className="text-[0.625rem] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Item</span>
 												<span className="text-sm font-black text-blue-600 dark:text-blue-400 uppercase">{STOCK_LABELS[item.itemId]}</span>
 											</div>
-											<div className="flex flex-col gap-1 min-w-[180px]">
-												<span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Movimentação</span>
+											<div className="flex flex-col gap-1 min-w-[11.25rem]">
+												<span className="text-[0.625rem] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Movimentação</span>
 												<div className="flex items-center gap-2">
 													<span className="text-sm font-black text-slate-700 dark:text-slate-200">{STORE_NAMES[item.fromStore]}</span>
 													<ArrowRight size={14} className="text-slate-400" />
@@ -945,7 +945,7 @@ export default function EstoqueReposicionarPage() {
 												</div>
 											</div>
 											<div className="flex flex-col gap-1 items-center">
-												<span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Qtd</span>
+												<span className="text-[0.625rem] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Qtd</span>
 												<span className="text-lg font-black text-green-600 dark:text-green-400">{item.difference}</span>
 											</div>
 										</div>
@@ -962,7 +962,7 @@ export default function EstoqueReposicionarPage() {
 						<div className="p-8 bg-white dark:bg-slate-900 border-t border-slate-100 dark:border-slate-800 flex justify-center">
 							<button
 								onClick={() => setShowAllHistory(false)}
-								className="px-12 py-4 rounded-2xl font-black text-[12px] uppercase tracking-widest bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700 transition-all border border-slate-200 dark:border-slate-700 cursor-pointer">
+								className="px-12 py-4 rounded-2xl font-black text-[0.75rem] uppercase tracking-widest bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700 transition-all border border-slate-200 dark:border-slate-700 cursor-pointer">
 								Fechar Histórico
 							</button>
 						</div>

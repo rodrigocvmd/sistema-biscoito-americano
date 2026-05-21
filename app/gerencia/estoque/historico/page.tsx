@@ -77,12 +77,12 @@ export default function EstoqueHistoricoPage() {
 			<div className="flex flex-col items-center">
 				<div className="flex items-center gap-1">
 					{(qty > 0 || !hasOpen) && (
-						<span className={`text-lg font-black ${qty === 0 && !hasOpen ? "text-slate-300 dark:text-slate-700" : "text-slate-900 dark:text-slate-100"}`}>
+						<span className={`text-2xl font-black ${qty === 0 && !hasOpen ? "text-slate-300 dark:text-slate-400" : "text-slate-900 dark:text-slate-100"}`}>
 							{qty}
 						</span>
 					)}
 					{hasOpen && (
-						<span className="text-lg font-black text-slate-300 dark:text-slate-300 whitespace-nowrap">
+						<span className="text-lg font-black text-orange-500 dark:text-orange-400 whitespace-nowrap">
 							{qty > 0 ? "+ 1 aberto" : "1 aberto"}
 						</span>
 					)}
@@ -94,16 +94,16 @@ export default function EstoqueHistoricoPage() {
 	return (
 		<div className="space-y-6">
 			{snapshots.length > 0 ? (
-				<div className="bg-white dark:bg-slate-900 rounded-[32px] border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden transition-colors">
+				<div className="bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden transition-colors">
 					<div className="p-6 bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800 flex flex-wrap items-center justify-between gap-6">
 						<div className="flex flex-wrap items-center gap-6">
 							<div className="flex flex-col gap-2">
-								<span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest ml-2 text-center">Loja</span>
+								<span className="text-[0.9rem] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest ml-2 text-center">Loja</span>
 								<div className="relative group flex min-w-[160px]">
 									<select
 										value={historyStore}
 										onChange={(e) => setHistoryStore(e.target.value as StoreId)}
-										className="appearance-none w-full bg-white dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-700 rounded-xl px-4 py-2 pr-10 text-[12px] font-black text-slate-600 dark:text-slate-300 cursor-pointer focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all hover:border-blue-200 dark:hover:border-blue-800 hover:shadow-sm">
+										className="appearance-none w-full bg-white dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-700 rounded-xl px-4 py-2 pr-10 text-[1rem] font-black text-slate-600 dark:text-blue-500 cursor-pointer focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all hover:border-blue-200 dark:hover:border-blue-800 hover:shadow-sm uppercase">
 										{Object.entries(STORE_NAMES).map(([id, name]) => (
 											<option key={id} value={id} className="dark:bg-slate-900">{name}</option>
 										))}
@@ -114,12 +114,12 @@ export default function EstoqueHistoricoPage() {
 
 							<div className="flex items-center gap-4">
 								<div className="flex flex-col gap-2">
-									<span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest ml-1 text-center">Comparar de</span>
+									<span className="text-[0.9rem] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest ml-1 text-center">Comparar de</span>
 									<div className="relative group">
 										<select
 											value={selectedSnapshot1}
 											onChange={(e) => setSelectedSnapshot1(e.target.value)}
-											className="appearance-none bg-white dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-700 rounded-xl px-4 py-2 pr-10 text-[12px] font-black text-slate-600 dark:text-slate-300 cursor-pointer focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all hover:border-blue-200 dark:hover:border-blue-800 hover:shadow-sm">
+											className="appearance-none bg-white dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-700 rounded-xl px-4 py-2 pr-10 text-[1rem] font-black text-slate-600 dark:text-slate-300 cursor-pointer focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all hover:border-blue-200 dark:hover:border-blue-800 hover:shadow-sm">
 											{snapshots.map((s) => (
 												<option key={s.id} value={s.id} className="dark:bg-slate-900">{formatHistoryLabel(s.timestamp.toDate())}</option>
 											))}
@@ -129,12 +129,12 @@ export default function EstoqueHistoricoPage() {
 								</div>
 								<ArrowRight className="text-slate-300 dark:text-slate-600 mt-6" size={16} />
 								<div className="flex flex-col gap-2">
-									<span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest ml-1 text-center">Para</span>
+									<span className="text-[0.9rem] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest ml-1 text-center">Para</span>
 									<div className="relative group">
 										<select
 											value={selectedSnapshot2}
 											onChange={(e) => setSelectedSnapshot2(e.target.value)}
-											className="appearance-none bg-white dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-700 rounded-xl px-4 py-2 pr-10 text-[12px] font-black text-slate-600 dark:text-slate-300 cursor-pointer focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all hover:border-blue-200 dark:hover:border-blue-800 hover:shadow-sm">
+											className="appearance-none bg-white dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-700 rounded-xl px-4 py-2 pr-10 text-[1rem] font-black text-slate-600 dark:text-slate-300 cursor-pointer focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all hover:border-blue-200 dark:hover:border-blue-800 hover:shadow-sm">
 											{snapshots.map((s) => (
 												<option key={s.id} value={s.id} className="dark:bg-slate-900">{formatHistoryLabel(s.timestamp.toDate())}</option>
 											))}
@@ -146,7 +146,7 @@ export default function EstoqueHistoricoPage() {
 						</div>
 
 						<div className="flex flex-col gap-2 flex-1 min-w-[250px]">
-							<span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest ml-2">Filtrar por Sabor</span>
+							<span className="text-[0.9rem] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest ml-2">Filtrar por Sabor</span>
 							<div className="relative group">
 								<Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-500 transition-colors" />
 								<input
@@ -154,7 +154,7 @@ export default function EstoqueHistoricoPage() {
 									placeholder="Ex: Nutella..."
 									value={searchTerm}
 									onChange={(e) => setSearchTerm(e.target.value)}
-									className="w-full bg-white dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-700 rounded-xl py-2 pl-12 pr-4 text-[12px] font-black text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all"
+									className="w-full bg-white dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-700 rounded-xl py-2 pl-12 pr-4 text-[0.95rem] font-black text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all"
 								/>
 							</div>
 						</div>
@@ -164,10 +164,10 @@ export default function EstoqueHistoricoPage() {
 						<table className="w-full border-collapse">
 							<thead>
 								<tr className="bg-slate-50/50 dark:bg-slate-800/30 border-b border-slate-200 dark:border-slate-800">
-									<th className="p-6 text-left text-[11px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Item</th>
-									<th className="p-6 text-center text-[11px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Estado Anterior</th>
-									<th className="p-6 text-center text-[11px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Estado Posterior</th>
-									<th className="p-6 text-center text-[11px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Diferença de Pacotes</th>
+									<th className="p-6 text-left text-[0.9rem] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Item</th>
+									<th className="p-6 text-center text-[0.9rem] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Antes</th>
+									<th className="p-6 text-center text-[0.9rem] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Depois</th>
+									<th className="p-6 text-center text-[0.9rem] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Diferença</th>
 								</tr>
 							</thead>
 							<tbody>
@@ -188,7 +188,7 @@ export default function EstoqueHistoricoPage() {
 
 									return (
 										<tr key={key} className="border-b border-slate-100 dark:border-slate-800/50 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
-											<td className="p-6 text-sm font-black text-slate-600 dark:text-slate-300 uppercase">{label}</td>
+											<td className="p-6 text-lg font-black text-slate-600 dark:text-slate-300 uppercase">{label}</td>
 											<td className="p-4 text-center">
 												{renderStockCell(q1, o1)}
 											</td>
@@ -196,7 +196,7 @@ export default function EstoqueHistoricoPage() {
 												{renderStockCell(q2, o2)}
 											</td>
 											<td className="p-6 text-center">
-												<div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-black ${
+												<div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-lg font-black ${
 													diff > 0 ? "bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400" : 
 													diff < 0 ? "bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400" : 
 													"bg-slate-50 dark:bg-slate-800 text-slate-400 dark:text-slate-500"
@@ -215,7 +215,7 @@ export default function EstoqueHistoricoPage() {
 				</div>
 			) : (
 				!loadingHistory && (
-					<div className="bg-white dark:bg-slate-900 p-20 rounded-[32px] border border-slate-200 dark:border-slate-800 shadow-sm text-center transition-colors">
+					<div className="bg-white dark:bg-slate-900 p-20 rounded-[2rem] border border-slate-200 dark:border-slate-800 shadow-sm text-center transition-colors">
 						<p className="text-slate-400 dark:text-slate-500 font-bold">Nenhuma movimentação encontrada para esta loja.</p>
 					</div>
 				)

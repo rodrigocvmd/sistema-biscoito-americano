@@ -72,7 +72,9 @@ export default function EstoqueAtualPage() {
 
 	return (
 		<>
-			<style dangerouslySetInnerHTML={{ __html: `
+			<style
+				dangerouslySetInnerHTML={{
+					__html: `
 				@media print {
 					@page {
 						size: A4;
@@ -122,60 +124,67 @@ export default function EstoqueAtualPage() {
 						min-width: 0 !important;
 					}
 				}
-			` }} />
+			`,
+				}}
+			/>
 
 			<div className="hidden print:block mb-6">
-				<h1 className="text-2xl font-black text-blue-700 dark:text-blue-500 uppercase">Estoque Atual - {new Date().toLocaleDateString('pt-BR')}</h1>
+				<h1 className="text-2xl font-black text-blue-700 dark:text-blue-500 uppercase">
+					Estoque Atual - {new Date().toLocaleDateString("pt-BR")}
+				</h1>
 			</div>
 
 			{/* Actions Bar: Filter & Print */}
 			<div className="flex flex-wrap items-center justify-between gap-4 print:hidden">
-				<div className="flex items-center gap-4 flex-1 min-w-[300px]">
+				<div className="flex items-center gap-4 flex-1 min-w-[18.75rem]">
 					<div className="relative flex-1 group">
-						<Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-500 transition-colors" />
+						<Search
+							size={18}
+							className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-500 transition-colors"
+						/>
 						<input
 							type="text"
 							placeholder="Filtrar por sabor..."
 							value={searchTerm}
 							onChange={(e) => setSearchTerm(e.target.value)}
-							className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl py-3 pl-12 pr-4 text-sm font-bold text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all shadow-sm"
+							className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl py-3 pl-12 pr-4 text-lg font-bold text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all shadow-sm"
 						/>
 					</div>
 				</div>
 
 				<button
 					onClick={() => window.print()}
-					className="flex items-center gap-3 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-2xl font-black shadow-lg shadow-blue-100 dark:shadow-none transition-all cursor-pointer">
-					<Printer size={20} />
+					className="flex items-center gap-3 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-2xl font-black shadow-lg shadow-blue-100 dark:shadow-none transition-all cursor-pointer text-sm">
+					<Printer size={18} />
 					IMPRIMIR TABELA
 				</button>
 			</div>
 
-			<div className="bg-white dark:bg-slate-900 rounded-[32px] border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden transition-colors">
+			<div className="bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden transition-colors">
 				<div className="overflow-x-auto">
 					<table className="w-full border-collapse">
 						<thead>
 							<tr className="bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700">
-								<th className="p-6 text-left text-[15px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest sticky left-0 bg-slate-50 dark:bg-slate-800 z-20 min-w-[180px]">
+								<th className="p-6 text-left text-[0.9375rem] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest sticky left-0 bg-slate-50 dark:bg-slate-800 z-20 min-w-[11.25rem]">
 									<div className="flex items-center gap-9">
 										ITEM
 										<button
 											onClick={rotateStores}
 											className="cursor-pointer p-2 bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-xl hover:bg-blue-600 dark:hover:bg-blue-500 hover:text-white transition-all shadow-sm print:hidden"
 											title="Mover primeira loja para o final">
-											<ArrowLeftRight size={16} />
+											<ArrowLeftRight size={22} />
 										</button>
 									</div>
 								</th>
 								{allData.map((store) => (
 									<th
 										key={store.id}
-										className="p-6 text-center text-[11px] font-black text-blue-600 dark:text-blue-400 uppercase tracking-widest border-l border-slate-200 dark:border-slate-700 min-w-[140px]">
+										className="p-6 text-center text-[0.6875rem] font-black text-blue-600 dark:text-blue-400 tracking-widest border-l border-slate-200 dark:border-slate-700 min-w-[8.75rem]">
 										<div className="flex flex-col items-center gap-2">
-											<span className="leading-tight text-lg">{store.name}</span>
-											<span className="text-[13px] font-extrabold text-slate-600 dark:text-slate-400 bg-white dark:bg-slate-900 px-3 py-1 rounded-full border border-slate-100 dark:border-slate-700 whitespace-nowrap">
+											<span className="text-[0.87rem] font-extrabold text-slate-600 dark:text-slate-400 bg-white dark:bg-slate-900 px-3 py-1 rounded-full border border-slate-100 dark:border-slate-700 whitespace-nowrap">
 												{formatDate(store.lastStockUpdate)}
 											</span>
+											<span className="leading-tight text-2xl">{store.name}</span>
 										</div>
 									</th>
 								))}
@@ -190,7 +199,7 @@ export default function EstoqueAtualPage() {
 										<tr
 											key={key}
 											className="border-b border-slate-100 dark:border-slate-800 hover:bg-blue-50/30 dark:hover:bg-blue-900/20 transition-colors group">
-											<td className="p-6 text-sm font-black text-slate-600 dark:text-slate-400 uppercase sticky left-0 bg-white dark:bg-slate-900 group-hover:bg-blue-50/30 dark:group-hover:bg-blue-900/20 z-10 border-r border-slate-50 dark:border-slate-800 transition-colors">
+											<td className="p-6 text-lg font-black text-slate-600 dark:text-slate-400 sticky left-0 bg-white dark:bg-slate-900 group-hover:bg-blue-50/30 dark:group-hover:bg-blue-900/20 z-10 border-r border-slate-50 dark:border-slate-800 transition-colors uppercase">
 												{label}
 											</td>
 											{allData.map((store) => {
@@ -205,7 +214,7 @@ export default function EstoqueAtualPage() {
 																<span
 																	className={`text-2xl font-black ${
 																		qty === 0 && !hasOpen
-																			? "text-slate-300 dark:text-slate-700" 
+																			? "text-slate-300 dark:text-slate-700"
 																			: "text-slate-900 dark:text-slate-100"
 																	}`}>
 																	{qty}

@@ -29,10 +29,21 @@
   --foreground: #f1f5f9;
 }
 
+/* Global scaling fix for Lucide icons and other proportional elements */
+svg.lucide {
+  width: 1.2em !important;
+  height: 1.2em !important;
+}
+
+/* Ensure all elements using pixels for dimensions scale if they use rem */
+* {
+  transition: font-size 0.2s ease-out;
+}
+
 body {
   color: var(--foreground);
   background: var(--background);
-  transition: background-color 0.3s ease, color 0.3s ease;
+  transition: background-color 0.3s ease, color 0.3s ease, font-size 0.2s ease-out;
 }
 
 @layer base {

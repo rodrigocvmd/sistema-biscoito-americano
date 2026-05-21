@@ -37,7 +37,7 @@ export default function EstoqueLayout({
 					<Link
 						key={tab.id}
 						href={tab.href}
-						className={`cursor-pointer px-6 py-2.5 rounded-xl text-xs font-black transition-all ${
+						className={`cursor-pointer px-6 py-2.5 rounded-xl text-md font-black transition-all ${
 							pathname === tab.href 
 								? "bg-blue-600 text-white shadow-md shadow-blue-100 dark:shadow-none" 
 								: "text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800"

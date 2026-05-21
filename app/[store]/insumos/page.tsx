@@ -325,19 +325,19 @@ export default function SuppliesPage({ params }: { params: Promise<{ store: stri
 		switch (urgency) {
 			case "Urgente":
 				return (
-					<span className="flex items-center gap-1 bg-red-100 text-red-700 px-2 py-1 rounded-md text-[10px] font-bold uppercase">
+					<span className="flex items-center gap-1 bg-red-100 text-red-700 px-2 py-1 rounded-md text-[0.625rem] font-bold uppercase">
 						<AlertTriangle size={12} /> Urgente
 					</span>
 				);
 			case "Acabando":
 				return (
-					<span className="flex items-center gap-1 bg-amber-100 text-amber-700 px-2 py-1 rounded-md text-[10px] font-bold uppercase">
+					<span className="flex items-center gap-1 bg-amber-100 text-amber-700 px-2 py-1 rounded-md text-[0.625rem] font-bold uppercase">
 						<AlertCircle size={12} /> Acabando
 					</span>
 				);
 			default:
 				return (
-					<span className="flex items-center gap-1 bg-blue-100 text-blue-700 px-2 py-1 rounded-md text-[10px] font-bold uppercase">
+					<span className="flex items-center gap-1 bg-blue-100 text-blue-700 px-2 py-1 rounded-md text-[0.625rem] font-bold uppercase">
 						<Hourglass size={12} /> Adiantando
 					</span>
 				);
@@ -392,7 +392,7 @@ export default function SuppliesPage({ params }: { params: Promise<{ store: stri
 									{filteredInventory.length > 0
 										? filteredInventory.map((category) => (
 												<div key={category.category}>
-													<div className="px-4 py-2 bg-slate-50 dark:bg-slate-800 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] border-y border-slate-100 dark:border-slate-800 first:border-t-0">
+													<div className="px-4 py-2 bg-slate-50 dark:bg-slate-800 text-[0.625rem] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] border-y border-slate-100 dark:border-slate-800 first:border-t-0">
 														{category.category}
 													</div>
 													{category.items.map((item) => (
@@ -476,7 +476,7 @@ export default function SuppliesPage({ params }: { params: Promise<{ store: stri
 										<div className="shrink-0">{getUrgencyBadge(order.urgency)}</div>
 									</div>
 									<div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-										<span className="flex items-center gap-1.5 text-[11px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-wider">
+										<span className="flex items-center gap-1.5 text-[0.6875rem] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-wider">
 											<Calendar size={14} />
 											{formatDate(order.createdAt?.toDate())}
 										</span>
@@ -545,7 +545,7 @@ export default function SuppliesPage({ params }: { params: Promise<{ store: stri
 										{order.name}
 										{order.status === "cancelled" && " (CANCELADO)"}
 									</p>
-									<p className="text-[12px] text-slate-400 dark:text-slate-500 font-bold uppercase">
+									<p className="text-[0.75rem] text-slate-400 dark:text-slate-500 font-bold uppercase">
 										{order.status === "cancelled" ? "Cancelado em: " : "Entregue em: "}
 										{formatDate(order.deliveredAt?.toDate())}
 									</p>

@@ -87,7 +87,7 @@ export default function StockPage({ params }: { params: Promise<{ store: string 
 
 			{/* Sorting Navbar */}
 			<div className="bg-white dark:bg-slate-900 p-2 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 transition-colors">
-				<span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest ml-2 sm:ml-3">
+				<span className="text-[0.625rem] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest ml-2 sm:ml-3">
 					Ordenar por:
 				</span>
 				<div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-lg gap-1 overflow-x-auto no-scrollbar">
@@ -122,7 +122,7 @@ export default function StockPage({ params }: { params: Promise<{ store: string 
 						</p>
 					</div>
 					<div className="bg-slate-50 dark:bg-slate-800 px-4 py-2 rounded-xl border border-slate-100 dark:border-slate-700 text-center">
-						<span className="text-[10px] uppercase tracking-widest font-bold text-slate-400 dark:text-slate-500 block mb-1">
+						<span className="text-[0.625rem] uppercase tracking-widest font-bold text-slate-400 dark:text-slate-500 block mb-1">
 							ÚLTIMA ATUALIZAÇÃO
 						</span>
 						<span className="text-sm font-bold text-blue-600 dark:text-blue-400">{formatDate(lastUpdate)}</span>
@@ -139,7 +139,7 @@ export default function StockPage({ params }: { params: Promise<{ store: string 
 								key={key}
 								className="flex flex-col p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl border border-transparent hover:border-slate-200 dark:hover:border-slate-700 transition-all group"
 							>
-								<span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-1">
+								<span className="text-[0.625rem] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-1">
 									{label}
 								</span>
 								<div className="flex items-baseline gap-2">

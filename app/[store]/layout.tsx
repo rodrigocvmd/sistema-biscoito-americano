@@ -55,7 +55,7 @@ export default function StoreLayout({
 								<h1 id="h1" className="text-xl font-extrabold text-red-700 dark:text-red-500 truncate">
 									{storeName.toUpperCase()}
 								</h1>
-								<p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 -mt-1 tracking-widest">
+								<p className="text-[0.625rem] font-bold text-slate-400 dark:text-slate-500 -mt-1 tracking-widest">
 									SISTEMA BISCOITO AMERICANO
 								</p>
 							</div>
@@ -68,15 +68,15 @@ export default function StoreLayout({
 								<button
 									onClick={() => setUiScale((s) => Math.max(0.7, s - 0.1))}
 									className="cursor-pointer p-1.5 hover:bg-white dark:hover:bg-slate-700 hover:text-red-600 rounded-lg text-slate-400 transition-all">
-									<ZoomOut size={16} />
+									<ZoomOut size={28} />
 								</button>
-								<span className="text-[10px] font-black text-slate-600 dark:text-slate-400 w-10 text-center">
+								<span className="text-[0.8rem] font-black text-slate-600 dark:text-slate-400 w-10 text-center">
 									{Math.round(uiScale * 100)}%
 								</span>
 								<button
 									onClick={() => setUiScale((s) => Math.min(1.5, s + 0.1))}
 									className="cursor-pointer p-1.5 hover:bg-white dark:hover:bg-slate-700 hover:text-red-600 rounded-lg text-slate-400 transition-all">
-									<ZoomIn size={16} />
+									<ZoomIn size={28} />
 								</button>
 							</div>
 						</div>
@@ -92,7 +92,7 @@ export default function StoreLayout({
 									className="cursor-pointer p-1.5 hover:bg-white dark:hover:bg-slate-700 hover:text-red-600 rounded-lg text-slate-400 transition-all">
 									<ZoomOut size={16} />
 								</button>
-								<span className="text-[10px] font-black text-slate-600 dark:text-slate-400 w-12 text-center">
+								<span className="text-[0.8rem] font-black text-slate-600 dark:text-slate-400 w-12 text-center">
 									{Math.round(uiScale * 100)}%
 								</span>
 								<button
