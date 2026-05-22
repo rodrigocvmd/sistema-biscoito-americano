@@ -774,12 +774,12 @@ export default function StockMovementsPage({ params }: { params: Promise<{ store
 											<td className="px-6 py-4 whitespace-nowrap text-center font-black text-slate-700 dark:text-slate-200">
 												{m.quantity}
 											</td>
-											<td className="px-6 py-4 whitespace-nowrap text-center font-bold text-slate-400 dark:text-slate-500">
+											<td className="px-6 py-4 whitespace-nowrap text-center font-bold text-slate-600 dark:text-slate-400">
 												{m.beforeStock !== undefined
 													? formatStockCompact(m.beforeStock, m.beforeOpen || false)
 													: "-"}
 											</td>
-											<td className="px-6 py-4 whitespace-nowrap text-center font-black text-blue-600 dark:text-blue-400">
+											<td className="px-6 py-4 whitespace-nowrap text-center font-black text-slate-600 dark:text-slate-300">
 												{m.afterStock !== undefined
 													? formatStockCompact(m.afterStock, m.afterOpen || false)
 													: "-"}
