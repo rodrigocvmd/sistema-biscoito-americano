@@ -482,7 +482,7 @@ export default function StockMovementsPage({ params }: { params: Promise<{ store
 				</h2>
 
 				<form onSubmit={handleAddMovement} className="space-y-6">
-					<div className="grid grid-cols-4 md:grid-cols-8 lg:grid-cols-16 gap-4 items-end">
+					<div id="registrarMovimentacao" className="grid grid-cols-1 md:grid-cols-8 lg:grid-cols-16 gap-4 items-end">
 						{/* Item Selection */}
 						<div className="space-y-1 relative lg:col-span-6">
 							<label className="font-bold text-slate-400 dark:text-slate-500 ml-1">
