@@ -398,14 +398,14 @@ export default function StockMovementsPage({ params }: { params: Promise<{ store
 													}}
 													className="px-4 py-3 hover:bg-blue-50 dark:hover:bg-blue-900/30 hover:text-blue-600 dark:hover:text-blue-400 cursor-pointer text-sm font-bold text-slate-700 dark:text-slate-300 transition-colors flex items-center justify-between group">
 													<div className="flex flex-col">
-														<span>{label}</span>
+														<span className="text-lg">{label}</span>
 														{isUnits[id] && (
-															<span className="text-[10px] text-orange-500 font-black uppercase">
+															<span className="text-[14px] text-orange-500 font-black uppercase">
 																Já possui 1 aberto
 															</span>
 														)}
 													</div>
-													<span className="text-[10px] text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity">
+													<span className="text-[14px] text-slate-300 opacity-0 group-hover:opacity-100 transition-opacity">
 														{formatStockCompact(stock[id] || 0, isUnits[id] || false)} em estoque
 													</span>
 												</div>
@@ -482,9 +482,9 @@ export default function StockMovementsPage({ params }: { params: Promise<{ store
 				</h2>
 
 				<form onSubmit={handleAddMovement} className="space-y-6">
-					<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
+					<div className="grid grid-cols-4 md:grid-cols-8 lg:grid-cols-16 gap-4 items-end">
 						{/* Item Selection */}
-						<div className="space-y-1 relative lg:col-span-1">
+						<div className="space-y-1 relative lg:col-span-6">
 							<label className="font-bold text-slate-400 dark:text-slate-500 ml-1">
 								Sabor / Item
 							</label>
@@ -521,9 +521,9 @@ export default function StockMovementsPage({ params }: { params: Promise<{ store
 														setSearchTerm("");
 														setIsDropdownOpen(false);
 													}}
-													className="px-4 py-3 hover:bg-red-50 dark:hover:bg-red-900/30 hover:text-red-600 dark:hover:text-red-400 cursor-pointer text-sm font-bold text-slate-700 dark:text-slate-300 transition-colors flex items-center justify-between group">
+													className="px-4 py-3 hover:bg-red-50 dark:hover:bg-red-900/30 hover:text-red-600 dark:hover:text-red-400 cursor-pointer text-lg font-bold text-slate-700 dark:text-slate-300 transition-colors flex items-center justify-between group">
 													{label}
-													<span className="text-[10px] text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity">
+													<span className="text-[14px] text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity pl-5">
 														{formatStockCompact(stock[id] || 0, isUnits[id] || false)} em estoque
 													</span>
 												</div>
@@ -539,7 +539,7 @@ export default function StockMovementsPage({ params }: { params: Promise<{ store
 						</div>
 
 						{/* Type Toggle */}
-						<div className="space-y-1">
+						<div className="space-y-1 lg:col-span-4">
 							<label className="font-bold text-slate-400 dark:text-slate-500 ml-1">
 								Tipo de Movimento
 							</label>
@@ -570,7 +570,7 @@ export default function StockMovementsPage({ params }: { params: Promise<{ store
 						</div>
 
 						{/* Quantity Select */}
-						<div className="space-y-1">
+						<div className="space-y-1 lg:col-span-3">
 							<label className="font-bold text-slate-400 dark:text-slate-500 ml-1">
 								Quantidade (Pacotes)
 							</label>
@@ -595,7 +595,7 @@ export default function StockMovementsPage({ params }: { params: Promise<{ store
 						<button
 							type="submit"
 							disabled={submitting || !selectedItemId}
-							className="bg-green-600 hover:bg-green-700 text-white font-black h-[50px] rounded-xl shadow-md transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
+							className="bg-green-600 hover:bg-green-700 text-white font-black h-[50px] rounded-xl shadow-md transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed lg:col-span-3">
 							{submitting ? (
 								<RefreshCw className="animate-spin" size={20} />
 							) : (

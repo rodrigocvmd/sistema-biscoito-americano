@@ -82,7 +82,7 @@ export default function EstoqueComparativoPage() {
 						</span>
 					)}
 					{hasOpen && (
-						<span className="text-lg font-black text-orange-500 dark:text-orange-400 whitespace-nowrap">
+						<span className="text-xl font-black text-orange-500 dark:text-orange-400 whitespace-nowrap">
 							{qty > 0 ? "+ 1 aberto" : "1 aberto"}
 						</span>
 					)}

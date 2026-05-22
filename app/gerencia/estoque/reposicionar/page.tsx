@@ -490,13 +490,13 @@ export default function EstoqueReposicionarPage() {
 				<div className="flex items-center gap-3">
 					<button
 						onClick={resetProjectedStocks}
-						className="cursor-pointer flex items-center gap-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 px-5 py-2.5 rounded-xl font-black text-xs transition-all border border-slate-200 dark:border-slate-700 uppercase tracking-widest">
+						className="cursor-pointer flex items-center gap-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-green-700 dark:text-green-500 px-5 py-2.5 rounded-xl font-black transition-all border border-slate-200 dark:border-slate-700 uppercase tracking-widest">
 						<RefreshCw size={14} />
 						Redefinir para Estoque Atual
 					</button>
 					<button
 						onClick={() => setShowSummary(true)}
-						className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-xl font-black text-xs shadow-md shadow-blue-100 dark:shadow-none transition-all cursor-pointer uppercase tracking-widest">
+						className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-xl font-black shadow-md shadow-blue-100 dark:shadow-none transition-all cursor-pointer uppercase tracking-widest">
 						<Save size={14} />
 						Gerar Resumo
 					</button>
@@ -531,17 +531,17 @@ export default function EstoqueReposicionarPage() {
 					<table className="w-full border-separate border-spacing-0">
 						<thead>
 							<tr className="bg-slate-50 dark:bg-slate-800">
-								<th className="p-5 text-[0.75rem] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest sticky left-0 bg-slate-50 dark:bg-slate-800 z-20 border-b border-slate-200 dark:border-slate-700 text-center">
+								<th className="p-5 text-[0.9rem] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest sticky left-0 bg-slate-50 dark:bg-slate-800 z-20 border-b border-slate-200 dark:border-slate-700 text-center">
 									Item
 								</th>
 								{STORE_ORDER.map((id) => (
 									<th
 										key={id}
-										className="p-5 text-center text-[0.75rem] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest min-w-[7.5rem] border-l border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700">
+										className="p-5 text-center text-[0.9rem] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest min-w-[7.5rem] border-l border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700">
 										{STORE_NAMES[id]}
 									</th>
 								))}
-								<th className="p-5 text-center text-[0.75rem] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest min-w-[20rem] border-l border-slate-100 dark:border-slate-700 bg-blue-50/50 dark:bg-blue-900/10 border-b border-slate-200 dark:border-slate-700">
+								<th className="p-5 text-center text-[0.9rem] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest min-w-[20rem] border-l border-slate-100 dark:border-slate-700 bg-blue-50/50 dark:bg-blue-900/10 border-b border-slate-200 dark:border-slate-700">
 									Movimentar
 								</th>
 							</tr>
@@ -561,17 +561,17 @@ export default function EstoqueReposicionarPage() {
 									<Fragment key={itemKey}>
 										{showRepeatedHeader && (
 											<tr className="bg-slate-100 dark:bg-slate-800/80">
-												<th className="p-3 text-center text-[0.6875rem] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest sticky left-0 bg-slate-100 dark:bg-slate-800/80 z-20 border-y border-slate-200 dark:border-slate-700">
+												<th className="p-3 text-center text-[0.9rem] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest sticky left-0 bg-slate-100 dark:bg-slate-800/80 z-20 border-y border-slate-200 dark:border-slate-700">
 													Item
 												</th>
 												{STORE_ORDER.map((id) => (
 													<th
 														key={`header-${id}-${index}`}
-														className="p-3 text-center text-[0.6875rem] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest border-l border-slate-200 dark:border-slate-700 border-y">
+														className="p-3 text-center text-[0.9rem] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest border-l border-slate-200 dark:border-slate-700 border-y">
 														{STORE_NAMES[id]}
 													</th>
 												))}
-												<th className="p-3 text-center text-[0.6875rem] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest border-l border-slate-200 dark:border-slate-700 bg-blue-100/30 dark:bg-blue-900/20 border-y">
+												<th className="p-3 text-center text-[0.9rem] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest border-l border-slate-200 dark:border-slate-700 bg-blue-100/30 dark:bg-blue-900/20 border-y">
 													Movimentar
 												</th>
 											</tr>
@@ -614,11 +614,12 @@ export default function EstoqueReposicionarPage() {
 																)}
 															</div>
 															{(receiving || sending) && (
-																<span className="text-[0.875rem] font-bold text-slate-400 dark:text-slate-500 ">
-																	Inicial:{" "}
-																	<span className="text-[1rem] font-bold text-slate-900 dark:text-slate-200 ">
+																<span className="text-[1.3rem] font-bold text-slate-600 dark:text-slate-300 ">
+																	(
+																	<span className="text-[1.3rem] font-bold text-slate-700 dark:text-slate-200 ">
 																		{isUnit ? (initial > 0 ? `${initial} + 1 aberto` : "1 aberto") : initial}
 																	</span>
+																	)
 																</span>
 															)}
 														</div>
@@ -638,7 +639,7 @@ export default function EstoqueReposicionarPage() {
 																		[itemKey]: { ...transfers, from: e.target.value as StoreId },
 																	}))
 																}
-																className="appearance-none bg-slate-50 dark:bg-slate-900/50 text-[0.875rem] font-black text-red-600 dark:text-red-400 focus:outline-none cursor-pointer pl-4 pr-10 py-2 rounded-xl border border-transparent focus:border-red-500/30 transition-all hover:bg-red-50 dark:hover:bg-red-900/20">
+																className="appearance-none bg-slate-50 dark:bg-slate-900/50 text-[1rem] font-black text-red-600 dark:text-red-400 focus:outline-none cursor-pointer pl-4 pr-10 py-2 rounded-xl border border-transparent focus:border-red-500/30 transition-all hover:bg-red-50 dark:hover:bg-red-900/20">
 																{STORE_ORDER.map((id) => (
 																	<option key={id} value={id} className="dark:bg-slate-800 cursor-pointer text-center">
 																		{STORE_NAMES[id]}
@@ -659,7 +660,7 @@ export default function EstoqueReposicionarPage() {
 																		[itemKey]: { ...transfers, to: e.target.value as StoreId },
 																	}))
 																}
-																className="appearance-none bg-slate-50 dark:bg-slate-900/50 text-[0.875rem] font-black text-emerald-600 dark:text-emerald-400 focus:outline-none cursor-pointer pl-4 pr-10 py-2 rounded-xl border border-transparent focus:border-emerald-500/30 transition-all hover:bg-emerald-50 dark:hover:bg-emerald-900/20">
+																className="appearance-none bg-slate-50 dark:bg-slate-900/50 text-[1rem] font-black text-emerald-600 dark:text-emerald-400 focus:outline-none cursor-pointer pl-4 pr-10 py-2 rounded-xl border border-transparent focus:border-emerald-500/30 transition-all hover:bg-emerald-50 dark:hover:bg-emerald-900/20">
 																{STORE_ORDER.map((id) => (
 																	<option key={id} value={id} className="dark:bg-slate-800 text-center">
 																		{STORE_NAMES[id]}
@@ -699,7 +700,7 @@ export default function EstoqueReposicionarPage() {
 													colSpan={STORE_ORDER.length + 2}
 													className="p-4 border-b border-slate-200 dark:border-slate-800">
 													<div className="bg-white dark:bg-slate-800 rounded-2xl p-6 border border-blue-100 dark:border-blue-900 shadow-sm transition-colors">
-														<h4 className="text-[0.625rem] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-4">
+														<h4 className="text-[1rem] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-4">
 															Histórico de Reposicionamento (últimas 5)
 														</h4>
 														{loadingLastRepo ? (
@@ -712,44 +713,44 @@ export default function EstoqueReposicionarPage() {
 																{historyForItem.map((item, hIdx) => (
 																	<div key={item.id || hIdx} className="flex flex-wrap items-center gap-8 pb-4 border-b border-slate-50 dark:border-slate-700 last:border-0 last:pb-0">
 																		<div className="flex flex-col gap-1 min-w-[6.25rem]">
-																			<span className="text-[0.5625rem] font-bold text-slate-400 dark:text-slate-500 uppercase">
+																			<span className="text-[0.9rem] font-bold text-slate-400 dark:text-slate-500 uppercase">
 																				Data
 																			</span>
-																			<span className="text-xs font-black text-slate-700 dark:text-slate-300">
+																			<span className="text-lg font-black text-slate-700 dark:text-slate-300">
 																				{formatDate(item.timestamp.toDate())}
 																			</span>
 																		</div>
 																		<div className="flex flex-col gap-1 min-w-[9.375rem]">
-																			<span className="text-[0.5625rem] font-bold text-slate-400 dark:text-slate-500 uppercase">
+																			<span className="text-[0.9rem] font-bold text-slate-400 dark:text-slate-500 uppercase">
 																				Movimentação
 																			</span>
-																			<span className="text-xs font-black text-blue-600 dark:text-blue-400 flex items-center gap-1.5">
+																			<span className="text-lg font-black text-blue-600 dark:text-blue-400 flex items-center gap-1.5">
 																				{STORE_NAMES[item.fromStore]}
 																				<ArrowRight size={12} className="text-blue-400 dark:text-blue-500" />
 																				{STORE_NAMES[item.toStore]}
 																			</span>
 																		</div>
 																		<div className="flex flex-col gap-1">
-																			<span className="text-[0.5625rem] font-bold text-slate-400 dark:text-slate-500 uppercase">
+																			<span className="text-[0.9rem] font-bold text-slate-400 dark:text-slate-500 uppercase">
 																				Quantidade
 																			</span>
-																			<span className="text-xs font-black text-green-600 dark:text-green-400">
+																			<span className="text-lg font-black text-green-600 dark:text-green-400">
 																				{item.difference} itens
 																			</span>
 																		</div>
 																		<div className="flex flex-col gap-1">
-																			<span className="text-[0.5625rem] font-bold text-slate-400 dark:text-slate-500 uppercase">
+																			<span className="text-[0.9rem] font-bold text-slate-400 dark:text-slate-500 uppercase">
 																				Origem
 																			</span>
-																			<span className="text-xs font-black text-slate-500 dark:text-slate-400">
+																			<span className="text-lg font-black text-slate-500 dark:text-slate-400">
 																				De {item.beforeFrom} → {item.afterFrom}
 																			</span>
 																		</div>
 																		<div className="flex flex-col gap-1">
-																			<span className="text-[0.5625rem] font-bold text-slate-400 dark:text-slate-500 uppercase">
+																			<span className="text-[0.9rem] font-bold text-slate-400 dark:text-slate-500 uppercase">
 																				Destino
 																			</span>
-																			<span className="text-xs font-black text-slate-500 dark:text-slate-400">
+																			<span className="text-lg font-black text-slate-500 dark:text-slate-400">
 																				De {item.beforeTo} → {item.afterTo}
 																			</span>
 																		</div>
@@ -757,7 +758,7 @@ export default function EstoqueReposicionarPage() {
 																))}
 															</div>
 														) : (
-															<p className="text-xs font-bold text-slate-400 dark:text-slate-500">
+															<p className="text-lg font-bold text-slate-400 dark:text-slate-500">
 																Nenhum reposicionamento registrado para este item.
 															</p>
 														)}
