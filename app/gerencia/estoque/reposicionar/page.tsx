@@ -496,6 +496,7 @@ export default function EstoqueReposicionarPage() {
 						color: black !important;
 						font-family: "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
 						overflow: visible !important;
+						padding: 15mm !important; /* Força margem interna mesmo que a impressora esteja em 'sem margens' */
 					}
 					main {
 						padding: 0 !important;
@@ -698,12 +699,12 @@ export default function EstoqueReposicionarPage() {
 															<div className="flex items-center gap-1">
 																{(v > 0 || !isUnit) && (
 																	<span
-																		className={`text-3xl font-black ${receiving ? "text-green-600 dark:text-green-400" : sending ? "text-red-600 dark:text-red-400" : isUnit ? "text-orange-500 dark:text-orange-400" : initial === 0 ? "text-slate-400 dark:text-slate-600" : "text-slate-900 dark:text-slate-200"}`}>
+																		className={`text-[1.7rem] font-black ${receiving ? "text-green-600 dark:text-green-400" : sending ? "text-red-600 dark:text-red-400" : isUnit ? "text-orange-500 dark:text-orange-400" : initial === 0 ? "text-slate-400 dark:text-slate-600" : "text-slate-900 dark:text-slate-200"}`}>
 																		{isUnit && v === 0 ? "< 1" : v}
 																	</span>
 																)}
 																{isUnit && (
-																	<span className="text-2xl font-bold text-green-600 dark:text-slate-200 whitespace-nowrap">
+																	<span className="text-[1.7rem] font-bold text-green-600 dark:text-slate-200 whitespace-nowrap">
 																		{v > 0 ? "+ 1 ab." : "1 ab."}
 																	</span>
 																)}

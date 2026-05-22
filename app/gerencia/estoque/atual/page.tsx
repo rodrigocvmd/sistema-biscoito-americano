@@ -90,6 +90,7 @@ export default function EstoqueAtualPage() {
 						background: white !important;
 						color: black !important;
 						font-family: "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+						padding: 15mm !important; /* Força margem mesmo que a impressora esteja em 'sem margens' */
 					}
 					main {
 						padding: 0 !important;
@@ -109,9 +110,12 @@ export default function EstoqueAtualPage() {
 						border-collapse: collapse !important;
 						table-layout: auto;
 						margin: 0 auto !important;
+						border: 0.5pt solid #ccc !important;
+					}
+					table, tr, th, td {
+						border: 0.5pt solid #ccc !important;
 					}
 					th, td {
-						border: none !important;
 						padding: 2px 8px !important;
 						font-size: 8pt !important;
 						color: black !important;
@@ -235,19 +239,19 @@ export default function EstoqueAtualPage() {
 													<td
 														key={store.id}
 														className="p-6 text-center border-l border-slate-100 dark:border-slate-800">
-														<div className="flex flex-col items-center">
+														<div className="flex justify-center items-center">
 															{qty > 0 || !hasOpen ? (
 																<span
-																	className={`text-2xl font-black ${
+																	className={`pr-2 text-2xl font-black ${
 																		qty === 0 && !hasOpen
-																			? "text-slate-300 dark:text-slate-700"
+																			? "text-slate-300 dark:text-slate-400"
 																			: "text-slate-900 dark:text-slate-100"
 																	}`}>
 																	{qty}
 																</span>
 															) : null}
 															{hasOpen && (
-																<span className="text-2xl font-black text-slate-400 whitespace-nowrap mt-1">
+																<span className="text-2xl font-black text-slate-300 whitespace-nowrap">
 																	{qty > 0 ? "+ 1 ab." : "1 ab."}
 																</span>
 															)}
