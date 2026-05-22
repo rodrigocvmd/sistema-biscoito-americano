@@ -111,12 +111,12 @@ export default function EstoqueAtualPage() {
 						margin: 0 auto !important;
 					}
 					th, td {
-						border: 0.5pt solid #ccc !important;
-						padding: 2px 4px !important;
+						border: none !important;
+						padding: 2px 8px !important;
 						font-size: 8pt !important;
 						color: black !important;
 						background: transparent !important;
-						line-height: 1 !important;
+						line-height: 1.2 !important;
 					}
 					th {
 						text-transform: uppercase !important;
@@ -248,7 +248,7 @@ export default function EstoqueAtualPage() {
 															) : null}
 															{hasOpen && (
 																<span className="text-2xl font-black text-slate-400 whitespace-nowrap mt-1">
-																	{qty > 0 ? "+ 1 aberto" : "1 aberto"}
+																	{qty > 0 ? "+ 1 ab." : "1 ab."}
 																</span>
 															)}
 														</div>

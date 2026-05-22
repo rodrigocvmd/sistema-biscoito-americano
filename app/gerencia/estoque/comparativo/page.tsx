@@ -77,13 +77,13 @@ export default function EstoqueComparativoPage() {
 			<div className="flex flex-col items-center">
 				<div className="flex items-center gap-1">
 					{(qty > 0 || !hasOpen) && (
-						<span className={`text-2xl font-black ${qty === 0 && !hasOpen ? "text-slate-300 dark:text-slate-400" : "text-slate-900 dark:text-slate-100"}`}>
+						<span className={`text-2xl font-black ${qty === 0 && !hasOpen ? "text-slate-500 dark:text-slate-400" : "text-slate-900 dark:text-slate-100"}`}>
 							{qty}
 						</span>
 					)}
 					{hasOpen && (
-						<span className="text-xl font-black text-orange-500 dark:text-orange-400 whitespace-nowrap">
-							{qty > 0 ? "+ 1 aberto" : "1 aberto"}
+						<span className="text-xl font-black text-slate-700 dark:text-slate-300 whitespace-nowrap">
+							{qty > 0 ? "+ 1 ab." : "1 ab."}
 						</span>
 					)}
 				</div>
@@ -199,7 +199,7 @@ export default function EstoqueComparativoPage() {
 												<div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-lg font-black ${
 													diff > 0 ? "bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400" : 
 													diff < 0 ? "bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400" : 
-													"bg-slate-50 dark:bg-slate-800 text-slate-400 dark:text-slate-500"
+													"bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-400"
 												}`}>
 													{diff > 0 && <TrendingUp size={14} />}
 													{diff < 0 && <TrendingDown size={14} />}

@@ -483,7 +483,7 @@ export default function EstoqueReposicionarPage() {
 				@media print {
 					@page {
 						size: A4;
-						margin: 10mm;
+						margin: 15mm;
 					}
 					* {
 						-webkit-print-color-adjust: exact !important;
@@ -542,11 +542,17 @@ export default function EstoqueReposicionarPage() {
 					.font-black, .font-bold {
 						font-weight: normal !important;
 					}
-					.border, .border-b, .border-t, .print\\:border-b-2 {
-						border: 0.5pt solid #ccc !important;
+					.border, .border-b, .border-t, .print\\:border-b-2, .print\\:border-black {
+						border: none !important;
 					}
-					.bg-slate-50, .dark\\:bg-slate-800 {
+					.bg-slate-50, .dark\\:bg-slate-800, .bg-white, .dark\\:bg-slate-900 {
 						background: transparent !important;
+					}
+					.p-8, .p-6, .p-4 {
+						padding: 2px 0 !important;
+					}
+					.mb-3, .mb-4, .mb-6, .mb-10 {
+						margin-bottom: 4px !important;
 					}
 					.rounded-3xl, .rounded-\\[2rem\\] {
 						border-radius: 0 !important;
@@ -698,7 +704,7 @@ export default function EstoqueReposicionarPage() {
 																)}
 																{isUnit && (
 																	<span className="text-2xl font-bold text-green-600 dark:text-slate-200 whitespace-nowrap">
-																		{v > 0 ? "+ 1 aberto" : "1 aberto"}
+																		{v > 0 ? "+ 1 ab." : "1 ab."}
 																	</span>
 																)}
 															</div>
@@ -706,7 +712,7 @@ export default function EstoqueReposicionarPage() {
 																<span className="text-[1.3rem] font-bold text-slate-600 dark:text-slate-300 ">
 																	(
 																	<span className="text-[1.3rem] font-bold text-slate-700 dark:text-slate-200 ">
-																		{isUnit ? (initial > 0 ? `${initial} + 1 aberto` : "1 aberto") : initial}
+																		{isUnit ? (initial > 0 ? `${initial} + 1 ab.` : "1 ab.") : initial}
 																	</span>
 																	)
 																</span>
