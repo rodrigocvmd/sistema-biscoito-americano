@@ -476,7 +476,96 @@ export default function EstoqueReposicionarPage() {
 		);
 
 	return (
-		<div className="space-y-6">
+		<>
+			<style
+				dangerouslySetInnerHTML={{
+					__html: `
+				@media print {
+					@page {
+						size: A4;
+						margin: 10mm;
+					}
+					* {
+						-webkit-print-color-adjust: exact !important;
+						print-color-adjust: exact !important;
+						color-adjust: exact !important;
+						font-weight: normal !important;
+					}
+					body {
+						background: white !important;
+						color: black !important;
+						font-family: "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+						overflow: visible !important;
+					}
+					main {
+						padding: 0 !important;
+						margin: 0 !important;
+					}
+					nav, header, footer, .print\\:hidden, button {
+						display: none !important;
+					}
+					/* Summary Modal Printing */
+					#modal-resumo-print {
+						position: static !important;
+						display: block !important;
+						width: 100% !important;
+						height: auto !important;
+						background: white !important;
+						padding: 0 !important;
+						border: none !important;
+						box-shadow: none !important;
+					}
+					#modal-resumo-print > div {
+						max-width: none !important;
+						max-height: none !important;
+						height: auto !important;
+						overflow: visible !important;
+						position: static !important;
+						border: none !important;
+						box-shadow: none !important;
+						background: white !important;
+						padding: 0 !important;
+					}
+					.p-8, .p-6 {
+						padding: 4px !important;
+					}
+					.text-2xl {
+						font-size: 10pt !important;
+						text-align: center;
+						margin-bottom: 10px !important;
+						color: black !important;
+					}
+					.text-sm, .text-slate-600 {
+						font-size: 8pt !important;
+						color: black !important;
+					}
+					.font-black, .font-bold {
+						font-weight: normal !important;
+					}
+					.border, .border-b, .border-t, .print\\:border-b-2 {
+						border: 0.5pt solid #ccc !important;
+					}
+					.bg-slate-50, .dark\\:bg-slate-800 {
+						background: transparent !important;
+					}
+					.rounded-3xl, .rounded-\\[2rem\\] {
+						border-radius: 0 !important;
+					}
+					.space-y-6 > * + * {
+						margin-top: 4px !important;
+					}
+					.mb-3 {
+						margin-bottom: 2px !important;
+					}
+					/* Hide other elements that might overlap */
+					.fixed.inset-0:not(#modal-resumo-print) {
+						display: none !important;
+					}
+				}
+			`,
+				}}
+			/>
+			<div className="space-y-8 print:hidden">
 			{/* Action Bar */}
 			<div className="flex flex-col md:flex-row gap-4 items-center justify-between bg-white dark:bg-slate-900 p-6 rounded-[2rem] border border-slate-200 dark:border-slate-800 shadow-sm transition-colors print:hidden">
 				<div className="flex flex-col gap-1">
@@ -773,10 +862,11 @@ export default function EstoqueReposicionarPage() {
 					</table>
 				</div>
 			</div>
+			</div>
 
 			{showSummary && (
-				<div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-200 print:bg-white print:p-0 print:block print:static">
-					<div className="bg-white dark:bg-slate-900 rounded-[2rem] w-full max-w-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh] border border-slate-200 dark:border-slate-800 print:rounded-none print:border-none print:max-w-none print:max-h-none print:h-auto print:shadow-none">
+				<div id="modal-resumo-print" className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
+					<div className="bg-white dark:bg-slate-900 rounded-[2rem] w-full max-w-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh] border border-slate-200 dark:border-slate-800">
 						<div className="p-8 border-b border-slate-100 dark:border-slate-800 flex items-center justify-center print:border-b-2 print:border-black">
 							<div>
 								<h2 className="text-2xl font-black text-slate-800 dark:text-slate-200 tracking-tight print:text-black">
@@ -969,6 +1059,6 @@ export default function EstoqueReposicionarPage() {
 					</div>
 				</div>
 			)}
-		</div>
+		</>
 	);
 }

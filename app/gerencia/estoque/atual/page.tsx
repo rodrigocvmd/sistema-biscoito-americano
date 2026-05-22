@@ -80,57 +80,83 @@ export default function EstoqueAtualPage() {
 						size: A4;
 						margin: 10mm;
 					}
+					* {
+						-webkit-print-color-adjust: exact !important;
+						print-color-adjust: exact !important;
+						color-adjust: exact !important;
+						font-weight: normal !important;
+					}
 					body {
 						background: white !important;
-						font-family: sans-serif;
+						color: black !important;
+						font-family: "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
 					}
 					main {
 						padding: 0 !important;
 						margin: 0 !important;
 					}
-					.bg-white {
+					nav, header, footer, .print\\:hidden, button {
+						display: none !important;
+					}
+					.bg-white, .dark\\:bg-slate-900 {
+						background: white !important;
 						border: none !important;
 						box-shadow: none !important;
 					}
 					table {
-						width: 100% !important;
+						width: auto !important;
+						min-width: 60% !important;
 						border-collapse: collapse !important;
-						table-layout: fixed;
+						table-layout: auto;
+						margin: 0 auto !important;
 					}
 					th, td {
-						border: 1px solid #e2e8f0 !important;
-						padding: 4px 8px !important;
-						font-size: 8px !important;
-						word-break: break-word;
+						border: 0.5pt solid #ccc !important;
+						padding: 2px 4px !important;
+						font-size: 8pt !important;
+						color: black !important;
+						background: transparent !important;
+						line-height: 1 !important;
 					}
 					th {
-						background-color: #f8fafc !important;
-						-webkit-print-color-adjust: exact;
-						color: #2563eb !important;
+						text-transform: uppercase !important;
+						background-color: white !important;
 					}
-					.text-2xl {
-						font-size: 12px !important;
+					.text-2xl, .text-lg, h1 {
+						font-size: 9pt !important;
+						font-weight: normal !important;
 					}
-					.p-6 {
-						padding: 4px !important;
-					}
-					.gap-9 {
-						gap: 0 !important;
+					h1 {
+						margin-bottom: 8px !important;
+						text-align: center;
 					}
 					.sticky {
 						position: static !important;
 					}
-					.min-w-\[180px\], .min-w-\[140px\] {
-						min-width: 0 !important;
+					.whitespace-nowrap {
+						white-space: nowrap !important;
+					}
+					/* Reset specific colors and backgrounds */
+					.text-blue-700, .text-blue-600, .text-slate-600, .text-slate-400, .text-slate-300, .text-slate-900, .text-slate-100 {
+						color: black !important;
+					}
+					.bg-blue-50, .dark\\:bg-blue-900\\/30, .bg-slate-50, .dark\\:bg-slate-800, .bg-white {
+						background: transparent !important;
+					}
+					/* Layout adjustments to save space */
+					.p-6 { padding: 2px !important; }
+					.gap-2, .gap-9 { gap: 2px !important; }
+					tr {
+						page-break-inside: avoid;
 					}
 				}
 			`,
 				}}
 			/>
 
-			<div className="hidden print:block mb-6">
-				<h1 className="text-2xl font-black text-blue-700 dark:text-blue-500 uppercase">
-					Estoque Atual - {new Date().toLocaleDateString("pt-BR")}
+			<div className="hidden print:block">
+				<h1 className="text-2xl font-black uppercase">
+					Relatório de Estoque Atual - {new Date().toLocaleDateString("pt-BR")}
 				</h1>
 			</div>
 
