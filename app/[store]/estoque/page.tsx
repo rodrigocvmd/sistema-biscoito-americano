@@ -140,7 +140,7 @@ export default function StockMovementsPage({ params }: { params: Promise<{ store
 	const totalPages = Math.ceil(filteredMovements.length / itemsPerPage);
 	const paginatedMovements = filteredMovements.slice(
 		(currentPage - 1) * itemsPerPage,
-		currentPage * itemsPerPage
+		currentPage * itemsPerPage,
 	);
 
 	const formatStockCompact = (qty: number, hasOpen: boolean) => {
@@ -351,7 +351,7 @@ export default function StockMovementsPage({ params }: { params: Promise<{ store
 			</div>
 
 			{/* Opening Section */}
-			<section className="bg-slate-50 dark:bg-slate-800/30 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 transition-colors">
+			<section className="bg-white dark:bg-slate-800/30 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 transition-colors">
 				<h2 className="text-xl font-bold text-slate-800 dark:text-slate-200 mb-6 flex items-center gap-2">
 					<ExternalLink className="text-blue-600 dark:text-blue-500" size={24} />
 					Registrar Abertura ou Fim de Pacote
@@ -405,7 +405,7 @@ export default function StockMovementsPage({ params }: { params: Promise<{ store
 															</span>
 														)}
 													</div>
-													<span className="text-[14px] text-slate-300 opacity-0 group-hover:opacity-100 transition-opacity">
+													<span className="text-[14px]  text-slate-800 dark:text-white opacity-0 group-hover:opacity-100 transition-opacity">
 														{formatStockCompact(stock[id] || 0, isUnits[id] || false)} em estoque
 													</span>
 												</div>
@@ -424,27 +424,35 @@ export default function StockMovementsPage({ params }: { params: Promise<{ store
 						<button
 							onClick={handleRegisterOpening}
 							disabled={openSubmitting || !openItemId || (stock[openItemId] || 0) <= 0}
-							className="bg-blue-600 hover:bg-blue-700 text-white font-black h-[50px] rounded-xl shadow-md transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
+							className="bg-blue-600 hover:bg-blue-700 text-white font-black h-[43px] rounded-xl shadow-md transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
 							{openSubmitting ? (
 								<RefreshCw className="animate-spin" size={20} />
 							) : (
 								<ExternalLink size={20} />
 							)}
-							{openSubmitting ? "ABRINDO..." : "ABRIR PACOTE"}
+							{openSubmitting ? "ABRINDO..." : "PACOTE ABERTO"}
 						</button>
 
 						{/* Finish Button */}
-						<button
-							onClick={handleFinishPackage}
-							disabled={finishSubmitting || !openItemId || !isUnits[openItemId]}
-							className="bg-slate-700 hover:bg-slate-800 text-white font-black h-[50px] rounded-xl shadow-md transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
-							{finishSubmitting ? (
-								<RefreshCw className="animate-spin" size={20} />
-							) : (
-								<XCircle size={20} />
+						<div className="relative group">
+							<button
+								onClick={handleFinishPackage}
+								disabled={finishSubmitting || !openItemId || !isUnits[openItemId]}
+								className="w-full bg-slate-700 hover:bg-slate-800 text-white font-black h-[43px] rounded-xl shadow-md transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
+								{finishSubmitting ? (
+									<RefreshCw className="animate-spin" size={20} />
+								) : (
+									<XCircle size={20} />
+								)}
+								{finishSubmitting ? "FINALIZANDO..." : "PACOTE FINALIZADO"}
+							</button>
+							{openItemId && !isUnits[openItemId] && (
+								<div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block w-48 p-2 bg-slate-800 text-white text-[13px] font-bold text-center rounded-lg shadow-xl z-50 pointer-events-none">
+									É necessário ter um pacote aberto para finalizar o pacote
+									<div className="absolute top-full left-1/2 -translate-x-1/2 border-x-8 border-x-transparent border-t-8 border-t-slate-800" />
+								</div>
 							)}
-							{finishSubmitting ? "FINALIZANDO..." : "FINALIZAR 1 ABERTO"}
-						</button>
+						</div>
 					</div>
 
 					{/* Observations */}
@@ -482,7 +490,9 @@ export default function StockMovementsPage({ params }: { params: Promise<{ store
 				</h2>
 
 				<form onSubmit={handleAddMovement} className="space-y-6">
-					<div id="registrarMovimentacao" className="grid grid-cols-1 md:grid-cols-8 lg:grid-cols-16 gap-4 items-end">
+					<div
+						id="registrarMovimentacao"
+						className="grid grid-cols-1 md:grid-cols-8 lg:grid-cols-16 gap-4 items-end">
 						{/* Item Selection */}
 						<div className="space-y-1 relative lg:col-span-6">
 							<label className="font-bold text-slate-400 dark:text-slate-500 ml-1">
@@ -523,7 +533,7 @@ export default function StockMovementsPage({ params }: { params: Promise<{ store
 													}}
 													className="px-4 py-3 hover:bg-red-50 dark:hover:bg-red-900/30 hover:text-red-600 dark:hover:text-red-400 cursor-pointer text-lg font-bold text-slate-700 dark:text-slate-300 transition-colors flex items-center justify-between group">
 													{label}
-													<span className="text-[14px] text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity pl-5">
+													<span className="text-[14px] text-slate-800 dark:text-white opacity-0 group-hover:opacity-100 transition-opacity pl-5">
 														{formatStockCompact(stock[id] || 0, isUnits[id] || false)} em estoque
 													</span>
 												</div>
@@ -543,7 +553,9 @@ export default function StockMovementsPage({ params }: { params: Promise<{ store
 							<label className="font-bold text-slate-400 dark:text-slate-500 ml-1">
 								Tipo de Movimento
 							</label>
-							<div id="tipoDeMovimento" className="flex bg-slate-50 dark:bg-slate-800 p-1 rounded-xl border border-slate-200 dark:border-slate-700 h-[50px]">
+							<div
+								id="tipoDeMovimento"
+								className="flex bg-slate-50 dark:bg-slate-800 p-1 rounded-xl border border-slate-200 dark:border-slate-700 h-[50px]">
 								<button
 									type="button"
 									onClick={() => setType("recebido")}
@@ -552,7 +564,7 @@ export default function StockMovementsPage({ params }: { params: Promise<{ store
 											? "bg-white dark:bg-slate-700 text-green-600 dark:text-green-400 shadow-sm"
 											: "text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
 									}`}>
-									<ArrowUpCircle size={28} />
+									<ArrowDownCircle size={28} />
 									RECEBIDO
 								</button>
 								<button
@@ -563,7 +575,7 @@ export default function StockMovementsPage({ params }: { params: Promise<{ store
 											? "bg-white dark:bg-slate-700 text-red-600 dark:text-red-400 shadow-sm"
 											: "text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
 									}`}>
-									<ArrowDownCircle size={28} />
+									<ArrowUpCircle size={28} />
 									SAÍDA
 								</button>
 							</div>
@@ -632,8 +644,6 @@ export default function StockMovementsPage({ params }: { params: Promise<{ store
 				</form>
 			</section>
 
-			
-
 			{/* History Section */}
 			<section className="space-y-4">
 				<div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 ml-1">
@@ -679,9 +689,9 @@ export default function StockMovementsPage({ params }: { params: Promise<{ store
 								maxLength={10}
 								value={filterDate}
 								onChange={(e) => {
-									let val = e.target.value.replace(/\D/g, '');
-									if (val.length > 2) val = val.slice(0, 2) + '/' + val.slice(2);
-									if (val.length > 5) val = val.slice(0, 5) + '/' + val.slice(5, 9);
+									let val = e.target.value.replace(/\D/g, "");
+									if (val.length > 2) val = val.slice(0, 2) + "/" + val.slice(2);
+									if (val.length > 5) val = val.slice(0, 5) + "/" + val.slice(5, 9);
 									setFilterDate(val);
 								}}
 								className="pl-9 pr-3 py-2 w-[130px] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-bold text-slate-600 dark:text-slate-400 focus:outline-none focus:ring-2 focus:ring-red-500/20"
@@ -806,40 +816,51 @@ export default function StockMovementsPage({ params }: { params: Promise<{ store
 					{totalPages > 1 && (
 						<div className="flex items-center justify-between px-6 py-4 bg-slate-50 dark:bg-slate-800/30 border-t border-slate-100 dark:border-slate-800">
 							<p className="text-xs font-bold text-slate-500">
-								Mostrando <span className="text-slate-700 dark:text-slate-300">{(currentPage - 1) * itemsPerPage + 1}</span> a <span className="text-slate-700 dark:text-slate-300">{Math.min(currentPage * itemsPerPage, filteredMovements.length)}</span> de <span className="text-slate-700 dark:text-slate-300">{filteredMovements.length}</span> movimentações
+								Mostrando{" "}
+								<span className="text-slate-700 dark:text-slate-300">
+									{(currentPage - 1) * itemsPerPage + 1}
+								</span>{" "}
+								a{" "}
+								<span className="text-slate-700 dark:text-slate-300">
+									{Math.min(currentPage * itemsPerPage, filteredMovements.length)}
+								</span>{" "}
+								de{" "}
+								<span className="text-slate-700 dark:text-slate-300">
+									{filteredMovements.length}
+								</span>{" "}
+								movimentações
 							</p>
 							<div className="flex items-center gap-2">
 								<button
-									onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+									onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
 									disabled={currentPage === 1}
-									className="p-2 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-white dark:hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-slate-600 dark:text-slate-400"
-								>
+									className="p-2 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-white dark:hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-slate-600 dark:text-slate-400">
 									<ChevronLeft size={20} />
 								</button>
 								<div className="flex items-center gap-1">
 									{Array.from({ length: totalPages }, (_, i) => i + 1)
-										.filter(p => p === 1 || p === totalPages || Math.abs(p - currentPage) <= 1)
+										.filter((p) => p === 1 || p === totalPages || Math.abs(p - currentPage) <= 1)
 										.map((p, i, arr) => (
 											<div key={p} className="flex items-center gap-1">
-												{i > 0 && arr[i-1] !== p - 1 && <span className="text-slate-400">...</span>}
+												{i > 0 && arr[i - 1] !== p - 1 && (
+													<span className="text-slate-400">...</span>
+												)}
 												<button
 													onClick={() => setCurrentPage(p)}
 													className={`w-8 h-8 rounded-lg text-xs font-black transition-all ${
 														currentPage === p
 															? "bg-red-600 text-white shadow-md shadow-red-500/20"
 															: "text-slate-500 hover:bg-white dark:hover:bg-slate-800 border border-transparent hover:border-slate-200 dark:hover:border-slate-700"
-													}`}
-												>
+													}`}>
 													{p}
 												</button>
 											</div>
 										))}
 								</div>
 								<button
-									onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+									onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
 									disabled={currentPage === totalPages}
-									className="p-2 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-white dark:hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-slate-600 dark:text-slate-400"
-								>
+									className="p-2 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-white dark:hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-slate-600 dark:text-slate-400">
 									<ChevronRight size={20} />
 								</button>
 							</div>
