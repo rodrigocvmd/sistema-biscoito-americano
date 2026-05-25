@@ -42,7 +42,7 @@ export const STOCK_LABELS: Record<keyof StockData, string> = {
 	macadamia: "MACADAMIA",
 	ovomaltine: "OVOMALTINE",
 	newYork: "NEW YORK",
-	mms: "M&M'S",
+	mms: "MM'S",
 	kinderBueno: "KINDER BUENO",
 	lotus: "LÓTUS",
 	brownie: "BROWNIE",
