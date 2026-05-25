@@ -73,6 +73,9 @@ export default function StockMovementsPage({ params }: { params: Promise<{ store
 	const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 	const [isOpenDropdownOpen, setIsOpenDropdownOpen] = useState(false);
 
+	// Modal State
+	const [showConfirmModal, setShowConfirmModal] = useState(false);
+
 	const normalizeString = (str: string) =>
 		str
 			.normalize("NFD")
@@ -206,18 +209,14 @@ export default function StockMovementsPage({ params }: { params: Promise<{ store
 		}
 	};
 
-	const handleRegisterOpening = async (e: React.FormEvent) => {
-		e.preventDefault();
+	const performRegisterOpening = async () => {
 		if (!openItemId) return;
 
 		const currentQty = stock[openItemId] || 0;
-		if (currentQty <= 0) {
-			setOpenMessage({ type: "error", text: "Estoque insuficiente para abrir um pacote." });
-			return;
-		}
-
 		setOpenSubmitting(true);
 		setOpenMessage(null);
+		setShowConfirmModal(false);
+
 		try {
 			const storeRef = doc(db, "stores", store);
 			const movementsRef = collection(db, "stores", store, "stockMovements");
@@ -268,6 +267,25 @@ export default function StockMovementsPage({ params }: { params: Promise<{ store
 		} finally {
 			setOpenSubmitting(false);
 		}
+	};
+
+	const handleRegisterOpening = async (e: React.FormEvent) => {
+		e.preventDefault();
+		if (!openItemId) return;
+
+		const currentQty = stock[openItemId] || 0;
+		if (currentQty <= 0) {
+			setOpenMessage({ type: "error", text: "Estoque insuficiente para abrir um pacote." });
+			return;
+		}
+
+		const hasOpen = isUnits[openItemId] || false;
+		if (hasOpen) {
+			setShowConfirmModal(true);
+			return;
+		}
+
+		await performRegisterOpening();
 	};
 
 	const handleFinishPackage = async () => {
@@ -604,17 +622,31 @@ export default function StockMovementsPage({ params }: { params: Promise<{ store
 						</div>
 
 						{/* Submit Button */}
-						<button
-							type="submit"
-							disabled={submitting || !selectedItemId}
-							className="bg-green-600 hover:bg-green-700 text-white font-black h-[50px] rounded-xl shadow-md transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed lg:col-span-3">
-							{submitting ? (
-								<RefreshCw className="animate-spin" size={20} />
-							) : (
-								<CheckCircle2 size={20} />
-							)}
-							{submitting ? "SALVANDO..." : "REGISTRAR"}
-						</button>
+						<div className="relative group lg:col-span-3">
+							<button
+								type="submit"
+								disabled={
+									submitting ||
+									!selectedItemId ||
+									(type === "saida" && (stock[selectedItemId] || 0) - quantity < 0)
+								}
+								className="w-full bg-green-600 hover:bg-green-700 text-white font-black h-[50px] rounded-xl shadow-md transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
+								{submitting ? (
+									<RefreshCw className="animate-spin" size={20} />
+								) : (
+									<CheckCircle2 size={20} />
+								)}
+								{submitting ? "SALVANDO..." : "REGISTRAR"}
+							</button>
+							{selectedItemId &&
+								type === "saida" &&
+								(stock[selectedItemId] || 0) - quantity < 0 && (
+									<div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block w-48 p-2 bg-slate-800 text-white text-[13px] font-bold text-center rounded-lg shadow-xl z-50 pointer-events-none">
+										A saída é maior que o estoque atual que é de {stock[selectedItemId] || 0} pacote(s)
+										<div className="absolute top-full left-1/2 -translate-x-1/2 border-x-8 border-x-transparent border-t-8 border-t-slate-800" />
+									</div>
+								)}
+						</div>
 					</div>
 
 					{/* Observations */}
@@ -868,6 +900,37 @@ export default function StockMovementsPage({ params }: { params: Promise<{ store
 					)}
 				</div>
 			</section>
+
+			{/* Confirmation Modal */}
+			{showConfirmModal && (
+				<div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
+					<div className="bg-white dark:bg-slate-900 w-full max-w-md rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden animate-in zoom-in-95 duration-200">
+						<div className="p-8 text-center">
+							<div className="w-16 h-16 bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400 rounded-full flex items-center justify-center mx-auto mb-6">
+								<AlertCircle size={32} />
+							</div>
+							<h3 className="text-xl font-black text-slate-800 dark:text-slate-100 mb-2">
+								Sabor com Pacote Aberto
+							</h3>
+							<p className="text-slate-500 dark:text-slate-400 font-bold leading-relaxed">
+								Este sabor já tem um pacote aberto. Tem certeza que deseja abrir outro?
+							</p>
+						</div>
+						<div className="flex border-t border-slate-100 dark:border-slate-800">
+							<button
+								onClick={() => setShowConfirmModal(false)}
+								className="flex-1 px-6 py-5 text-slate-500 dark:text-slate-400 font-black hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors border-r border-slate-100 dark:border-slate-800">
+								CANCELAR
+							</button>
+							<button
+								onClick={performRegisterOpening}
+								className="flex-1 px-6 py-5 text-blue-600 dark:text-blue-400 font-black hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors">
+								CONFIRMAR
+							</button>
+						</div>
+					</div>
+				</div>
+			)}
 		</div>
 	);
 }
