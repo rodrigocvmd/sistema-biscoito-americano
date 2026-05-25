@@ -423,7 +423,7 @@ export default function StockMovementsPage({ params }: { params: Promise<{ store
 															</span>
 														)}
 													</div>
-													<span className="text-[14px]  text-slate-800 dark:text-white opacity-0 group-hover:opacity-100 transition-opacity">
+													<span className="text-[14px] text-slate-500 dark:text-slate-400 transition-opacity font-bold">
 														{formatStockCompact(stock[id] || 0, isUnits[id] || false)} em estoque
 													</span>
 												</div>
@@ -551,7 +551,7 @@ export default function StockMovementsPage({ params }: { params: Promise<{ store
 													}}
 													className="px-4 py-3 hover:bg-red-50 dark:hover:bg-red-900/30 hover:text-red-600 dark:hover:text-red-400 cursor-pointer text-lg font-bold text-slate-700 dark:text-slate-300 transition-colors flex items-center justify-between group">
 													{label}
-													<span className="text-[14px] text-slate-800 dark:text-white opacity-0 group-hover:opacity-100 transition-opacity pl-5">
+													<span className="text-[14px] text-slate-500 dark:text-slate-400 transition-opacity pl-5 font-bold">
 														{formatStockCompact(stock[id] || 0, isUnits[id] || false)} em estoque
 													</span>
 												</div>
