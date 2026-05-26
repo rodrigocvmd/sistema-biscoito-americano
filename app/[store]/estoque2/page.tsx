@@ -77,13 +77,13 @@ export default function StockPage({ params }: { params: Promise<{ store: string 
 					href={`/${store}/estoque`}
 					className="px-6 py-2.5 text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300 rounded-xl text-sm font-black transition-all"
 				>
-					Estoque (Movimentação)
+					Movimentações de Estoque
 				</Link>
 				<Link
 					href={`/${store}/estoque2`}
 					className="px-6 py-2.5 bg-white dark:bg-slate-700 text-red-600 dark:text-red-400 rounded-xl text-sm font-black shadow-sm transition-all"
 				>
-					Contagem Atual
+					Estoque Atual
 				</Link>
 			</div>
 
