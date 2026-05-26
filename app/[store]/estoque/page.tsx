@@ -39,7 +39,7 @@ export default function StockMovementsPage({ params }: { params: Promise<{ store
 	const [loading, setLoading] = useState(true);
 	const [movements, setMovements] = useState<StockMovement[]>([]);
 	const [stock, setStock] = useState<Partial<StockData>>({});
-	const [isUnits, setIsUnits] = useState<Partial<Record<keyof StockData, boolean>>>({});
+	const [isUnits, setIsUnits] = useState<Partial<Record<keyof StockData, number>>>({});
 
 	// Movement Form State
 	const [selectedItemId, setSelectedItemId] = useState<keyof StockData | "">("");
@@ -146,10 +146,13 @@ export default function StockMovementsPage({ params }: { params: Promise<{ store
 		currentPage * itemsPerPage,
 	);
 
-	const formatStockCompact = (qty: number, hasOpen: boolean) => {
-		if (qty === 0 && !hasOpen) return "0";
-		const openText = hasOpen ? " + 1 aberto" : "";
-		if (qty === 0 && hasOpen) return "1 aberto";
+	const formatStockCompact = (qty: number, openCount: number | boolean) => {
+		// Handle legacy boolean values
+		const count = typeof openCount === "boolean" ? (openCount ? 1 : 0) : openCount || 0;
+
+		if (qty === 0 && count === 0) return "0";
+		const openText = count > 0 ? ` + ${count} aberto${count > 1 ? "s" : ""}` : "";
+		if (qty === 0 && count > 0) return `${count} aberto${count > 1 ? "s" : ""}`;
 		return `${qty}${openText}`;
 	};
 
@@ -166,7 +169,12 @@ export default function StockMovementsPage({ params }: { params: Promise<{ store
 
 			const beforeStock = stock[selectedItemId] || 0;
 			const afterStock = type === "recebido" ? beforeStock + quantity : beforeStock - quantity;
-			const currentOpenStatus = isUnits[selectedItemId] || false;
+			const currentOpenCount =
+				typeof isUnits[selectedItemId] === "boolean"
+					? isUnits[selectedItemId]
+						? 1
+						: 0
+					: isUnits[selectedItemId] || 0;
 
 			const newStock = { ...stock, [selectedItemId]: afterStock };
 
@@ -182,8 +190,8 @@ export default function StockMovementsPage({ params }: { params: Promise<{ store
 				quantity,
 				beforeStock,
 				afterStock,
-				beforeOpen: currentOpenStatus,
-				afterOpen: currentOpenStatus,
+				beforeOpen: currentOpenCount,
+				afterOpen: currentOpenCount,
 				obs: obs.trim(),
 				timestamp: serverTimestamp(),
 			});
@@ -224,15 +232,21 @@ export default function StockMovementsPage({ params }: { params: Promise<{ store
 
 			const beforeStock = currentQty;
 			const afterStock = currentQty - 1;
-			const beforeOpen = isUnits[openItemId] || false;
+			const beforeOpen =
+				typeof isUnits[openItemId] === "boolean"
+					? isUnits[openItemId]
+						? 1
+						: 0
+					: isUnits[openItemId] || 0;
+			const afterOpen = beforeOpen + 1;
 
 			const newStock = { ...stock, [openItemId]: afterStock };
-			const newIsUnits = { ...isUnits, [openItemId]: true };
+			const newIsUnits = { ...isUnits, [openItemId]: afterOpen };
 
-			// Logic: Subtract 1 package and set isUnits to true
+			// Logic: Subtract 1 package and increment open count
 			await updateDoc(storeRef, {
 				[`stock.${openItemId}`]: afterStock,
-				[`isUnits.${openItemId}`]: true,
+				[`isUnits.${openItemId}`]: afterOpen,
 				lastStockUpdate: serverTimestamp(),
 			});
 
@@ -244,7 +258,7 @@ export default function StockMovementsPage({ params }: { params: Promise<{ store
 				beforeStock,
 				afterStock,
 				beforeOpen,
-				afterOpen: true,
+				afterOpen: afterOpen,
 				obs: openObs.trim(),
 				timestamp: serverTimestamp(),
 			});
@@ -279,8 +293,14 @@ export default function StockMovementsPage({ params }: { params: Promise<{ store
 			return;
 		}
 
-		const hasOpen = isUnits[openItemId] || false;
-		if (hasOpen) {
+		const openCount =
+			typeof isUnits[openItemId] === "boolean"
+				? isUnits[openItemId]
+					? 1
+					: 0
+				: isUnits[openItemId] || 0;
+
+		if (openCount > 0) {
 			setShowConfirmModal(true);
 			return;
 		}
@@ -291,8 +311,14 @@ export default function StockMovementsPage({ params }: { params: Promise<{ store
 	const handleFinishPackage = async () => {
 		if (!openItemId) return;
 
-		const hasOpen = isUnits[openItemId] || false;
-		if (!hasOpen) return;
+		const openCount =
+			typeof isUnits[openItemId] === "boolean"
+				? isUnits[openItemId]
+					? 1
+					: 0
+				: isUnits[openItemId] || 0;
+
+		if (openCount <= 0) return;
 
 		setFinishSubmitting(true);
 		setOpenMessage(null);
@@ -302,11 +328,12 @@ export default function StockMovementsPage({ params }: { params: Promise<{ store
 			const historyRef = collection(db, "stores", store, "stockHistory");
 
 			const currentQty = stock[openItemId] || 0;
-			const newIsUnits = { ...isUnits, [openItemId]: false };
+			const afterOpen = Math.max(0, openCount - 1);
+			const newIsUnits = { ...isUnits, [openItemId]: afterOpen };
 
-			// Logic: Set isUnits to false (package finished)
+			// Logic: Decrement open count
 			await updateDoc(storeRef, {
-				[`isUnits.${openItemId}`]: false,
+				[`isUnits.${openItemId}`]: afterOpen,
 				lastStockUpdate: serverTimestamp(),
 			});
 
@@ -317,8 +344,8 @@ export default function StockMovementsPage({ params }: { params: Promise<{ store
 				quantity: 1,
 				beforeStock: currentQty,
 				afterStock: currentQty,
-				beforeOpen: true,
-				afterOpen: false,
+				beforeOpen: openCount,
+				afterOpen: afterOpen,
 				obs: openObs.trim(),
 				timestamp: serverTimestamp(),
 			});
@@ -417,11 +444,11 @@ export default function StockMovementsPage({ params }: { params: Promise<{ store
 													className="px-4 py-3 hover:bg-blue-50 dark:hover:bg-blue-900/30 hover:text-blue-600 dark:hover:text-blue-400 cursor-pointer text-sm font-bold text-slate-700 dark:text-slate-300 transition-colors flex items-center justify-between group">
 													<div className="flex flex-col">
 														<span className="text-lg">{label}</span>
-														{isUnits[id] && (
+														{isUnits[id] ? (
 															<span className="text-[14px] text-orange-500 font-black uppercase">
-																Já possui 1 aberto
+																Já possui {isUnits[id]} aberto{isUnits[id]! > 1 ? "s" : ""}
 															</span>
-														)}
+														) : null}
 													</div>
 													<span className="text-[14px] text-slate-500 dark:text-slate-400 transition-opacity font-bold">
 														{formatStockCompact(stock[id] || 0, isUnits[id] || false)} em estoque

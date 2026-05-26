@@ -43,7 +43,7 @@ export interface FullStoreData {
 	name: string;
 	lastStockUpdate: Date | null;
 	stock: Partial<StockData>;
-	isUnits: Partial<Record<keyof StockData, boolean>>;
+	isUnits: Partial<Record<keyof StockData, number>>;
 }
 
 export default function EstoqueLayout({ children }: { children: React.ReactNode }) {

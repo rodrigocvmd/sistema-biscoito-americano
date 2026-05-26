@@ -72,18 +72,19 @@ export default function EstoqueComparativoPage() {
 		fetchHistory();
 	}, [historyStore]);
 
-	const renderStockCell = (qty: number, hasOpen: boolean) => {
+	const renderStockCell = (qty: number, openVal: number | boolean) => {
+		const openCount = typeof openVal === "boolean" ? (openVal ? 1 : 0) : openVal || 0;
 		return (
 			<div className="flex flex-col items-center">
 				<div className="flex items-center gap-1">
-					{(qty > 0 || !hasOpen) && (
-						<span className={`text-2xl font-black ${qty === 0 && !hasOpen ? "text-slate-500 dark:text-slate-400" : "text-slate-900 dark:text-slate-100"}`}>
+					{(qty > 0 || openCount === 0) && (
+						<span className={`text-2xl font-black ${qty === 0 && openCount === 0 ? "text-slate-500 dark:text-slate-400" : "text-slate-900 dark:text-slate-100"}`}>
 							{qty}
 						</span>
 					)}
-					{hasOpen && (
+					{openCount > 0 && (
 						<span className="text-xl font-black text-slate-700 dark:text-slate-300 whitespace-nowrap">
-							{qty > 0 ? "+ 1 ab." : "1 ab."}
+							{qty > 0 ? `+ ${openCount} ab.` : `${openCount} ab.`}
 						</span>
 					)}
 				</div>
@@ -180,8 +181,8 @@ export default function EstoqueComparativoPage() {
 									
 									const q1 = s1?.stock[key as keyof StockData] || 0;
 									const q2 = s2?.stock[key as keyof StockData] || 0;
-									const o1 = s1?.isUnits?.[key as keyof StockData] || false;
-									const o2 = s2?.isUnits?.[key as keyof StockData] || false;
+									const o1 = s1?.isUnits?.[key as keyof StockData] || 0;
+									const o2 = s2?.isUnits?.[key as keyof StockData] || 0;
 
 									// Diferença apenas de pacotes inteiros
 									const diff = q2 - q1;

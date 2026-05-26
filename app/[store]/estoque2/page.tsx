@@ -13,7 +13,7 @@ export default function StockPage({ params }: { params: Promise<{ store: string 
 	const [loading, setLoading] = useState(true);
 	const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
 	const [stock, setStock] = useState<Partial<StockData>>({});
-	const [isUnits, setIsUnits] = useState<Partial<Record<keyof StockData, boolean>>>({});
+	const [isUnits, setIsUnits] = useState<Partial<Record<keyof StockData, number>>>({});
 	const [sortBy, setSortBy] = useState<"name" | "quantity">("name");
 
 	useEffect(() => {
@@ -129,7 +129,8 @@ export default function StockPage({ params }: { params: Promise<{ store: string 
 				<div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
 					{sortedItems.map(([key, label]) => {
 						const qty = stock[key] || 0;
-						const hasOpen = isUnits[key] || false;
+						const openVal = isUnits[key];
+						const openCount = typeof openVal === "boolean" ? (openVal ? 1 : 0) : openVal || 0;
 						
 						return (
 							<div
@@ -140,19 +141,16 @@ export default function StockPage({ params }: { params: Promise<{ store: string 
 									{label}
 								</span>
 								<div className="flex items-baseline gap-1.5 flex-wrap justify-center">
-									{qty > 0 || !hasOpen ? (
+									{qty > 0 || openCount === 0 ? (
 										<div className="flex items-baseline gap-1">
-											<span className={`text-2xl font-black ${qty === 0 && !hasOpen ? "text-slate-500 dark:text-slate-400" : "text-slate-900 dark:text-slate-100"}`}>
+											<span className={`text-2xl font-black ${qty === 0 && openCount === 0 ? "text-slate-500 dark:text-slate-400" : "text-slate-900 dark:text-slate-100"}`}>
 												{qty}
 											</span>
-											{/* <span className="text-[15px] font-bold text-slate-700 dark:text-slate-400 text-center">
-												{qty === 1 ? "pct" : "pcts"}
-											</span> */}
 										</div>
 									) : null}
-									{hasOpen && (
+									{openCount > 0 && (
 										<span className="text-xl font-black text-orange-500 whitespace-nowrap">
-											{qty > 0 ? "+1 aberto" : "1 aberto"}
+											{qty > 0 ? `+${openCount} aberto${openCount > 1 ? "s" : ""}` : `${openCount} aberto${openCount > 1 ? "s" : ""}`}
 										</span>
 									)}
 								</div>

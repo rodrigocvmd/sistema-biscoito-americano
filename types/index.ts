@@ -69,8 +69,8 @@ export interface StockMovement {
 	quantity: number;
 	beforeStock: number;
 	afterStock: number;
-	beforeOpen?: boolean;
-	afterOpen?: boolean;
+	beforeOpen?: number;
+	afterOpen?: number;
 	obs?: string;
 	timestamp: any; // Firestore Timestamp
 }
@@ -79,14 +79,14 @@ export interface StoreDocument {
 	id: StoreId;
 	lastStockUpdate: any; // Firestore Timestamp
 	stock: Partial<StockData>;
-	isUnits?: Partial<Record<keyof StockData, boolean>>;
+	isUnits?: Partial<Record<keyof StockData, number>>;
 }
 
 export interface StockSnapshot {
 	id?: string;
 	timestamp: any; // Firestore Timestamp
 	stock: Partial<StockData>;
-	isUnits: Partial<Record<keyof StockData, boolean>>;
+	isUnits: Partial<Record<keyof StockData, number>>;
 }
 
 export interface RepositionHistory {

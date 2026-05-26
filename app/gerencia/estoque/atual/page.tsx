@@ -11,7 +11,7 @@ interface FullStoreData {
 	name: string;
 	lastStockUpdate: Date | null;
 	stock: Partial<StockData>;
-	isUnits: Partial<Record<keyof StockData, boolean>>;
+	isUnits: Partial<Record<keyof StockData, number>>;
 }
 
 export default function EstoqueAtualPage() {
@@ -234,25 +234,26 @@ export default function EstoqueAtualPage() {
 											</td>
 											{allData.map((store) => {
 												const qty = store.stock[key] || 0;
-												const hasOpen = store.isUnits?.[key] || false;
+												const openVal = store.isUnits?.[key];
+												const openCount = typeof openVal === "boolean" ? (openVal ? 1 : 0) : openVal || 0;
 												return (
 													<td
 														key={store.id}
 														className="p-6 text-center border-l border-slate-100 dark:border-slate-800">
 														<div className="flex justify-center items-center">
-															{qty > 0 || !hasOpen ? (
+															{qty > 0 || openCount === 0 ? (
 																<span
 																	className={`pr-2 text-2xl font-black ${
-																		qty === 0 && !hasOpen
+																		qty === 0 && openCount === 0
 																			? "text-slate-300 dark:text-slate-400"
 																			: "text-slate-900 dark:text-slate-100"
 																	}`}>
 																	{qty}
 																</span>
 															) : null}
-															{hasOpen && (
+															{openCount > 0 && (
 																<span className="text-2xl font-black text-slate-300 whitespace-nowrap">
-																	{qty > 0 ? "+ 1 ab." : "1 ab."}
+																	{qty > 0 ? `+ ${openCount} ab.` : `${openCount} ab.`}
 																</span>
 															)}
 														</div>

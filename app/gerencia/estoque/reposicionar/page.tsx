@@ -43,7 +43,7 @@ interface FullStoreData {
 	name: string;
 	lastStockUpdate: Date | null;
 	stock: Partial<StockData>;
-	isUnits: Partial<Record<keyof StockData, boolean>>;
+	isUnits: Partial<Record<keyof StockData, number>>;
 }
 
 const STORE_ORDER: StoreId[] = ["lago", "conjunto", "terraco", "noroeste"];
@@ -686,8 +686,8 @@ export default function EstoqueReposicionarPage() {
 											{STORE_ORDER.map((id) => {
 												const v = projectedStocks[id][itemKey] || 0;
 												const initial = allData.find((d) => d.id === id)?.stock[itemKey] || 0;
-												const isUnit =
-													allData.find((d) => d.id === id)?.isUnits?.[itemKey] || false;
+												const openVal = allData.find((d) => d.id === id)?.isUnits?.[itemKey];
+												const initialOpenCount = typeof openVal === "boolean" ? (openVal ? 1 : 0) : openVal || 0;
 												const receiving = v > initial;
 												const sending = v < initial;
 
@@ -697,15 +697,15 @@ export default function EstoqueReposicionarPage() {
 														className="p-5 text-center border-l border-slate-50 dark:border-slate-800 border-b border-slate-100 dark:border-slate-800">
 														<div className="flex flex-col items-center">
 															<div className="flex items-center gap-1">
-																{(v > 0 || !isUnit) && (
+																{(v > 0 || initialOpenCount === 0) && (
 																	<span
-																		className={`text-[1.7rem] font-black ${receiving ? "text-green-600 dark:text-green-400" : sending ? "text-red-600 dark:text-red-400" : isUnit ? "text-orange-500 dark:text-orange-400" : initial === 0 ? "text-slate-400 dark:text-slate-600" : "text-slate-900 dark:text-slate-200"}`}>
-																		{isUnit && v === 0 ? "< 1" : v}
+																		className={`text-[1.7rem] font-black ${receiving ? "text-green-600 dark:text-green-400" : sending ? "text-red-600 dark:text-red-400" : initialOpenCount > 0 ? "text-orange-500 dark:text-orange-400" : initial === 0 ? "text-slate-400 dark:text-slate-600" : "text-slate-900 dark:text-slate-200"}`}>
+																		{v}
 																	</span>
 																)}
-																{isUnit && (
+																{initialOpenCount > 0 && (
 																	<span className="text-[1.7rem] font-bold text-green-600 dark:text-slate-200 whitespace-nowrap">
-																		{v > 0 ? "+ 1 ab." : "1 ab."}
+																		{v > 0 ? `+ ${initialOpenCount} ab.` : `${initialOpenCount} ab.`}
 																	</span>
 																)}
 															</div>
@@ -713,7 +713,7 @@ export default function EstoqueReposicionarPage() {
 																<span className="text-[1.3rem] font-bold text-slate-600 dark:text-slate-300 ">
 																	(
 																	<span className="text-[1.3rem] font-bold text-slate-700 dark:text-slate-200 ">
-																		{isUnit ? (initial > 0 ? `${initial} + 1 ab.` : "1 ab.") : initial}
+																		{initialOpenCount > 0 ? (initial > 0 ? `${initial} + ${initialOpenCount} ab.` : `${initialOpenCount} ab.`) : initial}
 																	</span>
 																	)
 																</span>
