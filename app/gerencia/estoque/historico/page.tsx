@@ -80,10 +80,11 @@ export default function GlobalStockHistoryPage() {
 		currentPage * itemsPerPage
 	);
 
-	const formatStockCompact = (qty: number, hasOpen: boolean) => {
-		if (qty === 0 && !hasOpen) return "0";
-		const openText = hasOpen ? " + 1 ab." : "";
-		if (qty === 0 && hasOpen) return "1 ab.";
+	const formatStockCompact = (qty: number, openCount: number | boolean) => {
+		const count = typeof openCount === "boolean" ? (openCount ? 1 : 0) : openCount || 0;
+		if (qty === 0 && count === 0) return "0";
+		const openText = count > 0 ? ` + ${count} ab.` : "";
+		if (qty === 0 && count > 0) return `${count} ab.`;
 		return `${qty}${openText}`;
 	};
 
