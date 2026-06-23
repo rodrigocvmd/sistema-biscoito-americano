@@ -981,7 +981,7 @@ export default function EstoqueReposicionarPage() {
 									}}
 									disabled={calculateOptimizedSummary().length === 0 || savingRepos}
 									className="flex-1 min-w-[11.25rem] flex items-center justify-center gap-3 bg-emerald-500 hover:bg-emerald-600 text-white px-6 py-4 rounded-2xl font-black text-[0.75rem] uppercase tracking-widest shadow-lg shadow-emerald-100 dark:shadow-none transition-all disabled:opacity-50 cursor-pointer">
-									{savingRepos ? <RefreshCw className="animate-spin" size={16} /> : <MessageCircle size={16} />}
+									
 									Enviar no WhatsApp
 								</button>
 								<button
@@ -991,7 +991,7 @@ export default function EstoqueReposicionarPage() {
 									}}
 									disabled={calculateOptimizedSummary().length === 0 || savingRepos}
 									className="flex-1 min-w-[11.25rem] flex items-center justify-center gap-3 bg-blue-600 hover:bg-blue-700 text-white px-6 py-4 rounded-2xl font-black text-[0.75rem] uppercase tracking-widest shadow-lg shadow-blue-100 dark:shadow-none transition-all disabled:opacity-50 cursor-pointer">
-									{savingRepos ? <RefreshCw className="animate-spin" size={16} /> : <Printer size={16} />}
+									
 									IMPRIMIR RESUMO
 								</button>
 								<button
@@ -1001,7 +1001,7 @@ export default function EstoqueReposicionarPage() {
 									}}
 									disabled={calculateOptimizedSummary().length === 0 || savingRepos}
 									className="flex-1 min-w-[11.25rem] flex items-center justify-center gap-3 bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-4 rounded-2xl font-black text-[0.75rem] uppercase tracking-widest shadow-lg shadow-indigo-100 dark:shadow-none transition-all disabled:opacity-50 cursor-pointer">
-									{savingRepos ? <RefreshCw className="animate-spin" size={16} /> : <Printer size={16} />}
+									
 									Imprimir Checagem Vendedores
 								</button>
 							</div>
@@ -1131,7 +1131,7 @@ export default function EstoqueReposicionarPage() {
 						}
 
 						return (
-							<div key={storeId} className="checklist-page mb-10 pb-10 border-b border-dashed border-slate-300 print:mb-0 print:pb-0 print:border-0 print:min-h-screen flex flex-col justify-between">
+							<div key={storeId} className="checklist-page mb-10 pb-10 border-b border-dashed border-slate-300 print:mb-0 print:pb-0 print:border-0 print:min-h-screen">
 								<div>
 									{/* Header */}
 									<div className="border-b-2 border-black pb-4 mb-6 flex justify-between items-end">
@@ -1148,7 +1148,7 @@ export default function EstoqueReposicionarPage() {
 									{/* Outgoing Section (Saídas) */}
 									{outgoing.length > 0 && (
 										<div className="mb-8">
-											<h3 className="text-lg font-bold uppercase bg-slate-100 px-3 py-1.5 rounded-lg mb-4 text-slate-800 print:text-black border-l-4 border-slate-600 print:border-black">
+											<h3 className="text-lg font-bold uppercase bg-white px-3 py-1.5 rounded-lg mb-4 text-slate-800 print:text-black border-l-4 border-slate-600 print:border-black">
 												Saídas (Enviar para outras lojas)
 											</h3>
 											<table className="w-full border-collapse">
@@ -1189,7 +1189,7 @@ export default function EstoqueReposicionarPage() {
 									{/* Incoming Section (Entradas) */}
 									{incoming.length > 0 && (
 										<div className="mb-8">
-											<h3 className="text-lg font-bold uppercase bg-slate-100 px-3 py-1.5 rounded-lg mb-4 text-slate-800 print:text-black border-l-4 border-slate-600 print:border-black">
+											<h3 className="text-lg font-bold uppercase bg-white px-3 py-1.5 rounded-lg mb-4 text-slate-800 print:text-black border-l-4 border-slate-600 print:border-black">
 												Entradas (Receber no estoque)
 											</h3>
 											<table className="w-full border-collapse">
@@ -1226,20 +1226,6 @@ export default function EstoqueReposicionarPage() {
 											</table>
 										</div>
 									)}
-								</div>
-
-								{/* Footer Signatures */}
-								<div className="border-t border-slate-300 pt-6 mt-10 grid grid-cols-2 gap-8 text-xs font-bold text-slate-600">
-									<div>
-										<p className="mb-6">Responsável pelo envio / separação:</p>
-										<div className="border-b border-slate-400 w-full h-8 mb-1"></div>
-										<p className="text-[10px] text-slate-400">Assinatura / Nome por extenso</p>
-									</div>
-									<div>
-										<p className="mb-6">Responsável pelo recebimento / conferência:</p>
-										<div className="border-b border-slate-400 w-full h-8 mb-1"></div>
-										<p className="text-[10px] text-slate-400">Assinatura / Nome por extenso</p>
-									</div>
 								</div>
 							</div>
 						);
