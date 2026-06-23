@@ -31,7 +31,8 @@ export interface StockData {
 	eua: number;
 	argentina: number;
 	novoOreo: number;
-	sorvete: number;
+	sorveteCaixa: number;
+	sorvetePote: number;
 }
 
 export const STOCK_LABELS: Record<keyof StockData, string> = {
@@ -58,7 +59,8 @@ export const STOCK_LABELS: Record<keyof StockData, string> = {
 	eua: "ESTADOS UNIDOS",
 	argentina: "ARGENTINA",
 	novoOreo: "NOVO OREO",
-	sorvete: "SORVETE",
+	sorveteCaixa: "SORVETE (CAIXA)",
+	sorvetePote: "SORVETE (POTE)",
 };
 
 export interface StockMovement {
