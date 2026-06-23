@@ -67,7 +67,7 @@ export interface StockMovement {
 	id?: string;
 	itemId: keyof StockData;
 	itemName: string;
-	type: "recebido" | "saida" | "abertura" | "fechamento";
+	type: "recebido" | "saida" | "abertura" | "fechamento" | "conferencia";
 	quantity: number;
 	beforeStock: number;
 	afterStock: number;

@@ -30,6 +30,7 @@ import {
 	XCircle,
 	ChevronLeft,
 	ChevronRight,
+	ClipboardCheck,
 } from "lucide-react";
 import Link from "next/link";
 import { use } from "react";
@@ -820,7 +821,9 @@ export default function StockMovementsPage({ params }: { params: Promise<{ store
 																? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
 																: m.type === "abertura"
 																	? "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400"
-																	: "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-400"
+																	: m.type === "conferencia"
+																		? "bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400"
+																		: "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-400"
 													}`}>
 													{m.type === "recebido" ? (
 														<ArrowDownCircle size={12} />
@@ -828,6 +831,8 @@ export default function StockMovementsPage({ params }: { params: Promise<{ store
 														<ArrowUpCircle size={12} />
 													) : m.type === "abertura" ? (
 														<ExternalLink size={12} />
+													) : m.type === "conferencia" ? (
+														<ClipboardCheck size={12} />
 													) : (
 														<XCircle size={12} />
 													)}
@@ -837,7 +842,9 @@ export default function StockMovementsPage({ params }: { params: Promise<{ store
 															? "saída"
 															: m.type === "abertura"
 																? "pacote aberto"
-																: "pacote finalizado"}
+																: m.type === "conferencia"
+																	? "conferência"
+																	: "pacote finalizado"}
 												</span>
 											</td>
 											<td className="px-6 py-4 whitespace-nowrap text-center font-black text-slate-700 dark:text-slate-200">
