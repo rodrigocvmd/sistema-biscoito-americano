@@ -598,13 +598,11 @@ export default function EstoqueReposicionarPage() {
 					}
 					body.checklist-print-active .checklist-page {
 						page-break-after: always !important;
-						break-after: page !important;
-						padding: 10mm !important;
+						padding: 5mm !important;
 						box-sizing: border-box !important;
 					}
 					body.checklist-print-active .checklist-page:last-child {
 						page-break-after: avoid !important;
-						break-after: avoid !important;
 					}
 				}
 			`,
@@ -1135,7 +1133,7 @@ export default function EstoqueReposicionarPage() {
 						}
 
 						return (
-							<div key={storeId} className="checklist-page mb-10 pb-10 border-b border-dashed border-slate-300 print:mb-0 print:pb-0 print:border-0 print:min-h-screen">
+							<div key={storeId} className="checklist-page mb-10 pb-10 border-b border-dashed border-slate-300 print:mb-0 print:pb-0 print:border-0">
 								<div>
 									{/* Header */}
 									<div className="border-b-2 border-black pb-4 mb-6 flex justify-between items-end">
