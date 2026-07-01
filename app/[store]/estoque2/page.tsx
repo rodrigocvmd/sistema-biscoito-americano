@@ -238,35 +238,6 @@ export default function StockPage({ params }: { params: Promise<{ store: string 
 				</div>
 
 				<div className="flex flex-wrap gap-2 items-center">
-					{/* Conference Mode Toggle */}
-					<button
-						onClick={() => {
-							setIsConferenceMode(!isConferenceMode);
-							if (isConferenceMode) {
-								setDivergences({}); // reset if turned off
-							}
-						}}
-						className={`cursor-pointer px-4 py-2 rounded-xl text-xs font-black flex items-center gap-2 border transition-all ${
-							isConferenceMode
-								? "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400 border-amber-300 dark:border-amber-700"
-								: "bg-slate-50 text-slate-700 dark:bg-slate-800 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700"
-						}`}
-					>
-						{isConferenceMode ? <ClipboardX size={16} /> : <ClipboardCheck size={16} />}
-						{isConferenceMode ? "Desativar Conferência" : "Modo de Conferência"}
-					</button>
-
-					{/* Update Divergent Button */}
-					{isConferenceMode && Object.keys(divergences).length > 0 && (
-						<button
-							onClick={handleUpdateDivergentStock}
-							disabled={isUpdating}
-							className="cursor-pointer px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-xl text-xs font-black flex items-center gap-2 shadow-md transition-all disabled:opacity-50"
-						>
-							{isUpdating ? <RefreshCw className="animate-spin" size={16} /> : <Save size={16} />}
-							Atualizar Estoque Divergente ({Object.keys(divergences).length})
-						</button>
-					)}
 				</div>
 			</div>
 
@@ -284,7 +255,7 @@ export default function StockPage({ params }: { params: Promise<{ store: string 
 			)}
 
 			<div className="bg-white dark:bg-slate-900 p-4 md:p-8 rounded-3xl shadow-sm border border-slate-200 dark:border-slate-800 transition-colors">
-				<div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8 pb-6 border-b border-slate-100 dark:border-slate-800">
+				<div id="contagemDeEstoque" className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8 pb-6 border-b border-slate-100 dark:border-slate-800">
 					<div>
 						<h2 className="text-2xl font-black text-slate-800 dark:text-slate-200 tracking-tight flex items-center gap-2">
 							<Package className="text-red-600" size={24} />
@@ -294,9 +265,42 @@ export default function StockPage({ params }: { params: Promise<{ store: string 
 							<AlertCircle size={16} />
 							{isConferenceMode
 								? "Modo de Conferência Ativo. Indique divergências nos itens correspondentes."
-								: "Apenas leitura. Use a aba de movimentações para alterações."}
+								: "Apenas leitura. Ative o Modo de Congerência para alterações no estoque."}
 						</p>
 					</div>
+
+					<div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+						{/* Conference Mode Toggle */}
+						<button
+							onClick={() => {
+								setIsConferenceMode(!isConferenceMode);
+								if (isConferenceMode) {
+									setDivergences({}); // reset if turned off
+								}
+							}}
+							className={`cursor-pointer px-6 py-3.5 rounded-2xl text-sm md:text-base font-black flex items-center justify-center gap-2.5 border transition-all shadow-sm ${
+								isConferenceMode
+									? "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400 border-amber-300 dark:border-amber-700"
+									: "bg-slate-50 text-slate-700 dark:bg-slate-800 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700"
+							}`}
+						>
+							{isConferenceMode ? <ClipboardX size={20} /> : <ClipboardCheck size={20} />}
+							{isConferenceMode ? "Desativar Conferência" : "Modo de Conferência"}
+						</button>
+
+						{/* Update Divergent Button */}
+						{isConferenceMode && Object.keys(divergences).length > 0 && (
+							<button
+								onClick={handleUpdateDivergentStock}
+								disabled={isUpdating}
+								className="cursor-pointer px-6 py-3.5 bg-green-600 hover:bg-green-700 text-white rounded-2xl text-sm md:text-base font-black flex items-center justify-center gap-2.5 shadow-md transition-all disabled:opacity-50"
+							>
+								{isUpdating ? <RefreshCw className="animate-spin" size={20} /> : <Save size={20} />}
+								Atualizar Estoque Divergente ({Object.keys(divergences).length})
+							</button>
+						)}
+					</div>
+
 					<div className="bg-slate-50 dark:bg-slate-800 px-6 py-3 rounded-xl border border-slate-100 dark:border-slate-700 text-center">
 						<span className="text-xs uppercase tracking-widest font-black text-slate-400 dark:text-slate-500 block mb-1">
 							ÚLTIMA ATUALIZAÇÃO
@@ -452,7 +456,7 @@ export default function StockPage({ params }: { params: Promise<{ store: string 
 
 							<div className="space-y-1">
 								<label className="text-xs font-bold text-slate-400 dark:text-slate-500 block pl-1">
-									Observação / Apontamentos (Opcional)
+									Observação / Apontamentos (se houver)
 								</label>
 								<textarea
 									value={modalObs}
