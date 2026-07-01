@@ -1121,10 +1121,14 @@ export default function EstoqueReposicionarPage() {
 						const storeName = STORE_NAMES[storeId];
 						const movements = calculateOptimizedSummary();
 						
-						// Entradas: toStore === storeId
-						const incoming = movements.filter(m => m.to === storeId);
-						// Saídas: fromStore === storeId
-						const outgoing = movements.filter(m => m.from === storeId);
+						// Entradas: toStore === storeId, sorted alphabetically
+						const incoming = movements
+							.filter(m => m.to === storeId)
+							.sort((a, b) => STOCK_LABELS[a.item].localeCompare(STOCK_LABELS[b.item]));
+						// Saídas: fromStore === storeId, sorted alphabetically
+						const outgoing = movements
+							.filter(m => m.from === storeId)
+							.sort((a, b) => STOCK_LABELS[a.item].localeCompare(STOCK_LABELS[b.item]));
 
 						if (incoming.length === 0 && outgoing.length === 0) {
 							return null; // Skip stores with no repositioning
@@ -1149,7 +1153,7 @@ export default function EstoqueReposicionarPage() {
 									{outgoing.length > 0 && (
 										<div className="mb-8">
 											<h3 className="text-lg font-bold uppercase bg-white px-3 py-1.5 rounded-lg mb-4 text-slate-800 print:text-black border-l-4 border-slate-600 print:border-black">
-												Saídas (Enviar para outras lojas)
+												Saídas (Enviando para outras lojas)
 											</h3>
 											<table className="w-full border-collapse">
 												<thead>
@@ -1157,8 +1161,7 @@ export default function EstoqueReposicionarPage() {
 														<th className="py-2 w-12 text-center">Conf.</th>
 														<th className="py-2">Sabor / Item</th>
 														<th className="py-2 w-24 text-center">Qtd (Pacotes)</th>
-														<th className="py-2 w-36">Destino</th>
-														<th className="py-2">Observações / Visto</th>
+														<th className="py-2 text-center pl-12">Divergências e Observações</th>
 													</tr>
 												</thead>
 												<tbody>
@@ -1173,11 +1176,8 @@ export default function EstoqueReposicionarPage() {
 															<td className="py-3 text-center font-extrabold text-lg text-slate-900 print:text-black">
 																{m.qty}
 															</td>
-															<td className="py-3 font-semibold uppercase text-xs">
-																{STORE_NAMES[m.to]}
-															</td>
-															<td className="py-3">
-																<div className="w-full border-b border-slate-300 h-6"></div>
+															<td className="py-3 pl-12">
+																<div className="w-[85%] mx-auto border-b border-slate-300 h-6"></div>
 															</td>
 														</tr>
 													))}
@@ -1190,7 +1190,7 @@ export default function EstoqueReposicionarPage() {
 									{incoming.length > 0 && (
 										<div className="mb-8">
 											<h3 className="text-lg font-bold uppercase bg-white px-3 py-1.5 rounded-lg mb-4 text-slate-800 print:text-black border-l-4 border-slate-600 print:border-black">
-												Entradas (Receber no estoque)
+												Entradas (Recebendo no estoque)
 											</h3>
 											<table className="w-full border-collapse">
 												<thead>
@@ -1198,8 +1198,7 @@ export default function EstoqueReposicionarPage() {
 														<th className="py-2 w-12 text-center">Conf.</th>
 														<th className="py-2">Sabor / Item</th>
 														<th className="py-2 w-24 text-center">Qtd (Pacotes)</th>
-														<th className="py-2 w-36">Origem</th>
-														<th className="py-2">Observações / Visto</th>
+														<th className="py-2 text-center pl-12">Divergências e Observações</th>
 													</tr>
 												</thead>
 												<tbody>
@@ -1214,11 +1213,8 @@ export default function EstoqueReposicionarPage() {
 															<td className="py-3 text-center font-extrabold text-lg text-slate-900 print:text-black">
 																{m.qty}
 															</td>
-															<td className="py-3 font-semibold uppercase text-xs">
-																{STORE_NAMES[m.from]}
-															</td>
-															<td className="py-3">
-																<div className="w-full border-b border-slate-300 h-6"></div>
+															<td className="py-3 pl-12">
+																<div className="w-[85%] mx-auto border-b border-slate-300 h-6"></div>
 															</td>
 														</tr>
 													))}
