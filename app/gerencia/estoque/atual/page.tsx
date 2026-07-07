@@ -236,7 +236,7 @@ export default function EstoqueAtualPage() {
 										<tr
 											key={key}
 											className="border-b border-slate-100 dark:border-slate-800 hover:bg-blue-50/30 dark:hover:bg-blue-900/20 transition-colors group">
-											<td className="p-6 text-lg font-black text-slate-600 dark:text-slate-400 sticky left-0 bg-white dark:bg-slate-900 group-hover:bg-blue-50/30 dark:group-hover:bg-blue-900/20 z-10 border-r border-slate-50 dark:border-slate-800 transition-colors uppercase">
+											<td className="p-6 text-xl font-black text-slate-600 dark:text-slate-400 sticky left-0 bg-white dark:bg-slate-900 group-hover:bg-blue-50/30 dark:group-hover:bg-blue-900/20 z-10 border-r border-slate-50 dark:border-slate-800 transition-colors uppercase">
 												{label}
 											</td>
 											{allData.map((store) => {
@@ -260,7 +260,7 @@ export default function EstoqueAtualPage() {
 															) : null}
 															{!hideOpen && openCount > 0 && (
 																<span className="text-2xl font-black text-slate-400 dark:text-slate-500 whitespace-nowrap">
-																	{qty > 0 ? `+ ${openCount} ab.` : `${openCount} ab.`}
+																	{qty > 0 ? `+ ${openCount} aberto` : `${openCount} aberto`}
 																</span>
 															)}
 														</div>

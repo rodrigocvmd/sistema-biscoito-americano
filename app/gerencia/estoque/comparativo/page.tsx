@@ -84,7 +84,7 @@ export default function EstoqueComparativoPage() {
 					)}
 					{openCount > 0 && (
 						<span className="text-xl font-black text-slate-700 dark:text-slate-300 whitespace-nowrap">
-							{qty > 0 ? `+ ${openCount} ab.` : `${openCount} ab.`}
+							{qty > 0 ? `+ ${openCount} aberto` : `${openCount} aberto`}
 						</span>
 					)}
 				</div>

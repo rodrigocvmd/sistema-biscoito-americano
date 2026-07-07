@@ -722,7 +722,7 @@ export default function EstoqueReposicionarPage() {
 											<td className="p-5 sticky left-0 bg-white dark:bg-slate-900 group-hover:bg-slate-50/50 dark:group-hover:bg-slate-800/50 z-10 border-r border-slate-50 dark:border-slate-800 border-b border-slate-100 dark:border-slate-800 transition-colors">
 												<button
 													onClick={() => setExpandedItem(isExpanded ? null : itemKey)}
-													className="flex items-center gap-2 text-[1.05rem] font-black text-slate-600 dark:text-slate-400 uppercase hover:text-blue-600 dark:hover:text-blue-400 transition-colors cursor-pointer text-left">
+													className="flex items-center gap-2 text-[1.2rem] font-black text-slate-600 dark:text-slate-400 uppercase hover:text-blue-600 dark:hover:text-blue-400 transition-colors cursor-pointer text-left">
 													{isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
 													{label}
 												</button>
@@ -744,23 +744,19 @@ export default function EstoqueReposicionarPage() {
 															<div className="flex items-center gap-1">
 																{(v > 0 || initialOpenCount === 0 || hideOpen) && (
 																	<span
-																		className={`text-[1.7rem] font-black ${receiving ? "text-green-600 dark:text-green-400" : sending ? "text-red-600 dark:text-red-400" : (initialOpenCount > 0 && !hideOpen) ? "text-orange-500 dark:text-orange-400" : (v === 0 && (initialOpenCount === 0 || hideOpen)) ? "text-slate-400 dark:text-slate-600" : "text-slate-900 dark:text-slate-200"}`}>
+																		className={`text-[1.7rem] font-black ${(initialOpenCount > 0 && !hideOpen) ? "text-slate-400 dark:text-slate-200" : (v === 0 && (initialOpenCount === 0 || hideOpen)) ? "text-slate-400 dark:text-slate-600" : "text-slate-900 dark:text-slate-200"}`}>
 																		{v}
 																	</span>
 																)}
 																{!hideOpen && initialOpenCount > 0 && (
 																	<span className="text-[1.7rem] font-bold text-slate-400 dark:text-slate-500 whitespace-nowrap">
-																		{v > 0 ? `+ ${initialOpenCount} ab.` : `${initialOpenCount} ab.`}
+																		{v > 0 ? `+ ${initialOpenCount} aberto` : `${initialOpenCount} aberto`}
 																	</span>
 																)}
 															</div>
 															{(receiving || sending) && (
-																<span className="text-[1.3rem] font-bold text-slate-600 dark:text-slate-300 ">
-																	(
-																	<span className="text-[1.3rem] font-bold text-slate-700 dark:text-slate-200 ">
-																		{initialOpenCount > 0 && !hideOpen ? (initial > 0 ? `${initial} + ${initialOpenCount} ab.` : `${initialOpenCount} ab.`) : initial}
-																	</span>
-																	)
+																<span className={`text-[1.35rem] font-black ${receiving ? "text-green-600 dark:text-green-500" : "text-red-600 dark:text-red-500"}`}>
+																	{receiving ? `+${v - initial}` : `-${initial - v}`}
 																</span>
 															)}
 														</div>
