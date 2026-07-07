@@ -79,19 +79,18 @@ export default function EstoqueAtualPage() {
 				@media print {
 					@page {
 						size: A4;
-						margin: 10mm;
+						margin: 8mm;
 					}
 					* {
 						-webkit-print-color-adjust: exact !important;
 						print-color-adjust: exact !important;
 						color-adjust: exact !important;
-						font-weight: normal !important;
 					}
 					body {
 						background: white !important;
 						color: black !important;
 						font-family: "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-						padding: 15mm !important; /* Força margem mesmo que a impressora esteja em 'sem margens' */
+						padding: 4mm !important;
 					}
 					main {
 						padding: 0 !important;
@@ -106,8 +105,7 @@ export default function EstoqueAtualPage() {
 						box-shadow: none !important;
 					}
 					table {
-						width: auto !important;
-						min-width: 60% !important;
+						width: 100% !important;
 						border-collapse: collapse !important;
 						table-layout: auto;
 						margin: 0 auto !important;
@@ -117,19 +115,20 @@ export default function EstoqueAtualPage() {
 						border: 0.5pt solid #ccc !important;
 					}
 					th, td {
-						padding: 2px 8px !important;
-						font-size: 8pt !important;
+						padding: 4px 8px !important;
+						font-size: 11.5pt !important;
 						color: black !important;
 						background: transparent !important;
-						line-height: 1.2 !important;
+						line-height: 1.15 !important;
 					}
 					th {
 						text-transform: uppercase !important;
 						background-color: white !important;
+						font-weight: bold !important;
 					}
 					.text-2xl, .text-lg, h1 {
-						font-size: 9pt !important;
-						font-weight: normal !important;
+						font-size: 13pt !important;
+						font-weight: bold !important;
 					}
 					h1 {
 						margin-bottom: 8px !important;

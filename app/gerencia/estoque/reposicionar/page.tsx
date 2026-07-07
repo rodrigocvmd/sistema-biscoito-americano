@@ -35,6 +35,8 @@ import {
 	MessageCircle,
 	History,
 	Search,
+	Eye,
+	EyeOff,
 } from "lucide-react";
 
 
@@ -82,6 +84,7 @@ export default function EstoqueReposicionarPage() {
 
 	const [searchTerm, setSearchTerm] = useState("");
 	const [isPrintingChecklist, setIsPrintingChecklist] = useState(false);
+	const [hideOpen, setHideOpen] = useState(false);
 
 	// Load from localStorage on mount
 	useEffect(() => {
@@ -624,7 +627,7 @@ export default function EstoqueReposicionarPage() {
 						onClick={resetProjectedStocks}
 						className="cursor-pointer flex items-center gap-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-green-700 dark:text-green-500 px-5 py-2.5 rounded-xl font-black transition-all border border-slate-200 dark:border-slate-700 uppercase tracking-widest">
 						<RefreshCw size={14} />
-						Redefinir para Estoque Atual
+						Zerar e Mostrar Estoque Atual
 					</button>
 					<button
 						onClick={() => setShowSummary(true)}
@@ -649,6 +652,12 @@ export default function EstoqueReposicionarPage() {
 						/>
 					</div>
 				</div>
+				<button
+					onClick={() => setHideOpen(!hideOpen)}
+					className="cursor-pointer flex items-center gap-2 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 px-6 py-3.5 rounded-2xl font-black text-xs transition-all border border-slate-200 dark:border-slate-800 uppercase tracking-widest shadow-sm">
+					{hideOpen ? <Eye size={14} /> : <EyeOff size={14} />}
+					{hideOpen ? "Mostrar Abertos" : "Ocultar Abertos"}
+				</button>
 				<button
 					onClick={fetchAllHistory}
 					disabled={loadingAllHistory}
@@ -713,7 +722,7 @@ export default function EstoqueReposicionarPage() {
 											<td className="p-5 sticky left-0 bg-white dark:bg-slate-900 group-hover:bg-slate-50/50 dark:group-hover:bg-slate-800/50 z-10 border-r border-slate-50 dark:border-slate-800 border-b border-slate-100 dark:border-slate-800 transition-colors">
 												<button
 													onClick={() => setExpandedItem(isExpanded ? null : itemKey)}
-													className="flex items-center gap-2 text-[0.9375rem] font-black text-slate-600 dark:text-slate-400 uppercase hover:text-blue-600 dark:hover:text-blue-400 transition-colors cursor-pointer text-left">
+													className="flex items-center gap-2 text-[1.05rem] font-black text-slate-600 dark:text-slate-400 uppercase hover:text-blue-600 dark:hover:text-blue-400 transition-colors cursor-pointer text-left">
 													{isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
 													{label}
 												</button>
@@ -733,14 +742,14 @@ export default function EstoqueReposicionarPage() {
 														className="p-5 text-center border-l border-slate-50 dark:border-slate-800 border-b border-slate-100 dark:border-slate-800">
 														<div className="flex flex-col items-center">
 															<div className="flex items-center gap-1">
-																{(v > 0 || initialOpenCount === 0) && (
+																{(v > 0 || initialOpenCount === 0 || hideOpen) && (
 																	<span
-																		className={`text-[1.7rem] font-black ${receiving ? "text-green-600 dark:text-green-400" : sending ? "text-red-600 dark:text-red-400" : initialOpenCount > 0 ? "text-orange-500 dark:text-orange-400" : initial === 0 ? "text-slate-400 dark:text-slate-600" : "text-slate-900 dark:text-slate-200"}`}>
+																		className={`text-[1.7rem] font-black ${receiving ? "text-green-600 dark:text-green-400" : sending ? "text-red-600 dark:text-red-400" : (initialOpenCount > 0 && !hideOpen) ? "text-orange-500 dark:text-orange-400" : (v === 0 && (initialOpenCount === 0 || hideOpen)) ? "text-slate-400 dark:text-slate-600" : "text-slate-900 dark:text-slate-200"}`}>
 																		{v}
 																	</span>
 																)}
-																{initialOpenCount > 0 && (
-																	<span className="text-[1.7rem] font-bold text-green-600 dark:text-slate-200 whitespace-nowrap">
+																{!hideOpen && initialOpenCount > 0 && (
+																	<span className="text-[1.7rem] font-bold text-slate-400 dark:text-slate-500 whitespace-nowrap">
 																		{v > 0 ? `+ ${initialOpenCount} ab.` : `${initialOpenCount} ab.`}
 																	</span>
 																)}
@@ -749,7 +758,7 @@ export default function EstoqueReposicionarPage() {
 																<span className="text-[1.3rem] font-bold text-slate-600 dark:text-slate-300 ">
 																	(
 																	<span className="text-[1.3rem] font-bold text-slate-700 dark:text-slate-200 ">
-																		{initialOpenCount > 0 ? (initial > 0 ? `${initial} + ${initialOpenCount} ab.` : `${initialOpenCount} ab.`) : initial}
+																		{initialOpenCount > 0 && !hideOpen ? (initial > 0 ? `${initial} + ${initialOpenCount} ab.` : `${initialOpenCount} ab.`) : initial}
 																	</span>
 																	)
 																</span>
