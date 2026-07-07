@@ -578,6 +578,12 @@ export default function EstoqueReposicionarPage() {
 					.mb-3 {
 						margin-bottom: 2px !important;
 					}
+					.print-divider {
+						border-top: 1.5pt solid black !important;
+						margin: 15px 0 !important;
+						display: block !important;
+						height: 0 !important;
+					}
 					/* Hide other elements that might overlap */
 					.fixed.inset-0:not(#modal-resumo-print) {
 						display: none !important;
@@ -943,27 +949,46 @@ export default function EstoqueReposicionarPage() {
 											});
 										});
 
-										return Array.from(grouped.values()).map((group, idx) => (
-											<div
-												key={idx}
-												className="p-6 bg-slate-50 dark:bg-slate-800 rounded-3xl border border-slate-100 dark:border-slate-700 print:bg-white print:border-black print:p-4 print:rounded-none">
-												<div className="flex items-center gap-2 mb-3">
-													<span className="text-sm font-black text-blue-600 dark:text-blue-400 uppercase tracking-tight print:text-black flex items-center gap-2">
-														{STORE_NAMES[group.from]}
-														<ArrowRight size={16} className="text-blue-400 dark:text-blue-500 print:text-black" />
-														{STORE_NAMES[group.to]}:
-													</span>
-												</div>
-												<p className="text-slate-600 dark:text-slate-300 font-bold text-sm leading-relaxed print:text-black">
-													{group.items.map((item, i) => (
-														<span key={i}>
-															{item.qty} {item.label}
-															{i < group.items.length - 1 ? ", " : ""}
-														</span>
-													))}
-												</p>
-											</div>
-										));
+										const sortedGroups = Array.from(grouped.values()).sort((a, b) => {
+											const order: StoreId[] = ["lago", "terraco", "noroeste", "conjunto"];
+											const fromDiff = order.indexOf(a.from) - order.indexOf(b.from);
+											if (fromDiff !== 0) return fromDiff;
+											return order.indexOf(a.to) - order.indexOf(b.to);
+										});
+
+										return sortedGroups.map((group, idx) => {
+											const prevGroup = idx > 0 ? sortedGroups[idx - 1] : null;
+											const showDivider = prevGroup && prevGroup.from !== group.from;
+
+											return (
+												<Fragment key={idx}>
+													{showDivider && (
+														<>
+															<hr className="my-6 border-t-2 border-dashed border-slate-350 dark:border-slate-700 print:hidden" />
+															<div className="hidden print:block print-divider" />
+														</>
+													)}
+													<div
+														className="p-6 bg-slate-50 dark:bg-slate-800 rounded-3xl border border-slate-100 dark:border-slate-700 print:bg-white print:border-black print:p-4 print:rounded-none">
+														<div className="flex items-center gap-2 mb-3">
+															<span className="text-sm font-black text-blue-600 dark:text-blue-400 uppercase tracking-tight print:text-black flex items-center gap-2">
+																{STORE_NAMES[group.from]}
+																<ArrowRight size={16} className="text-blue-400 dark:text-blue-500 print:text-black" />
+																{STORE_NAMES[group.to]}:
+															</span>
+														</div>
+														<p className="text-slate-600 dark:text-slate-300 font-bold text-sm leading-relaxed print:text-black">
+															{group.items.map((item, i) => (
+																<span key={i}>
+																	{item.qty} {item.label}
+																	{i < group.items.length - 1 ? ", " : ""}
+																</span>
+															))}
+														</p>
+													</div>
+												</Fragment>
+											);
+										});
 									})()}
 								</div>
 							) : (
