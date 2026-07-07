@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { db } from "@/lib/firebase";
 import { collection, onSnapshot } from "firebase/firestore";
 import { STOCK_LABELS, StockData, STORE_NAMES, StoreId, formatDate } from "@/types";
-import { RefreshCw, ArrowLeftRight, Printer, Search } from "lucide-react";
+import { RefreshCw, ArrowLeftRight, Printer, Search, Eye, EyeOff } from "lucide-react";
 
 interface FullStoreData {
 	id: StoreId;
@@ -18,6 +18,7 @@ export default function EstoqueAtualPage() {
 	const [loading, setLoading] = useState(true);
 	const [allData, setAllData] = useState<FullStoreData[]>([]);
 	const [searchTerm, setSearchTerm] = useState("");
+	const [hideOpen, setHideOpen] = useState(false);
 
 	const rotateStores = () => {
 		setAllData((prev) => {
@@ -183,6 +184,13 @@ export default function EstoqueAtualPage() {
 				</div>
 
 				<button
+					onClick={() => setHideOpen(!hideOpen)}
+					className="flex items-center gap-3 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-800 px-6 py-3 rounded-2xl font-black shadow-sm transition-all cursor-pointer text-sm">
+					{hideOpen ? <Eye size={18} /> : <EyeOff size={18} />}
+					{hideOpen ? "MOSTRAR ABERTOS" : "OCULTAR ABERTOS"}
+				</button>
+
+				<button
 					onClick={() => window.print()}
 					className="flex items-center gap-3 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-2xl font-black shadow-lg shadow-blue-100 dark:shadow-none transition-all cursor-pointer text-sm">
 					<Printer size={18} />
@@ -241,18 +249,18 @@ export default function EstoqueAtualPage() {
 														key={store.id}
 														className="p-6 text-center border-l border-slate-100 dark:border-slate-800">
 														<div className="flex justify-center items-center">
-															{qty > 0 || openCount === 0 ? (
+															{qty > 0 || openCount === 0 || hideOpen ? (
 																<span
 																	className={`pr-2 text-2xl font-black ${
-																		qty === 0 && openCount === 0
+																		qty === 0 && (openCount === 0 || hideOpen)
 																			? "text-slate-300 dark:text-slate-400"
 																			: "text-slate-900 dark:text-slate-100"
 																	}`}>
 																	{qty}
 																</span>
 															) : null}
-															{openCount > 0 && (
-																<span className="text-2xl font-black text-slate-300 whitespace-nowrap">
+															{!hideOpen && openCount > 0 && (
+																<span className="text-2xl font-black text-slate-400 dark:text-slate-500 whitespace-nowrap">
 																	{qty > 0 ? `+ ${openCount} ab.` : `${openCount} ab.`}
 																</span>
 															)}
