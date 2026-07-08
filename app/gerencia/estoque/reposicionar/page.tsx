@@ -14,6 +14,7 @@ import {
 	doc,
 	collectionGroup,
 	limit,
+	addDoc,
 } from "firebase/firestore";
 import {
 	STOCK_LABELS,
@@ -85,6 +86,16 @@ export default function EstoqueReposicionarPage() {
 	const [searchTerm, setSearchTerm] = useState("");
 	const [isPrintingChecklist, setIsPrintingChecklist] = useState(false);
 	const [hideOpen, setHideOpen] = useState(false);
+
+	const [startingRepo, setStartingRepo] = useState(false);
+	const isSavedThisRun = useRef(false);
+
+	// Sempre que houver qualquer modificação na projeção de estoque ou nas transferências, invalidar o status de salvo.
+	useEffect(() => {
+		if (isInitialized.current) {
+			isSavedThisRun.current = false;
+		}
+	}, [itemTransfers, projectedStocks]);
 
 	// Load from localStorage on mount
 	useEffect(() => {
@@ -161,19 +172,62 @@ export default function EstoqueReposicionarPage() {
 		setShowResetConfirm(true);
 	};
 
-	const confirmResetProjectedStocks = () => {
-		const initialProjected: any = {};
-		allData.forEach((store) => {
-			initialProjected[store.id] = { ...store.stock };
-		});
-		setProjectedStocks(initialProjected);
+	const confirmResetProjectedStocks = async () => {
+		setStartingRepo(true);
+		try {
+			const newSessionId = doc(collection(db, "unused")).id;
+			localStorage.setItem("repos_session_id", newSessionId);
 
-		const resetTransfers: any = {};
-		Object.keys(STOCK_LABELS).forEach((key) => {
-			resetTransfers[key] = { from: "lago", to: "conjunto", qty: 0 };
-		});
-		setItemTransfers(resetTransfers);
-		setShowResetConfirm(false);
+			// Salva a versão do estoque no início do reposicionamento (antes de qualquer alteração)
+			const startState = {
+				sessionId: newSessionId,
+				type: "inicio",
+				timestamp: Timestamp.now(),
+				stores: {
+					lago: {
+						stock: allData.find((d) => d.id === "lago")?.stock || {},
+						isUnits: allData.find((d) => d.id === "lago")?.isUnits || {},
+					},
+					conjunto: {
+						stock: allData.find((d) => d.id === "conjunto")?.stock || {},
+						isUnits: allData.find((d) => d.id === "conjunto")?.isUnits || {},
+					},
+					terraco: {
+						stock: allData.find((d) => d.id === "terraco")?.stock || {},
+						isUnits: allData.find((d) => d.id === "terraco")?.isUnits || {},
+					},
+					noroeste: {
+						stock: allData.find((d) => d.id === "noroeste")?.stock || {},
+						isUnits: allData.find((d) => d.id === "noroeste")?.isUnits || {},
+					},
+				},
+			};
+			await addDoc(collection(db, "repositionSnapshots"), startState);
+
+			const initialProjected: any = {};
+			allData.forEach((store) => {
+				initialProjected[store.id] = { ...store.stock };
+			});
+			setProjectedStocks(initialProjected);
+
+			const resetTransfers: any = {};
+			Object.keys(STOCK_LABELS).forEach((key) => {
+				resetTransfers[key] = { from: "lago", to: "conjunto", qty: 0 };
+			});
+			setItemTransfers(resetTransfers);
+			
+			// Limpar localStorage para alinhar com o novo início
+			localStorage.removeItem("repos_projected_stocks");
+			localStorage.removeItem("repos_item_transfers");
+			isSavedThisRun.current = false;
+
+			setShowResetConfirm(false);
+		} catch (error) {
+			console.error("Erro ao salvar estado inicial de reposicionamento:", error);
+			alert("Erro ao iniciar reposicionamento no banco de dados. Tente novamente.");
+		} finally {
+			setStartingRepo(false);
+		}
 	};
 
 	const applyMovement = (key: keyof StockData) => {
@@ -257,15 +311,20 @@ export default function EstoqueReposicionarPage() {
 		return movements;
 	};
 
-	const saveReposition = async () => {
+	const finalizeReposition = async () => {
+		const optimizedMovements = calculateOptimizedSummary();
+		if (optimizedMovements.length === 0) {
+			alert("Não há movimentações para finalizar.");
+			return;
+		}
+
+		if (isSavedThisRun.current) {
+			setShowSummary(true);
+			return;
+		}
+
 		setSavingRepos(true);
 		try {
-			const optimizedMovements = calculateOptimizedSummary();
-			if (optimizedMovements.length === 0) {
-				alert("Não há movimentações para salvar.");
-				setSavingRepos(false);
-				return false;
-			}
 			await runTransaction(db, async (transaction) => {
 				for (const move of optimizedMovements) {
 					const newId = doc(collection(db, "unused")).id;
@@ -284,12 +343,40 @@ export default function EstoqueReposicionarPage() {
 					transaction.set(doc(db, "stores", move.to, "repositions", newId), historyEntry);
 				}
 			});
-			// Removido o alert de sucesso para não interromper o fluxo de WhatsApp/Impressão
-			return true;
+
+			// Salva a versão final do estoque de todas as lojas para futuras comparações
+			const currentSessionId = localStorage.getItem("repos_session_id") || doc(collection(db, "unused")).id;
+			const endState = {
+				sessionId: currentSessionId,
+				type: "fim",
+				timestamp: Timestamp.now(),
+				stores: {
+					lago: {
+						stock: projectedStocks.lago,
+						isUnits: allData.find((d) => d.id === "lago")?.isUnits || {},
+					},
+					conjunto: {
+						stock: projectedStocks.conjunto,
+						isUnits: allData.find((d) => d.id === "conjunto")?.isUnits || {},
+					},
+					terraco: {
+						stock: projectedStocks.terraco,
+						isUnits: allData.find((d) => d.id === "terraco")?.isUnits || {},
+					},
+					noroeste: {
+						stock: projectedStocks.noroeste,
+						isUnits: allData.find((d) => d.id === "noroeste")?.isUnits || {},
+					},
+				},
+			};
+			await addDoc(collection(db, "repositionSnapshots"), endState);
+			localStorage.removeItem("repos_session_id");
+
+			isSavedThisRun.current = true;
+			setShowSummary(true);
 		} catch (error) {
-			console.error("Erro ao salvar reposicionamento:", error);
+			console.error("Erro ao finalizar reposicionamento:", error);
 			alert("Erro ao salvar no histórico. Verifique o console.");
-			return false;
 		} finally {
 			setSavingRepos(false);
 		}
@@ -497,7 +584,7 @@ export default function EstoqueReposicionarPage() {
 				@media print {
 					@page {
 						size: A4;
-						margin: 15mm;
+						margin: 10mm;
 					}
 					* {
 						-webkit-print-color-adjust: exact !important;
@@ -505,12 +592,17 @@ export default function EstoqueReposicionarPage() {
 						color-adjust: exact !important;
 						font-weight: normal !important;
 					}
+					html, body, #__next, [data-reactroot] {
+						height: auto !important;
+						min-height: 0 !important;
+						overflow: visible !important;
+					}
 					body {
 						background: white !important;
 						color: black !important;
 						font-family: "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
 						overflow: visible !important;
-						padding: 15mm !important; /* Força margem interna mesmo que a impressora esteja em 'sem margens' */
+						padding: 10mm !important;
 					}
 					main {
 						padding: 0 !important;
@@ -579,8 +671,8 @@ export default function EstoqueReposicionarPage() {
 						margin-bottom: 2px !important;
 					}
 					.print-divider {
-						border-top: 1.5pt solid black !important;
-						margin: 15px 0 !important;
+						border-top: 0.5pt solid black !important;
+						margin: 8px 0 !important;
 						display: block !important;
 						height: 0 !important;
 					}
@@ -625,7 +717,7 @@ export default function EstoqueReposicionarPage() {
 						Reposicionamento
 					</h2>
 					<p className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">
-						Movimente itens entre as unidades
+						Movimente pacotes entre as lojas
 					</p>
 				</div>
 				<div className="flex items-center gap-3">
@@ -633,13 +725,14 @@ export default function EstoqueReposicionarPage() {
 						onClick={resetProjectedStocks}
 						className="cursor-pointer flex items-center gap-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-green-700 dark:text-green-500 px-5 py-2.5 rounded-xl font-black transition-all border border-slate-200 dark:border-slate-700 uppercase tracking-widest">
 						<RefreshCw size={14} />
-						Zerar e Mostrar Estoque Atual
+						Iniciar reposicionamento
 					</button>
 					<button
-						onClick={() => setShowSummary(true)}
-						className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-xl font-black shadow-md shadow-blue-100 dark:shadow-none transition-all cursor-pointer uppercase tracking-widest">
-						<Save size={14} />
-						Gerar Resumo
+						onClick={finalizeReposition}
+						disabled={savingRepos}
+						className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white px-5 py-2.5 rounded-xl font-black shadow-md shadow-blue-100 dark:shadow-none transition-all cursor-pointer uppercase tracking-widest">
+						{savingRepos ? <RefreshCw className="animate-spin" size={14} /> : <Save size={14} />}
+						{savingRepos ? "Finalizando..." : "Finalizar Reposicionamento"}
 					</button>
 				</div>
 			</div>
@@ -1003,34 +1096,22 @@ export default function EstoqueReposicionarPage() {
 						<div className="p-8 bg-slate-50 dark:bg-slate-800/50 border-t border-slate-100 dark:border-slate-800 flex flex-col gap-4 transition-colors print:hidden">
 							<div className="flex flex-wrap gap-4 w-full">
 								<button
-									onClick={async () => {
-										const success = await saveReposition();
-										if (success) handleWhatsApp();
-									}}
-									disabled={calculateOptimizedSummary().length === 0 || savingRepos}
+									onClick={handleWhatsApp}
+									disabled={calculateOptimizedSummary().length === 0}
 									className="flex-1 min-w-[11.25rem] flex items-center justify-center gap-3 bg-emerald-500 hover:bg-emerald-600 text-white px-6 py-4 rounded-2xl font-black text-[0.75rem] uppercase tracking-widest shadow-lg shadow-emerald-100 dark:shadow-none transition-all disabled:opacity-50 cursor-pointer">
-									
 									Enviar no WhatsApp
 								</button>
 								<button
-									onClick={async () => {
-										const success = await saveReposition();
-										if (success) handlePrint();
-									}}
-									disabled={calculateOptimizedSummary().length === 0 || savingRepos}
+									onClick={handlePrint}
+									disabled={calculateOptimizedSummary().length === 0}
 									className="flex-1 min-w-[11.25rem] flex items-center justify-center gap-3 bg-blue-600 hover:bg-blue-700 text-white px-6 py-4 rounded-2xl font-black text-[0.75rem] uppercase tracking-widest shadow-lg shadow-blue-100 dark:shadow-none transition-all disabled:opacity-50 cursor-pointer">
-									
-									IMPRIMIR RESUMO
+									Imprimir Reposicionamento
 								</button>
 								<button
-									onClick={async () => {
-										const success = await saveReposition();
-										if (success) handlePrintChecklist();
-									}}
-									disabled={calculateOptimizedSummary().length === 0 || savingRepos}
+									onClick={handlePrintChecklist}
+									disabled={calculateOptimizedSummary().length === 0}
 									className="flex-1 min-w-[11.25rem] flex items-center justify-center gap-3 bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-4 rounded-2xl font-black text-[0.75rem] uppercase tracking-widest shadow-lg shadow-indigo-100 dark:shadow-none transition-all disabled:opacity-50 cursor-pointer">
-									
-									Imprimir Checagem Vendedores
+									Imprimir Conferência
 								</button>
 							</div>
 							<button
@@ -1067,16 +1148,30 @@ export default function EstoqueReposicionarPage() {
 					<div className="bg-white dark:bg-slate-900 rounded-[2rem] w-full max-w-md shadow-2xl overflow-hidden flex flex-col border border-blue-200 dark:border-blue-900/30">
 						<div className="p-8 text-center space-y-4">
 							<div className="mx-auto w-16 h-16 bg-blue-100 dark:bg-blue-900/20 rounded-full flex items-center justify-center">
-								<RefreshCw className="text-blue-600 dark:text-blue-400" size={32} />
+								{startingRepo ? (
+									<RefreshCw className="text-blue-600 dark:text-blue-400 animate-spin" size={32} />
+								) : (
+									<RefreshCw className="text-blue-600 dark:text-blue-400" size={32} />
+								)}
 							</div>
-							<h3 className="text-xl font-black text-slate-800 dark:text-slate-200 tracking-tight">Redefinir Estoque</h3>
+							<h3 className="text-xl font-black text-slate-800 dark:text-slate-200 tracking-tight">Iniciar Reposicionamento</h3>
 							<p className="text-slate-500 dark:text-slate-400 font-bold text-md leading-relaxed">
-								Deseja redefinir todas as quantidades baseadas no estoque atual? Todas as movimentações pendentes serão zeradas e as quantidades refletirão o estoque atual informado pelas lojas.
+								Qualquer movimentação será zerada e o estoque será atualizado para o estoque atual informado pelas lojas.
 							</p>
 						</div>
 						<div className="p-6 bg-slate-50 dark:bg-slate-800/50 border-t border-slate-100 dark:border-slate-800 flex gap-3">
-							<button onClick={() => setShowResetConfirm(false)} className="flex-1 px-6 py-4 rounded-2xl font-black text-[0.75rem] uppercase tracking-widest text-slate-500 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-800 transition-all border border-transparent hover:border-slate-200 dark:hover:border-slate-700">Cancelar</button>
-							<button onClick={confirmResetProjectedStocks} className="flex-1 px-6 py-4 rounded-2xl font-black text-[0.75rem] uppercase tracking-widest bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-100 dark:shadow-none transition-all">Confirmar</button>
+							<button 
+								onClick={() => setShowResetConfirm(false)} 
+								disabled={startingRepo}
+								className="flex-1 px-6 py-4 rounded-2xl font-black text-[0.75rem] uppercase tracking-widest bg-red-600 hover:bg-red-700 text-white shadow-lg disabled:opacity-50 cursor-pointer text-center">
+								Cancelar
+							</button>
+							<button 
+								onClick={confirmResetProjectedStocks} 
+								disabled={startingRepo}
+								className="flex-1 px-6 py-4 rounded-2xl font-black text-[0.75rem] uppercase tracking-widest bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg disabled:opacity-50 cursor-pointer text-center">
+								{startingRepo ? "Iniciando..." : "Prosseguir"}
+							</button>
 						</div>
 					</div>
 				</div>
