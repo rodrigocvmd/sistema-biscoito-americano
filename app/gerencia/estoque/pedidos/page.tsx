@@ -418,6 +418,9 @@ export default function EstoquePedidosPage() {
 												</button>
 											</div>
 										</th>
+										<th className="p-6 text-center text-[0.75rem] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest sticky left-[11.25rem] bg-slate-50 dark:bg-slate-800 border-l border-r border-slate-200 dark:border-slate-700 z-20 min-w-[9.375rem]">
+											SALDO GERAL (4 LOJAS)
+										</th>
 										{allData.map((store) => (
 											<th
 												key={store.id}
@@ -444,6 +447,39 @@ export default function EstoquePedidosPage() {
 													<td className="p-6 text-xl font-black text-slate-600 dark:text-slate-400 sticky left-0 bg-white dark:bg-slate-900 group-hover:bg-blue-50/30 dark:group-hover:bg-blue-900/20 z-10 border-r border-slate-50 dark:border-slate-800 transition-colors uppercase">
 														{label}
 													</td>
+													{(() => {
+														const totalQty = allData.reduce((sum, store) => sum + (store.stock[key] || 0), 0);
+														const totalDesired = allData.reduce((sum, store) => sum + (desiredData[store.id]?.[key] || 0), 0);
+														const totalDiff = totalQty - totalDesired;
+														const hasAnyDesired = allData.some((store) => (desiredData[store.id]?.[key] || 0) > 0);
+
+														return (
+															<td className="p-6 border-l border-r border-slate-100 dark:border-slate-800 text-center sticky left-[11.25rem] bg-white dark:bg-slate-900 group-hover:bg-blue-50/30 dark:group-hover:bg-blue-900/20 z-10 min-w-[9.375rem] transition-colors">
+																{hasAnyDesired ? (
+																	<div className="flex flex-col items-center gap-1">
+																		<span className="text-2xl font-black text-slate-800 dark:text-slate-200">
+																			{totalQty} / {totalDesired}
+																		</span>
+																		{totalDiff < 0 ? (
+																			<span className="px-2.5 py-0.5 rounded-full bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 font-extrabold whitespace-nowrap text-lg border border-rose-100 dark:border-rose-900/50">
+																				Faltando {Math.abs(totalDiff)}
+																			</span>
+																		) : totalDiff > 0 ? (
+																			<span className="px-2.5 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 font-extrabold whitespace-nowrap text-lg border border-emerald-100 dark:border-emerald-900/50">
+																				Sobrando {totalDiff}
+																			</span>
+																		) : (
+																			<span className="px-2.5 py-0.5 rounded-full bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 font-extrabold whitespace-nowrap text-xs border border-blue-100 dark:border-blue-900/50">
+																				Ideal
+																			</span>
+																		)}
+																	</div>
+																) : (
+																	<span className="text-slate-300 dark:text-slate-650 font-black">-</span>
+																)}
+															</td>
+														);
+													})()}
 													{allData.map((store) => {
 														const qty = store.stock[key] || 0;
 														const openVal = store.isUnits?.[key];
