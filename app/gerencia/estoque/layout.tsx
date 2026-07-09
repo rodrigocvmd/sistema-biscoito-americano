@@ -52,6 +52,7 @@ export default function EstoqueLayout({ children }: { children: React.ReactNode 
 	const tabs = [
 		{ id: "atual", label: "ESTOQUE ATUAL", href: "/gerencia/estoque/atual" },
 		{ id: "reposicionar", label: "REPOSICIONAR", href: "/gerencia/estoque/reposicionar" },
+		{ id: "pedidos", label: "PEDIDOS", href: "/gerencia/estoque/pedidos" },
 		{ id: "comparativo", label: "HISTÓRICO", href: "/gerencia/estoque/comparativo" },
 		{ id: "historico", label: "MOVIMENTAÇÕES", href: "/gerencia/estoque/historico" },
 	];
