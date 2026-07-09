@@ -2,9 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { db } from "@/lib/firebase";
-import { collection, onSnapshot, getDocs, query, orderBy, where, limit } from "firebase/firestore";
+import { collection, onSnapshot, getDocs, query, limit, doc, setDoc } from "firebase/firestore";
 import { STOCK_LABELS, StockData, STORE_NAMES, StoreId, formatDate } from "@/types";
-import { RefreshCw, ArrowLeftRight, Printer, Search, Eye, EyeOff, ChevronDown } from "lucide-react";
+import { RefreshCw, ArrowLeftRight, Printer, Search, Eye, EyeOff, ChevronDown, Save, FileText, Settings } from "lucide-react";
 
 interface FullStoreData {
 	id: StoreId;
@@ -29,6 +29,7 @@ interface RepositionSnapshotDoc {
 }
 
 export default function EstoquePedidosPage() {
+	const [activeSubTab, setActiveSubTab] = useState<"comparativo" | "desejavel">("comparativo");
 	const [loading, setLoading] = useState(true);
 	const [allData, setAllData] = useState<FullStoreData[]>([]);
 	const [realCurrentData, setRealCurrentData] = useState<FullStoreData[]>([]);
@@ -36,6 +37,21 @@ export default function EstoquePedidosPage() {
 	const [selectedSessionId, setSelectedSessionId] = useState<string>("atual");
 	const [searchTerm, setSearchTerm] = useState("");
 	const [hideOpen, setHideOpen] = useState(false);
+
+	// Desired Stock States
+	const [desiredData, setDesiredData] = useState<Record<StoreId, Partial<StockData>>>({
+		conjunto: {},
+		terraco: {},
+		lago: {},
+		noroeste: {},
+	});
+	const [localDesired, setLocalDesired] = useState<Record<StoreId, Partial<StockData>>>({
+		conjunto: {},
+		terraco: {},
+		lago: {},
+		noroeste: {},
+	});
+	const [savingDesired, setSavingDesired] = useState(false);
 
 	const rotateStores = () => {
 		setAllData((prev) => {
@@ -100,7 +116,6 @@ export default function EstoquePedidosPage() {
 					...doc.data(),
 				})) as RepositionSnapshotDoc[];
 				
-				// Filter and sort in-memory to avoid needing a composite Firebase index
 				const finishedSessions = docs
 					.filter((d) => d.type === "fim")
 					.sort((a, b) => b.timestamp.toMillis() - a.timestamp.toMillis());
@@ -113,7 +128,29 @@ export default function EstoquePedidosPage() {
 		fetchSessions();
 	}, []);
 
-	// 3. Update table data based on selection
+	// 3. Fetch desired stocks
+	useEffect(() => {
+		const unsubscribeDesired = onSnapshot(collection(db, "desiredStocks"), (snapshot) => {
+			const desiredMap: Record<StoreId, Partial<StockData>> = {
+				conjunto: {},
+				terraco: {},
+				lago: {},
+				noroeste: {},
+			};
+			snapshot.docs.forEach((doc) => {
+				const storeId = doc.id as StoreId;
+				if (desiredMap[storeId]) {
+					desiredMap[storeId] = doc.data().stock || {};
+				}
+			});
+			setDesiredData(desiredMap);
+			setLocalDesired(JSON.parse(JSON.stringify(desiredMap)));
+		});
+
+		return () => unsubscribeDesired();
+	}, []);
+
+	// 4. Update table data based on selection
 	useEffect(() => {
 		if (selectedSessionId === "atual") {
 			setAllData((currentData) => {
@@ -149,6 +186,35 @@ export default function EstoquePedidosPage() {
 			}
 		}
 	}, [selectedSessionId, realCurrentData, sessions]);
+
+	// Save Desired Stock
+	const saveDesiredStocks = async () => {
+		setSavingDesired(true);
+		try {
+			const storeIds = Object.keys(STORE_NAMES) as StoreId[];
+			for (const storeId of storeIds) {
+				const docRef = doc(db, "desiredStocks", storeId);
+				await setDoc(docRef, { stock: localDesired[storeId] || {} }, { merge: true });
+			}
+			alert("Quantidades desejáveis salvas com sucesso!");
+		} catch (error) {
+			console.error("Erro ao salvar quantidades desejáveis:", error);
+			alert("Erro ao salvar. Verifique o console.");
+		} finally {
+			setSavingDesired(false);
+		}
+	};
+
+	const handleLocalDesiredChange = (storeId: StoreId, itemKey: keyof StockData, value: string) => {
+		const numValue = value === "" ? 0 : Math.max(0, parseInt(value, 10) || 0);
+		setLocalDesired((prev) => ({
+			...prev,
+			[storeId]: {
+				...prev[storeId],
+				[itemKey]: numValue,
+			},
+		}));
+	};
 
 	if (loading) {
 		return (
@@ -246,150 +312,288 @@ export default function EstoquePedidosPage() {
 				}}
 			/>
 
-			<div className="hidden print:block">
-				<h1 className="text-2xl font-black uppercase">
-					Relatório de Estoque (Pedidos) - {selectedSessionId === "atual" ? "Atual Real" : "Projetado"} - {new Date().toLocaleDateString("pt-BR")}
-				</h1>
+			{/* Sub-tabs Selector */}
+			<div className="flex items-center gap-2 border-b border-slate-200 dark:border-slate-800 pb-3 mb-6 print:hidden">
+				<button
+					onClick={() => setActiveSubTab("comparativo")}
+					className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-black transition-all cursor-pointer ${
+						activeSubTab === "comparativo"
+							? "bg-slate-105 dark:bg-slate-800 text-blue-600 dark:text-blue-400 border border-slate-200 dark:border-slate-700"
+							: "text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-900"
+					}`}>
+					<FileText size={16} />
+					COMPARATIVO DE ESTOQUE
+				</button>
+				<button
+					onClick={() => setActiveSubTab("desejavel")}
+					className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-black transition-all cursor-pointer ${
+						activeSubTab === "desejavel"
+							? "bg-slate-105 dark:bg-slate-800 text-blue-600 dark:text-blue-400 border border-slate-200 dark:border-slate-700"
+							: "text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-900"
+					}`}>
+					<Settings size={16} />
+					ESTOQUE DESEJÁVEL (METAS)
+				</button>
 			</div>
 
-			{/* Actions Bar: Filter, Select & Print */}
-			<div className="flex flex-wrap items-center justify-between gap-4 print:hidden">
-				<div className="flex flex-wrap items-center gap-4 flex-1 min-w-[18.75rem]">
-					{/* Dropdown Select */}
-					<div className="flex flex-col gap-1 min-w-[260px]">
-						<span className="text-[0.75rem] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest ml-1">Estoque após Reposicionamento</span>
-						<div className="relative group">
-							<select
-								value={selectedSessionId}
-								onChange={(e) => setSelectedSessionId(e.target.value)}
-								className="appearance-none w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl py-3 pl-4 pr-10 text-sm font-black text-slate-700 dark:text-slate-200 cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all shadow-sm">
-								<option value="atual">Estoque Atual Real</option>
-								{sessions.map((s) => (
-									<option key={s.id || s.sessionId} value={s.sessionId || s.id}>
-										{formatHistoryLabel(s.timestamp.toDate())}
-									</option>
-								))}
-							</select>
-							<ChevronDown size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 group-hover:text-blue-500 pointer-events-none transition-colors" />
+			{activeSubTab === "comparativo" ? (
+				<>
+					<div className="hidden print:block">
+						<h1 className="text-2xl font-black uppercase">
+							Relatório de Estoque (Pedidos) - {selectedSessionId === "atual" ? "Atual Real" : "Projetado"} - {new Date().toLocaleDateString("pt-BR")}
+						</h1>
+					</div>
+
+					{/* Actions Bar: Filter, Select & Print */}
+					<div className="flex flex-wrap items-center justify-between gap-4 print:hidden mb-6">
+						<div className="flex flex-wrap items-center gap-4 flex-1 min-w-[18.75rem]">
+							{/* Dropdown Select */}
+							<div className="flex flex-col gap-1 min-w-[260px]">
+								<span className="text-[0.75rem] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest ml-1">Estoque após Reposicionamento</span>
+								<div className="relative group">
+									<select
+										value={selectedSessionId}
+										onChange={(e) => setSelectedSessionId(e.target.value)}
+										className="appearance-none w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl py-3 pl-4 pr-10 text-sm font-black text-slate-700 dark:text-slate-200 cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all shadow-sm">
+										<option value="atual">Estoque Atual Real</option>
+										{sessions.map((s) => (
+											<option key={s.id || s.sessionId} value={s.sessionId || s.id}>
+												{formatHistoryLabel(s.timestamp.toDate())}
+											</option>
+										))}
+									</select>
+									<ChevronDown size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 group-hover:text-blue-500 pointer-events-none transition-colors" />
+								</div>
+							</div>
+
+							{/* Filter Sabor */}
+							<div className="flex flex-col gap-1 flex-1 min-w-[200px]">
+								<span className="text-[0.75rem] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest ml-1">Filtrar Sabor</span>
+								<div className="relative group">
+									<Search
+										size={18}
+										className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-500 transition-colors"
+									/>
+									<input
+										type="text"
+										placeholder="Filtrar por sabor..."
+										value={searchTerm}
+										onChange={(e) => setSearchTerm(e.target.value)}
+										className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl py-3 pl-12 pr-4 text-sm font-bold text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all shadow-sm"
+									/>
+								</div>
+							</div>
+						</div>
+
+						<div className="flex items-end gap-3 self-end">
+							<button
+								onClick={() => setHideOpen(!hideOpen)}
+								className="flex items-center gap-3 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-800 px-6 py-3 rounded-2xl font-black shadow-sm transition-all cursor-pointer text-sm">
+								{hideOpen ? <Eye size={18} /> : <EyeOff size={18} />}
+								{hideOpen ? "MOSTRAR ABERTOS" : "OCULTAR ABERTOS"}
+							</button>
+
+							<button
+								onClick={() => window.print()}
+								className="flex items-center gap-3 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-2xl font-black shadow-lg shadow-blue-100 dark:shadow-none transition-all cursor-pointer text-sm">
+								<Printer size={18} />
+								IMPRIMIR TABELA
+							</button>
 						</div>
 					</div>
 
-					{/* Filter Sabor */}
-					<div className="flex flex-col gap-1 flex-1 min-w-[200px]">
-						<span className="text-[0.75rem] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest ml-1">Filtrar Sabor</span>
-						<div className="relative group">
+					<div className="bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden transition-colors">
+						<div className="overflow-x-auto">
+							<table className="w-full border-collapse">
+								<thead>
+									<tr className="bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700">
+										<th className="p-6 text-left text-[0.9375rem] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest sticky left-0 bg-slate-50 dark:bg-slate-800 z-20 min-w-[11.25rem]">
+											<div className="flex items-center gap-9">
+												ITEM
+												<button
+													onClick={rotateStores}
+													className="cursor-pointer p-2 bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-xl hover:bg-blue-600 dark:hover:bg-blue-500 hover:text-white transition-all shadow-sm print:hidden"
+													title="Mover primeira loja para o final">
+													<ArrowLeftRight size={22} />
+												</button>
+											</div>
+										</th>
+										{allData.map((store) => (
+											<th
+												key={store.id}
+												className="p-6 text-center text-[0.6875rem] font-black text-blue-600 dark:text-blue-400 tracking-widest border-l border-slate-200 dark:border-slate-700 min-w-[8.75rem]">
+												<div className="flex flex-col items-center gap-2">
+													<span className="text-[0.87rem] font-extrabold text-slate-600 dark:text-slate-400 bg-white dark:bg-slate-900 px-3 py-1 rounded-full border border-slate-100 dark:border-slate-700 whitespace-nowrap">
+														{formatDate(store.lastStockUpdate)}
+													</span>
+													<span className="leading-tight text-2xl">{store.name}</span>
+												</div>
+											</th>
+										))}
+									</tr>
+								</thead>
+								<tbody>
+									{[...(Object.entries(STOCK_LABELS) as [keyof StockData, string][])]
+										.sort((a, b) => a[1].localeCompare(b[1]))
+										.filter(([_, label]) => label.toLowerCase().includes(searchTerm.toLowerCase()))
+										.map(([key, label]) => {
+											return (
+												<tr
+													key={key}
+													className="border-b border-slate-100 dark:border-slate-800 hover:bg-blue-50/30 dark:hover:bg-blue-900/20 transition-colors group">
+													<td className="p-6 text-xl font-black text-slate-600 dark:text-slate-400 sticky left-0 bg-white dark:bg-slate-900 group-hover:bg-blue-50/30 dark:group-hover:bg-blue-900/20 z-10 border-r border-slate-50 dark:border-slate-800 transition-colors uppercase">
+														{label}
+													</td>
+													{allData.map((store) => {
+														const qty = store.stock[key] || 0;
+														const openVal = store.isUnits?.[key];
+														const openCount = typeof openVal === "boolean" ? (openVal ? 1 : 0) : openVal || 0;
+														const desiredQty = desiredData[store.id]?.[key] || 0;
+														const diff = qty - desiredQty;
+														const hasDesired = desiredQty > 0;
+
+														return (
+															<td
+																key={store.id}
+																className="p-6 border-l border-slate-100 dark:border-slate-800 text-center">
+																<div className="flex flex-col items-center gap-1.5">
+																	<div className="flex justify-center items-center">
+																		{qty > 0 || openCount === 0 || hideOpen ? (
+																			<span
+																				className={`pr-2 text-2xl font-black ${
+																					qty === 0 && (openCount === 0 || hideOpen)
+																						? "text-slate-300 dark:text-slate-400"
+																						: "text-slate-900 dark:text-slate-100"
+																				}`}>
+																				{qty}
+																			</span>
+																		) : null}
+																		{!hideOpen && openCount > 0 && (
+																			<span className="text-2xl font-black text-slate-400 dark:text-slate-500 whitespace-nowrap">
+																				{qty > 0 ? `+ ${openCount} ab` : `${openCount} ab`}
+																			</span>
+																		)}
+																	</div>
+																	
+																	{/* Desired Stock Comparison Badge */}
+																	{hasDesired && (
+																		<div className="flex flex-col items-center text-[1.1rem] font-bold">
+																			<span className="text-slate-400 dark:text-slate-200">Meta: {desiredQty}</span>
+																			{diff < 0 ? (
+																				<span className="mt-1 px-2.5 py-0.5 rounded-full bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 font-extrabold whitespace-nowrap border border-rose-100 dark:border-rose-900/50">
+																					Faltando {Math.abs(diff)}
+																				</span>
+																			) : diff > 0 ? (
+																				<span className="mt-1 px-2.5 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 font-extrabold whitespace-nowrap border border-emerald-100 dark:border-emerald-900/50">
+																					Sobrando {diff}
+																				</span>
+																			) : (
+																				<span className="mt-1 px-2.5 py-0.5 rounded-full bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 font-extrabold whitespace-nowrap border border-blue-100 dark:border-blue-900/50">
+																					Ideal
+																				</span>
+																			)}
+																		</div>
+																	)}
+																</div>
+															</td>
+														);
+													})}
+												</tr>
+											);
+										})}
+								</tbody>
+							</table>
+						</div>
+					</div>
+				</>
+			) : (
+				// Desired Stock Configuration View
+				<div className="space-y-6">
+					<div className="flex items-center justify-between gap-4">
+						<div className="relative flex-1 max-w-md group">
 							<Search
 								size={18}
 								className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-500 transition-colors"
 							/>
 							<input
 								type="text"
-								placeholder="Filtrar por sabor..."
+								placeholder="Filtrar sabor..."
 								value={searchTerm}
 								onChange={(e) => setSearchTerm(e.target.value)}
 								className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl py-3 pl-12 pr-4 text-sm font-bold text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all shadow-sm"
 							/>
 						</div>
+
+						<button
+							onClick={saveDesiredStocks}
+							disabled={savingDesired}
+							className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white px-6 py-3 rounded-2xl font-black shadow-lg shadow-blue-100 dark:shadow-none transition-all cursor-pointer text-sm">
+							{savingDesired ? (
+								<RefreshCw className="animate-spin" size={18} />
+							) : (
+								<Save size={18} />
+							)}
+							SALVAR METAS
+						</button>
+					</div>
+
+					<div className="bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden transition-colors">
+						<div className="overflow-x-auto">
+							<table className="w-full border-collapse">
+								<thead>
+									<tr className="bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700">
+										<th className="p-6 text-left text-[0.9375rem] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest sticky left-0 bg-slate-50 dark:bg-slate-800 z-20 min-w-[11.25rem]">
+											ITEM
+										</th>
+										{Object.keys(STORE_NAMES).map((id) => (
+											<th
+												key={id}
+												className="p-6 text-center text-lg font-black text-slate-600 dark:text-slate-300 border-l border-slate-200 dark:border-slate-700 min-w-[8.75rem]">
+												{STORE_NAMES[id as StoreId]}
+											</th>
+										))}
+									</tr>
+								</thead>
+								<tbody>
+									{[...(Object.entries(STOCK_LABELS) as [keyof StockData, string][])]
+										.sort((a, b) => a[1].localeCompare(b[1]))
+										.filter(([_, label]) => label.toLowerCase().includes(searchTerm.toLowerCase()))
+										.map(([key, label]) => {
+											return (
+												<tr
+													key={key}
+													className="border-b border-slate-100 dark:border-slate-800 hover:bg-blue-50/30 dark:hover:bg-blue-900/20 transition-colors group">
+													<td className="p-6 text-xl font-black text-slate-600 dark:text-slate-400 sticky left-0 bg-white dark:bg-slate-900 group-hover:bg-blue-50/30 dark:group-hover:bg-blue-900/20 z-10 border-r border-slate-50 dark:border-slate-800 transition-colors uppercase">
+														{label}
+													</td>
+													{(Object.keys(STORE_NAMES) as StoreId[]).map((storeId) => {
+														const value = localDesired[storeId]?.[key] ?? "";
+														return (
+															<td
+																key={storeId}
+																className="p-6 border-l border-slate-100 dark:border-slate-800 text-center">
+																<div className="flex justify-center">
+																	<input
+																		type="number"
+																		min="0"
+																		value={value}
+																		placeholder="0"
+																		onChange={(e) => handleLocalDesiredChange(storeId, key, e.target.value)}
+																		className="w-20 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl py-2 px-3 text-center text-lg font-black text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+																	/>
+																</div>
+															</td>
+														);
+													})}
+												</tr>
+											);
+										})}
+								</tbody>
+							</table>
+						</div>
 					</div>
 				</div>
-
-				<div className="flex items-end gap-3 self-end">
-					<button
-						onClick={() => setHideOpen(!hideOpen)}
-						className="flex items-center gap-3 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-800 px-6 py-3 rounded-2xl font-black shadow-sm transition-all cursor-pointer text-sm">
-						{hideOpen ? <Eye size={18} /> : <EyeOff size={18} />}
-						{hideOpen ? "MOSTRAR ABERTOS" : "OCULTAR ABERTOS"}
-					</button>
-
-					<button
-						onClick={() => window.print()}
-						className="flex items-center gap-3 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-2xl font-black shadow-lg shadow-blue-100 dark:shadow-none transition-all cursor-pointer text-sm">
-						<Printer size={18} />
-						IMPRIMIR TABELA
-					</button>
-				</div>
-			</div>
-
-			<div className="bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden transition-colors">
-				<div className="overflow-x-auto">
-					<table className="w-full border-collapse">
-						<thead>
-							<tr className="bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700">
-								<th className="p-6 text-left text-[0.9375rem] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest sticky left-0 bg-slate-50 dark:bg-slate-800 z-20 min-w-[11.25rem]">
-									<div className="flex items-center gap-9">
-										ITEM
-										<button
-											onClick={rotateStores}
-											className="cursor-pointer p-2 bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-xl hover:bg-blue-600 dark:hover:bg-blue-500 hover:text-white transition-all shadow-sm print:hidden"
-											title="Mover primeira loja para o final">
-											<ArrowLeftRight size={22} />
-										</button>
-									</div>
-								</th>
-								{allData.map((store) => (
-									<th
-										key={store.id}
-										className="p-6 text-center text-[0.6875rem] font-black text-blue-600 dark:text-blue-400 tracking-widest border-l border-slate-200 dark:border-slate-700 min-w-[8.75rem]">
-										<div className="flex flex-col items-center gap-2">
-											<span className="text-[0.87rem] font-extrabold text-slate-600 dark:text-slate-400 bg-white dark:bg-slate-900 px-3 py-1 rounded-full border border-slate-100 dark:border-slate-700 whitespace-nowrap">
-												{formatDate(store.lastStockUpdate)}
-											</span>
-											<span className="leading-tight text-2xl">{store.name}</span>
-										</div>
-									</th>
-								))}
-							</tr>
-						</thead>
-						<tbody>
-							{[...(Object.entries(STOCK_LABELS) as [keyof StockData, string][])]
-								.sort((a, b) => a[1].localeCompare(b[1]))
-								.filter(([_, label]) => label.toLowerCase().includes(searchTerm.toLowerCase()))
-								.map(([key, label]) => {
-									return (
-										<tr
-											key={key}
-											className="border-b border-slate-100 dark:border-slate-800 hover:bg-blue-50/30 dark:hover:bg-blue-900/20 transition-colors group">
-											<td className="p-6 text-xl font-black text-slate-600 dark:text-slate-400 sticky left-0 bg-white dark:bg-slate-900 group-hover:bg-blue-50/30 dark:group-hover:bg-blue-900/20 z-10 border-r border-slate-50 dark:border-slate-800 transition-colors uppercase">
-												{label}
-											</td>
-											{allData.map((store) => {
-												const qty = store.stock[key] || 0;
-												const openVal = store.isUnits?.[key];
-												const openCount = typeof openVal === "boolean" ? (openVal ? 1 : 0) : openVal || 0;
-												return (
-													<td
-														key={store.id}
-														className="p-6 text-center border-l border-slate-100 dark:border-slate-800">
-														<div className="flex justify-center items-center">
-															{qty > 0 || openCount === 0 || hideOpen ? (
-																<span
-																	className={`pr-2 text-2xl font-black ${
-																		qty === 0 && (openCount === 0 || hideOpen)
-																			? "text-slate-300 dark:text-slate-400"
-																			: "text-slate-900 dark:text-slate-100"
-																	}`}>
-																	{qty}
-																	{qty > 0 && selectedSessionId !== "atual" && (
-																		<span className="text-xs text-blue-500 font-bold ml-1 print:hidden" title="Estoque projetado">(proj)</span>
-																	)}
-																</span>
-															) : null}
-															{!hideOpen && openCount > 0 && (
-																<span className="text-2xl font-black text-slate-400 dark:text-slate-500 whitespace-nowrap">
-																	{qty > 0 ? `+ ${openCount} aberto` : `${openCount} aberto`}
-																</span>
-															)}
-														</div>
-													</td>
-												);
-											})}
-										</tr>
-									);
-								})}
-						</tbody>
-					</table>
-				</div>
-			</div>
+			)}
 		</>
 	);
 }
