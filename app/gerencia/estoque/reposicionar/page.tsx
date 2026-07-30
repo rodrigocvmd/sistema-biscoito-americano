@@ -694,7 +694,7 @@ export default function EstoqueReposicionarPage() {
 						font-size: 9pt !important;
 						color: black !important;
 					}
-					.border, .border-b, .border-t, .print\\:border-b-2, .print\\:border-black {
+					#modal-resumo-print .border, #modal-resumo-print .border-b, #modal-resumo-print .border-t, .print\\:border-b-2, .print\\:border-black {
 						border: none !important;
 					}
 					.bg-slate-50, .dark\\:bg-slate-800, .bg-white, .dark\\:bg-slate-900 {
@@ -1380,23 +1380,24 @@ export default function EstoqueReposicionarPage() {
 												Saídas (Enviando para outras lojas)
 											</h3>
 											{outgoing.length > 0 ? (
-												<table className="w-full border-collapse">
+												<table className="w-auto border-collapse">
 													<thead>
-														<tr className="border-b border-black text-left text-xs font-bold uppercase">
-															<th className="py-1.5">Sabor / Item</th>
-															<th className="py-1.5 w-14 text-right pr-2">Qtd</th>
+														<tr className="border-b border-slate-300 text-left text-xs font-bold uppercase">
+															<th className="py-1.5 w-8 text-center">Conf.</th>
+															<th className="py-1.5 pr-4">Sabor / Item</th>
+															<th className="py-1.5 pl-4 text-left">Qtd</th>
 														</tr>
 													</thead>
 													<tbody>
 														{outgoing.map((m, idx) => (
 															<tr key={idx} className="border-b border-slate-200">
-																<td className="py-2 font-bold uppercase text-sm align-middle">
-																	<div className="flex items-center gap-3">
-																		<div className="w-5 h-5 border-2 border-black rounded-sm bg-white shrink-0"></div>
-																		<span>{STOCK_LABELS[m.item]}</span>
-																	</div>
+																<td className="py-2 w-8 text-center align-middle">
+																	<div className="w-4 h-4 rounded-sm bg-white mx-auto" style={{ border: "1.5px solid #000" }}></div>
 																</td>
-																<td className="py-2 text-right pr-2 font-black text-base text-black align-middle">
+																<td className="py-2 pr-4 font-bold uppercase text-sm align-middle">
+																	{STOCK_LABELS[m.item]}
+																</td>
+																<td className="py-2 pl-4 text-left font-black text-base text-black align-middle whitespace-nowrap">
 																	{m.qty}
 																</td>
 															</tr>
@@ -1414,23 +1415,24 @@ export default function EstoqueReposicionarPage() {
 												Entradas (Recebendo no estoque)
 											</h3>
 											{incoming.length > 0 ? (
-												<table className="w-full border-collapse">
+												<table className="w-auto border-collapse">
 													<thead>
-														<tr className="border-b border-black text-left text-xs font-bold uppercase">
-															<th className="py-1.5">Sabor / Item</th>
-															<th className="py-1.5 w-14 text-right pr-2">Qtd</th>
+														<tr className="border-b border-slate-300 text-left text-xs font-bold uppercase">
+															<th className="py-1.5 w-8 text-center">Conf.</th>
+															<th className="py-1.5 pr-4">Sabor / Item</th>
+															<th className="py-1.5 pl-4 text-left">Qtd</th>
 														</tr>
 													</thead>
 													<tbody>
 														{incoming.map((m, idx) => (
 															<tr key={idx} className="border-b border-slate-200">
-																<td className="py-2 font-bold uppercase text-sm align-middle">
-																	<div className="flex items-center gap-3">
-																		<div className="w-5 h-5 border-2 border-black rounded-sm bg-white shrink-0"></div>
-																		<span>{STOCK_LABELS[m.item]}</span>
-																	</div>
+																<td className="py-2 w-8 text-center align-middle">
+																	<div className="w-4 h-4 rounded-sm bg-white mx-auto" style={{ border: "1.5px solid #000" }}></div>
 																</td>
-																<td className="py-2 text-right pr-2 font-black text-base text-black align-middle">
+																<td className="py-2 pr-4 font-bold uppercase text-sm align-middle">
+																	{STOCK_LABELS[m.item]}
+																</td>
+																<td className="py-2 pl-4 text-left font-black text-base text-black align-middle whitespace-nowrap">
 																	{m.qty}
 																</td>
 															</tr>
