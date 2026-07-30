@@ -415,13 +415,55 @@ export default function EstoqueReposicionarPage() {
 			});
 		});
 
+		const storeOrder: StoreId[] = ["lago", "noroeste", "conjunto", "terraco"];
+
+		const sortedGroups = Array.from(grouped.values()).sort((a, b) => {
+			const fromDiff = storeOrder.indexOf(a.from) - storeOrder.indexOf(b.from);
+			if (fromDiff !== 0) return fromDiff;
+			return storeOrder.indexOf(a.to) - storeOrder.indexOf(b.to);
+		});
+
 		let text = `*Resumo de Reposicionamento - ${new Date().toLocaleDateString("pt-BR")}*\n\n`;
 
-		Array.from(grouped.values()).forEach((group) => {
+		sortedGroups.forEach((group) => {
 			text += `*${STORE_NAMES[group.from]} → ${STORE_NAMES[group.to]}:*\n`;
 			group.items.forEach((item) => {
 				text += `• ${item.qty} ${item.label}\n`;
 			});
+			text += `\n`;
+		});
+
+		// Saídas totais por loja discriminadas por item/sabor
+		const totalOutputsByStore: Record<StoreId, Map<keyof StockData, number>> = {
+			lago: new Map(),
+			noroeste: new Map(),
+			conjunto: new Map(),
+			terraco: new Map(),
+		};
+
+		movements.forEach((move) => {
+			const storeMap = totalOutputsByStore[move.from];
+			if (storeMap) {
+				const current = storeMap.get(move.item) || 0;
+				storeMap.set(move.item, current + move.qty);
+			}
+		});
+
+		text += `*Saídas Totais por Loja:*\n`;
+		storeOrder.forEach((storeId) => {
+			text += `*${STORE_NAMES[storeId]}:*\n`;
+			const storeMap = totalOutputsByStore[storeId];
+			if (storeMap && storeMap.size > 0) {
+				// Ordenar itens alfabeticamente pelo label para melhor organização
+				const sortedItems = Array.from(storeMap.entries()).sort((a, b) =>
+					STOCK_LABELS[a[0]].localeCompare(STOCK_LABELS[b[0]])
+				);
+				sortedItems.forEach(([itemKey, qty]) => {
+					text += `• ${qty} ${STOCK_LABELS[itemKey]}\n`;
+				});
+			} else {
+				text += `• Nenhuma saída\n`;
+			}
 			text += `\n`;
 		});
 
@@ -584,25 +626,26 @@ export default function EstoqueReposicionarPage() {
 				@media print {
 					@page {
 						size: A4;
-						margin: 10mm;
+						margin: 6mm;
 					}
 					* {
 						-webkit-print-color-adjust: exact !important;
 						print-color-adjust: exact !important;
 						color-adjust: exact !important;
-						font-weight: normal !important;
 					}
 					html, body, #__next, [data-reactroot] {
 						height: auto !important;
 						min-height: 0 !important;
 						overflow: visible !important;
+						margin: 0 !important;
+						padding: 0 !important;
 					}
 					body {
 						background: white !important;
 						color: black !important;
 						font-family: "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
 						overflow: visible !important;
-						padding: 10mm !important;
+						padding: 4mm !important;
 					}
 					main {
 						padding: 0 !important;
@@ -634,20 +677,22 @@ export default function EstoqueReposicionarPage() {
 						padding: 0 !important;
 					}
 					.p-8, .p-6 {
-						padding: 4px !important;
+						padding: 2px !important;
 					}
 					.text-2xl {
-						font-size: 10pt !important;
+						font-size: 13pt !important;
 						text-align: center;
-						margin-bottom: 10px !important;
+						margin-bottom: 6px !important;
 						color: black !important;
+						font-weight: bold !important;
 					}
 					.text-sm, .text-slate-600 {
-						font-size: 8pt !important;
+						font-size: 9.5pt !important;
 						color: black !important;
 					}
-					.font-black, .font-bold {
-						font-weight: normal !important;
+					.text-xs {
+						font-size: 9pt !important;
+						color: black !important;
 					}
 					.border, .border-b, .border-t, .print\\:border-b-2, .print\\:border-black {
 						border: none !important;
@@ -659,20 +704,17 @@ export default function EstoqueReposicionarPage() {
 						padding: 2px 0 !important;
 					}
 					.mb-3, .mb-4, .mb-6, .mb-10 {
-						margin-bottom: 4px !important;
-					}
-					.rounded-3xl, .rounded-\\[2rem\\] {
-						border-radius: 0 !important;
+						margin-bottom: 3px !important;
 					}
 					.space-y-6 > * + * {
 						margin-top: 4px !important;
 					}
-					.mb-3 {
-						margin-bottom: 2px !important;
+					.space-y-4 > * + * {
+						margin-top: 2px !important;
 					}
 					.print-divider {
-						border-top: 0.5pt solid black !important;
-						margin: 8px 0 !important;
+						border-top: 0.5pt solid #666 !important;
+						margin: 4px 0 !important;
 						display: block !important;
 						height: 0 !important;
 					}
@@ -1031,7 +1073,8 @@ export default function EstoqueReposicionarPage() {
 											{ from: StoreId; to: StoreId; items: { label: string; qty: number }[] }
 										>();
 
-										calculateOptimizedSummary().forEach((move) => {
+										const movements = calculateOptimizedSummary();
+										movements.forEach((move) => {
 											const key = `${move.from}-${move.to}`;
 											if (!grouped.has(key)) {
 												grouped.set(key, { from: move.from, to: move.to, items: [] });
@@ -1042,46 +1085,108 @@ export default function EstoqueReposicionarPage() {
 											});
 										});
 
+										const storeOrder: StoreId[] = ["lago", "noroeste", "conjunto", "terraco"];
+
 										const sortedGroups = Array.from(grouped.values()).sort((a, b) => {
-											const order: StoreId[] = ["lago", "terraco", "noroeste", "conjunto"];
-											const fromDiff = order.indexOf(a.from) - order.indexOf(b.from);
+											const fromDiff = storeOrder.indexOf(a.from) - storeOrder.indexOf(b.from);
 											if (fromDiff !== 0) return fromDiff;
-											return order.indexOf(a.to) - order.indexOf(b.to);
+											return storeOrder.indexOf(a.to) - storeOrder.indexOf(b.to);
 										});
 
-										return sortedGroups.map((group, idx) => {
-											const prevGroup = idx > 0 ? sortedGroups[idx - 1] : null;
-											const showDivider = prevGroup && prevGroup.from !== group.from;
+										const totalOutputsByStore: Record<StoreId, Map<keyof StockData, number>> = {
+											lago: new Map(),
+											noroeste: new Map(),
+											conjunto: new Map(),
+											terraco: new Map(),
+										};
 
-											return (
-												<Fragment key={idx}>
-													{showDivider && (
-														<>
-															<hr className="my-6 border-t-2 border-dashed border-slate-350 dark:border-slate-700 print:hidden" />
-															<div className="hidden print:block print-divider" />
-														</>
-													)}
-													<div
-														className="p-6 bg-slate-50 dark:bg-slate-800 rounded-3xl border border-slate-100 dark:border-slate-700 print:bg-white print:border-black print:p-4 print:rounded-none">
-														<div className="flex items-center gap-2 mb-3">
-															<span className="text-sm font-black text-blue-600 dark:text-blue-400 uppercase tracking-tight print:text-black flex items-center gap-2">
-																{STORE_NAMES[group.from]}
-																<ArrowRight size={16} className="text-blue-400 dark:text-blue-500 print:text-black" />
-																{STORE_NAMES[group.to]}:
-															</span>
-														</div>
-														<p className="text-slate-600 dark:text-slate-300 font-bold text-sm leading-relaxed print:text-black">
-															{group.items.map((item, i) => (
-																<span key={i}>
-																	{item.qty} {item.label}
-																	{i < group.items.length - 1 ? ", " : ""}
-																</span>
-															))}
-														</p>
+										movements.forEach((move) => {
+											const storeMap = totalOutputsByStore[move.from];
+											if (storeMap) {
+												const current = storeMap.get(move.item) || 0;
+												storeMap.set(move.item, current + move.qty);
+											}
+										});
+
+										return (
+											<>
+												{sortedGroups.map((group, idx) => {
+													const prevGroup = idx > 0 ? sortedGroups[idx - 1] : null;
+													const showDivider = prevGroup && prevGroup.from !== group.from;
+
+													return (
+														<Fragment key={idx}>
+															{showDivider && (
+																<>
+																	<hr className="my-6 border-t-2 border-dashed border-slate-350 dark:border-slate-700 print:hidden" />
+																	<div className="hidden print:block print-divider" />
+																</>
+															)}
+															<div
+																className="p-6 bg-slate-50 dark:bg-slate-800 rounded-3xl border border-slate-100 dark:border-slate-700 print:bg-white print:border-black print:p-4 print:rounded-none">
+																<div className="flex items-center gap-2 mb-3">
+																	<span className="text-sm font-black text-blue-600 dark:text-blue-400 uppercase tracking-tight print:text-black flex items-center gap-2">
+																		{STORE_NAMES[group.from]}
+																		<ArrowRight size={16} className="text-blue-400 dark:text-blue-500 print:text-black" />
+																		{STORE_NAMES[group.to]}:
+																	</span>
+																</div>
+																<p className="text-slate-600 dark:text-slate-300 font-bold text-sm leading-relaxed print:text-black">
+																	{group.items.map((item, i) => (
+																		<span key={i}>
+																			{item.qty} {item.label}
+																			{i < group.items.length - 1 ? ", " : ""}
+																		</span>
+																	))}
+																</p>
+															</div>
+														</Fragment>
+													);
+												})}
+
+												{/* Saídas Totais por Loja (Visível também na Impressão) */}
+												<hr className="my-6 border-t-2 border-dashed border-slate-350 dark:border-slate-700 print:hidden" />
+												<div className="hidden print:block print-divider" />
+												<div className="p-6 bg-slate-50 dark:bg-slate-800 rounded-3xl border border-slate-100 dark:border-slate-700 print:bg-white print:border-black print:p-4 print:rounded-none">
+													<h3 className="text-base font-black text-slate-800 dark:text-slate-200 uppercase tracking-tight mb-4 print:text-black print:text-sm">
+														Saídas Totais por Loja:
+													</h3>
+													<div className="space-y-4 print:space-y-2">
+														{storeOrder.map((storeId) => {
+															const storeMap = totalOutputsByStore[storeId];
+															const hasOutputs = storeMap && storeMap.size > 0;
+															const sortedItems = hasOutputs
+																? Array.from(storeMap.entries()).sort((a, b) =>
+																		STOCK_LABELS[a[0]].localeCompare(STOCK_LABELS[b[0]])
+																  )
+																: [];
+
+															return (
+																<div key={storeId} className="border-l-2 border-blue-500 print:border-black pl-3">
+																	<span className="text-xs font-black text-slate-700 dark:text-slate-300 uppercase print:text-black block">
+																		{STORE_NAMES[storeId]}:
+																	</span>
+																	{hasOutputs ? (
+																		<p className="text-slate-600 dark:text-slate-400 font-bold text-xs leading-relaxed print:text-black">
+																			{sortedItems.map(([itemKey, qty], i) => (
+																				<span key={itemKey}>
+																					{qty} {STOCK_LABELS[itemKey]}
+																					{i < sortedItems.length - 1 ? ", " : ""}
+																				</span>
+																			))}
+																		</p>
+																	) : (
+																		<p className="text-slate-400 font-bold text-xs italic print:text-black">
+																			Nenhuma saída
+																		</p>
+																	)}
+																</div>
+															);
+														})}
 													</div>
-												</Fragment>
-											);
-										});
+												</div>
+											</>
+										);
 									})()}
 								</div>
 							) : (
