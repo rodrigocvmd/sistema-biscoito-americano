@@ -1376,26 +1376,25 @@ export default function EstoqueReposicionarPage() {
 									<div className="grid grid-cols-2 gap-6">
 										{/* Outgoing Section (Saídas) */}
 										<div className="col-span-1">
-											<h3 className="text-base font-bold uppercase py-1 mb-2 text-black border-l-2 border-black pl-2">
+											<h3 className="text-base font-bold uppercase py-1 mb-2 text-black border-l border-black pl-2">
 												Saídas (Enviando para outras lojas)
 											</h3>
 											{outgoing.length > 0 ? (
 												<table className="w-full border-collapse">
 													<thead>
 														<tr className="border-b border-black text-left text-xs font-bold uppercase">
-															<th className="py-1.5 w-10 text-center">Conf.</th>
 															<th className="py-1.5">Sabor / Item</th>
 															<th className="py-1.5 w-14 text-right pr-2">Qtd</th>
 														</tr>
 													</thead>
 													<tbody>
 														{outgoing.map((m, idx) => (
-															<tr key={idx} className="border-b border-slate-300">
-																<td className="py-2 w-10 text-center align-middle">
-																	<div className="w-5 h-5 border-2 border-black rounded-sm mx-auto bg-white"></div>
-																</td>
+															<tr key={idx} className="border-b border-slate-200">
 																<td className="py-2 font-bold uppercase text-sm align-middle">
-																	{STOCK_LABELS[m.item]} <span className="text-xs text-slate-600 font-normal">({STORE_NAMES[m.to]})</span>
+																	<div className="flex items-center gap-3">
+																		<div className="w-5 h-5 border-2 border-black rounded-sm bg-white shrink-0"></div>
+																		<span>{STOCK_LABELS[m.item]}</span>
+																	</div>
 																</td>
 																<td className="py-2 text-right pr-2 font-black text-base text-black align-middle">
 																	{m.qty}
@@ -1411,26 +1410,25 @@ export default function EstoqueReposicionarPage() {
 
 										{/* Incoming Section (Entradas) */}
 										<div className="col-span-1">
-											<h3 className="text-base font-bold uppercase py-1 mb-2 text-black border-l-2 border-black pl-2">
+											<h3 className="text-base font-bold uppercase py-1 mb-2 text-black border-l border-black pl-2">
 												Entradas (Recebendo no estoque)
 											</h3>
 											{incoming.length > 0 ? (
 												<table className="w-full border-collapse">
 													<thead>
 														<tr className="border-b border-black text-left text-xs font-bold uppercase">
-															<th className="py-1.5 w-10 text-center">Conf.</th>
 															<th className="py-1.5">Sabor / Item</th>
 															<th className="py-1.5 w-14 text-right pr-2">Qtd</th>
 														</tr>
 													</thead>
 													<tbody>
 														{incoming.map((m, idx) => (
-															<tr key={idx} className="border-b border-slate-300">
-																<td className="py-2 w-10 text-center align-middle">
-																	<div className="w-5 h-5 border-2 border-black rounded-sm mx-auto bg-white"></div>
-																</td>
+															<tr key={idx} className="border-b border-slate-200">
 																<td className="py-2 font-bold uppercase text-sm align-middle">
-																	{STOCK_LABELS[m.item]} <span className="text-xs text-slate-600 font-normal">({STORE_NAMES[m.from]})</span>
+																	<div className="flex items-center gap-3">
+																		<div className="w-5 h-5 border-2 border-black rounded-sm bg-white shrink-0"></div>
+																		<span>{STOCK_LABELS[m.item]}</span>
+																	</div>
 																</td>
 																<td className="py-2 text-right pr-2 font-black text-base text-black align-middle">
 																	{m.qty}
@@ -1447,12 +1445,12 @@ export default function EstoqueReposicionarPage() {
 								</div>
 
 								{/* Divergências e Observações */}
-								<div className="mt-6 pt-3 border-t-2 border-black">
+								<div className="mt-6 pt-3 border-t border-black">
 									<h4 className="text-xs font-bold uppercase text-black mb-3">DIVERGÊNCIAS E OBSERVAÇÕES:</h4>
 									<div className="space-y-4">
-										<div className="border-b border-black h-6 w-full"></div>
-										<div className="border-b border-black h-6 w-full"></div>
-										<div className="border-b border-black h-6 w-full"></div>
+										<div className="border-b border-slate-300 h-6 w-full"></div>
+										<div className="border-b border-slate-300 h-6 w-full"></div>
+										<div className="border-b border-slate-300 h-6 w-full"></div>
 									</div>
 								</div>
 							</div>
