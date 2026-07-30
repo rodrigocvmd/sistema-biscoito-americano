@@ -1344,7 +1344,7 @@ export default function EstoqueReposicionarPage() {
 			)}
 
 			{isPrintingChecklist && (
-				<div className="checklist-container hidden print:block bg-white text-black min-h-screen p-4 font-sans">
+				<div className="checklist-container hidden print:block bg-white text-black min-h-screen font-sans">
 					{STORE_ORDER.map((storeId) => {
 						const storeName = STORE_NAMES[storeId];
 						const movements = calculateOptimizedSummary();
@@ -1358,18 +1358,14 @@ export default function EstoqueReposicionarPage() {
 							.filter(m => m.from === storeId)
 							.sort((a, b) => STOCK_LABELS[a.item].localeCompare(STOCK_LABELS[b.item]));
 
-						if (incoming.length === 0 && outgoing.length === 0) {
-							return null; // Skip stores with no repositioning
-						}
-
 						return (
-							<div key={storeId} className="checklist-page mb-10 pb-10 border-b border-dashed border-slate-300 print:mb-0 print:pb-0 print:border-0">
+							<div key={storeId} className="checklist-page p-3 box-border flex flex-col justify-between min-h-[98vh]">
 								<div>
 									{/* Header */}
-									<div className="border-b-2 border-black pb-4 mb-6 flex justify-between items-end">
+									<div className="border-b-2 border-black pb-2 mb-4 flex justify-between items-end">
 										<div>
-											<h1 className="text-2xl font-bold uppercase tracking-tight">Folha de Conferência de Reposição</h1>
-											<h2 className="text-3xl font-black uppercase text-blue-800 print:text-black mt-1">{storeName}</h2>
+											<h1 className="text-xl font-bold uppercase tracking-tight">Folha de Conferência de Reposição</h1>
+											<h2 className="text-3xl font-black uppercase text-black mt-0.5">{storeName}</h2>
 										</div>
 										<div className="text-right">
 											<p className="text-sm font-semibold">Data: {new Date().toLocaleDateString("pt-BR")}</p>
@@ -1377,79 +1373,87 @@ export default function EstoqueReposicionarPage() {
 										</div>
 									</div>
 
-									{/* Outgoing Section (Saídas) */}
-									{outgoing.length > 0 && (
-										<div className="mb-8">
-											<h3 className="text-lg font-bold uppercase bg-white px-3 py-1.5 rounded-lg mb-4 text-slate-800 print:text-black border-l-4 border-slate-600 print:border-black">
+									<div className="grid grid-cols-2 gap-6">
+										{/* Outgoing Section (Saídas) */}
+										<div className="col-span-1">
+											<h3 className="text-base font-bold uppercase py-1 mb-2 text-black border-l-2 border-black pl-2">
 												Saídas (Enviando para outras lojas)
 											</h3>
-											<table className="w-full border-collapse">
-												<thead>
-													<tr className="border-b-2 border-slate-300 text-left text-xs font-bold uppercase text-slate-500">
-														<th className="py-2 w-12 text-center">Conf.</th>
-														<th className="py-2">Sabor / Item</th>
-														<th className="py-2 w-24 text-center">Qtd (Pacotes)</th>
-														<th className="py-2 text-center pl-12">Divergências e Observações</th>
-													</tr>
-												</thead>
-												<tbody>
-													{outgoing.map((m, idx) => (
-														<tr key={idx} className="border-b border-slate-200">
-															<td className="py-3 text-center">
-																<div className="w-5 h-5 border-2 border-slate-400 rounded mx-auto"></div>
-															</td>
-															<td className="py-3 font-bold uppercase text-sm">
-																{STOCK_LABELS[m.item]}
-															</td>
-															<td className="py-3 text-center font-extrabold text-lg text-slate-900 print:text-black">
-																{m.qty}
-															</td>
-															<td className="py-3 pl-12">
-																<div className="w-[85%] mx-auto border-b border-slate-300 h-6"></div>
-															</td>
+											{outgoing.length > 0 ? (
+												<table className="w-full border-collapse">
+													<thead>
+														<tr className="border-b border-black text-left text-xs font-bold uppercase">
+															<th className="py-1.5 w-10 text-center">Conf.</th>
+															<th className="py-1.5">Sabor / Item</th>
+															<th className="py-1.5 w-14 text-right pr-2">Qtd</th>
 														</tr>
-													))}
-												</tbody>
-											</table>
+													</thead>
+													<tbody>
+														{outgoing.map((m, idx) => (
+															<tr key={idx} className="border-b border-slate-300">
+																<td className="py-2 w-10 text-center align-middle">
+																	<div className="w-5 h-5 border-2 border-black rounded-sm mx-auto bg-white"></div>
+																</td>
+																<td className="py-2 font-bold uppercase text-sm align-middle">
+																	{STOCK_LABELS[m.item]} <span className="text-xs text-slate-600 font-normal">({STORE_NAMES[m.to]})</span>
+																</td>
+																<td className="py-2 text-right pr-2 font-black text-base text-black align-middle">
+																	{m.qty}
+																</td>
+															</tr>
+														))}
+													</tbody>
+												</table>
+											) : (
+												<p className="text-xs italic text-slate-500 py-2">Nenhuma saída para esta loja.</p>
+											)}
 										</div>
-									)}
 
-									{/* Incoming Section (Entradas) */}
-									{incoming.length > 0 && (
-										<div className="mb-8">
-											<h3 className="text-lg font-bold uppercase bg-white px-3 py-1.5 rounded-lg mb-4 text-slate-800 print:text-black border-l-4 border-slate-600 print:border-black">
+										{/* Incoming Section (Entradas) */}
+										<div className="col-span-1">
+											<h3 className="text-base font-bold uppercase py-1 mb-2 text-black border-l-2 border-black pl-2">
 												Entradas (Recebendo no estoque)
 											</h3>
-											<table className="w-full border-collapse">
-												<thead>
-													<tr className="border-b-2 border-slate-300 text-left text-xs font-bold uppercase text-slate-500">
-														<th className="py-2 w-12 text-center">Conf.</th>
-														<th className="py-2">Sabor / Item</th>
-														<th className="py-2 w-24 text-center">Qtd (Pacotes)</th>
-														<th className="py-2 text-center pl-12">Divergências e Observações</th>
-													</tr>
-												</thead>
-												<tbody>
-													{incoming.map((m, idx) => (
-														<tr key={idx} className="border-b border-slate-200">
-															<td className="py-3 text-center">
-																<div className="w-5 h-5 border-2 border-slate-400 rounded mx-auto"></div>
-															</td>
-															<td className="py-3 font-bold uppercase text-sm">
-																{STOCK_LABELS[m.item]}
-															</td>
-															<td className="py-3 text-center font-extrabold text-lg text-slate-900 print:text-black">
-																{m.qty}
-															</td>
-															<td className="py-3 pl-12">
-																<div className="w-[85%] mx-auto border-b border-slate-300 h-6"></div>
-															</td>
+											{incoming.length > 0 ? (
+												<table className="w-full border-collapse">
+													<thead>
+														<tr className="border-b border-black text-left text-xs font-bold uppercase">
+															<th className="py-1.5 w-10 text-center">Conf.</th>
+															<th className="py-1.5">Sabor / Item</th>
+															<th className="py-1.5 w-14 text-right pr-2">Qtd</th>
 														</tr>
-													))}
-												</tbody>
-											</table>
+													</thead>
+													<tbody>
+														{incoming.map((m, idx) => (
+															<tr key={idx} className="border-b border-slate-300">
+																<td className="py-2 w-10 text-center align-middle">
+																	<div className="w-5 h-5 border-2 border-black rounded-sm mx-auto bg-white"></div>
+																</td>
+																<td className="py-2 font-bold uppercase text-sm align-middle">
+																	{STOCK_LABELS[m.item]} <span className="text-xs text-slate-600 font-normal">({STORE_NAMES[m.from]})</span>
+																</td>
+																<td className="py-2 text-right pr-2 font-black text-base text-black align-middle">
+																	{m.qty}
+																</td>
+															</tr>
+														))}
+													</tbody>
+												</table>
+											) : (
+												<p className="text-xs italic text-slate-500 py-2">Nenhuma entrada para esta loja.</p>
+											)}
 										</div>
-									)}
+									</div>
+								</div>
+
+								{/* Divergências e Observações */}
+								<div className="mt-6 pt-3 border-t-2 border-black">
+									<h4 className="text-xs font-bold uppercase text-black mb-3">DIVERGÊNCIAS E OBSERVAÇÕES:</h4>
+									<div className="space-y-4">
+										<div className="border-b border-black h-6 w-full"></div>
+										<div className="border-b border-black h-6 w-full"></div>
+										<div className="border-b border-black h-6 w-full"></div>
+									</div>
 								</div>
 							</div>
 						);
