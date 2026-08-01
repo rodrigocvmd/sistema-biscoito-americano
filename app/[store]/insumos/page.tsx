@@ -61,13 +61,13 @@ const INVENTORY_DATA = [
 			"SODA MAÇÃ VERDE",
 			"SODA CRAMBERRY",
 			"SODA LIMÃO",
-			"SODA MARACUJÁ VERMELHA",
 			"SODA TANGERINA",
 			"SODA PESSEGO",
 			"SODA JABUTICABA",
 			"SODA BLUEBERRY",
 			"SODA CURAÇAO",
 			"SODA FRAMBOESA",
+			"GATORADE DE LIMÃO"
 		],
 	},
 	{
@@ -105,8 +105,9 @@ const INVENTORY_DATA = [
 			"NESCAFÉ MATINAL SUAVE",
 			"PO DE CAPUCCINO",
 			"SACHE CHOCOLATE QUENTE",
-			"SACHÉ AÇÚCAR",
-			"SACHÉ ADOÇANTE",
+			"SACHE AÇÚCAR",
+			"SACHE ADOÇANTE",
+			"MISTURADOR CAFÉ"
 		],
 	},
 	{
@@ -153,6 +154,7 @@ const INVENTORY_DATA = [
 			"ENVELOPE",
 			"TROCO",
 			"GRAMPO",
+			"CLIPE DE PAPEL"
 		],
 	},
 	{
