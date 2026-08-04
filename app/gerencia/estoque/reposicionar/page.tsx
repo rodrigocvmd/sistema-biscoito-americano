@@ -799,26 +799,26 @@ export default function EstoqueReposicionarPage() {
 			/>
 			<div className="space-y-8 print:hidden">
 			{/* Action Bar */}
-			<div className="flex flex-col md:flex-row gap-4 items-center bg-white dark:bg-slate-900 p-6 rounded-[2rem] border border-slate-200 dark:border-slate-800 shadow-sm transition-colors print:hidden">
-				<div className="flex flex-col gap-1 shrink-0">
-					<h2 className="text-2xl font-black text-slate-800 dark:text-slate-200 uppercase tracking-tight">
+			<div className="flex flex-col md:flex-row gap-4 items-center bg-white dark:bg-slate-900 p-4 md:p-6 rounded-2xl md:rounded-[2rem] border border-slate-200 dark:border-slate-800 shadow-sm transition-colors print:hidden">
+				<div className="flex flex-col gap-1 shrink-0 text-center md:text-left">
+					<h2 className="text-xl md:text-2xl font-black text-slate-800 dark:text-slate-200 uppercase tracking-tight">
 						Reposicionamento
 					</h2>
-					<p className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">
+					<p className="text-[10px] md:text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">
 						Movimente pacotes entre as lojas
 					</p>
 				</div>
-				<div className="flex-1 flex items-center justify-center gap-3 flex-wrap">
+				<div className="flex-1 flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-2 sm:gap-3 w-full sm:w-auto">
 					<button
 						onClick={resetProjectedStocks}
-						className="cursor-pointer flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2.5 rounded-xl font-black shadow-md shadow-emerald-100 dark:shadow-none transition-all uppercase tracking-widest">
+						className="cursor-pointer flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-4 md:px-5 py-2.5 rounded-xl font-black text-xs md:text-sm shadow-md shadow-emerald-100 dark:shadow-none transition-all uppercase tracking-widest">
 						<RefreshCw size={14} />
 						Iniciar reposicionamento
 					</button>
 					<button
 						onClick={finalizeReposition}
 						disabled={savingRepos}
-						className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white px-5 py-2.5 rounded-xl font-black shadow-md shadow-blue-100 dark:shadow-none transition-all cursor-pointer uppercase tracking-widest">
+						className="flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white px-4 md:px-5 py-2.5 rounded-xl font-black text-xs md:text-sm shadow-md shadow-blue-100 dark:shadow-none transition-all cursor-pointer uppercase tracking-widest">
 						{savingRepos ? <RefreshCw className="animate-spin" size={14} /> : <Save size={14} />}
 						{savingRepos ? "Finalizando..." : "Finalizar Reposicionamento"}
 					</button>
@@ -826,8 +826,8 @@ export default function EstoqueReposicionarPage() {
 			</div>
 
 			{/* Filter Bar */}
-			<div className="flex items-center justify-between gap-4 print:hidden">
-				<div className="bg-white dark:bg-slate-900 p-3 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex items-center gap-4 flex-1 transition-colors">
+			<div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 md:gap-4 print:hidden">
+				<div className="bg-white dark:bg-slate-900 p-2.5 md:p-3 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex items-center gap-4 flex-1 transition-colors">
 					<div className="relative flex-1 group">
 						<Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-500 transition-colors" />
 						<input
@@ -835,55 +835,57 @@ export default function EstoqueReposicionarPage() {
 							placeholder="Filtrar por sabor..."
 							value={searchTerm}
 							onChange={(e) => setSearchTerm(e.target.value)}
-							className="w-full bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl py-2.5 pl-12 pr-4 text-sm font-bold text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all shadow-sm"
+							className="w-full bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl py-2.5 pl-12 pr-4 text-xs md:text-sm font-bold text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all shadow-sm"
 						/>
 					</div>
 				</div>
-				<button
-					onClick={() => setHideOpen(!hideOpen)}
-					className="cursor-pointer flex items-center gap-2 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 px-6 py-3.5 rounded-2xl font-black text-xs transition-all border border-slate-200 dark:border-slate-800 uppercase tracking-widest shadow-sm">
-					{hideOpen ? <Eye size={14} /> : <EyeOff size={14} />}
-					{hideOpen ? "Mostrar Abertos" : "Ocultar Abertos"}
-				</button>
-				<button
-					onClick={fetchAllHistory}
-					disabled={loadingAllHistory}
-					className="cursor-pointer flex items-center gap-2 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 px-6 py-3.5 rounded-2xl font-black text-xs transition-all border border-slate-200 dark:border-slate-800 uppercase tracking-widest disabled:opacity-50 shadow-sm">
-					{loadingAllHistory ? <RefreshCw className="animate-spin" size={14} /> : <History size={14} />}
-					Histórico Completo
-				</button>
+				<div className="flex items-center gap-2 w-full sm:w-auto">
+					<button
+						onClick={() => setHideOpen(!hideOpen)}
+						className="flex-1 sm:flex-none justify-center cursor-pointer flex items-center gap-2 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 px-4 md:px-6 py-2.5 md:py-3.5 rounded-2xl font-black text-xs transition-all border border-slate-200 dark:border-slate-800 uppercase tracking-widest shadow-sm">
+						{hideOpen ? <Eye size={14} /> : <EyeOff size={14} />}
+						{hideOpen ? "Mostrar Abertos" : "Ocultar Abertos"}
+					</button>
+					<button
+						onClick={fetchAllHistory}
+						disabled={loadingAllHistory}
+						className="flex-1 sm:flex-none justify-center cursor-pointer flex items-center gap-2 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 px-4 md:px-6 py-2.5 md:py-3.5 rounded-2xl font-black text-xs transition-all border border-slate-200 dark:border-slate-800 uppercase tracking-widest disabled:opacity-50 shadow-sm">
+						{loadingAllHistory ? <RefreshCw className="animate-spin" size={14} /> : <History size={14} />}
+						Histórico Completo
+					</button>
+				</div>
 			</div>
 
 			{showPostFinalizationBanner && (
-				<div className="bg-red-50 dark:bg-red-950/40 border-2 border-red-500/50 rounded-2xl p-6 shadow-sm space-y-4 print:hidden animate-in fade-in duration-200 flex flex-col items-center text-center">
+				<div className="bg-red-50 dark:bg-red-950/40 border-2 border-red-500/50 rounded-2xl p-4 md:p-6 shadow-sm space-y-4 print:hidden animate-in fade-in duration-200 flex flex-col items-center text-center">
 					<div className="flex flex-col sm:flex-row items-center justify-center gap-3">
 						<AlertCircle className="text-red-600 dark:text-red-400 shrink-0" size={28} />
-						<p className="text-base md:text-lg font-black text-red-800 dark:text-red-200 text-center">
+						<p className="text-sm md:text-lg font-black text-red-800 dark:text-red-200 text-center">
 							Números abaixo referentes ao último reposicionamento {lastFinalizedDate ? `(${lastFinalizedDate})` : `(${formatDate(new Date())})`} podem estar incorretos devido a movimentações de estoque posteriores.
 						</p>
 					</div>
 					<div className="flex justify-center items-center w-full pt-1">
 						<button
 							onClick={() => setShowEditConfirmModal(true)}
-							className="cursor-pointer bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-xl text-xs md:text-sm font-black transition-all uppercase tracking-wider shadow-md shadow-red-200 dark:shadow-none">
+							className="cursor-pointer bg-red-600 hover:bg-red-700 text-white px-4 md:px-6 py-2.5 md:py-3 rounded-xl text-xs md:text-sm font-black transition-all uppercase tracking-wider shadow-md shadow-red-200 dark:shadow-none">
 							Continuar ou editar último reposicionamento
 						</button>
 					</div>
 				</div>
 			)}
 
-			<div className="bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-200 dark:border-slate-800 shadow-sm transition-colors print:hidden">
+			<div className="bg-white dark:bg-slate-900 rounded-2xl md:rounded-[2rem] border border-slate-200 dark:border-slate-800 shadow-sm transition-colors print:hidden">
 				<div className="overflow-x-auto overflow-y-visible">
-					<table className="w-full table-fixed border-separate border-spacing-0 min-w-[50rem]">
+					<table className="w-full table-fixed border-separate border-spacing-0 min-w-[34rem] md:min-w-[50rem]">
 						<thead>
 							<tr className="bg-slate-50 dark:bg-slate-800">
-								<th className="w-[24%] min-w-[12rem] p-5 text-[1rem] font-black text-slate-700 dark:text-slate-300 uppercase tracking-widest sticky left-0 bg-slate-50 dark:bg-slate-800 z-20 border-b border-slate-200 dark:border-slate-700 text-center">
+								<th className="w-[26%] md:w-[24%] min-w-[7.5rem] md:min-w-[12rem] p-3 md:p-5 text-xs md:text-[1rem] font-black text-slate-700 dark:text-slate-300 uppercase tracking-widest sticky left-0 bg-slate-50 dark:bg-slate-800 z-20 border-b border-slate-200 dark:border-slate-700 text-center">
 									Item
 								</th>
 								{STORE_ORDER.map((id) => (
 									<th
 										key={id}
-										className="w-[19%] min-w-[9.5rem] p-5 text-center text-[1rem] font-black text-slate-700 dark:text-slate-300 uppercase tracking-widest border-l border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700">
+										className="w-[18.5%] md:w-[19%] min-w-[6rem] md:min-w-[9.5rem] p-3 md:p-5 text-center text-xs md:text-[1rem] font-black text-slate-700 dark:text-slate-300 uppercase tracking-widest border-l border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700">
 										{STORE_NAMES[id]}
 									</th>
 								))}
@@ -899,13 +901,13 @@ export default function EstoqueReposicionarPage() {
 									<Fragment key={itemKey}>
 										{showRepeatedHeader && (
 											<tr className="bg-slate-100 dark:bg-slate-800/80">
-												<th className="p-3 text-center text-[1rem] font-black text-slate-700 dark:text-slate-300 uppercase tracking-widest sticky left-0 bg-slate-100 dark:bg-slate-800/80 z-20 border-y border-slate-200 dark:border-slate-700">
+												<th className="p-2 md:p-3 text-center text-xs md:text-[1rem] font-black text-slate-700 dark:text-slate-300 uppercase tracking-widest sticky left-0 bg-slate-100 dark:bg-slate-800/80 z-20 border-y border-slate-200 dark:border-slate-700">
 													Item
 												</th>
 												{STORE_ORDER.map((id) => (
 													<th
 														key={`header-${id}-${index}`}
-														className="p-3 text-center text-[1rem] font-black text-slate-700 dark:text-slate-300 uppercase tracking-widest border-l border-slate-200 dark:border-slate-700 border-y">
+														className="p-2 md:p-3 text-center text-xs md:text-[1rem] font-black text-slate-700 dark:text-slate-300 uppercase tracking-widest border-l border-slate-200 dark:border-slate-700 border-y">
 														{STORE_NAMES[id]}
 													</th>
 												))}
@@ -913,11 +915,11 @@ export default function EstoqueReposicionarPage() {
 										)}
 										<tr
 											className={`border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50/50 dark:hover:bg-slate-800/50 transition-colors ${isExpanded ? "bg-blue-50/30 dark:bg-blue-900/20" : ""}`}>
-											<td className="p-5 sticky left-0 bg-white dark:bg-slate-900 group-hover:bg-slate-50/50 dark:group-hover:bg-slate-800/50 z-10 border-r border-slate-50 dark:border-slate-800 border-b border-slate-100 dark:border-slate-800 transition-colors">
+											<td className="p-3 md:p-5 sticky left-0 bg-white dark:bg-slate-900 group-hover:bg-slate-50/50 dark:group-hover:bg-slate-800/50 z-10 border-r border-slate-50 dark:border-slate-800 border-b border-slate-100 dark:border-slate-800 transition-colors">
 												<button
 													onClick={() => setExpandedItem(isExpanded ? null : itemKey)}
-													className="flex items-center gap-2 text-[1.2rem] font-black text-slate-600 dark:text-slate-400 uppercase hover:text-blue-600 dark:hover:text-blue-400 transition-colors cursor-pointer text-left">
-													{isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+													className="flex items-center gap-1.5 md:gap-2 text-xs md:text-[1.2rem] font-black text-slate-600 dark:text-slate-400 uppercase hover:text-blue-600 dark:hover:text-blue-400 transition-colors cursor-pointer text-left">
+													{isExpanded ? <ChevronUp size={14} className="md:w-[16px] md:h-[16px]" /> : <ChevronDown size={14} className="md:w-[16px] md:h-[16px]" />}
 													{label}
 												</button>
 											</td>
@@ -933,7 +935,7 @@ export default function EstoqueReposicionarPage() {
 												const isSourceCell = activeSelection?.item === itemKey && activeSelection?.fromStore === id;
 												const isTargetCell = activeSelection?.item === itemKey && activeSelection?.fromStore !== id;
 
-												let cellStyle = "relative p-5 text-center border-l border-slate-50 dark:border-slate-800 border-b border-slate-100 dark:border-slate-800 cursor-pointer transition-all select-none ";
+												let cellStyle = "relative p-3 md:p-5 text-center border-l border-slate-50 dark:border-slate-800 border-b border-slate-100 dark:border-slate-800 cursor-pointer transition-all select-none ";
 												if (isSourceCell) {
 													cellStyle += "bg-red-50 dark:bg-red-900/30 ring-2 ring-red-500 shadow-md";
 												} else if (isTargetCell) {
@@ -954,53 +956,53 @@ export default function EstoqueReposicionarPage() {
 																	e.stopPropagation();
 																	setActiveSelection(null);
 																}}
-																className="absolute top-2 right-2 p-1 rounded-full bg-red-600 hover:bg-red-700 text-white shadow-md transition-all cursor-pointer z-10"
+																className="absolute top-1 right-1 md:top-2 md:right-2 p-0.5 md:p-1 rounded-full bg-red-600 hover:bg-red-700 text-white shadow-md transition-all cursor-pointer z-10"
 																title="Cancelar seleção">
-																<X size={13} strokeWidth={3} />
+																<X size={12} strokeWidth={3} className="md:w-[13px] md:h-[13px]" />
 															</button>
 														)}
 
-														<div className="flex flex-col items-center justify-center gap-1 min-h-[3rem]">
+														<div className="flex flex-col items-center justify-center gap-0.5 md:gap-1 min-h-[2.5rem] md:min-h-[3rem]">
 															{/* Quantidade atual em estoque na célula */}
 															<div className="flex items-center gap-1">
 																{(v > 0 || initialOpenCount === 0 || hideOpen) && (
 																	<span
-																		className={`text-[1.7rem] font-black ${(initialOpenCount > 0 && !hideOpen) ? "text-slate-900 dark:text-slate-200" : (v === 0 && (initialOpenCount === 0 || hideOpen)) ? "text-slate-400 dark:text-slate-600" : "text-slate-900 dark:text-slate-200"}`}>
+																		className={`text-base md:text-[1.7rem] font-black ${(initialOpenCount > 0 && !hideOpen) ? "text-slate-900 dark:text-slate-200" : (v === 0 && (initialOpenCount === 0 || hideOpen)) ? "text-slate-400 dark:text-slate-600" : "text-slate-900 dark:text-slate-200"}`}>
 																		{v}
 																	</span>
 																)}
 																{!hideOpen && initialOpenCount > 0 && (
-																	<span className="text-[1.7rem] font-bold text-slate-400 dark:text-slate-500 whitespace-nowrap">
-																		{v > 0 ? `+ ${initialOpenCount} aberto` : `${initialOpenCount} aberto`}
+																	<span className="text-xs md:text-[1.7rem] font-bold text-slate-400 dark:text-slate-500 whitespace-nowrap">
+																		{v > 0 ? `+ ${initialOpenCount} ab` : `${initialOpenCount} ab`}
 																	</span>
 																)}
 															</div>
 
 															{/* Badges de Estado */}
 															{isSourceCell ? (
-																<span className="text-xs font-bold px-3 py-1 rounded-full bg-red-600 text-white shadow-md uppercase tracking-wider animate-in zoom-in-90 duration-150 inline-flex flex-wrap justify-center items-center gap-1.5">
-																	<span className="text-sm font-black text-amber-300 bg-red-800/80 px-2 py-0.5 rounded-lg border border-amber-300/40 shadow-inner">
+																<span className="text-[10px] md:text-xs font-bold px-1.5 md:px-3 py-0.5 md:py-1 rounded-full bg-red-600 text-white shadow-md uppercase tracking-wider animate-in zoom-in-90 duration-150 inline-flex flex-wrap justify-center items-center gap-1">
+																	<span className="text-xs md:text-sm font-black text-amber-300 bg-red-800/80 px-1.5 md:px-2 py-0.5 rounded-lg border border-amber-300/40 shadow-inner">
 																		{activeSelection.qty}
 																	</span>
 																	<span>saindo do</span>
-																	<span className="text-sm font-black text-white bg-red-800/80 px-2 py-0.5 rounded-lg border border-white/40 shadow-inner">
+																	<span className="text-xs md:text-sm font-black text-white bg-red-800/80 px-1.5 md:px-2 py-0.5 rounded-lg border border-white/40 shadow-inner">
 																		{STORE_NAMES[id]}
 																	</span>
 																</span>
 															) : isTargetCell ? (
-																<span className="text-xs font-bold px-3 py-1 rounded-full bg-emerald-600 text-white shadow-md uppercase tracking-wider animate-in zoom-in-90 duration-150 inline-flex flex-wrap justify-center items-center gap-1.5">
+																<span className="text-[10px] md:text-xs font-bold px-1.5 md:px-3 py-0.5 md:py-1 rounded-full bg-emerald-600 text-white shadow-md uppercase tracking-wider animate-in zoom-in-90 duration-150 inline-flex flex-wrap justify-center items-center gap-1">
 																	<span>Enviar</span>
-																	<span className="text-sm font-black text-amber-300 bg-emerald-800/80 px-2 py-0.5 rounded-lg border border-amber-300/40 shadow-inner">
+																	<span className="text-xs md:text-sm font-black text-amber-300 bg-emerald-800/80 px-1.5 md:px-2 py-0.5 rounded-lg border border-amber-300/40 shadow-inner">
 																		{activeSelection.qty}
 																	</span>
 																	<span>para o</span>
-																	<span className="text-sm font-black text-white bg-emerald-800/80 px-2 py-0.5 rounded-lg border border-white/40 shadow-inner">
+																	<span className="text-xs md:text-sm font-black text-white bg-emerald-800/80 px-1.5 md:px-2 py-0.5 rounded-lg border border-white/40 shadow-inner">
 																		{STORE_NAMES[id]}
 																	</span>
 																</span>
 															) : (
 																(receiving || sending) && (
-																	<span className={`text-[1.35rem] font-black ${receiving ? "text-green-600 dark:text-green-500" : "text-red-600 dark:text-red-500"}`}>
+																	<span className={`text-xs md:text-[1.35rem] font-black ${receiving ? "text-green-600 dark:text-green-500" : "text-red-600 dark:text-red-500"}`}>
 																		{receiving ? `+${v - initial}` : `-${initial - v}`}
 																	</span>
 																)
@@ -1236,30 +1238,30 @@ export default function EstoqueReposicionarPage() {
 							)}
 						</div>
 
-						<div className="p-8 bg-slate-50 dark:bg-slate-800/50 border-t border-slate-100 dark:border-slate-800 flex flex-col gap-4 transition-colors print:hidden">
-							<div className="flex flex-wrap gap-4 w-full">
+						<div className="p-4 md:p-8 bg-slate-50 dark:bg-slate-800/50 border-t border-slate-100 dark:border-slate-800 flex flex-col gap-3 md:gap-4 transition-colors print:hidden">
+							<div className="flex flex-col sm:flex-row flex-wrap gap-2 md:gap-4 w-full">
 								<button
 									onClick={handleWhatsApp}
 									disabled={calculateOptimizedSummary().length === 0}
-									className="flex-1 min-w-[11.25rem] flex items-center justify-center gap-3 bg-emerald-500 hover:bg-emerald-600 text-white px-6 py-4 rounded-2xl font-black text-[0.75rem] uppercase tracking-widest shadow-lg shadow-emerald-100 dark:shadow-none transition-all disabled:opacity-50 cursor-pointer">
+									className="flex-1 min-w-0 sm:min-w-[11.25rem] flex items-center justify-center gap-2 md:gap-3 bg-emerald-500 hover:bg-emerald-600 text-white px-4 md:px-6 py-3 md:py-4 rounded-2xl font-black text-xs md:text-[0.75rem] uppercase tracking-widest shadow-lg shadow-emerald-100 dark:shadow-none transition-all disabled:opacity-50 cursor-pointer">
 									Enviar no WhatsApp
 								</button>
 								<button
 									onClick={handlePrint}
 									disabled={calculateOptimizedSummary().length === 0}
-									className="flex-1 min-w-[11.25rem] flex items-center justify-center gap-3 bg-blue-600 hover:bg-blue-700 text-white px-6 py-4 rounded-2xl font-black text-[0.75rem] uppercase tracking-widest shadow-lg shadow-blue-100 dark:shadow-none transition-all disabled:opacity-50 cursor-pointer">
+									className="flex-1 min-w-0 sm:min-w-[11.25rem] flex items-center justify-center gap-2 md:gap-3 bg-blue-600 hover:bg-blue-700 text-white px-4 md:px-6 py-3 md:py-4 rounded-2xl font-black text-xs md:text-[0.75rem] uppercase tracking-widest shadow-lg shadow-blue-100 dark:shadow-none transition-all disabled:opacity-50 cursor-pointer">
 									Imprimir Reposicionamento
 								</button>
 								<button
 									onClick={handlePrintChecklist}
 									disabled={calculateOptimizedSummary().length === 0}
-									className="flex-1 min-w-[11.25rem] flex items-center justify-center gap-3 bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-4 rounded-2xl font-black text-[0.75rem] uppercase tracking-widest shadow-lg shadow-indigo-100 dark:shadow-none transition-all disabled:opacity-50 cursor-pointer">
+									className="flex-1 min-w-0 sm:min-w-[11.25rem] flex items-center justify-center gap-2 md:gap-3 bg-indigo-600 hover:bg-indigo-700 text-white px-4 md:px-6 py-3 md:py-4 rounded-2xl font-black text-xs md:text-[0.75rem] uppercase tracking-widest shadow-lg shadow-indigo-100 dark:shadow-none transition-all disabled:opacity-50 cursor-pointer">
 									Imprimir Conferência
 								</button>
 							</div>
 							<button
 								onClick={handleCloseSummary}
-								className="w-full px-6 py-4 rounded-2xl font-black text-[0.75rem] uppercase tracking-widest text-slate-500 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-800 hover:shadow-sm transition-all cursor-pointer border border-transparent hover:border-slate-200 dark:hover:border-slate-700">
+								className="w-full px-4 md:px-6 py-3 md:py-4 rounded-2xl font-black text-xs md:text-[0.75rem] uppercase tracking-widest text-slate-500 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-800 hover:shadow-sm transition-all cursor-pointer border border-transparent hover:border-slate-200 dark:hover:border-slate-700">
 								Fechar
 							</button>
 						</div>

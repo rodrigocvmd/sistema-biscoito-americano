@@ -172,8 +172,8 @@ export default function EstoqueAtualPage() {
 			</div>
 
 			{/* Actions Bar: Filter & Print */}
-			<div className="flex flex-wrap items-center justify-between gap-4 print:hidden">
-				<div className="flex items-center gap-4 flex-1 min-w-[18.75rem]">
+			<div className="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center justify-between gap-3 md:gap-4 print:hidden">
+				<div className="flex items-center gap-4 flex-1 min-w-0 w-full sm:w-auto">
 					<div className="relative flex-1 group">
 						<Search
 							size={18}
@@ -184,51 +184,53 @@ export default function EstoqueAtualPage() {
 							placeholder="Filtrar por sabor..."
 							value={searchTerm}
 							onChange={(e) => setSearchTerm(e.target.value)}
-							className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl py-3 pl-12 pr-4 text-lg font-bold text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all shadow-sm"
+							className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl py-2.5 md:py-3 pl-12 pr-4 text-sm md:text-lg font-bold text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all shadow-sm"
 						/>
 					</div>
 				</div>
 
-				<button
-					onClick={() => setHideOpen(!hideOpen)}
-					className="flex items-center gap-3 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-800 px-6 py-3 rounded-2xl font-black shadow-sm transition-all cursor-pointer text-sm">
-					{hideOpen ? <Eye size={18} /> : <EyeOff size={18} />}
-					{hideOpen ? "MOSTRAR ABERTOS" : "OCULTAR ABERTOS"}
-				</button>
+				<div className="flex flex-wrap sm:flex-nowrap items-center gap-2 sm:gap-3 w-full sm:w-auto">
+					<button
+						onClick={() => setHideOpen(!hideOpen)}
+						className="flex-1 sm:flex-none justify-center flex items-center gap-2 md:gap-3 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-800 px-4 md:px-6 py-2.5 md:py-3 rounded-2xl font-black shadow-sm transition-all cursor-pointer text-xs md:text-sm">
+						{hideOpen ? <Eye size={18} /> : <EyeOff size={18} />}
+						{hideOpen ? "MOSTRAR ABERTOS" : "OCULTAR ABERTOS"}
+					</button>
 
-				<button
-					onClick={() => window.print()}
-					className="flex items-center gap-3 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-2xl font-black shadow-lg shadow-blue-100 dark:shadow-none transition-all cursor-pointer text-sm">
-					<Printer size={18} />
-					IMPRIMIR TABELA
-				</button>
+					<button
+						onClick={() => window.print()}
+						className="flex-1 sm:flex-none justify-center flex items-center gap-2 md:gap-3 bg-blue-600 hover:bg-blue-700 text-white px-4 md:px-6 py-2.5 md:py-3 rounded-2xl font-black shadow-lg shadow-blue-100 dark:shadow-none transition-all cursor-pointer text-xs md:text-sm">
+						<Printer size={18} />
+						IMPRIMIR TABELA
+					</button>
+				</div>
 			</div>
 
-			<div className="bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden transition-colors">
+			<div className="bg-white dark:bg-slate-900 rounded-2xl md:rounded-[2rem] border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden transition-colors">
 				<div className="overflow-x-auto">
 					<table className="w-full border-collapse">
 						<thead>
 							<tr className="bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700">
-								<th className="p-6 text-left text-[0.9375rem] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest sticky left-0 bg-slate-50 dark:bg-slate-800 z-20 min-w-[11.25rem]">
-									<div className="flex items-center gap-9">
+								<th className="p-3 md:p-6 text-left text-xs md:text-[0.9375rem] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest sticky left-0 bg-slate-50 dark:bg-slate-800 z-20 min-w-[7.5rem] md:min-w-[11.25rem]">
+									<div className="flex items-center gap-3 md:gap-9">
 										ITEM
 										<button
 											onClick={rotateStores}
-											className="cursor-pointer p-2 bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-xl hover:bg-blue-600 dark:hover:bg-blue-500 hover:text-white transition-all shadow-sm print:hidden"
+											className="cursor-pointer p-1.5 md:p-2 bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-xl hover:bg-blue-600 dark:hover:bg-blue-500 hover:text-white transition-all shadow-sm print:hidden"
 											title="Mover primeira loja para o final">
-											<ArrowLeftRight size={22} />
+											<ArrowLeftRight size={18} className="md:w-[22px] md:h-[22px]" />
 										</button>
 									</div>
 								</th>
 								{allData.map((store) => (
 									<th
 										key={store.id}
-										className="p-6 text-center text-[0.6875rem] font-black text-blue-600 dark:text-blue-400 tracking-widest border-l border-slate-200 dark:border-slate-700 min-w-[8.75rem]">
-										<div className="flex flex-col items-center gap-2">
-											<span className="text-[0.87rem] font-extrabold text-slate-600 dark:text-slate-400 bg-white dark:bg-slate-900 px-3 py-1 rounded-full border border-slate-100 dark:border-slate-700 whitespace-nowrap">
+										className="p-3 md:p-6 text-center text-[0.6rem] md:text-[0.6875rem] font-black text-blue-600 dark:text-blue-400 tracking-widest border-l border-slate-200 dark:border-slate-700 min-w-[6.5rem] md:min-w-[8.75rem]">
+										<div className="flex flex-col items-center gap-1 md:gap-2">
+											<span className="text-[0.7rem] md:text-[0.87rem] font-extrabold text-slate-600 dark:text-slate-400 bg-white dark:bg-slate-900 px-2 md:px-3 py-0.5 md:py-1 rounded-full border border-slate-100 dark:border-slate-700 whitespace-nowrap">
 												{formatDate(store.lastStockUpdate)}
 											</span>
-											<span className="leading-tight text-2xl">{store.name}</span>
+											<span className="leading-tight text-lg md:text-2xl">{store.name}</span>
 										</div>
 									</th>
 								))}
@@ -242,7 +244,7 @@ export default function EstoqueAtualPage() {
 										<tr
 											key={key}
 											className="border-b border-slate-100 dark:border-slate-800 hover:bg-blue-50/30 dark:hover:bg-blue-900/20 transition-colors group">
-											<td className="p-6 text-xl font-black text-slate-600 dark:text-slate-400 sticky left-0 bg-white dark:bg-slate-900 group-hover:bg-blue-50/30 dark:group-hover:bg-blue-900/20 z-10 border-r border-slate-50 dark:border-slate-800 transition-colors uppercase">
+											<td className="p-3 md:p-6 text-sm md:text-xl font-black text-slate-600 dark:text-slate-400 sticky left-0 bg-white dark:bg-slate-900 group-hover:bg-blue-50/30 dark:group-hover:bg-blue-900/20 z-10 border-r border-slate-50 dark:border-slate-800 transition-colors uppercase">
 												{label}
 											</td>
 											{allData.map((store) => {
@@ -252,11 +254,11 @@ export default function EstoqueAtualPage() {
 												return (
 													<td
 														key={store.id}
-														className="p-6 text-center border-l border-slate-100 dark:border-slate-800">
+														className="p-3 md:p-6 text-center border-l border-slate-100 dark:border-slate-800">
 														<div className="flex justify-center items-center">
 															{qty > 0 || openCount === 0 || hideOpen ? (
 																<span
-																	className={`pr-2 text-2xl font-black ${
+																	className={`pr-1 md:pr-2 text-base md:text-2xl font-black ${
 																		qty === 0 && (openCount === 0 || hideOpen)
 																			? "text-slate-300 dark:text-slate-400"
 																			: "text-slate-900 dark:text-slate-100"
@@ -265,7 +267,7 @@ export default function EstoqueAtualPage() {
 																</span>
 															) : null}
 															{!hideOpen && openCount > 0 && (
-																<span className="text-2xl font-black text-slate-400 dark:text-slate-500 whitespace-nowrap">
+																<span className="text-xs md:text-2xl font-black text-slate-400 dark:text-slate-500 whitespace-nowrap">
 																	{qty > 0 ? `+ ${openCount} aberto` : `${openCount} aberto`}
 																</span>
 															)}

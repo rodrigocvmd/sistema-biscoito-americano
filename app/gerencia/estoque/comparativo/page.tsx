@@ -110,15 +110,15 @@ export default function EstoqueComparativoPage() {
 					<p className="text-slate-500 dark:text-slate-400 font-bold">Carregando comparativos...</p>
 				</div>
 			) : sessions.length > 0 ? (
-				<div className="bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden transition-colors">
-					<div className="p-6 bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800 flex flex-wrap items-center justify-between gap-6">
-						<div className="flex flex-col gap-2 min-w-[280px]">
-							<span className="text-[0.9rem] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest ml-1">Selecionar Reposicionamento</span>
+				<div className="bg-white dark:bg-slate-900 rounded-2xl md:rounded-[2rem] border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden transition-colors">
+					<div className="p-4 md:p-6 bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 md:gap-6">
+						<div className="flex flex-col gap-1 md:gap-2 min-w-0 w-full sm:w-auto">
+							<span className="text-[0.75rem] md:text-[0.9rem] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest ml-1">Selecionar Reposicionamento</span>
 							<div className="relative group">
 								<select
 									value={selectedSessionId}
 									onChange={(e) => setSelectedSessionId(e.target.value)}
-									className="appearance-none w-full bg-white dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-700 rounded-xl px-4 py-2.5 pr-10 text-[1rem] font-black text-slate-600 dark:text-slate-300 cursor-pointer focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all hover:border-blue-200 dark:hover:border-blue-800 hover:shadow-sm">
+									className="appearance-none w-full bg-white dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-700 rounded-xl px-3 md:px-4 py-2 md:py-2.5 pr-10 text-xs md:text-[1rem] font-black text-slate-600 dark:text-slate-300 cursor-pointer focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all hover:border-blue-200 dark:hover:border-blue-800 hover:shadow-sm">
 									{sessions.map((s) => (
 										<option key={s.sessionId} value={s.sessionId} className="dark:bg-slate-900">
 											{formatHistoryLabel(s.timestamp.toDate())}
@@ -129,8 +129,8 @@ export default function EstoqueComparativoPage() {
 							</div>
 						</div>
 
-						<div className="flex flex-col gap-2 flex-1 min-w-[250px]">
-							<span className="text-[0.9rem] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest ml-2">Filtrar por Sabor</span>
+						<div className="flex flex-col gap-1 md:gap-2 flex-1 min-w-0">
+							<span className="text-[0.75rem] md:text-[0.9rem] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest ml-2">Filtrar por Sabor</span>
 							<div className="relative group">
 								<Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-500 transition-colors" />
 								<input
@@ -138,7 +138,7 @@ export default function EstoqueComparativoPage() {
 									placeholder="Ex: Nutella..."
 									value={searchTerm}
 									onChange={(e) => setSearchTerm(e.target.value)}
-									className="w-full bg-white dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-700 rounded-xl py-2 pl-12 pr-4 text-[0.95rem] font-black text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all"
+									className="w-full bg-white dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-700 rounded-xl py-2 pl-12 pr-4 text-xs md:text-[0.95rem] font-black text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all"
 								/>
 							</div>
 						</div>
@@ -148,9 +148,9 @@ export default function EstoqueComparativoPage() {
 						<table className="w-full border-collapse">
 							<thead>
 								<tr className="bg-slate-50/50 dark:bg-slate-800/30 border-b border-slate-200 dark:border-slate-800">
-									<th className="p-6 text-left text-[1rem] font-black text-slate-700 dark:text-slate-300 uppercase tracking-widest">Item</th>
+									<th className="p-3 md:p-6 text-left text-xs md:text-[1rem] font-black text-slate-700 dark:text-slate-300 uppercase tracking-widest sticky left-0 bg-slate-50 dark:bg-slate-800 z-20 min-w-[7.5rem] md:min-w-0">Item</th>
 									{STORES.map((storeId) => (
-										<th key={storeId} className="p-6 text-center text-[1rem] font-black text-slate-700 dark:text-slate-300 uppercase tracking-widest min-w-[150px]">
+										<th key={storeId} className="p-3 md:p-6 text-center text-xs md:text-[1rem] font-black text-slate-700 dark:text-slate-300 uppercase tracking-widest min-w-[6.5rem] md:min-w-[150px]">
 											{STORE_NAMES[storeId]}
 										</th>
 									))}
@@ -161,21 +161,21 @@ export default function EstoqueComparativoPage() {
 									.filter(([_, label]) => label.toLowerCase().includes(searchTerm.toLowerCase()))
 									.map(([key, label]) => {
 										return (
-											<tr key={key} className="border-b border-slate-100 dark:border-slate-800/50 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
-												<td className="p-6 text-xl font-black text-slate-600 dark:text-slate-300 uppercase">{label}</td>
+											<tr key={key} className="border-b border-slate-100 dark:border-slate-800/50 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors group">
+												<td className="p-3 md:p-6 text-sm md:text-xl font-black text-slate-600 dark:text-slate-300 uppercase sticky left-0 bg-white dark:bg-slate-900 group-hover:bg-slate-50 dark:group-hover:bg-slate-800/50 z-10">{label}</td>
 												{STORES.map((storeId) => {
 													const qA = selectedSession?.initialSnap?.stores?.[storeId]?.stock?.[key] ?? 0;
 													const qB = selectedSession?.finalSnap?.stores?.[storeId]?.stock?.[key] ?? 0;
 													const diff = qB - qA;
 
 													return (
-														<td key={storeId} className="p-4 text-center">
+														<td key={storeId} className="p-3 md:p-4 text-center">
 															<div className="flex flex-col items-center justify-center">
-																<span className="text-2xl font-black text-slate-700 dark:text-slate-300">
+																<span className="text-sm md:text-2xl font-black text-slate-700 dark:text-slate-300">
 																	{qA} → {qB}
 																</span>
 																{diff !== 0 && (
-																	<span className={`inline-flex items-center gap-1 px-2 py-0.5 mt-1 rounded-full text-xl font-black ${
+																	<span className={`inline-flex items-center gap-1 px-2 py-0.5 mt-1 rounded-full text-xs md:text-xl font-black ${
 																		diff > 0 ? "bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400" : 
 																		"bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400"
 																	}`}>

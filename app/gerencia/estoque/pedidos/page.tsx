@@ -315,10 +315,10 @@ export default function EstoquePedidosPage() {
 			/>
 
 			{/* Sub-tabs Selector */}
-			<div className="flex items-center gap-2 border-b border-slate-200 dark:border-slate-800 pb-3 mb-6 print:hidden">
+			<div className="flex items-center gap-2 border-b border-slate-200 dark:border-slate-800 pb-3 mb-6 print:hidden max-w-full overflow-x-auto no-scrollbar">
 				<button
 					onClick={() => setActiveSubTab("comparativo")}
-					className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-black transition-all cursor-pointer ${
+					className={`flex items-center gap-2 px-3 md:px-4 py-2 rounded-xl text-xs md:text-sm font-black whitespace-nowrap shrink-0 transition-all cursor-pointer ${
 						activeSubTab === "comparativo"
 							? "bg-slate-105 dark:bg-slate-800 text-blue-600 dark:text-blue-400 border border-slate-200 dark:border-slate-700"
 							: "text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-900"
@@ -328,7 +328,7 @@ export default function EstoquePedidosPage() {
 				</button>
 				<button
 					onClick={() => setActiveSubTab("desejavel")}
-					className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-black transition-all cursor-pointer ${
+					className={`flex items-center gap-2 px-3 md:px-4 py-2 rounded-xl text-xs md:text-sm font-black whitespace-nowrap shrink-0 transition-all cursor-pointer ${
 						activeSubTab === "desejavel"
 							? "bg-slate-105 dark:bg-slate-800 text-blue-600 dark:text-blue-400 border border-slate-200 dark:border-slate-700"
 							: "text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-900"
@@ -347,16 +347,16 @@ export default function EstoquePedidosPage() {
 					</div>
 
 					{/* Actions Bar: Filter, Select & Print */}
-					<div className="flex flex-wrap items-center justify-between gap-4 print:hidden mb-6">
-						<div className="flex flex-wrap items-center gap-4 flex-1 min-w-[18.75rem]">
+					<div className="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center justify-between gap-3 md:gap-4 print:hidden mb-6">
+						<div className="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-3 md:gap-4 flex-1 min-w-0">
 							{/* Dropdown Select */}
-							<div className="flex flex-col gap-1 min-w-[260px]">
+							<div className="flex flex-col gap-1 w-full sm:w-auto min-w-0 sm:min-w-[260px]">
 								<span className="text-[0.75rem] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest ml-1">Estoque após Reposicionamento</span>
 								<div className="relative group">
 									<select
 										value={selectedSessionId}
 										onChange={(e) => setSelectedSessionId(e.target.value)}
-										className="appearance-none w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl py-3 pl-4 pr-10 text-sm font-black text-slate-700 dark:text-slate-200 cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all shadow-sm">
+										className="appearance-none w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl py-2.5 md:py-3 pl-4 pr-10 text-xs md:text-sm font-black text-slate-700 dark:text-slate-200 cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all shadow-sm">
 										<option value="atual">Estoque Atual Real</option>
 										{sessions.map((s) => (
 											<option key={s.id || s.sessionId} value={s.sessionId || s.id}>
@@ -369,7 +369,7 @@ export default function EstoquePedidosPage() {
 							</div>
 
 							{/* Filter Sabor */}
-							<div className="flex flex-col gap-1 flex-1 min-w-[200px]">
+							<div className="flex flex-col gap-1 flex-1 min-w-0">
 								<span className="text-[0.75rem] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest ml-1">Filtrar Sabor</span>
 								<div className="relative group">
 									<Search
@@ -381,57 +381,57 @@ export default function EstoquePedidosPage() {
 										placeholder="Filtrar por sabor..."
 										value={searchTerm}
 										onChange={(e) => setSearchTerm(e.target.value)}
-										className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl py-3 pl-12 pr-4 text-sm font-bold text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all shadow-sm"
+										className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl py-2.5 md:py-3 pl-12 pr-4 text-xs md:text-sm font-bold text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all shadow-sm"
 									/>
 								</div>
 							</div>
 						</div>
 
-						<div className="flex items-end gap-3 self-end">
+						<div className="flex items-center gap-2 sm:gap-3 w-full sm:w-auto justify-end">
 							<button
 								onClick={() => setHideOpen(!hideOpen)}
-								className="flex items-center gap-3 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-800 px-6 py-3 rounded-2xl font-black shadow-sm transition-all cursor-pointer text-sm">
+								className="flex-1 sm:flex-none justify-center flex items-center gap-2 md:gap-3 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-800 px-4 md:px-6 py-2.5 md:py-3 rounded-2xl font-black shadow-sm transition-all cursor-pointer text-xs md:text-sm">
 								{hideOpen ? <Eye size={18} /> : <EyeOff size={18} />}
 								{hideOpen ? "MOSTRAR ABERTOS" : "OCULTAR ABERTOS"}
 							</button>
 
 							<button
 								onClick={() => window.print()}
-								className="flex items-center gap-3 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-2xl font-black shadow-lg shadow-blue-100 dark:shadow-none transition-all cursor-pointer text-sm">
+								className="flex-1 sm:flex-none justify-center flex items-center gap-2 md:gap-3 bg-blue-600 hover:bg-blue-700 text-white px-4 md:px-6 py-2.5 md:py-3 rounded-2xl font-black shadow-lg shadow-blue-100 dark:shadow-none transition-all cursor-pointer text-xs md:text-sm">
 								<Printer size={18} />
 								IMPRIMIR TABELA
 							</button>
 						</div>
 					</div>
 
-					<div className="bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden transition-colors">
+					<div className="bg-white dark:bg-slate-900 rounded-2xl md:rounded-[2rem] border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden transition-colors">
 						<div className="overflow-x-auto">
 							<table className="w-full border-collapse">
 								<thead>
 									<tr className="bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700">
-										<th className="p-6 text-left text-[0.9375rem] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest sticky left-0 bg-slate-50 dark:bg-slate-800 z-20 min-w-[11.25rem]">
-											<div className="flex items-center gap-9">
+										<th className="p-3 md:p-6 text-left text-xs md:text-[0.9375rem] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest sticky left-0 bg-slate-50 dark:bg-slate-800 z-20 min-w-[7.5rem] md:min-w-[11.25rem]">
+											<div className="flex items-center gap-3 md:gap-9">
 												ITEM
 												<button
 													onClick={rotateStores}
-													className="cursor-pointer p-2 bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-xl hover:bg-blue-600 dark:hover:bg-blue-500 hover:text-white transition-all shadow-sm print:hidden"
+													className="cursor-pointer p-1.5 md:p-2 bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-xl hover:bg-blue-600 dark:hover:bg-blue-500 hover:text-white transition-all shadow-sm print:hidden"
 													title="Mover primeira loja para o final">
-													<ArrowLeftRight size={22} />
+													<ArrowLeftRight size={18} className="md:w-[22px] md:h-[22px]" />
 												</button>
 											</div>
 										</th>
-										<th className="p-6 text-center text-[0.75rem] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest sticky left-[11.25rem] bg-slate-50 dark:bg-slate-800 border-l border-r border-slate-200 dark:border-slate-700 z-20 min-w-[9.375rem]">
+										<th className="p-3 md:p-6 text-center text-[0.65rem] md:text-[0.75rem] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest sticky left-[7.5rem] md:left-[11.25rem] bg-slate-50 dark:bg-slate-800 border-l border-r border-slate-200 dark:border-slate-700 z-20 min-w-[7rem] md:min-w-[9.375rem]">
 											SALDO GERAL (4 LOJAS)
 										</th>
 										{allData.map((store) => (
 											<th
 												key={store.id}
-												className="p-6 text-center text-[0.6875rem] font-black text-blue-600 dark:text-blue-400 tracking-widest border-l border-slate-200 dark:border-slate-700 min-w-[8.75rem]">
-												<div className="flex flex-col items-center gap-2">
-													<span className="text-[0.87rem] font-extrabold text-slate-600 dark:text-slate-400 bg-white dark:bg-slate-900 px-3 py-1 rounded-full border border-slate-100 dark:border-slate-700 whitespace-nowrap">
+												className="p-3 md:p-6 text-center text-[0.6rem] md:text-[0.6875rem] font-black text-blue-600 dark:text-blue-400 tracking-widest border-l border-slate-200 dark:border-slate-700 min-w-[6.5rem] md:min-w-[8.75rem]">
+												<div className="flex flex-col items-center gap-1 md:gap-2">
+													<span className="text-[0.7rem] md:text-[0.87rem] font-extrabold text-slate-600 dark:text-slate-400 bg-white dark:bg-slate-900 px-2 md:px-3 py-0.5 md:py-1 rounded-full border border-slate-100 dark:border-slate-700 whitespace-nowrap">
 														{formatDate(store.lastStockUpdate)}
 													</span>
-													<span className="leading-tight text-2xl">{store.name}</span>
+													<span className="leading-tight text-lg md:text-2xl">{store.name}</span>
 												</div>
 											</th>
 										))}
@@ -445,7 +445,7 @@ export default function EstoquePedidosPage() {
 												<tr
 													key={key}
 													className="border-b border-slate-100 dark:border-slate-800 hover:bg-blue-50/30 dark:hover:bg-blue-900/20 transition-colors group">
-													<td className="p-6 text-xl font-black text-slate-600 dark:text-slate-400 sticky left-0 bg-white dark:bg-slate-900 group-hover:bg-blue-50/30 dark:group-hover:bg-blue-900/20 z-10 border-r border-slate-50 dark:border-slate-800 transition-colors uppercase">
+													<td className="p-3 md:p-6 text-sm md:text-xl font-black text-slate-600 dark:text-slate-400 sticky left-0 bg-white dark:bg-slate-900 group-hover:bg-blue-50/30 dark:group-hover:bg-blue-900/20 z-10 border-r border-slate-50 dark:border-slate-800 transition-colors uppercase">
 														{label}
 													</td>
 													{(() => {
@@ -455,22 +455,22 @@ export default function EstoquePedidosPage() {
 														const hasAnyDesired = allData.some((store) => (desiredData[store.id]?.[key] || 0) > 0);
 
 														return (
-															<td className="p-6 border-l border-r border-slate-100 dark:border-slate-800 text-center sticky left-[11.25rem] bg-white dark:bg-slate-900 group-hover:bg-blue-50/30 dark:group-hover:bg-blue-900/20 z-10 min-w-[9.375rem] transition-colors">
+															<td className="p-3 md:p-6 border-l border-r border-slate-100 dark:border-slate-800 text-center sticky left-[7.5rem] md:left-[11.25rem] bg-white dark:bg-slate-900 group-hover:bg-blue-50/30 dark:group-hover:bg-blue-900/20 z-10 min-w-[7rem] md:min-w-[9.375rem] transition-colors">
 																{hasAnyDesired ? (
 																	<div className="flex flex-col items-center gap-1">
-																		<span className="text-2xl font-black text-slate-800 dark:text-slate-200">
+																		<span className="text-base md:text-2xl font-black text-slate-800 dark:text-slate-200">
 																			{totalQty} / {totalDesired}
 																		</span>
 																		{totalDiff < 0 ? (
-																			<span className="px-2.5 py-0.5 rounded-full bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 font-extrabold whitespace-nowrap text-lg border border-rose-100 dark:border-rose-900/50">
+																			<span className="px-2 md:px-2.5 py-0.5 rounded-full bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 font-extrabold whitespace-nowrap text-xs md:text-lg border border-rose-100 dark:border-rose-900/50">
 																				Faltando {Math.abs(totalDiff)}
 																			</span>
 																		) : totalDiff > 0 ? (
-																			<span className="px-2.5 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 font-extrabold whitespace-nowrap text-lg border border-emerald-100 dark:border-emerald-900/50">
+																			<span className="px-2 md:px-2.5 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 font-extrabold whitespace-nowrap text-xs md:text-lg border border-emerald-100 dark:border-emerald-900/50">
 																				Sobrando {totalDiff}
 																			</span>
 																		) : (
-																			<span className="px-2.5 py-0.5 rounded-full bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 font-extrabold whitespace-nowrap text-xs border border-blue-100 dark:border-blue-900/50">
+																			<span className="px-2 md:px-2.5 py-0.5 rounded-full bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 font-extrabold whitespace-nowrap text-[10px] md:text-xs border border-blue-100 dark:border-blue-900/50">
 																				Ideal
 																			</span>
 																		)}
@@ -492,12 +492,12 @@ export default function EstoquePedidosPage() {
 														return (
 															<td
 																key={store.id}
-																className="p-6 border-l border-slate-100 dark:border-slate-800 text-center">
-																<div className="flex flex-col items-center gap-1.5">
+																className="p-3 md:p-6 border-l border-slate-100 dark:border-slate-800 text-center">
+																<div className="flex flex-col items-center gap-1 md:gap-1.5">
 																	<div className="flex justify-center items-center">
 																		{qty > 0 || openCount === 0 || hideOpen ? (
 																			<span
-																				className={`pr-2 text-2xl font-black ${
+																				className={`pr-1 md:pr-2 text-base md:text-2xl font-black ${
 																					qty === 0 && (openCount === 0 || hideOpen)
 																						? "text-slate-300 dark:text-slate-400"
 																						: "text-slate-900 dark:text-slate-100"
@@ -506,7 +506,7 @@ export default function EstoquePedidosPage() {
 																			</span>
 																		) : null}
 																		{!hideOpen && openCount > 0 && (
-																			<span className="text-2xl font-black text-slate-400 dark:text-slate-500 whitespace-nowrap">
+																			<span className="text-xs md:text-2xl font-black text-slate-400 dark:text-slate-500 whitespace-nowrap">
 																				{qty > 0 ? `+ ${openCount} ab` : `${openCount} ab`}
 																			</span>
 																		)}
@@ -514,18 +514,18 @@ export default function EstoquePedidosPage() {
 																	
 																	{/* Desired Stock Comparison Badge */}
 																	{hasDesired && (
-																		<div className="flex flex-col items-center text-[1.1rem] font-bold">
+																		<div className="flex flex-col items-center text-xs md:text-[1.1rem] font-bold">
 																			<span className="text-slate-400 dark:text-slate-200">Meta: {desiredQty}</span>
 																			{diff < 0 ? (
-																				<span className="mt-1 px-2.5 py-0.5 rounded-full bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 font-extrabold whitespace-nowrap border border-rose-100 dark:border-rose-900/50">
+																				<span className="mt-0.5 md:mt-1 px-1.5 md:px-2.5 py-0.5 rounded-full bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 font-extrabold whitespace-nowrap border border-rose-100 dark:border-rose-900/50">
 																					Faltando {Math.abs(diff)}
 																				</span>
 																			) : diff > 0 ? (
-																				<span className="mt-1 px-2.5 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 font-extrabold whitespace-nowrap border border-emerald-100 dark:border-emerald-900/50">
+																				<span className="mt-0.5 md:mt-1 px-1.5 md:px-2.5 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 font-extrabold whitespace-nowrap border border-emerald-100 dark:border-emerald-900/50">
 																					Sobrando {diff}
 																				</span>
 																			) : (
-																				<span className="mt-1 px-2.5 py-0.5 rounded-full bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 font-extrabold whitespace-nowrap border border-blue-100 dark:border-blue-900/50">
+																				<span className="mt-0.5 md:mt-1 px-1.5 md:px-2.5 py-0.5 rounded-full bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 font-extrabold whitespace-nowrap border border-blue-100 dark:border-blue-900/50">
 																					Ideal
 																				</span>
 																			)}
@@ -546,8 +546,8 @@ export default function EstoquePedidosPage() {
 			) : (
 				// Desired Stock Configuration View
 				<div className="space-y-6">
-					<div className="flex items-center justify-between gap-4">
-						<div className="relative flex-1 max-w-md group">
+					<div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 md:gap-4">
+						<div className="relative flex-1 max-w-full sm:max-w-md group">
 							<Search
 								size={18}
 								className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-500 transition-colors"
@@ -557,14 +557,14 @@ export default function EstoquePedidosPage() {
 								placeholder="Filtrar sabor..."
 								value={searchTerm}
 								onChange={(e) => setSearchTerm(e.target.value)}
-								className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl py-3 pl-12 pr-4 text-sm font-bold text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all shadow-sm"
+								className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl py-2.5 md:py-3 pl-12 pr-4 text-xs md:text-sm font-bold text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all shadow-sm"
 							/>
 						</div>
 
 						<button
 							onClick={saveDesiredStocks}
 							disabled={savingDesired}
-							className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white px-6 py-3 rounded-2xl font-black shadow-lg shadow-blue-100 dark:shadow-none transition-all cursor-pointer text-sm">
+							className="flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white px-4 md:px-6 py-2.5 md:py-3 rounded-2xl font-black shadow-lg shadow-blue-100 dark:shadow-none transition-all cursor-pointer text-xs md:text-sm">
 							{savingDesired ? (
 								<RefreshCw className="animate-spin" size={18} />
 							) : (
@@ -574,18 +574,18 @@ export default function EstoquePedidosPage() {
 						</button>
 					</div>
 
-					<div className="bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden transition-colors">
+					<div className="bg-white dark:bg-slate-900 rounded-2xl md:rounded-[2rem] border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden transition-colors">
 						<div className="overflow-x-auto">
 							<table className="w-full border-collapse">
 								<thead>
 									<tr className="bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700">
-										<th className="p-6 text-left text-[0.9375rem] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest sticky left-0 bg-slate-50 dark:bg-slate-800 z-20 min-w-[11.25rem]">
+										<th className="p-3 md:p-6 text-left text-xs md:text-[0.9375rem] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest sticky left-0 bg-slate-50 dark:bg-slate-800 z-20 min-w-[7.5rem] md:min-w-[11.25rem]">
 											ITEM
 										</th>
 										{Object.keys(STORE_NAMES).map((id) => (
 											<th
 												key={id}
-												className="p-6 text-center text-lg font-black text-slate-600 dark:text-slate-300 border-l border-slate-200 dark:border-slate-700 min-w-[8.75rem]">
+												className="p-3 md:p-6 text-center text-sm md:text-lg font-black text-slate-600 dark:text-slate-300 border-l border-slate-200 dark:border-slate-700 min-w-[6.5rem] md:min-w-[8.75rem]">
 												{STORE_NAMES[id as StoreId]}
 											</th>
 										))}
@@ -599,7 +599,7 @@ export default function EstoquePedidosPage() {
 												<tr
 													key={key}
 													className="border-b border-slate-100 dark:border-slate-800 hover:bg-blue-50/30 dark:hover:bg-blue-900/20 transition-colors group">
-													<td className="p-6 text-xl font-black text-slate-600 dark:text-slate-400 sticky left-0 bg-white dark:bg-slate-900 group-hover:bg-blue-50/30 dark:group-hover:bg-blue-900/20 z-10 border-r border-slate-50 dark:border-slate-800 transition-colors uppercase">
+													<td className="p-3 md:p-6 text-sm md:text-xl font-black text-slate-600 dark:text-slate-400 sticky left-0 bg-white dark:bg-slate-900 group-hover:bg-blue-50/30 dark:group-hover:bg-blue-900/20 z-10 border-r border-slate-50 dark:border-slate-800 transition-colors uppercase">
 														{label}
 													</td>
 													{(Object.keys(STORE_NAMES) as StoreId[]).map((storeId) => {
@@ -607,7 +607,7 @@ export default function EstoquePedidosPage() {
 														return (
 															<td
 																key={storeId}
-																className="p-6 border-l border-slate-100 dark:border-slate-800 text-center">
+																className="p-3 md:p-6 border-l border-slate-100 dark:border-slate-800 text-center">
 																<div className="flex justify-center">
 																	<input
 																		type="number"
@@ -615,7 +615,7 @@ export default function EstoquePedidosPage() {
 																		value={value}
 																		placeholder="0"
 																		onChange={(e) => handleLocalDesiredChange(storeId, key, e.target.value)}
-																		className="w-20 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl py-2 px-3 text-center text-lg font-black text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+																		className="w-16 md:w-20 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl py-1.5 md:py-2 px-2 md:px-3 text-center text-sm md:text-lg font-black text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
 																	/>
 																</div>
 															</td>

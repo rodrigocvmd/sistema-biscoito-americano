@@ -93,12 +93,12 @@ export default function GlobalStockHistoryPage() {
 	return (
 		<div className="space-y-6">
 			{/* Store Selector */}
-			<div className="flex flex-wrap gap-2 bg-slate-100 dark:bg-slate-800/50 p-1.5 rounded-2xl w-fit">
+			<div className="flex items-center gap-1.5 md:gap-2 bg-slate-100 dark:bg-slate-800/50 p-1.5 rounded-2xl max-w-full overflow-x-auto no-scrollbar w-full sm:w-fit">
 				{STORE_ORDER.map((id) => (
 					<button
 						key={id}
 						onClick={() => setSelectedStore(id)}
-						className={`px-6 py-2.5 rounded-xl text-sm font-black transition-all ${
+						className={`px-4 md:px-6 py-2 md:py-2.5 rounded-xl text-xs md:text-sm font-black whitespace-nowrap shrink-0 transition-all ${
 							selectedStore === id
 								? "bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-sm"
 								: "text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300"
@@ -111,20 +111,20 @@ export default function GlobalStockHistoryPage() {
 
 			{/* History Section */}
 			<section className="space-y-4">
-				<div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 ml-1">
-					<h3 className="text-lg font-bold text-slate-700 dark:text-slate-300 flex items-center gap-2">
-						<History className="text-slate-400 dark:text-slate-600" size={20} />
-						Histórico de Movimentações - {STORE_NAMES[selectedStore]}
+				<div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 md:gap-4 ml-1">
+					<h3 className="text-base md:text-lg font-bold text-slate-700 dark:text-slate-300 flex items-center gap-2">
+						<History className="text-slate-400 dark:text-slate-600 shrink-0" size={20} />
+						<span>Histórico de Movimentações - {STORE_NAMES[selectedStore]}</span>
 					</h3>
 					
 					{/* Filters */}
 					<div className="flex flex-wrap items-center gap-2">
-						<div className="relative group">
+						<div className="relative group flex-1 sm:flex-none">
 							<Filter size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
 							<select
 								value={filterItem}
 								onChange={(e) => setFilterItem(e.target.value)}
-								className="pl-9 pr-8 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-bold text-slate-600 dark:text-slate-400 appearance-none focus:outline-none focus:ring-2 focus:ring-blue-500/20 cursor-pointer"
+								className="w-full sm:w-auto pl-9 pr-8 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-bold text-slate-600 dark:text-slate-400 appearance-none focus:outline-none focus:ring-2 focus:ring-blue-500/20 cursor-pointer"
 							>
 								<option value="all">TODOS OS ITENS</option>
 								{sortStockEntries(Object.entries(STOCK_LABELS)).map(([id, label]) => (
@@ -134,7 +134,7 @@ export default function GlobalStockHistoryPage() {
 							<ChevronDown size={14} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
 						</div>
 
-						<div className="relative">
+						<div className="relative flex-1 sm:flex-none">
 							<CalendarIcon size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
 							<input
 								type="text"
@@ -147,7 +147,7 @@ export default function GlobalStockHistoryPage() {
 									if (val.length > 5) val = val.slice(0, 5) + '/' + val.slice(5, 9);
 									setFilterDate(val);
 								}}
-								className="pl-9 pr-3 py-2 w-[130px] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-bold text-slate-600 dark:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+								className="pl-9 pr-3 py-2 w-full sm:w-[130px] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-bold text-slate-600 dark:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
 							/>
 						</div>
 
@@ -175,27 +175,27 @@ export default function GlobalStockHistoryPage() {
 								<table className="w-full border-collapse">
 									<thead>
 										<tr className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800 text-left">
-											<th className="px-6 py-4 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Data / Hora</th>
-											<th className="px-6 py-4 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Item</th>
-											<th className="px-6 py-4 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest text-center">Tipo</th>
-											<th className="px-6 py-4 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest text-center">Qtd</th>
-											<th className="px-6 py-4 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest text-center">Antes</th>
-											<th className="px-6 py-4 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest text-center">Atual</th>
-											<th className="px-6 py-4 text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Obs</th>
+											<th className="px-3 md:px-6 py-3 md:py-4 text-[9px] md:text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Data / Hora</th>
+											<th className="px-3 md:px-6 py-3 md:py-4 text-[9px] md:text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Item</th>
+											<th className="px-3 md:px-6 py-3 md:py-4 text-[9px] md:text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest text-center">Tipo</th>
+											<th className="px-3 md:px-6 py-3 md:py-4 text-[9px] md:text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest text-center">Qtd</th>
+											<th className="px-3 md:px-6 py-3 md:py-4 text-[9px] md:text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest text-center">Antes</th>
+											<th className="px-3 md:px-6 py-3 md:py-4 text-[9px] md:text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest text-center">Atual</th>
+											<th className="px-3 md:px-6 py-3 md:py-4 text-[9px] md:text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Obs</th>
 										</tr>
 									</thead>
 									<tbody className="divide-y divide-slate-100 dark:divide-slate-800">
 										{paginatedMovements.length > 0 ? (
 											paginatedMovements.map((m) => (
 												<tr key={m.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
-													<td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-slate-400 dark:text-slate-500">
+													<td className="px-3 md:px-6 py-3 md:py-4 whitespace-nowrap text-xs md:text-sm font-bold text-slate-400 dark:text-slate-500">
 														{formatDate(m.timestamp?.toDate())}
 													</td>
-													<td className="px-6 py-4 whitespace-nowrap text-md font-black text-slate-700 dark:text-slate-200 uppercase">
+													<td className="px-3 md:px-6 py-3 md:py-4 whitespace-nowrap text-xs md:text-md font-black text-slate-700 dark:text-slate-200 uppercase">
 														{m.itemName}
 													</td>
-													<td className="px-6 py-4 whitespace-nowrap text-center">
-														<span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-black uppercase ${
+													<td className="px-3 md:px-6 py-3 md:py-4 whitespace-nowrap text-center">
+														<span className={`inline-flex items-center gap-1 px-2 md:px-2.5 py-1 rounded-full text-[10px] md:text-[11px] font-black uppercase ${
 															m.type === 'recebido' 
 																? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' 
 																: m.type === 'saida'
@@ -208,16 +208,16 @@ export default function GlobalStockHistoryPage() {
 															{m.type === 'recebido' ? 'recebido' : m.type === 'saida' ? 'saída' : m.type === 'abertura' ? 'pacote aberto' : 'pacote finalizado'}
 														</span>
 													</td>
-													<td className="px-6 py-4 whitespace-nowrap text-center text-lg font-black text-slate-600 dark:text-slate-200">
+													<td className="px-3 md:px-6 py-3 md:py-4 whitespace-nowrap text-center text-sm md:text-lg font-black text-slate-600 dark:text-slate-200">
 														{m.quantity}
 													</td>
-													<td className="px-6 py-4 whitespace-nowrap text-center text-lg font-bold text-slate-500 dark:text-slate-400">
+													<td className="px-3 md:px-6 py-3 md:py-4 whitespace-nowrap text-center text-sm md:text-lg font-bold text-slate-500 dark:text-slate-400">
 														{m.beforeStock !== undefined ? formatStockCompact(m.beforeStock, m.beforeOpen || false) : "-"}
 													</td>
-													<td className="px-6 py-4 whitespace-nowrap text-center text-lg font-black text-slate-800 dark:text-white">
+													<td className="px-3 md:px-6 py-3 md:py-4 whitespace-nowrap text-center text-sm md:text-lg font-black text-slate-800 dark:text-white">
 														{m.afterStock !== undefined ? formatStockCompact(m.afterStock, m.afterOpen || false) : "-"}
 													</td>
-													<td className="px-6 py-4 text-md font-medium text-slate-500 dark:text-slate-300 max-w-xs truncate">
+													<td className="px-3 md:px-6 py-3 md:py-4 text-xs md:text-md font-medium text-slate-500 dark:text-slate-300 max-w-xs truncate">
 														{m.obs || "-"}
 													</td>
 												</tr>
@@ -235,8 +235,8 @@ export default function GlobalStockHistoryPage() {
 
 							{/* Pagination */}
 							{totalPages > 1 && (
-								<div className="flex items-center justify-between px-6 py-4 bg-slate-50 dark:bg-slate-800/30 border-t border-slate-100 dark:border-slate-800">
-									<p className="text-xs font-bold text-slate-500">
+								<div className="flex flex-col sm:flex-row gap-3 items-center justify-between px-4 md:px-6 py-3 md:py-4 bg-slate-50 dark:bg-slate-800/30 border-t border-slate-100 dark:border-slate-800">
+									<p className="text-xs font-bold text-slate-500 text-center sm:text-left">
 										Mostrando <span className="text-slate-700 dark:text-slate-300">{(currentPage - 1) * itemsPerPage + 1}</span> a <span className="text-slate-700 dark:text-slate-300">{Math.min(currentPage * itemsPerPage, filteredMovements.length)}</span> de <span className="text-slate-700 dark:text-slate-300">{filteredMovements.length}</span> movimentações
 									</p>
 									<div className="flex items-center gap-2">
