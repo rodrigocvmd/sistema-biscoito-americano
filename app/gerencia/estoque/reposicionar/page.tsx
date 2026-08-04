@@ -919,45 +919,43 @@ export default function EstoqueReposicionarPage() {
 														)}
 
 														<div className="flex flex-col items-center justify-center gap-1 min-h-[3rem]">
-															{/* Indicador de destino (clique para mover) */}
-															{isTargetCell ? (
-																<div className="flex flex-col items-center gap-1 animate-in fade-in zoom-in-95 duration-150">
-																	<span className="text-xs font-black uppercase text-emerald-700 dark:text-emerald-300 tracking-wider">
-																		Receber aqui
+															{/* Quantidade atual em estoque na célula */}
+															<div className="flex items-center gap-1">
+																{(v > 0 || initialOpenCount === 0 || hideOpen) && (
+																	<span
+																		className={`text-[1.7rem] font-black ${(initialOpenCount > 0 && !hideOpen) ? "text-slate-400 dark:text-slate-200" : (v === 0 && (initialOpenCount === 0 || hideOpen)) ? "text-slate-400 dark:text-slate-600" : "text-slate-900 dark:text-slate-200"}`}>
+																		{v}
 																	</span>
-																	<span className="text-base font-black px-3 py-1 rounded-full bg-emerald-600 text-white shadow-md">
-																		+{activeSelection.qty}
+																)}
+																{!hideOpen && initialOpenCount > 0 && (
+																	<span className="text-[1.7rem] font-bold text-slate-400 dark:text-slate-500 whitespace-nowrap">
+																		{v > 0 ? `+ ${initialOpenCount} aberto` : `${initialOpenCount} aberto`}
 																	</span>
-																</div>
-															) : (
-																<>
-																	<div className="flex items-center gap-1">
-																		{(v > 0 || initialOpenCount === 0 || hideOpen) && (
-																			<span
-																				className={`text-[1.7rem] font-black ${(initialOpenCount > 0 && !hideOpen) ? "text-slate-400 dark:text-slate-200" : (v === 0 && (initialOpenCount === 0 || hideOpen)) ? "text-slate-400 dark:text-slate-600" : "text-slate-900 dark:text-slate-200"}`}>
-																				{v}
-																			</span>
-																		)}
-																		{!hideOpen && initialOpenCount > 0 && (
-																			<span className="text-[1.7rem] font-bold text-slate-400 dark:text-slate-500 whitespace-nowrap">
-																				{v > 0 ? `+ ${initialOpenCount} aberto` : `${initialOpenCount} aberto`}
-																			</span>
-																		)}
-																	</div>
+																)}
+															</div>
 
-																	{/* Badge de Seleção de Saída na loja de origem */}
-																	{isSourceCell ? (
-																		<span className="text-xs font-black px-2.5 py-0.5 rounded-full bg-red-600 text-white shadow-md uppercase tracking-wider animate-in zoom-in-90 duration-150">
-																			-{activeSelection.qty} a sair
-																		</span>
-																	) : (
-																		(receiving || sending) && (
-																			<span className={`text-[1.35rem] font-black ${receiving ? "text-green-600 dark:text-green-500" : "text-red-600 dark:text-red-500"}`}>
-																				{receiving ? `+${v - initial}` : `-${initial - v}`}
-																			</span>
-																		)
-																	)}
-																</>
+															{/* Badges de Estado */}
+															{isSourceCell ? (
+																<span className="text-xs font-black px-2.5 py-0.5 rounded-full bg-red-600 text-white shadow-md uppercase tracking-wider animate-in zoom-in-90 duration-150">
+																	-{activeSelection.qty} a sair
+																</span>
+															) : isTargetCell ? (
+																<span className="text-xs font-bold px-3 py-1 rounded-full bg-emerald-600 text-white shadow-md uppercase tracking-wider animate-in zoom-in-90 duration-150 inline-flex items-center gap-1.5 whitespace-nowrap">
+																	<span>Enviar</span>
+																	<span className="text-sm font-black text-amber-300 bg-emerald-800/80 px-2 py-0.5 rounded-lg border border-amber-300/40 shadow-inner">
+																		{activeSelection.qty}
+																	</span>
+																	<span>para o</span>
+																	<span className="text-sm font-black text-white bg-emerald-800/80 px-2 py-0.5 rounded-lg border border-white/40 shadow-inner">
+																		{STORE_NAMES[id]}
+																	</span>
+																</span>
+															) : (
+																(receiving || sending) && (
+																	<span className={`text-[1.35rem] font-black ${receiving ? "text-green-600 dark:text-green-500" : "text-red-600 dark:text-red-500"}`}>
+																		{receiving ? `+${v - initial}` : `-${initial - v}`}
+																	</span>
+																)
 															)}
 														</div>
 													</td>
