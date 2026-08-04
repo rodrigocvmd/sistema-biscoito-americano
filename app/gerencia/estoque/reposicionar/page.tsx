@@ -95,7 +95,18 @@ export default function EstoqueReposicionarPage() {
 	const [hideOpen, setHideOpen] = useState(false);
 
 	const [startingRepo, setStartingRepo] = useState(false);
+	const [isFinalizedSession, setIsFinalizedSession] = useState(false);
+	const [showPostFinalizationBanner, setShowPostFinalizationBanner] = useState(false);
+	const [showEditConfirmModal, setShowEditConfirmModal] = useState(false);
+	const [lastFinalizedDate, setLastFinalizedDate] = useState<string | null>(null);
 	const isSavedThisRun = useRef(false);
+
+	const handleCloseSummary = () => {
+		setShowSummary(false);
+		if (isFinalizedSession) {
+			setShowPostFinalizationBanner(true);
+		}
+	};
 
 	// Sempre que houver qualquer modificação na projeção de estoque, invalidar o status de salvo.
 	useEffect(() => {
@@ -107,7 +118,11 @@ export default function EstoqueReposicionarPage() {
 	// Load projected stocks from localStorage on mount
 	useEffect(() => {
 		const savedProjected = localStorage.getItem("repos_projected_stocks");
+		const savedDate = localStorage.getItem("repos_last_finalized_date");
 		
+		if (savedDate) {
+			setLastFinalizedDate(savedDate);
+		}
 		if (savedProjected) {
 			setProjectedStocks(JSON.parse(savedProjected));
 			// Se carregamos do localStorage, marcamos como inicializado para evitar sobreposição
@@ -205,7 +220,11 @@ export default function EstoqueReposicionarPage() {
 			// Limpar localStorage para alinhar com o novo início
 			localStorage.removeItem("repos_projected_stocks");
 			localStorage.removeItem("repos_item_transfers");
+			localStorage.removeItem("repos_last_finalized_date");
 			isSavedThisRun.current = false;
+			setIsFinalizedSession(false);
+			setShowPostFinalizationBanner(false);
+			setLastFinalizedDate(null);
 
 			setShowResetConfirm(false);
 		} catch (error) {
@@ -341,6 +360,7 @@ export default function EstoqueReposicionarPage() {
 		}
 
 		if (isSavedThisRun.current) {
+			setIsFinalizedSession(true);
 			setShowSummary(true);
 			return;
 		}
@@ -394,7 +414,11 @@ export default function EstoqueReposicionarPage() {
 			await addDoc(collection(db, "repositionSnapshots"), endState);
 			localStorage.removeItem("repos_session_id");
 
+			const formattedNow = formatDate(new Date());
+			setLastFinalizedDate(formattedNow);
+			localStorage.setItem("repos_last_finalized_date", formattedNow);
 			isSavedThisRun.current = true;
+			setIsFinalizedSession(true);
 			setShowSummary(true);
 		} catch (error) {
 			console.error("Erro ao finalizar reposicionamento:", error);
@@ -775,8 +799,8 @@ export default function EstoqueReposicionarPage() {
 			/>
 			<div className="space-y-8 print:hidden">
 			{/* Action Bar */}
-			<div className="flex flex-col md:flex-row gap-4 items-center justify-between bg-white dark:bg-slate-900 p-6 rounded-[2rem] border border-slate-200 dark:border-slate-800 shadow-sm transition-colors print:hidden">
-				<div className="flex flex-col gap-1">
+			<div className="flex flex-col md:flex-row gap-4 items-center bg-white dark:bg-slate-900 p-6 rounded-[2rem] border border-slate-200 dark:border-slate-800 shadow-sm transition-colors print:hidden">
+				<div className="flex flex-col gap-1 shrink-0">
 					<h2 className="text-2xl font-black text-slate-800 dark:text-slate-200 uppercase tracking-tight">
 						Reposicionamento
 					</h2>
@@ -784,10 +808,10 @@ export default function EstoqueReposicionarPage() {
 						Movimente pacotes entre as lojas
 					</p>
 				</div>
-				<div className="flex items-center gap-3">
+				<div className="flex-1 flex items-center justify-center gap-3 flex-wrap">
 					<button
 						onClick={resetProjectedStocks}
-						className="cursor-pointer flex items-center gap-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-green-700 dark:text-green-500 px-5 py-2.5 rounded-xl font-black transition-all border border-slate-200 dark:border-slate-700 uppercase tracking-widest">
+						className="cursor-pointer flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2.5 rounded-xl font-black shadow-md shadow-emerald-100 dark:shadow-none transition-all uppercase tracking-widest">
 						<RefreshCw size={14} />
 						Iniciar reposicionamento
 					</button>
@@ -830,18 +854,36 @@ export default function EstoqueReposicionarPage() {
 				</button>
 			</div>
 
+			{showPostFinalizationBanner && (
+				<div className="bg-red-50 dark:bg-red-950/40 border-2 border-red-500/50 rounded-2xl p-6 shadow-sm space-y-4 print:hidden animate-in fade-in duration-200 flex flex-col items-center text-center">
+					<div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+						<AlertCircle className="text-red-600 dark:text-red-400 shrink-0" size={28} />
+						<p className="text-base md:text-lg font-black text-red-800 dark:text-red-200 text-center">
+							Números abaixo referentes ao último reposicionamento {lastFinalizedDate ? `(${lastFinalizedDate})` : `(${formatDate(new Date())})`} podem estar incorretos devido a movimentações de estoque posteriores.
+						</p>
+					</div>
+					<div className="flex justify-center items-center w-full pt-1">
+						<button
+							onClick={() => setShowEditConfirmModal(true)}
+							className="cursor-pointer bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-xl text-xs md:text-sm font-black transition-all uppercase tracking-wider shadow-md shadow-red-200 dark:shadow-none">
+							Continuar ou editar último reposicionamento
+						</button>
+					</div>
+				</div>
+			)}
+
 			<div className="bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-200 dark:border-slate-800 shadow-sm transition-colors print:hidden">
 				<div className="overflow-x-auto overflow-y-visible">
 					<table className="w-full table-fixed border-separate border-spacing-0 min-w-[50rem]">
 						<thead>
 							<tr className="bg-slate-50 dark:bg-slate-800">
-								<th className="w-[24%] min-w-[12rem] p-5 text-[0.9rem] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest sticky left-0 bg-slate-50 dark:bg-slate-800 z-20 border-b border-slate-200 dark:border-slate-700 text-center">
+								<th className="w-[24%] min-w-[12rem] p-5 text-[1rem] font-black text-slate-700 dark:text-slate-300 uppercase tracking-widest sticky left-0 bg-slate-50 dark:bg-slate-800 z-20 border-b border-slate-200 dark:border-slate-700 text-center">
 									Item
 								</th>
 								{STORE_ORDER.map((id) => (
 									<th
 										key={id}
-										className="w-[19%] min-w-[9.5rem] p-5 text-center text-[0.9rem] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest border-l border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700">
+										className="w-[19%] min-w-[9.5rem] p-5 text-center text-[1rem] font-black text-slate-700 dark:text-slate-300 uppercase tracking-widest border-l border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700">
 										{STORE_NAMES[id]}
 									</th>
 								))}
@@ -857,13 +899,13 @@ export default function EstoqueReposicionarPage() {
 									<Fragment key={itemKey}>
 										{showRepeatedHeader && (
 											<tr className="bg-slate-100 dark:bg-slate-800/80">
-												<th className="p-3 text-center text-[0.9rem] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest sticky left-0 bg-slate-100 dark:bg-slate-800/80 z-20 border-y border-slate-200 dark:border-slate-700">
+												<th className="p-3 text-center text-[1rem] font-black text-slate-700 dark:text-slate-300 uppercase tracking-widest sticky left-0 bg-slate-100 dark:bg-slate-800/80 z-20 border-y border-slate-200 dark:border-slate-700">
 													Item
 												</th>
 												{STORE_ORDER.map((id) => (
 													<th
 														key={`header-${id}-${index}`}
-														className="p-3 text-center text-[0.9rem] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest border-l border-slate-200 dark:border-slate-700 border-y">
+														className="p-3 text-center text-[1rem] font-black text-slate-700 dark:text-slate-300 uppercase tracking-widest border-l border-slate-200 dark:border-slate-700 border-y">
 														{STORE_NAMES[id]}
 													</th>
 												))}
@@ -923,7 +965,7 @@ export default function EstoqueReposicionarPage() {
 															<div className="flex items-center gap-1">
 																{(v > 0 || initialOpenCount === 0 || hideOpen) && (
 																	<span
-																		className={`text-[1.7rem] font-black ${(initialOpenCount > 0 && !hideOpen) ? "text-slate-400 dark:text-slate-200" : (v === 0 && (initialOpenCount === 0 || hideOpen)) ? "text-slate-400 dark:text-slate-600" : "text-slate-900 dark:text-slate-200"}`}>
+																		className={`text-[1.7rem] font-black ${(initialOpenCount > 0 && !hideOpen) ? "text-slate-900 dark:text-slate-200" : (v === 0 && (initialOpenCount === 0 || hideOpen)) ? "text-slate-400 dark:text-slate-600" : "text-slate-900 dark:text-slate-200"}`}>
 																		{v}
 																	</span>
 																)}
@@ -936,8 +978,14 @@ export default function EstoqueReposicionarPage() {
 
 															{/* Badges de Estado */}
 															{isSourceCell ? (
-																<span className="text-xs font-black px-2.5 py-0.5 rounded-full bg-red-600 text-white shadow-md uppercase tracking-wider animate-in zoom-in-90 duration-150">
-																	-{activeSelection.qty} a sair
+																<span className="text-xs font-bold px-3 py-1 rounded-full bg-red-600 text-white shadow-md uppercase tracking-wider animate-in zoom-in-90 duration-150 inline-flex flex-wrap justify-center items-center gap-1.5">
+																	<span className="text-sm font-black text-amber-300 bg-red-800/80 px-2 py-0.5 rounded-lg border border-amber-300/40 shadow-inner">
+																		{activeSelection.qty}
+																	</span>
+																	<span>saindo do</span>
+																	<span className="text-sm font-black text-white bg-red-800/80 px-2 py-0.5 rounded-lg border border-white/40 shadow-inner">
+																		{STORE_NAMES[id]}
+																	</span>
 																</span>
 															) : isTargetCell ? (
 																<span className="text-xs font-bold px-3 py-1 rounded-full bg-emerald-600 text-white shadow-md uppercase tracking-wider animate-in zoom-in-90 duration-150 inline-flex flex-wrap justify-center items-center gap-1.5">
@@ -1210,7 +1258,7 @@ export default function EstoqueReposicionarPage() {
 								</button>
 							</div>
 							<button
-								onClick={() => setShowSummary(false)}
+								onClick={handleCloseSummary}
 								className="w-full px-6 py-4 rounded-2xl font-black text-[0.75rem] uppercase tracking-widest text-slate-500 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-800 hover:shadow-sm transition-all cursor-pointer border border-transparent hover:border-slate-200 dark:hover:border-slate-700">
 								Fechar
 							</button>
@@ -1246,33 +1294,66 @@ export default function EstoqueReposicionarPage() {
 					</div>
 				</div>
 			)}
+			{showEditConfirmModal && (
+				<div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[60] flex items-center justify-center p-4 animate-in fade-in duration-200">
+					<div className="bg-white dark:bg-slate-900 rounded-[2rem] w-full max-w-xl shadow-2xl overflow-hidden flex flex-col border border-amber-200 dark:border-amber-900/30">
+						<div className="p-8 text-center space-y-5">
+							<div className="mx-auto w-20 h-20 bg-amber-100 dark:bg-amber-900/20 rounded-full flex items-center justify-center">
+								<AlertCircle className="text-amber-600 dark:text-amber-400" size={40} />
+							</div>
+							<h3 className="text-2xl md:text-3xl font-black text-slate-800 dark:text-slate-200 tracking-tight">Editar Úlimo Reposicionamento</h3>
+							<p className="text-base md:text-xl text-slate-600 dark:text-slate-300 font-bold leading-relaxed">
+								Caso o último reposicionamento tenha sido finalizado há um tempo, as atualizações de estoque terão feito os números estarem incorretos. Nesse caso, inicie um novo reposicionamento.
+							</p>
+							<p className="text-sm md:text-lg font-black text-amber-700 dark:text-amber-400 uppercase tracking-wider">
+								Prossiga apenas se quer editar um reposicionamento recente (que acabou de finalizar).
+							</p>
+						</div>
+						<div className="p-6 bg-slate-50 dark:bg-slate-800/50 border-t border-slate-100 dark:border-slate-800 flex gap-4">
+							<button 
+								onClick={() => setShowEditConfirmModal(false)} 
+								className="flex-1 px-6 py-4 rounded-2xl font-black text-sm md:text-lg uppercase tracking-widest bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-100 dark:shadow-none transition-all cursor-pointer">
+								Voltar
+							</button>
+							<button 
+								onClick={() => {
+									setShowEditConfirmModal(false);
+									setShowPostFinalizationBanner(false);
+								}} 
+								className="flex-1 px-6 py-4 rounded-2xl font-black text-sm md:text-lg uppercase tracking-widest bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-100 dark:shadow-none transition-all cursor-pointer">
+								Prosseguir
+							</button>
+						</div>
+					</div>
+				</div>
+			)}
 			{showResetConfirm && (
 				<div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[60] flex items-center justify-center p-4 animate-in fade-in duration-200">
-					<div className="bg-white dark:bg-slate-900 rounded-[2rem] w-full max-w-md shadow-2xl overflow-hidden flex flex-col border border-blue-200 dark:border-blue-900/30">
-						<div className="p-8 text-center space-y-4">
-							<div className="mx-auto w-16 h-16 bg-blue-100 dark:bg-blue-900/20 rounded-full flex items-center justify-center">
+					<div className="bg-white dark:bg-slate-900 rounded-[2rem] w-full max-w-xl shadow-2xl overflow-hidden flex flex-col border border-blue-200 dark:border-blue-900/30">
+						<div className="p-8 text-center space-y-5">
+							<div className="mx-auto w-20 h-20 bg-blue-100 dark:bg-blue-900/20 rounded-full flex items-center justify-center">
 								{startingRepo ? (
-									<RefreshCw className="text-blue-600 dark:text-blue-400 animate-spin" size={32} />
+									<RefreshCw className="text-blue-600 dark:text-blue-400 animate-spin" size={40} />
 								) : (
-									<RefreshCw className="text-blue-600 dark:text-blue-400" size={32} />
+									<RefreshCw className="text-blue-600 dark:text-blue-400" size={40} />
 								)}
 							</div>
-							<h3 className="text-xl font-black text-slate-800 dark:text-slate-200 tracking-tight">Iniciar Reposicionamento</h3>
-							<p className="text-slate-500 dark:text-slate-400 font-bold text-md leading-relaxed">
+							<h3 className="text-2xl md:text-3xl font-black text-slate-800 dark:text-slate-200 tracking-tight">Iniciar Reposicionamento</h3>
+							<p className="text-base md:text-xl text-slate-500 dark:text-slate-400 font-bold leading-relaxed">
 								Qualquer movimentação será zerada e o estoque será atualizado para o estoque atual informado pelas lojas.
 							</p>
 						</div>
-						<div className="p-6 bg-slate-50 dark:bg-slate-800/50 border-t border-slate-100 dark:border-slate-800 flex gap-3">
+						<div className="p-6 bg-slate-50 dark:bg-slate-800/50 border-t border-slate-100 dark:border-slate-800 flex gap-4">
 							<button 
 								onClick={() => setShowResetConfirm(false)} 
 								disabled={startingRepo}
-								className="flex-1 px-6 py-4 rounded-2xl font-black text-[0.75rem] uppercase tracking-widest bg-red-600 hover:bg-red-700 text-white shadow-lg disabled:opacity-50 cursor-pointer text-center">
+								className="flex-1 px-6 py-4 rounded-2xl font-black text-sm md:text-lg uppercase tracking-widest bg-red-600 hover:bg-red-700 text-white shadow-lg disabled:opacity-50 cursor-pointer text-center">
 								Cancelar
 							</button>
 							<button 
 								onClick={confirmResetProjectedStocks} 
 								disabled={startingRepo}
-								className="flex-1 px-6 py-4 rounded-2xl font-black text-[0.75rem] uppercase tracking-widest bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg disabled:opacity-50 cursor-pointer text-center">
+								className="flex-1 px-6 py-4 rounded-2xl font-black text-sm md:text-lg uppercase tracking-widest bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg disabled:opacity-50 cursor-pointer text-center">
 								{startingRepo ? "Iniciando..." : "Prosseguir"}
 							</button>
 						</div>
