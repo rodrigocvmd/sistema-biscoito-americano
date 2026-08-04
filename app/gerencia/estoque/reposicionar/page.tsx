@@ -39,6 +39,8 @@ import {
 	Search,
 	Eye,
 	EyeOff,
+	X,
+	AlertCircle,
 } from "lucide-react";
 
 
@@ -57,10 +59,20 @@ export default function EstoqueReposicionarPage() {
 	const [allData, setAllData] = useState<FullStoreData[]>([]);
 	const isInitialized = useRef(false);
 
-	// Transfer state per item
-	const [itemTransfers, setItemTransfers] = useState<
-		Record<string, { from: StoreId; to: StoreId; qty: number }>
-	>({});
+	// Estado da seleção ativa para reposicionamento interativo por cliques
+	const [activeSelection, setActiveSelection] = useState<{
+		item: keyof StockData;
+		fromStore: StoreId;
+		qty: number;
+	} | null>(null);
+
+	// Modal de aviso quando o clique exceder o estoque disponível na loja de origem
+	const [stockWarningModal, setStockWarningModal] = useState<{
+		item: keyof StockData;
+		fromStore: StoreId;
+		intendedQty: number;
+		availableStock: number;
+	} | null>(null);
 
 	const [projectedStocks, setProjectedStocks] = useState<Record<StoreId, Partial<StockData>>>({
 		conjunto: {},
@@ -77,12 +89,6 @@ export default function EstoqueReposicionarPage() {
 	const [loadingAllHistory, setLoadingAllHistory] = useState(false);
 	const [showSummary, setShowSummary] = useState(false);
 	const [showResetConfirm, setShowResetConfirm] = useState(false);
-	const [negativeStockWarning, setNegativeStockWarning] = useState<{
-		store: StoreId;
-		item: keyof StockData;
-		qty: number;
-		onConfirm: () => void;
-	} | null>(null);
 
 	const [searchTerm, setSearchTerm] = useState("");
 	const [isPrintingChecklist, setIsPrintingChecklist] = useState(false);
@@ -91,39 +97,30 @@ export default function EstoqueReposicionarPage() {
 	const [startingRepo, setStartingRepo] = useState(false);
 	const isSavedThisRun = useRef(false);
 
-	// Sempre que houver qualquer modificação na projeção de estoque ou nas transferências, invalidar o status de salvo.
+	// Sempre que houver qualquer modificação na projeção de estoque, invalidar o status de salvo.
 	useEffect(() => {
 		if (isInitialized.current) {
 			isSavedThisRun.current = false;
 		}
-	}, [itemTransfers, projectedStocks]);
+	}, [projectedStocks]);
 
-	// Load from localStorage on mount
+	// Load projected stocks from localStorage on mount
 	useEffect(() => {
 		const savedProjected = localStorage.getItem("repos_projected_stocks");
-		const savedTransfers = localStorage.getItem("repos_item_transfers");
 		
 		if (savedProjected) {
 			setProjectedStocks(JSON.parse(savedProjected));
 			// Se carregamos do localStorage, marcamos como inicializado para evitar sobreposição
 			isInitialized.current = true;
 		}
-		if (savedTransfers) setItemTransfers(JSON.parse(savedTransfers));
 	}, []);
 
 	// Save to localStorage on change
 	useEffect(() => {
-		// Apenas salvamos se já foi inicializado (seja via localStorage ou via allData pela primeira vez)
 		if (isInitialized.current && Object.keys(projectedStocks.lago).length > 0) {
 			localStorage.setItem("repos_projected_stocks", JSON.stringify(projectedStocks));
 		}
 	}, [projectedStocks]);
-
-	useEffect(() => {
-		if (isInitialized.current && Object.keys(itemTransfers).length > 0) {
-			localStorage.setItem("repos_item_transfers", JSON.stringify(itemTransfers));
-		}
-	}, [itemTransfers]);
 
 	useEffect(() => {
 		const unsubscribeStores = onSnapshot(collection(db, "stores"), (storesSnapshot) => {
@@ -156,13 +153,6 @@ export default function EstoqueReposicionarPage() {
 				initialProjected[store.id] = { ...store.stock };
 			});
 			setProjectedStocks(initialProjected);
-
-			// Initialize default transfers: Lago as source, Conjunto as target
-			const initialTransfers: any = {};
-			Object.keys(STOCK_LABELS).forEach((key) => {
-				initialTransfers[key] = { from: "lago", to: "conjunto", qty: 0 };
-			});
-			setItemTransfers(initialTransfers);
 			
 			// Marcamos como inicializado IMEDIATAMENTE após a primeira carga do Firestore
 			isInitialized.current = true;
@@ -210,12 +200,7 @@ export default function EstoqueReposicionarPage() {
 				initialProjected[store.id] = { ...store.stock };
 			});
 			setProjectedStocks(initialProjected);
-
-			const resetTransfers: any = {};
-			Object.keys(STOCK_LABELS).forEach((key) => {
-				resetTransfers[key] = { from: "lago", to: "conjunto", qty: 0 };
-			});
-			setItemTransfers(resetTransfers);
+			setActiveSelection(null);
 			
 			// Limpar localStorage para alinhar com o novo início
 			localStorage.removeItem("repos_projected_stocks");
@@ -231,48 +216,85 @@ export default function EstoqueReposicionarPage() {
 		}
 	};
 
-	const applyMovement = (key: keyof StockData) => {
-		const transfer = itemTransfers[key];
-		if (!transfer || transfer.qty <= 0 || transfer.from === transfer.to) return;
+	// Manipulação do clique em célula para seleção de origem / incremento / transferência para destino
+	const handleCellClick = (itemKey: keyof StockData, storeId: StoreId) => {
+		const currentStock = projectedStocks[storeId][itemKey] || 0;
 
-		const currentFromStock = projectedStocks[transfer.from][key] || 0;
-		const resultQty = currentFromStock - transfer.qty;
-
-		const performUpdate = () => {
-			setProjectedStocks((prev) => {
-				const next = { ...prev };
-				const stockFrom = { ...next[transfer.from] };
-				const stockTo = { ...next[transfer.to] };
-
-				const vFrom = stockFrom[key] || 0;
-				const vTo = stockTo[key] || 0;
-
-				stockFrom[key] = vFrom - transfer.qty;
-				stockTo[key] = vTo + transfer.qty;
-
-				next[transfer.from] = stockFrom;
-				next[transfer.to] = stockTo;
-				return next;
-			});
-
-			// Reset quantity for this item after applying
-			setItemTransfers((prev) => ({
-				...prev,
-				[key]: { ...prev[key], qty: 0 },
-			}));
-			setNegativeStockWarning(null);
-		};
-
-		if (resultQty < 0) {
-			setNegativeStockWarning({
-				store: transfer.from,
-				item: key,
-				qty: resultQty,
-				onConfirm: performUpdate,
-			});
-		} else {
-			performUpdate();
+		// 1. Se não houver seleção ativa OU for um item diferente, seleciona esta célula como origem com quantidade 1
+		if (!activeSelection || activeSelection.item !== itemKey) {
+			if (1 > currentStock) {
+				setStockWarningModal({
+					item: itemKey,
+					fromStore: storeId,
+					intendedQty: 1,
+					availableStock: currentStock,
+				});
+			} else {
+				setActiveSelection({
+					item: itemKey,
+					fromStore: storeId,
+					qty: 1,
+				});
+			}
+			return;
 		}
+
+		// 2. Se a seleção ativa for para a MESMA loja de origem -> incrementa quantidade (+1)
+		if (activeSelection.fromStore === storeId) {
+			const nextQty = activeSelection.qty + 1;
+			if (nextQty > currentStock) {
+				setStockWarningModal({
+					item: itemKey,
+					fromStore: storeId,
+					intendedQty: nextQty,
+					availableStock: currentStock,
+				});
+			} else {
+				setActiveSelection({
+					...activeSelection,
+					qty: nextQty,
+				});
+			}
+			return;
+		}
+
+		// 3. Se a seleção ativa for para uma LOJA DIVERSA da mesma linha -> realiza a transferência de todos os itens em 1 clique!
+		const transferQty = activeSelection.qty;
+		const fromStore = activeSelection.fromStore;
+		const toStore = storeId;
+
+		setProjectedStocks((prev) => {
+			const next = { ...prev };
+			const stockFrom = { ...next[fromStore] };
+			const stockTo = { ...next[toStore] };
+
+			const vFrom = stockFrom[itemKey] || 0;
+			const vTo = stockTo[itemKey] || 0;
+
+			stockFrom[itemKey] = vFrom - transferQty;
+			stockTo[itemKey] = vTo + transferQty;
+
+			next[fromStore] = stockFrom;
+			next[toStore] = stockTo;
+			return next;
+		});
+
+		setActiveSelection(null);
+	};
+
+	const handleConfirmStockWarning = () => {
+		if (stockWarningModal) {
+			setActiveSelection({
+				item: stockWarningModal.item,
+				fromStore: stockWarningModal.fromStore,
+				qty: stockWarningModal.intendedQty,
+			});
+			setStockWarningModal(null);
+		}
+	};
+
+	const handleCancelStockWarning = () => {
+		setStockWarningModal(null);
 	};
 
 	const sortedItems = sortStockEntries(Object.entries(STOCK_LABELS))
@@ -819,23 +841,15 @@ export default function EstoqueReposicionarPage() {
 								{STORE_ORDER.map((id) => (
 									<th
 										key={id}
-										className="p-5 text-center text-[0.9rem] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest min-w-[7.5rem] border-l border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700">
+										className="p-5 text-center text-[0.9rem] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest border-l border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700">
 										{STORE_NAMES[id]}
 									</th>
 								))}
-								<th className="p-5 text-center text-[0.9rem] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest min-w-[20rem] border-l border-slate-100 dark:border-slate-700 bg-blue-50/50 dark:bg-blue-900/10 border-b border-slate-200 dark:border-slate-700">
-									Movimentar
-								</th>
 							</tr>
 						</thead>
 						<tbody>
 							{sortedItems.map(([key, label], index) => {
 								const itemKey = key as keyof StockData;
-								const transfers = itemTransfers[itemKey] || {
-									from: "lago",
-									to: "conjunto",
-									qty: 0,
-								};
 								const isExpanded = expandedItem === itemKey;
 								const showRepeatedHeader = index > 0 && index % 8 === 0;
 
@@ -853,9 +867,6 @@ export default function EstoqueReposicionarPage() {
 														{STORE_NAMES[id]}
 													</th>
 												))}
-												<th className="p-3 text-center text-[0.9rem] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest border-l border-slate-200 dark:border-slate-700 bg-blue-100/30 dark:bg-blue-900/20 border-y">
-													Movimentar
-												</th>
 											</tr>
 										)}
 										<tr
@@ -877,105 +888,86 @@ export default function EstoqueReposicionarPage() {
 												const receiving = v > initial;
 												const sending = v < initial;
 
+												const isSourceCell = activeSelection?.item === itemKey && activeSelection?.fromStore === id;
+												const isTargetCell = activeSelection?.item === itemKey && activeSelection?.fromStore !== id;
+
+												let cellStyle = "relative p-5 text-center border-l border-slate-50 dark:border-slate-800 border-b border-slate-100 dark:border-slate-800 cursor-pointer transition-all select-none ";
+												if (isSourceCell) {
+													cellStyle += "bg-red-50 dark:bg-red-900/30 ring-2 ring-red-500 shadow-md";
+												} else if (isTargetCell) {
+													cellStyle += "bg-emerald-50/70 dark:bg-emerald-900/30 ring-2 ring-dashed ring-emerald-500 hover:bg-emerald-100 dark:hover:bg-emerald-900/50";
+												} else {
+													cellStyle += "hover:bg-slate-100/60 dark:hover:bg-slate-800/60";
+												}
+
 												return (
 													<td
 														key={id}
-														className="p-5 text-center border-l border-slate-50 dark:border-slate-800 border-b border-slate-100 dark:border-slate-800">
-														<div className="flex flex-col items-center">
-															<div className="flex items-center gap-1">
-																{(v > 0 || initialOpenCount === 0 || hideOpen) && (
-																	<span
-																		className={`text-[1.7rem] font-black ${(initialOpenCount > 0 && !hideOpen) ? "text-slate-400 dark:text-slate-200" : (v === 0 && (initialOpenCount === 0 || hideOpen)) ? "text-slate-400 dark:text-slate-600" : "text-slate-900 dark:text-slate-200"}`}>
-																		{v}
+														onClick={() => handleCellClick(itemKey, id)}
+														className={cellStyle}>
+														{/* Botão X Vermelho para des-selecionar no canto superior direito da loja de origem */}
+														{isSourceCell && (
+															<button
+																onClick={(e) => {
+																	e.stopPropagation();
+																	setActiveSelection(null);
+																}}
+																className="absolute top-2 right-2 p-1 rounded-full bg-red-600 hover:bg-red-700 text-white shadow-md transition-all cursor-pointer z-10"
+																title="Cancelar seleção">
+																<X size={13} strokeWidth={3} />
+															</button>
+														)}
+
+														<div className="flex flex-col items-center justify-center gap-1 min-h-[3rem]">
+															{/* Indicador de destino (clique para mover) */}
+															{isTargetCell ? (
+																<div className="flex flex-col items-center gap-1 animate-in fade-in zoom-in-95 duration-150">
+																	<span className="text-xs font-black uppercase text-emerald-700 dark:text-emerald-300 tracking-wider">
+																		Receber aqui
 																	</span>
-																)}
-																{!hideOpen && initialOpenCount > 0 && (
-																	<span className="text-[1.7rem] font-bold text-slate-400 dark:text-slate-500 whitespace-nowrap">
-																		{v > 0 ? `+ ${initialOpenCount} aberto` : `${initialOpenCount} aberto`}
+																	<span className="text-base font-black px-3 py-1 rounded-full bg-emerald-600 text-white shadow-md">
+																		+{activeSelection.qty}
 																	</span>
-																)}
-															</div>
-															{(receiving || sending) && (
-																<span className={`text-[1.35rem] font-black ${receiving ? "text-green-600 dark:text-green-500" : "text-red-600 dark:text-red-500"}`}>
-																	{receiving ? `+${v - initial}` : `-${initial - v}`}
-																</span>
+																</div>
+															) : (
+																<>
+																	<div className="flex items-center gap-1">
+																		{(v > 0 || initialOpenCount === 0 || hideOpen) && (
+																			<span
+																				className={`text-[1.7rem] font-black ${(initialOpenCount > 0 && !hideOpen) ? "text-slate-400 dark:text-slate-200" : (v === 0 && (initialOpenCount === 0 || hideOpen)) ? "text-slate-400 dark:text-slate-600" : "text-slate-900 dark:text-slate-200"}`}>
+																				{v}
+																			</span>
+																		)}
+																		{!hideOpen && initialOpenCount > 0 && (
+																			<span className="text-[1.7rem] font-bold text-slate-400 dark:text-slate-500 whitespace-nowrap">
+																				{v > 0 ? `+ ${initialOpenCount} aberto` : `${initialOpenCount} aberto`}
+																			</span>
+																		)}
+																	</div>
+
+																	{/* Badge de Seleção de Saída na loja de origem */}
+																	{isSourceCell ? (
+																		<span className="text-xs font-black px-2.5 py-0.5 rounded-full bg-red-600 text-white shadow-md uppercase tracking-wider animate-in zoom-in-90 duration-150">
+																			-{activeSelection.qty} a sair
+																		</span>
+																	) : (
+																		(receiving || sending) && (
+																			<span className={`text-[1.35rem] font-black ${receiving ? "text-green-600 dark:text-green-500" : "text-red-600 dark:text-red-500"}`}>
+																				{receiving ? `+${v - initial}` : `-${initial - v}`}
+																			</span>
+																		)
+																	)}
+																</>
 															)}
 														</div>
 													</td>
 												);
 											})}
-
-											<td className="p-5 text-center border-l border-slate-50 dark:border-slate-800 bg-blue-50/20 dark:bg-blue-900/5 border-b border-slate-100 dark:border-slate-800">
-												<div className="flex items-center justify-center gap-4">
-													<div className="flex items-center gap-3 bg-white dark:bg-slate-800 p-2 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm">
-														<div className="relative group">
-															<select
-																value={transfers.from}
-																onChange={(e) =>
-																	setItemTransfers((prev) => ({
-																		...prev,
-																		[itemKey]: { ...transfers, from: e.target.value as StoreId },
-																	}))
-																}
-																className="appearance-none bg-slate-50 dark:bg-slate-900/50 text-[1rem] font-black text-red-600 dark:text-red-400 focus:outline-none cursor-pointer pl-4 pr-10 py-2 rounded-xl border border-transparent focus:border-red-500/30 transition-all hover:bg-red-50 dark:hover:bg-red-900/20">
-																{STORE_ORDER.map((id) => (
-																	<option key={id} value={id} className="dark:bg-slate-800 cursor-pointer text-center">
-																		{STORE_NAMES[id]}
-																	</option>
-																))}
-															</select>
-															<ChevronDown size={14} strokeWidth={3} className="absolute right-3 top-1/2 -translate-y-1/2 text-red-400 pointer-events-none transition-colors group-hover:text-red-600" />
-														</div>
-
-														<ArrowRight className="text-slate-300 dark:text-slate-600" size={16} />
-
-														<div className="relative group">
-															<select
-																value={transfers.to}
-																onChange={(e) =>
-																	setItemTransfers((prev) => ({
-																		...prev,
-																		[itemKey]: { ...transfers, to: e.target.value as StoreId },
-																	}))
-																}
-																className="appearance-none bg-slate-50 dark:bg-slate-900/50 text-[1rem] font-black text-emerald-600 dark:text-emerald-400 focus:outline-none cursor-pointer pl-4 pr-10 py-2 rounded-xl border border-transparent focus:border-emerald-500/30 transition-all hover:bg-emerald-50 dark:hover:bg-emerald-900/20">
-																{STORE_ORDER.map((id) => (
-																	<option key={id} value={id} className="dark:bg-slate-800 text-center">
-																		{STORE_NAMES[id]}
-																	</option>
-																))}
-															</select>
-															<ChevronDown size={14} strokeWidth={3} className="absolute right-3 top-1/2 -translate-y-1/2 text-emerald-400 pointer-events-none transition-colors group-hover:text-emerald-600" />
-														</div>
-													</div>
-
-													<input
-														type="number"
-														min="0"
-														value={transfers.qty || ""}
-														onChange={(e) =>
-															setItemTransfers((prev) => ({
-																...prev,
-																[itemKey]: { ...transfers, qty: parseInt(e.target.value, 10) || 0 },
-															}))
-														}
-														placeholder="0"
-														className="w-20 px-3 py-2.5 bg-white dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-xl text-center font-black focus:outline-none focus:border-blue-500 dark:focus:border-blue-400 transition-all text-lg dark:text-slate-200"
-													/>
-
-													<button
-														onClick={() => applyMovement(itemKey)}
-														disabled={transfers.qty <= 0 || transfers.from === transfers.to}
-														className={`p-3 rounded-xl transition-all ${transfers.qty <= 0 || transfers.from === transfers.to ? "bg-slate-100 dark:bg-slate-800 text-slate-300 dark:text-slate-600 cursor-not-allowed" : "bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-500/20 dark:shadow-none cursor-pointer scale-100 hover:scale-105 active:scale-95"}`}>
-														<Send size={20} />
-													</button>
-												</div>
-											</td>
 										</tr>
 										{isExpanded && (
 											<tr className="bg-blue-50/20 dark:bg-blue-900/10 transition-colors">
 												<td
-													colSpan={STORE_ORDER.length + 2}
+													colSpan={STORE_ORDER.length + 1}
 													className="p-4 border-b border-slate-200 dark:border-slate-800">
 													<div className="bg-white dark:bg-slate-800 rounded-2xl p-6 border border-blue-100 dark:border-blue-900 shadow-sm transition-colors">
 														<h4 className="text-[1rem] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-4">
@@ -1228,22 +1220,30 @@ export default function EstoqueReposicionarPage() {
 					</div>
 				</div>
 			)}
-			{negativeStockWarning && (
+			{stockWarningModal && (
 				<div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[60] flex items-center justify-center p-4 animate-in fade-in duration-200">
 					<div className="bg-white dark:bg-slate-900 rounded-[2rem] w-full max-w-md shadow-2xl overflow-hidden flex flex-col border border-red-200 dark:border-red-900/30">
 						<div className="p-8 text-center space-y-4">
 							<div className="mx-auto w-16 h-16 bg-red-100 dark:bg-red-900/20 rounded-full flex items-center justify-center">
-								<Save className="text-red-600 dark:text-red-400" size={32} />
+								<AlertCircle className="text-red-600 dark:text-red-400" size={32} />
 							</div>
-							<h3 className="text-xl font-black text-slate-800 dark:text-slate-200 tracking-tight">Atenção: Estoque Negativo</h3>
-							<p className="text-slate-500 dark:text-slate-400 font-bold text-sm leading-relaxed">
-								Esta movimentação resultará em <span className="text-red-600 dark:text-red-400 font-black">{negativeStockWarning.qty}</span> unidades de <span className="font-black">{STOCK_LABELS[negativeStockWarning.item]}</span> na unidade <span className="font-black">{STORE_NAMES[negativeStockWarning.store]}</span>.
+							<h3 className="text-xl font-black text-slate-800 dark:text-slate-200 tracking-tight">Quantidade Maior que o Estoque</h3>
+							<p className="text-slate-600 dark:text-slate-300 font-bold text-sm leading-relaxed">
+								A movimentação pretendida (<span className="text-red-600 dark:text-red-400 font-black">{stockWarningModal.intendedQty}</span> un.) é maior que a quantidade disponível no estoque da unidade <span className="font-black text-slate-800 dark:text-slate-100">{STORE_NAMES[stockWarningModal.fromStore]}</span> (<span className="font-black">{stockWarningModal.availableStock}</span> un. de <span className="font-black">{STOCK_LABELS[stockWarningModal.item]}</span>).
 							</p>
 							<p className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">Deseja prosseguir mesmo assim?</p>
 						</div>
 						<div className="p-6 bg-slate-50 dark:bg-slate-800/50 border-t border-slate-100 dark:border-slate-800 flex gap-3">
-							<button onClick={() => setNegativeStockWarning(null)} className="flex-1 px-6 py-4 rounded-2xl font-black text-[0.75rem] uppercase tracking-widest text-slate-500 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-800 transition-all border border-transparent hover:border-slate-200 dark:hover:border-slate-700">Desfazer</button>
-							<button onClick={negativeStockWarning.onConfirm} className="flex-1 px-6 py-4 rounded-2xl font-black text-[0.75rem] uppercase tracking-widest bg-red-600 hover:bg-red-700 text-white shadow-lg shadow-red-100 dark:shadow-none transition-all">Confirmar</button>
+							<button 
+								onClick={handleCancelStockWarning} 
+								className="flex-1 px-6 py-4 rounded-2xl font-black text-[0.75rem] uppercase tracking-widest text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700 transition-all border border-slate-200 dark:border-slate-700 cursor-pointer">
+								Cancelar
+							</button>
+							<button 
+								onClick={handleConfirmStockWarning} 
+								className="flex-1 px-6 py-4 rounded-2xl font-black text-[0.75rem] uppercase tracking-widest bg-red-600 hover:bg-red-700 text-white shadow-lg shadow-red-100 dark:shadow-none transition-all cursor-pointer">
+								Continuar
+							</button>
 						</div>
 					</div>
 				</div>
