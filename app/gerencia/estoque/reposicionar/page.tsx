@@ -832,16 +832,16 @@ export default function EstoqueReposicionarPage() {
 
 			<div className="bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-200 dark:border-slate-800 shadow-sm transition-colors print:hidden">
 				<div className="overflow-x-auto overflow-y-visible">
-					<table className="w-full border-separate border-spacing-0">
+					<table className="w-full table-fixed border-separate border-spacing-0 min-w-[50rem]">
 						<thead>
 							<tr className="bg-slate-50 dark:bg-slate-800">
-								<th className="p-5 text-[0.9rem] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest sticky left-0 bg-slate-50 dark:bg-slate-800 z-20 border-b border-slate-200 dark:border-slate-700 text-center">
+								<th className="w-[24%] min-w-[12rem] p-5 text-[0.9rem] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest sticky left-0 bg-slate-50 dark:bg-slate-800 z-20 border-b border-slate-200 dark:border-slate-700 text-center">
 									Item
 								</th>
 								{STORE_ORDER.map((id) => (
 									<th
 										key={id}
-										className="p-5 text-center text-[0.9rem] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest border-l border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700">
+										className="w-[19%] min-w-[9.5rem] p-5 text-center text-[0.9rem] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest border-l border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700">
 										{STORE_NAMES[id]}
 									</th>
 								))}
@@ -940,7 +940,7 @@ export default function EstoqueReposicionarPage() {
 																	-{activeSelection.qty} a sair
 																</span>
 															) : isTargetCell ? (
-																<span className="text-xs font-bold px-3 py-1 rounded-full bg-emerald-600 text-white shadow-md uppercase tracking-wider animate-in zoom-in-90 duration-150 inline-flex items-center gap-1.5 whitespace-nowrap">
+																<span className="text-xs font-bold px-3 py-1 rounded-full bg-emerald-600 text-white shadow-md uppercase tracking-wider animate-in zoom-in-90 duration-150 inline-flex flex-wrap justify-center items-center gap-1.5">
 																	<span>Enviar</span>
 																	<span className="text-sm font-black text-amber-300 bg-emerald-800/80 px-2 py-0.5 rounded-lg border border-amber-300/40 shadow-inner">
 																		{activeSelection.qty}
