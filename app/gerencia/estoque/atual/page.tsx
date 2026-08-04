@@ -14,6 +14,8 @@ interface FullStoreData {
 	isUnits: Partial<Record<keyof StockData, number>>;
 }
 
+const STORE_ORDER: StoreId[] = ["lago", "noroeste", "terraco", "conjunto"];
+
 export default function EstoqueAtualPage() {
 	const [loading, setLoading] = useState(true);
 	const [allData, setAllData] = useState<FullStoreData[]>([]);
@@ -29,8 +31,6 @@ export default function EstoqueAtualPage() {
 	};
 
 	useEffect(() => {
-		const storeIds = Object.keys(STORE_NAMES) as StoreId[];
-
 		const unsubscribeStores = onSnapshot(collection(db, "stores"), (storesSnapshot) => {
 			const storesMap: Record<string, any> = {};
 			storesSnapshot.docs.forEach((doc) => {
@@ -38,7 +38,7 @@ export default function EstoqueAtualPage() {
 			});
 
 			setAllData((currentData) => {
-				const newFullData = storeIds.map((id) => {
+				const newFullData = STORE_ORDER.map((id) => {
 					const storeDoc = storesMap[id] || {};
 					return {
 						id,

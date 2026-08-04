@@ -52,7 +52,7 @@ interface FullStoreData {
 	isUnits: Partial<Record<keyof StockData, number>>;
 }
 
-const STORE_ORDER: StoreId[] = ["lago", "conjunto", "terraco", "noroeste"];
+const STORE_ORDER: StoreId[] = ["lago", "noroeste", "terraco", "conjunto"];
 
 export default function EstoqueReposicionarPage() {
 	const [loading, setLoading] = useState(true);
@@ -461,7 +461,7 @@ export default function EstoqueReposicionarPage() {
 			});
 		});
 
-		const storeOrder: StoreId[] = ["lago", "noroeste", "conjunto", "terraco"];
+		const storeOrder: StoreId[] = ["lago", "noroeste", "terraco", "conjunto"];
 
 		const sortedGroups = Array.from(grouped.values()).sort((a, b) => {
 			const fromDiff = storeOrder.indexOf(a.from) - storeOrder.indexOf(b.from);
@@ -1123,7 +1123,7 @@ export default function EstoqueReposicionarPage() {
 											});
 										});
 
-										const storeOrder: StoreId[] = ["lago", "noroeste", "conjunto", "terraco"];
+										const storeOrder: StoreId[] = ["lago", "noroeste", "terraco", "conjunto"];
 
 										const sortedGroups = Array.from(grouped.values()).sort((a, b) => {
 											const fromDiff = storeOrder.indexOf(a.from) - storeOrder.indexOf(b.from);

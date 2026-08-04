@@ -26,6 +26,7 @@ import {
 	Package,
 	CheckCircle2,
 	Trash2,
+	ArrowLeftRight,
 } from "lucide-react";
 
 interface FullStoreData {
@@ -36,14 +37,24 @@ interface FullStoreData {
 	activeCount: number;
 }
 
+const STORE_ORDER: StoreId[] = ["lago", "noroeste", "terraco", "conjunto"];
+
 export default function InsumosPage() {
 	const [loading, setLoading] = useState(true);
 	const [allData, setAllData] = useState<FullStoreData[]>([]);
 	const [expandedStores, setExpandedStores] = useState<Record<string, boolean>>({
-		conjunto: true,
+		lago: true,
 	});
 	const [showHistory, setShowHistory] = useState<Record<string, boolean>>({});
 	const [insumosSort, setInsumosSort] = useState<"default" | "urgency" | "date">("urgency");
+
+	const rotateStores = () => {
+		setAllData((prev) => {
+			if (prev.length < 2) return prev;
+			const [first, ...rest] = prev;
+			return [...rest, first];
+		});
+	};
 
 	// Persistir ordenação
 	useEffect(() => {
@@ -91,7 +102,7 @@ export default function InsumosPage() {
 	};
 
 	useEffect(() => {
-		const storeIds = Object.keys(STORE_NAMES) as StoreId[];
+		const storeIds = STORE_ORDER;
 
 		// Query for Pending - CollectionGroup is fine for single field
 		const pendingQuery = query(
@@ -117,7 +128,13 @@ export default function InsumosPage() {
 					activeCount: sPending.filter((o) => !o.checkedByGerencia).length,
 				};
 			});
-			setAllData(newFullData);
+			setAllData((currentData) => {
+				if (currentData.length > 0) {
+					const currentIdOrder = currentData.map((d) => d.id);
+					return currentIdOrder.map((id) => newFullData.find((d) => d.id === id)!);
+				}
+				return newFullData;
+			});
 			setLoading(false);
 		};
 
@@ -171,6 +188,16 @@ export default function InsumosPage() {
 
 	return (
 		<div className="space-y-8">
+			<div className="flex justify-center items-center pt-2">
+				<button
+					onClick={rotateStores}
+					className="cursor-pointer flex items-center gap-3 bg-white dark:bg-slate-900 hover:bg-blue-50 dark:hover:bg-blue-900/30 text-blue-600 dark:text-blue-400 border border-slate-200 dark:border-slate-800 px-6 py-3 rounded-2xl font-black shadow-sm transition-all text-xs uppercase tracking-widest"
+					title="Alternar ordem das lojas">
+					<ArrowLeftRight size={18} />
+					Alternar Ordem das Lojas
+				</button>
+			</div>
+
 			{allData.map((store) => (
 				<div
 					key={store.id}

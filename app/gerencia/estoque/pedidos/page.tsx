@@ -28,6 +28,8 @@ interface RepositionSnapshotDoc {
 	>;
 }
 
+const STORE_ORDER: StoreId[] = ["lago", "noroeste", "terraco", "conjunto"];
+
 export default function EstoquePedidosPage() {
 	const [activeSubTab, setActiveSubTab] = useState<"comparativo" | "desejavel">("comparativo");
 	const [loading, setLoading] = useState(true);
@@ -75,7 +77,7 @@ export default function EstoquePedidosPage() {
 
 	// 1. Fetch current real stock data
 	useEffect(() => {
-		const storeIds = Object.keys(STORE_NAMES) as StoreId[];
+		const storeIds = STORE_ORDER;
 
 		const unsubscribeStores = onSnapshot(collection(db, "stores"), (storesSnapshot) => {
 			const storesMap: Record<string, any> = {};
@@ -163,7 +165,7 @@ export default function EstoquePedidosPage() {
 		} else {
 			const selectedSession = sessions.find((s) => s.sessionId === selectedSessionId || s.id === selectedSessionId);
 			if (selectedSession) {
-				const storeIds = Object.keys(STORE_NAMES) as StoreId[];
+				const storeIds = STORE_ORDER;
 				const snapshotTime = selectedSession.timestamp.toDate();
 				const newFullData = storeIds.map((id) => {
 					const storeSnap = selectedSession.stores[id] || { stock: {}, isUnits: {} };
@@ -191,7 +193,7 @@ export default function EstoquePedidosPage() {
 	const saveDesiredStocks = async () => {
 		setSavingDesired(true);
 		try {
-			const storeIds = Object.keys(STORE_NAMES) as StoreId[];
+			const storeIds = STORE_ORDER;
 			for (const storeId of storeIds) {
 				const docRef = doc(db, "desiredStocks", storeId);
 				await setDoc(docRef, { stock: localDesired[storeId] || {} }, { merge: true });

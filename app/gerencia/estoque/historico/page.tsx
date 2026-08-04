@@ -24,8 +24,10 @@ import {
 	ChevronRight,
 } from "lucide-react";
 
+const STORE_ORDER: StoreId[] = ["lago", "noroeste", "terraco", "conjunto"];
+
 export default function GlobalStockHistoryPage() {
-	const [selectedStore, setSelectedStore] = useState<StoreId>("conjunto");
+	const [selectedStore, setSelectedStore] = useState<StoreId>("lago");
 	const [loading, setLoading] = useState(true);
 	const [movements, setMovements] = useState<StockMovement[]>([]);
 
@@ -92,7 +94,7 @@ export default function GlobalStockHistoryPage() {
 		<div className="space-y-6">
 			{/* Store Selector */}
 			<div className="flex flex-wrap gap-2 bg-slate-100 dark:bg-slate-800/50 p-1.5 rounded-2xl w-fit">
-				{(Object.entries(STORE_NAMES) as [StoreId, string][]).map(([id, name]) => (
+				{STORE_ORDER.map((id) => (
 					<button
 						key={id}
 						onClick={() => setSelectedStore(id)}
@@ -102,7 +104,7 @@ export default function GlobalStockHistoryPage() {
 								: "text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300"
 						}`}
 					>
-						{name.toUpperCase()}
+						{STORE_NAMES[id].toUpperCase()}
 					</button>
 				))}
 			</div>
