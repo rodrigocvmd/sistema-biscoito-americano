@@ -26,10 +26,6 @@ export interface StockData {
 	eclipse: number;
 	alpino: number;
 	americanCookie: number;
-	brasil: number;
-	alemanha: number;
-	eua: number;
-	argentina: number;
 	novoOreo: number;
 	doceDeLeite: number;
 	churros: number;
@@ -57,10 +53,6 @@ export const STOCK_LABELS: Record<keyof StockData, string> = {
 	eclipse: "ECLIPSE",
 	alpino: "ALPINO",
 	americanCookie: "AMERICAN COOKIE",
-	brasil: "BRASIL",
-	alemanha: "ALEMANHA",
-	eua: "ESTADOS UNIDOS",
-	argentina: "ARGENTINA",
 	novoOreo: "NOVO OREO",
 	doceDeLeite: "DOCE DE LEITE",
 	churros: "CHURROS",
