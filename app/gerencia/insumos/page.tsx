@@ -344,8 +344,8 @@ export default function InsumosPage() {
 								</>
 							) : (
 								<div className="py-12 text-center">
-									<Package className="mx-auto text-slate-200 dark:text-slate-800 mb-4" size={48} />
-									<p className="text-slate-400 dark:text-slate-500 font-bold">
+									<Package className="mx-auto text-slate-200 dark:text-slate-400 mb-4" size={48} />
+									<p className="text-slate-400 dark:text-slate-400 font-bold">
 										Nenhum pedido de insumo pendente para esta loja.
 									</p>
 								</div>
@@ -355,17 +355,17 @@ export default function InsumosPage() {
 							<div className="mt-8 pt-6 border-t border-slate-50 dark:border-slate-800">
 								<button
 									onClick={() => toggleHistory(store.id)}
-									className="w-full flex items-center justify-between p-4 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-2xl transition-all cursor-pointer group">
+									className="w-full flex items-center justify-center p-4 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-2xl transition-all cursor-pointer group">
 									<h4 className="text-lg font-bold text-slate-500 dark:text-slate-400 flex items-center gap-2">
 										<CheckCircle2
-											className={`${showHistory[store.id] ? "text-emerald-500" : "text-slate-300 dark:text-slate-700"}`}
-											size={20}
+											className={`${showHistory[store.id] ? "text-emerald-500" : "text-slate-300 dark:text-slate-500"}`}
+											size={32}
 										/>
 										({store.historicalOrders.length}) Insumos Finalizados (Últimas 4 Semanas)
 									</h4>
-									<span className="text-slate-400 dark:text-slate-500 font-bold text-xs uppercase tracking-widest group-hover:text-slate-600 dark:group-hover:text-slate-300 transition-colors">
+									{/* <span className="text-slate-400 dark:text-slate-500 font-bold text-xs uppercase tracking-widest group-hover:text-slate-600 dark:group-hover:text-slate-300 transition-colors">
 										{showHistory[store.id] ? "Esconder" : "Mostrar"}
-									</span>
+									</span> */}
 								</button>
 
 								{showHistory[store.id] && (
@@ -382,7 +382,7 @@ export default function InsumosPage() {
 												}`}>
 												<div className="min-w-0 flex-1">
 													<p
-														className={`text-sm font-bold truncate ${
+														className={`text-md font-bold truncate ${
 															order.status === "cancelled"
 																? "text-red-700 dark:text-red-400"
 																: "text-slate-700 dark:text-slate-300 line-through decoration-slate-400 dark:decoration-slate-600"
@@ -390,7 +390,7 @@ export default function InsumosPage() {
 														{order.name}
 														{order.status === "cancelled" && " (CANCELADO)"}
 													</p>
-													<p className="text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase mt-1">
+													<p className="text-sm text-slate-400 dark:text-slate-500 font-bold uppercase mt-1">
 														{order.status === "cancelled" ? "Cancelado em: " : "Entregue em: "}
 														{formatDate(order.deliveredAt?.toDate())}
 													</p>
