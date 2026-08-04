@@ -79,7 +79,7 @@ export default function EstoqueAtualPage() {
 				@media print {
 					@page {
 						size: A4;
-						margin: 8mm;
+						margin: 25mm 25mm 15mm 25mm;
 					}
 					* {
 						-webkit-print-color-adjust: exact !important;
@@ -90,7 +90,7 @@ export default function EstoqueAtualPage() {
 						background: white !important;
 						color: black !important;
 						font-family: "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-						padding: 4mm !important;
+						padding: 0 !important;
 					}
 					main {
 						padding: 0 !important;
@@ -105,7 +105,8 @@ export default function EstoqueAtualPage() {
 						box-shadow: none !important;
 					}
 					table {
-						width: 100% !important;
+						width: max-content !important;
+						max-width: 100% !important;
 						border-collapse: collapse !important;
 						table-layout: auto;
 						margin: 0 auto !important;
@@ -115,22 +116,26 @@ export default function EstoqueAtualPage() {
 						border: 0.5pt solid #ccc !important;
 					}
 					th, td {
-						padding: 4px 8px !important;
-						font-size: 11.5pt !important;
+						padding: 2px 6px !important;
+						font-size: 8.5pt !important;
 						color: black !important;
 						background: transparent !important;
-						line-height: 1.15 !important;
+						line-height: 1.1 !important;
+						font-weight: normal !important;
 					}
 					th {
 						text-transform: uppercase !important;
 						background-color: white !important;
-						font-weight: bold !important;
+						font-weight: normal !important;
 					}
-					.text-2xl, .text-lg, h1 {
-						font-size: 13pt !important;
-						font-weight: bold !important;
+					.text-2xl, .text-lg {
+						font-size: 8.5pt !important;
+						font-weight: normal !important;
 					}
 					h1 {
+						font-size: 10pt !important;
+						font-weight: bold !important;
+						margin-top: 10mm !important;
 						margin-bottom: 8px !important;
 						text-align: center;
 					}
@@ -148,8 +153,10 @@ export default function EstoqueAtualPage() {
 						background: transparent !important;
 					}
 					/* Layout adjustments to save space */
-					.p-6 { padding: 2px !important; }
+					.p-6 { padding: 2px 6px !important; }
 					.gap-2, .gap-9 { gap: 2px !important; }
+					th, td { min-width: 0 !important; width: auto !important; }
+					th span, td span, td div, td th, .font-black, .font-extrabold, .font-bold { font-size: 8.5pt !important; font-weight: normal !important; }
 					tr {
 						page-break-inside: avoid;
 					}
