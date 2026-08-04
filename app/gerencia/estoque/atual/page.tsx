@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { db } from "@/lib/firebase";
 import { collection, onSnapshot } from "firebase/firestore";
-import { STOCK_LABELS, StockData, STORE_NAMES, StoreId, formatDate } from "@/types";
+import { STOCK_LABELS, StockData, STORE_NAMES, StoreId, formatDate, sortStockEntries } from "@/types";
 import { RefreshCw, ArrowLeftRight, Printer, Search, Eye, EyeOff } from "lucide-react";
 
 interface FullStoreData {
@@ -235,8 +235,7 @@ export default function EstoqueAtualPage() {
 							</tr>
 						</thead>
 						<tbody>
-							{[...(Object.entries(STOCK_LABELS) as [keyof StockData, string][])]
-								.sort((a, b) => a[1].localeCompare(b[1]))
+							{sortStockEntries(Object.entries(STOCK_LABELS))
 								.filter(([_, label]) => label.toLowerCase().includes(searchTerm.toLowerCase()))
 								.map(([key, label]) => {
 									return (

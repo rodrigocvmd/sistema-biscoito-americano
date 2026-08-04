@@ -69,6 +69,22 @@ export const STOCK_LABELS: Record<keyof StockData, string> = {
 	sorvetePote: "SORVETE (POTE)",
 };
 
+export const isSorvete = (keyOrLabel: string) => {
+	const str = keyOrLabel.toLowerCase();
+	return str.includes("sorvete") || str === "sorvetecaixa" || str === "sorvetepote";
+};
+
+export const sortStockEntries = (entries: [string, string][]): [keyof StockData, string][] => {
+	return (entries as [keyof StockData, string][]).sort(([keyA, labelA], [keyB, labelB]) => {
+		const isSorveteA = isSorvete(keyA) || isSorvete(labelA);
+		const isSorveteB = isSorvete(keyB) || isSorvete(labelB);
+
+		if (isSorveteA && !isSorveteB) return 1;
+		if (!isSorveteA && isSorveteB) return -1;
+		return labelA.localeCompare(labelB);
+	});
+};
+
 export interface StockMovement {
 	id?: string;
 	itemId: keyof StockData;

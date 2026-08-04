@@ -13,7 +13,7 @@ import {
 	serverTimestamp,
 	limit,
 } from "firebase/firestore";
-import { STOCK_LABELS, StockData, formatDate, StockMovement } from "@/types";
+import { STOCK_LABELS, StockData, formatDate, StockMovement, sortStockEntries } from "@/types";
 import {
 	Plus,
 	CheckCircle2,
@@ -84,13 +84,11 @@ export default function StockMovementsPage({ params }: { params: Promise<{ store
 			.toLowerCase()
 			.replace(/[^a-z0-9]/g, "");
 
-	const filteredItems = (Object.entries(STOCK_LABELS) as [keyof StockData, string][])
-		.filter(([_, label]) => normalizeString(label).includes(normalizeString(searchTerm)))
-		.sort((a, b) => a[1].localeCompare(b[1]));
+	const filteredItems = sortStockEntries(Object.entries(STOCK_LABELS))
+		.filter(([_, label]) => normalizeString(label).includes(normalizeString(searchTerm)));
 
-	const filteredOpenItems = (Object.entries(STOCK_LABELS) as [keyof StockData, string][])
-		.filter(([_, label]) => normalizeString(label).includes(normalizeString(openSearchTerm)))
-		.sort((a, b) => a[1].localeCompare(b[1]));
+	const filteredOpenItems = sortStockEntries(Object.entries(STOCK_LABELS))
+		.filter(([_, label]) => normalizeString(label).includes(normalizeString(openSearchTerm)));
 
 	useEffect(() => {
 		const storeRef = doc(db, "stores", store);
@@ -724,8 +722,7 @@ export default function StockMovementsPage({ params }: { params: Promise<{ store
 								onChange={(e) => setFilterItem(e.target.value)}
 								className="pl-9 pr-8 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-bold text-slate-600 dark:text-slate-400 appearance-none focus:outline-none focus:ring-2 focus:ring-red-500/20 cursor-pointer">
 								<option value="all">TODOS OS ITENS</option>
-								{Object.entries(STOCK_LABELS)
-									.sort((a, b) => a[1].localeCompare(b[1]))
+								{sortStockEntries(Object.entries(STOCK_LABELS))
 									.map(([id, label]) => (
 										<option key={id} value={id}>
 											{label}

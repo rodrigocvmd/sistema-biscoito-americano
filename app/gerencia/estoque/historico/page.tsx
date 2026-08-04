@@ -9,7 +9,7 @@ import {
 	onSnapshot,
 	limit,
 } from "firebase/firestore";
-import { STOCK_LABELS, StockData, formatDate, StockMovement, STORE_NAMES, StoreId } from "@/types";
+import { STOCK_LABELS, StockData, formatDate, StockMovement, STORE_NAMES, StoreId, sortStockEntries } from "@/types";
 import {
 	RefreshCw,
 	History,
@@ -125,7 +125,7 @@ export default function GlobalStockHistoryPage() {
 								className="pl-9 pr-8 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-bold text-slate-600 dark:text-slate-400 appearance-none focus:outline-none focus:ring-2 focus:ring-blue-500/20 cursor-pointer"
 							>
 								<option value="all">TODOS OS ITENS</option>
-								{Object.entries(STOCK_LABELS).sort((a,b) => a[1].localeCompare(b[1])).map(([id, label]) => (
+								{sortStockEntries(Object.entries(STOCK_LABELS)).map(([id, label]) => (
 									<option key={id} value={id}>{label}</option>
 								))}
 							</select>

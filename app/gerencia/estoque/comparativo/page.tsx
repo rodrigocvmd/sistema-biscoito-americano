@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { db } from "@/lib/firebase";
 import { collection, getDocs, query, orderBy, limit } from "firebase/firestore";
-import { STOCK_LABELS, StockData, STORE_NAMES, StoreId } from "@/types";
+import { STOCK_LABELS, StockData, STORE_NAMES, StoreId, sortStockEntries } from "@/types";
 import { RefreshCw, ChevronDown, Package, Search } from "lucide-react";
 
 interface RepositionSnapshotDoc {
@@ -157,8 +157,7 @@ export default function EstoqueComparativoPage() {
 								</tr>
 							</thead>
 							<tbody>
-								{(Object.entries(STOCK_LABELS) as [keyof StockData, string][])
-									.sort((a, b) => a[1].localeCompare(b[1]))
+								{sortStockEntries(Object.entries(STOCK_LABELS))
 									.filter(([_, label]) => label.toLowerCase().includes(searchTerm.toLowerCase()))
 									.map(([key, label]) => {
 										return (

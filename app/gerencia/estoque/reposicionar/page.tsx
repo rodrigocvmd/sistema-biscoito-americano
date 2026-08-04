@@ -18,6 +18,7 @@ import {
 } from "firebase/firestore";
 import {
 	STOCK_LABELS,
+	sortStockEntries,
 	StockData,
 	STORE_NAMES,
 	StoreId,
@@ -274,9 +275,8 @@ export default function EstoqueReposicionarPage() {
 		}
 	};
 
-	const sortedItems = (Object.entries(STOCK_LABELS) as [keyof StockData, string][])
-		.filter(([_, label]) => label.toLowerCase().includes(searchTerm.toLowerCase()))
-		.sort((a, b) => a[1].localeCompare(b[1]));
+	const sortedItems = sortStockEntries(Object.entries(STOCK_LABELS))
+		.filter(([_, label]) => label.toLowerCase().includes(searchTerm.toLowerCase()));
 
 	const calculateOptimizedSummary = () => {
 		const movements: { item: keyof StockData; from: StoreId; to: StoreId; qty: number }[] = [];

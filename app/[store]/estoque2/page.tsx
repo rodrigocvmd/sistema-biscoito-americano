@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { db } from "@/lib/firebase";
 import { doc, onSnapshot, writeBatch, collection, serverTimestamp } from "firebase/firestore";
-import { STOCK_LABELS, StockData, formatDate } from "@/types";
+import { STOCK_LABELS, StockData, formatDate, isSorvete } from "@/types";
 import { RefreshCw, AlertCircle, Package, ClipboardCheck, ClipboardX, Check, X, Save } from "lucide-react";
 import { use } from "react";
 import Link from "next/link";
@@ -58,8 +58,12 @@ export default function StockPage({ params }: { params: Promise<{ store: string 
 		return () => unsubscribe();
 	}, [store]);
 
-	const sortedItems = (Object.entries(STOCK_LABELS) as [keyof StockData, string][]).sort((a, b) => {
+	const sortedItems = [...(Object.entries(STOCK_LABELS) as [keyof StockData, string][])].sort((a, b) => {
 		if (sortBy === "name") {
+			const isSorveteA = isSorvete(a[0]) || isSorvete(a[1]);
+			const isSorveteB = isSorvete(b[0]) || isSorvete(b[1]);
+			if (isSorveteA && !isSorveteB) return 1;
+			if (!isSorveteA && isSorveteB) return -1;
 			return a[1].localeCompare(b[1]);
 		}
 		if (sortBy === "quantity") {
