@@ -407,16 +407,19 @@ export default function EstoquePedidosPage() {
 								<thead>
 									<tr className="bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700">
 										<th className="p-3 md:p-6 text-left text-xs md:text-[0.9375rem] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest min-w-[7.5rem] md:min-w-[11.25rem]">
-											PACOTES
+											SABORES
 										</th>
-										<th className="p-3 md:p-6 text-center text-xs md:text-[0.9375rem] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest min-w-[7rem] md:min-w-[9.375rem]">
-											QUANTIDADE ATUAL (4 LOJAS)
+										<th className="p-3 md:p-6 text-center text-xs md:text-[0.9375rem] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest min-w-[7rem] md:min-w-[9rem]">
+											QUANTIDADE ATUAL
 										</th>
-										<th className="p-3 md:p-6 text-center text-xs md:text-[0.9375rem] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest min-w-[7rem] md:min-w-[9.375rem]">
-											DESEJÁVEL (METAS)
+										<th className="p-3 md:p-6 text-center text-xs md:text-[0.9375rem] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest min-w-[6.5rem] md:min-w-[8.5rem]">
+											DESEJÁVEL
 										</th>
-										<th className="p-3 md:p-6 text-center text-xs md:text-[0.9375rem] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest min-w-[7rem] md:min-w-[9.375rem]">
-											CAIXAS (PEDIDO)
+										<th className="p-3 md:p-6 text-center text-xs md:text-[0.9375rem] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest min-w-[7rem] md:min-w-[9.5rem]">
+											DIFERENÇA
+										</th>
+										<th className="p-3 md:p-6 text-center text-xs md:text-[0.9375rem] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest min-w-[8rem] md:min-w-[11rem]">
+											CAIXAS A PEDIR
 										</th>
 									</tr>
 								</thead>
@@ -436,31 +439,47 @@ export default function EstoquePedidosPage() {
 											const hasDesired = desiredQty > 0;
 
 											const boxSize = boxSizes[itemKey] || 0;
-											let boxMessage = null;
+											let boxMessageNode = null;
 
 											if (hasDesired && boxSize > 0) {
 												const absDiff = Math.abs(diff);
 												const boxesCount = Math.ceil(absDiff / boxSize);
+												const caixasLabel = boxesCount === 1 ? "Caixa" : "Caixas";
+												const pacotesLabel = absDiff === 1 ? "Pacote" : "Pacotes";
 												
 												if (diff < 0) {
-													boxMessage = (
-														<span className="px-2.5 md:px-3 py-1 rounded-full bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 font-extrabold whitespace-nowrap text-xs md:text-sm border border-amber-200 dark:border-amber-900/50">
-															Pedir {boxesCount} {boxesCount === 1 ? "cx" : "cxs"} ({boxSize} un/cx)
-														</span>
+													boxMessageNode = (
+														<div className="flex flex-col items-center">
+															<span className="text-base md:text-xl font-black text-rose-600 dark:text-rose-400">
+																Pedir {boxesCount} {caixasLabel} ({absDiff} {pacotesLabel})
+															</span>
+														</div>
 													);
 												} else if (diff > 0) {
-													boxMessage = (
-														<span className="px-2.5 md:px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-extrabold whitespace-nowrap text-xs md:text-sm border border-slate-200 dark:border-slate-700">
-															+ {boxesCount} {boxesCount === 1 ? "cx" : "cxs"} além da meta
-														</span>
+													boxMessageNode = (
+														<div className="flex flex-col items-center">
+															<span className="text-base md:text-xl font-black text-emerald-600 dark:text-emerald-400">
+																{boxesCount} {caixasLabel} ({absDiff} {pacotesLabel}) acima da meta
+															</span>
+														</div>
 													);
 												} else {
-													boxMessage = (
-														<span className="px-2.5 md:px-3 py-1 rounded-full bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 font-extrabold whitespace-nowrap text-xs md:text-sm border border-blue-100 dark:border-blue-900/50">
-															Estoque Completo
-														</span>
+													boxMessageNode = (
+														<div className="flex flex-col items-center">
+															<span className="text-base md:text-xl font-black text-blue-600 dark:text-blue-400">
+																Na meta
+															</span>
+														</div>
 													);
 												}
+											} else if (hasDesired && diff === 0) {
+												boxMessageNode = (
+													<div className="flex flex-col items-center">
+														<span className="text-base md:text-xl font-black text-blue-600 dark:text-blue-400">
+															Na meta
+														</span>
+													</div>
+												);
 											}
 
 											return (
@@ -489,20 +508,26 @@ export default function EstoquePedidosPage() {
 													</td>
 													<td className="p-3 md:p-6 text-center border-r border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 group-hover:bg-blue-50/30 dark:group-hover:bg-blue-900/20 transition-colors">
 														{hasDesired ? (
-															<div className="flex flex-col items-center gap-1">
-																<span className="text-base md:text-xl font-black text-slate-800 dark:text-slate-200">
-																	Meta: {desiredQty}
-																</span>
+															<span className="text-base md:text-2xl font-black text-slate-800 dark:text-slate-200">
+																{desiredQty}
+															</span>
+														) : (
+															<span className="text-slate-300 dark:text-slate-600 font-black text-lg">-</span>
+														)}
+													</td>
+													<td className="p-3 md:p-6 text-center border-r border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 group-hover:bg-blue-50/30 dark:group-hover:bg-blue-900/20 transition-colors">
+														{hasDesired ? (
+															<div className="flex flex-col items-center justify-center">
 																{diff < 0 ? (
-																	<span className="px-2 md:px-3 py-0.5 rounded-full bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 font-extrabold whitespace-nowrap text-xs md:text-sm border border-rose-100 dark:border-rose-900/50">
+																	<span className="px-2.5 md:px-3 py-1 rounded-full bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 font-black whitespace-nowrap text-sm md:text-lg border border-rose-100 dark:border-rose-900/50 shadow-sm">
 																		Faltando {Math.abs(diff)}
 																	</span>
 																) : diff > 0 ? (
-																	<span className="px-2 md:px-3 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 font-extrabold whitespace-nowrap text-xs md:text-sm border border-emerald-100 dark:border-emerald-900/50">
+																	<span className="px-2.5 md:px-3 py-1 rounded-full bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 font-black whitespace-nowrap text-sm md:text-lg border border-emerald-100 dark:border-emerald-900/50 shadow-sm">
 																		Sobrando {diff}
 																	</span>
 																) : (
-																	<span className="px-2 md:px-3 py-0.5 rounded-full bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 font-extrabold whitespace-nowrap text-xs md:text-sm border border-blue-100 dark:border-blue-900/50">
+																	<span className="px-2.5 md:px-3 py-1 rounded-full bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 font-black whitespace-nowrap text-sm md:text-lg border border-blue-100 dark:border-blue-900/50 shadow-sm">
 																		Ideal
 																	</span>
 																)}
@@ -512,13 +537,11 @@ export default function EstoquePedidosPage() {
 														)}
 													</td>
 													<td className="p-3 md:p-6 text-center bg-white dark:bg-slate-900 group-hover:bg-blue-50/30 dark:group-hover:bg-blue-900/20 transition-colors">
-														{boxMessage ? (
-															<div className="flex flex-col items-center justify-center">
-																{boxMessage}
-															</div>
+														{boxMessageNode ? (
+															boxMessageNode
 														) : (
-															<span className="text-slate-300 dark:text-slate-600 font-black text-sm">
-																{boxSize === 0 ? "(Configurar cx nas metas)" : "-"}
+															<span className="text-slate-300 dark:text-slate-600 font-bold text-xs md:text-sm">
+																{boxSize === 0 && hasDesired ? "(Configurar cx nas metas)" : "-"}
 															</span>
 														)}
 													</td>
