@@ -35,6 +35,7 @@ interface FullStoreData {
 	pendingOrders: SupplyOrder[];
 	historicalOrders: SupplyOrder[];
 	activeCount: number;
+	deliveringCount: number;
 }
 
 const STORE_ORDER: StoreId[] = ["lago", "noroeste", "terraco", "conjunto"];
@@ -91,6 +92,23 @@ export default function InsumosPage() {
 		}
 	};
 
+	const handleMarkAsDelivered = async (storeId: string, orderId: string) => {
+		try {
+			const orderRef = doc(db, "stores", storeId, "supplyOrders", orderId);
+			const deliveredAt = new Date();
+			const expireAt = new Date();
+			expireAt.setDate(deliveredAt.getDate() + 14);
+
+			await updateDoc(orderRef, {
+				status: "delivered",
+				deliveredAt: Timestamp.fromDate(deliveredAt),
+				expireAt: Timestamp.fromDate(expireAt),
+			});
+		} catch (error) {
+			console.error("Erro ao marcar como entregue:", error);
+		}
+	};
+
 	const normalizeUrgency = (
 		urgency: string,
 	): { label: string; type: "urgente" | "acabando" | "adiantando" } => {
@@ -117,18 +135,22 @@ export default function InsumosPage() {
 		const storeHistoryData: Record<string, SupplyOrder[]> = {};
 
 		const updateAllData = () => {
-			const newFullData = storeIds.map((id) => {
-				const sPending = storePendingData[id] || [];
-				const sHistory = storeHistoryData[id] || [];
-				return {
-					id,
-					name: STORE_NAMES[id],
-					pendingOrders: sPending,
-					historicalOrders: sHistory,
-					activeCount: sPending.filter((o) => !o.checkedByGerencia).length,
-				};
-			});
 			setAllData((currentData) => {
+				const newFullData = storeIds.map((id) => {
+					const sPending = storePendingData[id] || [];
+					const sHistory = storeHistoryData[id] || [];
+					const activeCount = sPending.filter((o) => !o.checkedByGerencia).length;
+					const deliveringCount = sPending.filter((o) => o.checkedByGerencia === true).length;
+					return {
+						id,
+						name: STORE_NAMES[id],
+						pendingOrders: sPending,
+						historicalOrders: sHistory,
+						activeCount,
+						deliveringCount,
+					};
+				});
+
 				if (currentData.length > 0) {
 					const currentIdOrder = currentData.map((d) => d.id);
 					return currentIdOrder.map((id) => newFullData.find((d) => d.id === id)!);
@@ -138,19 +160,23 @@ export default function InsumosPage() {
 			setLoading(false);
 		};
 
-		// 1. Pending Listener (Global)
-		const unsubscribePending = onSnapshot(pendingQuery, (snapshot) => {
-			// Clear current pending data to re-fill
-			storeIds.forEach(id => storePendingData[id] = []);
-			
-			snapshot.docs.forEach((doc) => {
-				const storeId = doc.ref.parent.parent?.id;
-				if (storeId && storePendingData[storeId]) {
-					storePendingData[storeId].push({ id: doc.id, ...doc.data() } as SupplyOrder);
-				}
-			});
-			updateAllData();
-		}, (error) => console.error("Error fetching pending orders:", error));
+		// 1. Pending Listener (Per store for precise reference matching)
+		const pendingUnsubs = storeIds.map((id) => {
+			const pendingRef = collection(db, "stores", id, "supplyOrders");
+			const qPending = query(pendingRef, where("status", "==", "pending"));
+
+			return onSnapshot(
+				qPending,
+				(snapshot) => {
+					storePendingData[id] = snapshot.docs.map((doc) => ({
+						id: doc.id,
+						...doc.data(),
+					})) as SupplyOrder[];
+					updateAllData();
+				},
+				(error) => console.error(`Error fetching pending orders for store ${id}:`, error),
+			);
+		});
 
 		// 2. History Listeners (Per Store - for exact parity)
 		const historyUnsubs = storeIds.map((id) => {
@@ -172,7 +198,7 @@ export default function InsumosPage() {
 		});
 
 		return () => {
-			unsubscribePending();
+			pendingUnsubs.forEach(unsub => unsub());
 			historyUnsubs.forEach(unsub => unsub());
 		};
 	}, []);
@@ -198,29 +224,41 @@ export default function InsumosPage() {
 				</button>
 			</div>
 
-			{allData.map((store) => (
-				<div
-					key={store.id}
-					className="bg-white dark:bg-slate-900 rounded-[40px] border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden transition-all">
-					<button
-						onClick={() => toggleStore(store.id)}
-						className="w-full flex items-center justify-between p-8 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all cursor-pointer group">
-						<div className="flex items-center gap-4 text-left">
-							<div
-								className={`${store.activeCount > 0 ? "bg-blue-600 shadow-blue-100 dark:shadow-none" : "bg-slate-300 dark:bg-slate-700 shadow-slate-100 dark:shadow-none"} text-white p-5 rounded-[24px] shadow-lg group-hover:scale-105 transition-all`}>
-								<Store size={36} />
+			{allData.map((store) => {
+				const activeCount = store.pendingOrders.filter((o) => !o.checkedByGerencia).length;
+				const deliveringCount = store.pendingOrders.filter((o) => !!o.checkedByGerencia).length;
+
+				return (
+					<div
+						key={store.id}
+						className="bg-white dark:bg-slate-900 rounded-[40px] border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden transition-all">
+						<button
+							onClick={() => toggleStore(store.id)}
+							className="w-full flex items-center justify-between p-8 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all cursor-pointer group">
+							<div className="flex items-center gap-4 text-left">
+								<div
+									className={`${activeCount > 0 ? "bg-blue-600 shadow-blue-100 dark:shadow-none" : "bg-slate-300 dark:bg-slate-700 shadow-slate-100 dark:shadow-none"} text-white p-5 rounded-[24px] shadow-lg group-hover:scale-105 transition-all`}>
+									<Store size={36} />
+								</div>
+								<div>
+									<h3 className="text-3xl font-black text-slate-800 dark:text-slate-200 uppercase tracking-tight leading-none">
+										{store.name}
+									</h3>
+									<div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-3">
+										<p
+											className={`font-bold uppercase tracking-[0.2em] ${activeCount > 0 ? "text-slate-600 dark:text-slate-400" : "text-slate-400 dark:text-slate-500"}`}>
+											<span className="text-xl font-extrabold text-blue-600 dark:text-blue-400">{activeCount}</span>{" "}
+											{activeCount === 1 ? "Pedido Pendente" : "Pedidos Pendentes"}
+										</p>
+										<span className="text-slate-300 dark:text-slate-700 hidden sm:inline">•</span>
+										<p
+											className={`font-bold uppercase tracking-[0.2em] ${deliveringCount > 0 ? "text-slate-600 dark:text-slate-400" : "text-slate-400 dark:text-slate-500"}`}>
+											<span className="text-xl font-extrabold text-blue-600 dark:text-blue-400">{deliveringCount}</span>{" "}
+											{deliveringCount === 1 ? "Pedido a Entregar" : "Pedidos a Entregar"}
+										</p>
+									</div>
+								</div>
 							</div>
-							<div>
-								<h3 className="text-3xl font-black text-slate-800 dark:text-slate-200 uppercase tracking-tight leading-none">
-									{store.name}
-								</h3>
-								<p
-									className={`font-bold uppercase tracking-[0.2em] mt-3 ${store.activeCount > 0 ? "text-slate-600 dark:text-slate-400" : "text-slate-400 dark:text-slate-500"}`}>
-									<span className="text-xl font-extrabold text-blue-600 dark:text-blue-400">{store.activeCount}</span>{" "}
-									{store.activeCount === 1 ? "Pedido Pendente" : "Pedidos Pendentes"}
-								</p>
-							</div>
-						</div>
 						<div className="bg-slate-50 dark:bg-slate-800 p-3 rounded-full border border-slate-100 dark:border-slate-700 group-hover:bg-white dark:group-hover:bg-slate-700 group-hover:border-blue-200 dark:group-hover:border-blue-800 transition-all">
 							{expandedStores[store.id] ? (
 								<ChevronUp size={24} className="text-blue-600 dark:text-blue-400" />
@@ -278,19 +316,17 @@ export default function InsumosPage() {
 														key={order.id}
 														className={`p-6 rounded-[32px] border flex flex-col justify-between gap-4 transition-all ${
 															isChecked
-																? "bg-slate-100 dark:bg-slate-800/50 border-slate-200 dark:border-slate-800 opacity-60"
+																? "bg-slate-100 dark:bg-slate-800/50 border-slate-200 dark:border-slate-800 opacity-80"
 																: "bg-slate-50 dark:bg-slate-800 border-slate-100 dark:border-slate-700 hover:bg-white dark:hover:bg-slate-700 hover:border-blue-200 dark:hover:border-blue-800 hover:shadow-xl dark:hover:shadow-none"
 														}`}>
 														<div className="space-y-4">
 															<div className="flex items-center justify-between gap-4">
-																<p
-																	className={`text-2xl font-black leading-tight ${
-																		isChecked ? "text-slate-400 dark:text-slate-600 line-through" : "text-slate-800 dark:text-slate-200"
-																	}`}>
+																<p className="text-2xl font-black leading-tight text-slate-800 dark:text-slate-200">
 																	{order.name}
 																</p>
 																<button
 																	type="button"
+																	id="checkBtn"
 																	onMouseDown={(e) => e.preventDefault()}
 																	onClick={() => handleToggleCheck(store.id, order.id, isChecked)}
 																	className={`p-3 rounded-2xl border transition-all shrink-0 cursor-pointer ${
@@ -336,6 +372,18 @@ export default function InsumosPage() {
 																	{formatDate(order.createdAt?.toDate())}
 																</p>
 															</div>
+
+															{isChecked && (
+																<div className="pt-2">
+																	<button
+																		type="button"
+																		onClick={() => handleMarkAsDelivered(store.id, order.id)}
+																		className="w-full flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white py-3 rounded-2xl font-black text-md transition-all shadow-md shadow-emerald-100 dark:shadow-none cursor-pointer active:scale-95">
+																		<CheckCircle2 size={18} />
+																		Entregue
+																	</button>
+																</div>
+															)}
 														</div>
 													</div>
 												);
@@ -413,7 +461,7 @@ export default function InsumosPage() {
 						</div>
 					)}
 				</div>
-			))}
+			)})}
 
 			{allData.length === 0 && (
 				<div className="bg-white dark:bg-slate-900 rounded-3xl p-12 text-center border border-slate-200 dark:border-slate-800 border-dashed">

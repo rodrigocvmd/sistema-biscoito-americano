@@ -232,79 +232,76 @@ export default function EstoquePedidosPage() {
 				@media print {
 					@page {
 						size: A4;
-						margin: 8mm;
+						margin: 10mm;
 					}
 					* {
-						-webkit-print-color-adjust: exact !important;
-						print-color-adjust: exact !important;
-						color-adjust: exact !important;
+						-webkit-print-color-adjust: stroke !important;
+						print-color-adjust: stroke !important;
+						box-shadow: none !important;
+						text-shadow: none !important;
 					}
 					body {
 						background: white !important;
 						color: black !important;
-						font-family: "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-						padding: 4mm !important;
-					}
-					main {
+						font-family: Arial, sans-serif !important;
 						padding: 0 !important;
 						margin: 0 !important;
 					}
 					nav, header, footer, .print\\:hidden, button {
 						display: none !important;
 					}
-					.bg-white, .dark\\:bg-slate-900 {
-						background: white !important;
+					.bg-white, .dark\\:bg-slate-900, .bg-slate-50, .dark\\:bg-slate-800 {
+						background: transparent !important;
 						border: none !important;
 						box-shadow: none !important;
+						border-radius: 0 !important;
 					}
 					table {
 						width: 100% !important;
 						border-collapse: collapse !important;
-						table-layout: auto;
-						margin: 0 auto !important;
-						border: 0.5pt solid #ccc !important;
-					}
-					table, tr, th, td {
-						border: 0.5pt solid #ccc !important;
+						margin-top: 10px !important;
 					}
 					th, td {
-						padding: 4px 8px !important;
-						font-size: 11.5pt !important;
+						border: 1px solid #333 !important;
+						padding: 6px 10px !important;
+						font-size: 10pt !important;
 						color: black !important;
 						background: transparent !important;
-						line-height: 1.15 !important;
+						text-align: center !important;
+						border-radius: 0 !important;
+						box-shadow: none !important;
+					}
+					th:first-child, td:first-child {
+						text-align: left !important;
 					}
 					th {
-						text-transform: uppercase !important;
-						background-color: white !important;
+						background-color: #f2f2f2 !important;
 						font-weight: bold !important;
+						text-transform: uppercase !important;
 					}
-					.text-2xl, .text-lg, h1 {
-						font-size: 13pt !important;
+					span, div {
+						background: transparent !important;
+						border: none !important;
+						border-radius: 0 !important;
+						padding: 0 !important;
+						margin: 0 !important;
+						color: black !important;
+						box-shadow: none !important;
+						font-size: 10pt !important;
+						font-weight: normal !important;
+					}
+					td span.font-black, td span.font-bold, td .font-black {
 						font-weight: bold !important;
 					}
 					h1 {
-						margin-bottom: 8px !important;
-						text-align: center;
+						font-size: 14pt !important;
+						font-weight: bold !important;
+						margin-bottom: 12px !important;
+						text-align: center !important;
+						text-transform: uppercase !important;
 					}
-					.sticky {
-						position: static !important;
-					}
-					.whitespace-nowrap {
-						white-space: nowrap !important;
-					}
-					/* Reset specific colors and backgrounds */
-					.text-blue-700, .text-blue-600, .text-slate-600, .text-slate-400, .text-slate-300, .text-slate-900, .text-slate-100 {
-						color: black !important;
-					}
-					.bg-blue-50, .dark\\:bg-blue-900\\/30, .bg-slate-50, .dark\\:bg-slate-800, .bg-white {
-						background: transparent !important;
-					}
-					/* Layout adjustments to save space */
-					.p-6 { padding: 2px !important; }
-					.gap-2, .gap-9 { gap: 2px !important; }
 					tr {
-						page-break-inside: avoid;
+						page-break-inside: avoid !important;
 					}
 				}
 			`,
@@ -407,7 +404,7 @@ export default function EstoquePedidosPage() {
 								<thead>
 									<tr className="bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700">
 										<th className="p-3 md:p-6 text-left text-xs md:text-[0.9375rem] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest min-w-[7.5rem] md:min-w-[11.25rem]">
-											SABORES
+											SABOR
 										</th>
 										<th className="p-3 md:p-6 text-center text-xs md:text-[0.9375rem] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest min-w-[7rem] md:min-w-[9rem]">
 											QUANTIDADE ATUAL

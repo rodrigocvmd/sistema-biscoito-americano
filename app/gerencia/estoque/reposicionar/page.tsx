@@ -1220,7 +1220,7 @@ export default function EstoqueReposicionarPage() {
 							</div>
 							<h3 className="text-2xl md:text-3xl font-black text-slate-800 dark:text-slate-200 tracking-tight">Iniciar Reposicionamento</h3>
 							<p className="text-base md:text-xl text-slate-500 dark:text-slate-400 font-bold leading-relaxed">
-								Qualquer movimentação será zerada e o estoque será atualizado para o estoque atual informado pelas lojas.
+								O resumo anterior será zerado e o estoque será atualizado para o estoque atual informado pelas lojas.
 							</p>
 						</div>
 						<div className="p-6 bg-slate-50 dark:bg-slate-800/50 border-t border-slate-100 dark:border-slate-800 flex gap-4">
