@@ -91,7 +91,6 @@ export default function EstoqueReposicionarPage() {
 	const [showResetConfirm, setShowResetConfirm] = useState(false);
 
 	const [searchTerm, setSearchTerm] = useState("");
-	const [isPrintingChecklist, setIsPrintingChecklist] = useState(false);
 	const [hideOpen, setHideOpen] = useState(false);
 
 	const [startingRepo, setStartingRepo] = useState(false);
@@ -432,16 +431,6 @@ export default function EstoqueReposicionarPage() {
 		window.print();
 	};
 
-	const handlePrintChecklist = () => {
-		setIsPrintingChecklist(true);
-		document.body.classList.add("checklist-print-active");
-		setTimeout(() => {
-			window.print();
-			document.body.classList.remove("checklist-print-active");
-			setIsPrintingChecklist(false);
-		}, 150);
-	};
-
 	const handleWhatsApp = () => {
 		const movements = calculateOptimizedSummary();
 		if (movements.length === 0) return;
@@ -768,31 +757,6 @@ export default function EstoqueReposicionarPage() {
 					.fixed.inset-0:not(#modal-resumo-print) {
 						display: none !important;
 					}
-
-					/* Checklist Print Styling */
-					.checklist-container {
-						display: none !important;
-					}
-					body.checklist-print-active .checklist-container {
-						display: block !important;
-					}
-					body.checklist-print-active #modal-resumo-print {
-						display: none !important;
-					}
-					body.checklist-print-active * {
-						font-weight: revert !important;
-					}
-					body.checklist-print-active {
-						padding: 0 !important;
-					}
-					body.checklist-print-active .checklist-page {
-						page-break-after: always !important;
-						padding: 5mm !important;
-						box-sizing: border-box !important;
-					}
-					body.checklist-print-active .checklist-page:last-child {
-						page-break-after: avoid !important;
-					}
 				}
 			`,
 				}}
@@ -851,7 +815,7 @@ export default function EstoqueReposicionarPage() {
 						disabled={loadingAllHistory}
 						className="flex-1 sm:flex-none justify-center cursor-pointer flex items-center gap-2 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 px-4 md:px-6 py-2.5 md:py-3.5 rounded-2xl font-black text-xs transition-all border border-slate-200 dark:border-slate-800 uppercase tracking-widest disabled:opacity-50 shadow-sm">
 						{loadingAllHistory ? <RefreshCw className="animate-spin" size={14} /> : <History size={14} />}
-						Histórico Completo
+						Histórico
 					</button>
 				</div>
 			</div>
@@ -1106,7 +1070,7 @@ export default function EstoqueReposicionarPage() {
 
 						<div className="p-8 overflow-y-auto flex-1 print:overflow-visible">
 							{calculateOptimizedSummary().length > 0 ? (
-								<div className="space-y-6">
+								<div className="space-y-4 print:space-y-3">
 									{(() => {
 										const grouped = new Map<
 											string,
@@ -1133,99 +1097,39 @@ export default function EstoqueReposicionarPage() {
 											return storeOrder.indexOf(a.to) - storeOrder.indexOf(b.to);
 										});
 
-										const totalOutputsByStore: Record<StoreId, Map<keyof StockData, number>> = {
-											lago: new Map(),
-											noroeste: new Map(),
-											conjunto: new Map(),
-											terraco: new Map(),
-										};
-
-										movements.forEach((move) => {
-											const storeMap = totalOutputsByStore[move.from];
-											if (storeMap) {
-												const current = storeMap.get(move.item) || 0;
-												storeMap.set(move.item, current + move.qty);
-											}
-										});
-
 										return (
-											<>
-												{sortedGroups.map((group, idx) => {
-													const prevGroup = idx > 0 ? sortedGroups[idx - 1] : null;
-													const showDivider = prevGroup && prevGroup.from !== group.from;
-
+											<div className="space-y-4 print:space-y-3">
+												{sortedGroups.map((group, groupIdx) => {
 													return (
-														<Fragment key={idx}>
-															{showDivider && (
-																<>
-																	<hr className="my-6 border-t-2 border-dashed border-slate-350 dark:border-slate-700 print:hidden" />
-																	<div className="hidden print:block print-divider" />
-																</>
-															)}
-															<div
-																className="p-6 bg-slate-50 dark:bg-slate-800 rounded-3xl border border-slate-100 dark:border-slate-700 print:bg-white print:border-black print:p-4 print:rounded-none">
-																<div className="flex items-center gap-2 mb-3">
-																	<span className="text-sm font-black text-blue-600 dark:text-blue-400 uppercase tracking-tight print:text-black flex items-center gap-2">
-																		{STORE_NAMES[group.from]}
-																		<ArrowRight size={16} className="text-blue-400 dark:text-blue-500 print:text-black" />
-																		{STORE_NAMES[group.to]}:
-																	</span>
-																</div>
-																<p className="text-slate-600 dark:text-slate-300 font-bold text-sm leading-relaxed print:text-black">
-																	{group.items.map((item, i) => (
-																		<span key={i}>
-																			{item.qty} {item.label}
-																			{i < group.items.length - 1 ? ", " : ""}
+														<div key={groupIdx} className="grid grid-cols-2 gap-3 print:gap-3">
+															{[0, 1].map((copyIndex) => (
+																<div
+																	key={`${groupIdx}-${copyIndex}`}
+																	className="p-5 bg-slate-50 dark:bg-slate-800/80 rounded-2xl border border-slate-200 dark:border-slate-700 print:bg-white print:border-black print:p-3 print:rounded-none print:break-inside-avoid">
+																	<div className="flex items-center gap-2 mb-2 pb-1.5 border-b border-slate-200 dark:border-slate-700 print:border-slate-300">
+																		<span className="text-sm font-black text-blue-600 dark:text-blue-400 uppercase tracking-tight print:text-black flex items-center gap-2">
+																			{STORE_NAMES[group.from]}
+																			<ArrowRight size={16} className="text-blue-400 dark:text-blue-500 print:text-black" />
+																			{STORE_NAMES[group.to]}:
 																		</span>
-																	))}
-																</p>
-															</div>
-														</Fragment>
+																	</div>
+																	<ul className="space-y-1.5 mt-2.5">
+																		{group.items.map((item, i) => (
+																			<li key={i} className="flex items-center gap-2.5 text-slate-700 dark:text-slate-200 font-bold text-sm print:text-black">
+																				<span className="w-4 h-4 rounded border-2 border-slate-400 dark:border-slate-500 print:border-black flex-shrink-0 inline-block" />
+																				<span>
+																					<strong className="font-black text-slate-900 dark:text-white print:text-black mr-1">{item.qty}</strong>
+																					{item.label}
+																				</span>
+																			</li>
+																		))}
+																	</ul>
+																</div>
+															))}
+														</div>
 													);
 												})}
-
-												{/* Saídas Totais por Loja (Visível também na Impressão) */}
-												<hr className="my-6 border-t-2 border-dashed border-slate-350 dark:border-slate-700 print:hidden" />
-												<div className="hidden print:block print-divider" />
-												<div className="p-6 bg-slate-50 dark:bg-slate-800 rounded-3xl border border-slate-100 dark:border-slate-700 print:bg-white print:border-black print:p-4 print:rounded-none">
-													<h3 className="text-base font-black text-slate-800 dark:text-slate-200 uppercase tracking-tight mb-4 print:text-black print:text-sm">
-														Saídas Totais por Loja:
-													</h3>
-													<div className="space-y-4 print:space-y-2">
-														{storeOrder.map((storeId) => {
-															const storeMap = totalOutputsByStore[storeId];
-															const hasOutputs = storeMap && storeMap.size > 0;
-															const sortedItems = hasOutputs
-																? Array.from(storeMap.entries()).sort((a, b) =>
-																		STOCK_LABELS[a[0]].localeCompare(STOCK_LABELS[b[0]])
-																  )
-																: [];
-
-															return (
-																<div key={storeId} className="border-l-2 border-blue-500 print:border-black pl-3">
-																	<span className="text-xs font-black text-slate-700 dark:text-slate-300 uppercase print:text-black block">
-																		{STORE_NAMES[storeId]}:
-																	</span>
-																	{hasOutputs ? (
-																		<p className="text-slate-600 dark:text-slate-400 font-bold text-xs leading-relaxed print:text-black">
-																			{sortedItems.map(([itemKey, qty], i) => (
-																				<span key={itemKey}>
-																					{qty} {STOCK_LABELS[itemKey]}
-																					{i < sortedItems.length - 1 ? ", " : ""}
-																				</span>
-																			))}
-																		</p>
-																	) : (
-																		<p className="text-slate-400 font-bold text-xs italic print:text-black">
-																			Nenhuma saída
-																		</p>
-																	)}
-																</div>
-															);
-														})}
-													</div>
-												</div>
-											</>
+											</div>
 										);
 									})()}
 								</div>
@@ -1251,12 +1155,6 @@ export default function EstoqueReposicionarPage() {
 									disabled={calculateOptimizedSummary().length === 0}
 									className="flex-1 min-w-0 sm:min-w-[11.25rem] flex items-center justify-center gap-2 md:gap-3 bg-blue-600 hover:bg-blue-700 text-white px-4 md:px-6 py-3 md:py-4 rounded-2xl font-black text-xs md:text-[0.75rem] uppercase tracking-widest shadow-lg shadow-blue-100 dark:shadow-none transition-all disabled:opacity-50 cursor-pointer">
 									Imprimir Reposicionamento
-								</button>
-								<button
-									onClick={handlePrintChecklist}
-									disabled={calculateOptimizedSummary().length === 0}
-									className="flex-1 min-w-0 sm:min-w-[11.25rem] flex items-center justify-center gap-2 md:gap-3 bg-indigo-600 hover:bg-indigo-700 text-white px-4 md:px-6 py-3 md:py-4 rounded-2xl font-black text-xs md:text-[0.75rem] uppercase tracking-widest shadow-lg shadow-indigo-100 dark:shadow-none transition-all disabled:opacity-50 cursor-pointer">
-									Imprimir Conferência
 								</button>
 							</div>
 							<button
@@ -1424,123 +1322,6 @@ export default function EstoqueReposicionarPage() {
 				</div>
 			)}
 
-			{isPrintingChecklist && (
-				<div className="checklist-container hidden print:block bg-white text-black min-h-screen font-sans">
-					{STORE_ORDER.map((storeId) => {
-						const storeName = STORE_NAMES[storeId];
-						const movements = calculateOptimizedSummary();
-						
-						// Entradas: toStore === storeId, sorted alphabetically
-						const incoming = movements
-							.filter(m => m.to === storeId)
-							.sort((a, b) => STOCK_LABELS[a.item].localeCompare(STOCK_LABELS[b.item]));
-						// Saídas: fromStore === storeId, sorted alphabetically
-						const outgoing = movements
-							.filter(m => m.from === storeId)
-							.sort((a, b) => STOCK_LABELS[a.item].localeCompare(STOCK_LABELS[b.item]));
-
-						return (
-							<div key={storeId} className="checklist-page p-3 box-border flex flex-col justify-between min-h-[98vh]">
-								<div>
-									{/* Header */}
-									<div className="border-b-2 border-black pb-2 mb-4 flex justify-between items-end">
-										<div>
-											<h1 className="text-xl font-bold uppercase tracking-tight">Folha de Conferência de Reposição</h1>
-											<h2 className="text-3xl font-black uppercase text-black mt-0.5">{storeName}</h2>
-										</div>
-										<div className="text-right">
-											<p className="text-sm font-semibold">Data: {new Date().toLocaleDateString("pt-BR")}</p>
-											<p className="text-xs text-slate-500">Sistema Biscoito Americano</p>
-										</div>
-									</div>
-
-									<div className="grid grid-cols-2 gap-6">
-										{/* Outgoing Section (Saídas) */}
-										<div className="col-span-1">
-											<h3 className="text-base font-bold uppercase py-1 mb-2 text-black border-l border-black pl-2">
-												Saídas (Enviando para outras lojas)
-											</h3>
-											{outgoing.length > 0 ? (
-												<table className="w-auto border-collapse">
-													<thead>
-														<tr className="border-b border-slate-300 text-left text-xs font-bold uppercase">
-															<th className="py-1.5 w-8 text-center">Conf.</th>
-															<th className="py-1.5 pr-4">Sabor / Item</th>
-															<th className="py-1.5 pl-4 text-left">Qtd</th>
-														</tr>
-													</thead>
-													<tbody>
-														{outgoing.map((m, idx) => (
-															<tr key={idx} className="border-b border-slate-200">
-																<td className="py-2 w-8 text-center align-middle">
-																	<div className="w-4 h-4 rounded-sm bg-white mx-auto" style={{ border: "1.5px solid #000" }}></div>
-																</td>
-																<td className="py-2 pr-4 font-bold uppercase text-sm align-middle">
-																	{STOCK_LABELS[m.item]}
-																</td>
-																<td className="py-2 pl-4 text-left font-black text-base text-black align-middle whitespace-nowrap">
-																	{m.qty}
-																</td>
-															</tr>
-														))}
-													</tbody>
-												</table>
-											) : (
-												<p className="text-xs italic text-slate-500 py-2">Nenhuma saída para esta loja.</p>
-											)}
-										</div>
-
-										{/* Incoming Section (Entradas) */}
-										<div className="col-span-1">
-											<h3 className="text-base font-bold uppercase py-1 mb-2 text-black border-l border-black pl-2">
-												Entradas (Recebendo no estoque)
-											</h3>
-											{incoming.length > 0 ? (
-												<table className="w-auto border-collapse">
-													<thead>
-														<tr className="border-b border-slate-300 text-left text-xs font-bold uppercase">
-															<th className="py-1.5 w-8 text-center">Conf.</th>
-															<th className="py-1.5 pr-4">Sabor / Item</th>
-															<th className="py-1.5 pl-4 text-left">Qtd</th>
-														</tr>
-													</thead>
-													<tbody>
-														{incoming.map((m, idx) => (
-															<tr key={idx} className="border-b border-slate-200">
-																<td className="py-2 w-8 text-center align-middle">
-																	<div className="w-4 h-4 rounded-sm bg-white mx-auto" style={{ border: "1.5px solid #000" }}></div>
-																</td>
-																<td className="py-2 pr-4 font-bold uppercase text-sm align-middle">
-																	{STOCK_LABELS[m.item]}
-																</td>
-																<td className="py-2 pl-4 text-left font-black text-base text-black align-middle whitespace-nowrap">
-																	{m.qty}
-																</td>
-															</tr>
-														))}
-													</tbody>
-												</table>
-											) : (
-												<p className="text-xs italic text-slate-500 py-2">Nenhuma entrada para esta loja.</p>
-											)}
-										</div>
-									</div>
-								</div>
-
-								{/* Divergências e Observações */}
-								<div className="mt-6 pt-3 border-t border-black">
-									<h4 className="text-xs font-bold uppercase text-black mb-3">DIVERGÊNCIAS E OBSERVAÇÕES:</h4>
-									<div className="space-y-4">
-										<div className="border-b border-slate-300 h-6 w-full"></div>
-										<div className="border-b border-slate-300 h-6 w-full"></div>
-										<div className="border-b border-slate-300 h-6 w-full"></div>
-									</div>
-								</div>
-							</div>
-						);
-					})}
-				</div>
-			)}
 		</>
 	);
 }
