@@ -468,40 +468,6 @@ export default function EstoqueReposicionarPage() {
 			text += `\n`;
 		});
 
-		// Saídas totais por loja discriminadas por item/sabor
-		const totalOutputsByStore: Record<StoreId, Map<keyof StockData, number>> = {
-			lago: new Map(),
-			noroeste: new Map(),
-			conjunto: new Map(),
-			terraco: new Map(),
-		};
-
-		movements.forEach((move) => {
-			const storeMap = totalOutputsByStore[move.from];
-			if (storeMap) {
-				const current = storeMap.get(move.item) || 0;
-				storeMap.set(move.item, current + move.qty);
-			}
-		});
-
-		text += `*Saídas Totais por Loja:*\n`;
-		storeOrder.forEach((storeId) => {
-			text += `*${STORE_NAMES[storeId]}:*\n`;
-			const storeMap = totalOutputsByStore[storeId];
-			if (storeMap && storeMap.size > 0) {
-				// Ordenar itens alfabeticamente pelo label para melhor organização
-				const sortedItems = Array.from(storeMap.entries()).sort((a, b) =>
-					STOCK_LABELS[a[0]].localeCompare(STOCK_LABELS[b[0]])
-				);
-				sortedItems.forEach(([itemKey, qty]) => {
-					text += `• ${qty} ${STOCK_LABELS[itemKey]}\n`;
-				});
-			} else {
-				text += `• Nenhuma saída\n`;
-			}
-			text += `\n`;
-		});
-
 		const encodedText = encodeURIComponent(text);
 		window.open(`https://web.whatsapp.com/send?text=${encodedText}`, "_blank");
 	};
@@ -661,7 +627,7 @@ export default function EstoqueReposicionarPage() {
 				@media print {
 					@page {
 						size: A4;
-						margin: 6mm;
+						margin: 8mm auto;
 					}
 					* {
 						-webkit-print-color-adjust: exact !important;
@@ -672,19 +638,25 @@ export default function EstoqueReposicionarPage() {
 						height: auto !important;
 						min-height: 0 !important;
 						overflow: visible !important;
-						margin: 0 !important;
+						margin: 0 auto !important;
 						padding: 0 !important;
+						width: 100% !important;
+						display: flex !important;
+						justify-content: center !important;
 					}
 					body {
 						background: white !important;
 						color: black !important;
 						font-family: "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
 						overflow: visible !important;
-						padding: 4mm !important;
+						padding: 0 !important;
 					}
 					main {
 						padding: 0 !important;
-						margin: 0 !important;
+						margin: 0 auto !important;
+						width: 100% !important;
+						display: flex !important;
+						justify-content: center !important;
 					}
 					nav, header, footer, .print\\:hidden, button {
 						display: none !important;
@@ -692,16 +664,21 @@ export default function EstoqueReposicionarPage() {
 					/* Summary Modal Printing */
 					#modal-resumo-print {
 						position: static !important;
-						display: block !important;
+						display: flex !important;
+						flex-direction: column !important;
+						align-items: center !important;
+						justify-content: flex-start !important;
 						width: 100% !important;
-						height: auto !important;
-						background: white !important;
+						max-width: 190mm !important;
+						margin: 0 auto !important;
 						padding: 0 !important;
 						border: none !important;
 						box-shadow: none !important;
+						background: white !important;
 					}
 					#modal-resumo-print > div {
-						max-width: none !important;
+						max-width: 190mm !important;
+						width: 100% !important;
 						max-height: none !important;
 						height: auto !important;
 						overflow: visible !important;
@@ -710,14 +687,15 @@ export default function EstoqueReposicionarPage() {
 						box-shadow: none !important;
 						background: white !important;
 						padding: 0 !important;
+						margin: 0 auto !important;
 					}
 					.p-8, .p-6 {
-						padding: 2px !important;
+						padding: 4px !important;
 					}
 					.text-2xl {
-						font-size: 13pt !important;
+						font-size: 14pt !important;
 						text-align: center;
-						margin-bottom: 6px !important;
+						margin-bottom: 8px !important;
 						color: black !important;
 						font-weight: bold !important;
 					}
@@ -729,29 +707,17 @@ export default function EstoqueReposicionarPage() {
 						font-size: 9pt !important;
 						color: black !important;
 					}
-					#modal-resumo-print .border, #modal-resumo-print .border-b, #modal-resumo-print .border-t, .print\\:border-b-2, .print\\:border-black {
-						border: none !important;
-					}
 					.bg-slate-50, .dark\\:bg-slate-800, .bg-white, .dark\\:bg-slate-900 {
 						background: transparent !important;
 					}
-					.p-8, .p-6, .p-4 {
-						padding: 2px 0 !important;
-					}
 					.mb-3, .mb-4, .mb-6, .mb-10 {
-						margin-bottom: 3px !important;
+						margin-bottom: 4px !important;
 					}
 					.space-y-6 > * + * {
-						margin-top: 4px !important;
+						margin-top: 6px !important;
 					}
 					.space-y-4 > * + * {
-						margin-top: 2px !important;
-					}
-					.print-divider {
-						border-top: 0.5pt solid #666 !important;
-						margin: 4px 0 !important;
-						display: block !important;
-						height: 0 !important;
+						margin-top: 4px !important;
 					}
 					/* Hide other elements that might overlap */
 					.fixed.inset-0:not(#modal-resumo-print) {
@@ -1098,35 +1064,47 @@ export default function EstoqueReposicionarPage() {
 										});
 
 										return (
-											<div className="space-y-4 print:space-y-3">
+											<div className="space-y-4 print:space-y-4 w-full mx-auto">
 												{sortedGroups.map((group, groupIdx) => {
+													const prevGroup = groupIdx > 0 ? sortedGroups[groupIdx - 1] : null;
+													const showSectionHeader = !prevGroup || prevGroup.from !== group.from;
+
 													return (
-														<div key={groupIdx} className="grid grid-cols-2 gap-3 print:gap-3">
-															{[0, 1].map((copyIndex) => (
-																<div
-																	key={`${groupIdx}-${copyIndex}`}
-																	className="p-5 bg-slate-50 dark:bg-slate-800/80 rounded-2xl border border-slate-200 dark:border-slate-700 print:bg-white print:border-black print:p-3 print:rounded-none print:break-inside-avoid">
-																	<div className="flex items-center gap-2 mb-2 pb-1.5 border-b border-slate-200 dark:border-slate-700 print:border-slate-300">
-																		<span className="text-sm font-black text-blue-600 dark:text-blue-400 uppercase tracking-tight print:text-black flex items-center gap-2">
-																			{STORE_NAMES[group.from]}
-																			<ArrowRight size={16} className="text-blue-400 dark:text-blue-500 print:text-black" />
-																			{STORE_NAMES[group.to]}:
-																		</span>
-																	</div>
-																	<ul className="space-y-1.5 mt-2.5">
-																		{group.items.map((item, i) => (
-																			<li key={i} className="flex items-center gap-2.5 text-slate-700 dark:text-slate-200 font-bold text-sm print:text-black">
-																				<span className="w-4 h-4 rounded border-2 border-slate-400 dark:border-slate-500 print:border-black flex-shrink-0 inline-block" />
-																				<span>
-																					<strong className="font-black text-slate-900 dark:text-white print:text-black mr-1">{item.qty}</strong>
-																					{item.label}
-																				</span>
-																			</li>
-																		))}
-																	</ul>
+														<Fragment key={groupIdx}>
+															{showSectionHeader && (
+																<div className="pt-3 pb-1 border-b-2 border-slate-200 dark:border-slate-700 print:border-slate-400 mb-2 text-left">
+																	<span className="text-xs font-black uppercase text-blue-600 dark:text-blue-400 print:text-black tracking-wider">
+																		Saídas de {STORE_NAMES[group.from]}
+																	</span>
 																</div>
-															))}
-														</div>
+															)}
+															<div className="grid grid-cols-2 gap-3 print:gap-3 w-full mx-auto justify-center mb-3">
+																{[0, 1].map((copyIndex) => (
+																	<div
+																		key={`${groupIdx}-${copyIndex}`}
+																		className="p-4 bg-slate-50/90 dark:bg-slate-800/80 rounded-2xl border border-slate-200 dark:border-slate-700 print:bg-white print:border print:border-slate-400 print:rounded-xl print:p-3 print:break-inside-avoid shadow-sm print:shadow-none">
+																		<div className="flex items-center gap-2 mb-2 pb-1.5 border-b border-slate-200 dark:border-slate-700 print:border-slate-300">
+																			<span className="text-xs md:text-sm font-black text-blue-600 dark:text-blue-400 uppercase tracking-tight print:text-black flex items-center gap-1.5">
+																				{STORE_NAMES[group.from]}
+																				<ArrowRight size={14} className="text-blue-400 dark:text-blue-500 print:text-black" />
+																				{STORE_NAMES[group.to]}:
+																			</span>
+																		</div>
+																		<ul className="space-y-1.5 mt-2">
+																			{group.items.map((item, i) => (
+																				<li key={i} className="flex items-center gap-2 text-slate-700 dark:text-slate-200 font-bold text-xs md:text-sm print:text-black">
+																					<span className="w-3.5 h-3.5 rounded border border-slate-400 dark:border-slate-500 print:border-black flex-shrink-0 inline-block" />
+																					<span>
+																						<strong className="font-black text-slate-900 dark:text-white print:text-black mr-1">{item.qty}</strong>
+																						{item.label}
+																					</span>
+																				</li>
+																			))}
+																		</ul>
+																	</div>
+																))}
+															</div>
+														</Fragment>
 													);
 												})}
 											</div>
