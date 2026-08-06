@@ -1051,34 +1051,56 @@ export default function EstoqueReposicionarPage() {
 										});
 
 										return (
-											<div className="space-y-4 print:space-y-12 w-full flex flex-col items-start text-left">
+											<div className="space-y-4 print:space-y-12 w-full flex flex-col items-center print:items-start text-center print:text-left">
 												{sortedGroups.map((group, groupIdx) => {
 													return (
-														<div key={groupIdx} className="flex flex-row items-stretch gap-3 print:gap-x-6 w-full text-left mb-3 print:mb-12">
-															{[0, 1].map((copyIndex) => (
-																<div
-																	key={`${groupIdx}-${copyIndex}`}
-																	className="p-4 bg-slate-50/90 dark:bg-slate-800/80 rounded-2xl border border-slate-200 dark:border-slate-700 print:bg-white print:border print:border-slate-400 print:rounded-xl print:p-3 print:break-inside-avoid shadow-sm print:shadow-none text-left print:w-auto print:min-w-[14rem]">
-																	<div className="flex items-center justify-start gap-2 mb-2 pb-1.5 border-b border-slate-200 dark:border-slate-700 print:border-slate-300 text-left">
-																		<span className="text-xs md:text-sm font-black text-blue-600 dark:text-blue-400 uppercase tracking-tight print:text-black print:text-[11.5pt] flex items-center gap-1.5 text-left whitespace-nowrap">
-																			{STORE_NAMES[group.from]}
-																			<ArrowRight size={14} className="text-blue-400 dark:text-blue-500 print:text-black" />
-																			{STORE_NAMES[group.to]}:
-																		</span>
-																	</div>
-																	<ul className="space-y-1.5 mt-2 text-left">
-																		{group.items.map((item, i) => (
-																			<li key={i} className="flex items-center justify-start gap-2 text-slate-700 dark:text-slate-200 font-bold text-xs md:text-sm print:text-black print:text-[11pt] text-left whitespace-nowrap">
-																				<span className="w-3.5 h-3.5 rounded border border-slate-400 dark:border-slate-500 print:border-black flex-shrink-0 inline-block" />
-																				<span className="text-left">
-																					<strong className="font-black text-slate-900 dark:text-white print:text-black mr-1">{item.qty}</strong>
-																					{item.label}
-																				</span>
-																			</li>
-																		))}
-																	</ul>
+														<div key={groupIdx} className="w-full mb-3 print:mb-12">
+															{/* Visão de tela no modal: Apenas 1 seção centralizada */}
+															<div className="print:hidden w-full max-w-md mx-auto p-4 bg-slate-50/90 dark:bg-slate-800/80 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm text-center">
+																<div className="flex items-center justify-center gap-2 mb-2 pb-1.5 border-b border-slate-200 dark:border-slate-700 text-center">
+																	<span className="text-xs md:text-sm font-black text-blue-600 dark:text-blue-400 uppercase tracking-tight flex items-center justify-center gap-1.5 text-center">
+																		{STORE_NAMES[group.from]}
+																		<ArrowRight size={14} className="text-blue-400 dark:text-blue-500" />
+																		{STORE_NAMES[group.to]}:
+																	</span>
 																</div>
-															))}
+																<ul className="space-y-1.5 mt-2 flex flex-col items-center">
+																	{group.items.map((item, i) => (
+																		<li key={i} className="text-slate-700 dark:text-slate-200 font-bold text-xs md:text-sm text-center">
+																			<strong className="font-black text-slate-900 dark:text-white mr-1">{item.qty}</strong>
+																			{item.label}
+																		</li>
+																	))}
+																</ul>
+															</div>
+
+															{/* Visão exclusiva de Impressão: Duplicado (2 vias para corte) alinhadas à esquerda com largura uniforme */}
+															<div className="hidden print:flex flex-row items-stretch gap-3 print:gap-x-6 w-full text-left">
+																{[0, 1].map((copyIndex) => (
+																	<div
+																		key={`${groupIdx}-${copyIndex}`}
+																		className="bg-white border border-slate-400 rounded-xl p-3 break-inside-avoid shadow-none text-left w-[18.5rem]">
+																		<div className="flex items-center justify-start gap-2 mb-2 pb-1.5 border-b border-slate-300 text-left">
+																			<span className="font-black text-black text-[11.5pt] flex items-center gap-1.5 text-left whitespace-nowrap uppercase">
+																				{STORE_NAMES[group.from]}
+																				<ArrowRight size={14} className="text-black" />
+																				{STORE_NAMES[group.to]}:
+																			</span>
+																		</div>
+																		<ul className="space-y-1.5 mt-2 text-left">
+																			{group.items.map((item, i) => (
+																				<li key={i} className="flex items-center justify-start gap-2 text-black font-bold text-[11pt] text-left whitespace-nowrap">
+																					<span className="w-3.5 h-3.5 rounded border border-black flex-shrink-0 inline-block" />
+																					<span className="text-left">
+																						<strong className="font-black text-black mr-1">{item.qty}</strong>
+																						{item.label}
+																					</span>
+																				</li>
+																			))}
+																		</ul>
+																	</div>
+																))}
+															</div>
 														</div>
 													);
 												})}
