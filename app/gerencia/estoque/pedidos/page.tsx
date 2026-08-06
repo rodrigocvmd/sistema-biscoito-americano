@@ -190,7 +190,7 @@ export default function EstoquePedidosPage() {
 		try {
 			const docRef = doc(db, "desiredStocks", "global");
 			await setDoc(docRef, { stock: localDesired, boxSizes: localBoxSizes }, { merge: true });
-			alert("Quantidades e configurações de caixa salvas com sucesso!");
+			setActiveSubTab("comparativo");
 		} catch (error) {
 			console.error("Erro ao salvar metas e caixas:", error);
 			alert("Erro ao salvar. Verifique o console.");
@@ -443,23 +443,27 @@ export default function EstoquePedidosPage() {
 
 											if (hasDesired && boxSize > 0) {
 												const absDiff = Math.abs(diff);
+												// Sempre arredonda para cima o número de caixas inteiras necessárias
 												const boxesCount = Math.ceil(absDiff / boxSize);
+												const totalOrderedPackages = boxesCount * boxSize;
 												const caixasLabel = boxesCount === 1 ? "Caixa" : "Caixas";
-												const pacotesLabel = absDiff === 1 ? "Pacote" : "Pacotes";
+												const pacotesLabel = totalOrderedPackages === 1 ? "Pacote" : "Pacotes";
 												
 												if (diff < 0) {
 													boxMessageNode = (
 														<div className="flex flex-col items-center">
 															<span className="text-base md:text-xl font-black text-rose-600 dark:text-rose-400">
-																Pedir {boxesCount} {caixasLabel} ({absDiff} {pacotesLabel})
+																Pedir {boxesCount} {caixasLabel} ({totalOrderedPackages} {pacotesLabel})
 															</span>
 														</div>
 													);
 												} else if (diff > 0) {
+													const totalExtraPackages = boxesCount * boxSize;
+													const extraPacotesLabel = totalExtraPackages === 1 ? "Pacote" : "Pacotes";
 													boxMessageNode = (
 														<div className="flex flex-col items-center">
 															<span className="text-base md:text-xl font-black text-emerald-600 dark:text-emerald-400">
-																{boxesCount} {caixasLabel} ({absDiff} {pacotesLabel}) acima da meta
+																{boxesCount} {caixasLabel} ({totalExtraPackages} {extraPacotesLabel}) acima da meta
 															</span>
 														</div>
 													);
@@ -556,33 +560,54 @@ export default function EstoquePedidosPage() {
 			) : (
 				// Desired Stock Configuration View
 				<div className="space-y-6">
-					<div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 md:gap-4">
-						<div className="relative flex-1 max-w-full sm:max-w-md group">
-							<Search
-								size={18}
-								className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-500 transition-colors"
-							/>
-							<input
-								type="text"
-								placeholder="Filtrar por pacote/sabor..."
-								value={searchTerm}
-								onChange={(e) => setSearchTerm(e.target.value)}
-								className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl py-2.5 md:py-3 pl-12 pr-4 text-xs md:text-sm font-bold text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all shadow-sm"
-							/>
-						</div>
+					{/* Verificação de alterações nas metas ou caixas */}
+					{(() => {
+						const hasStockChanges = Object.keys(STOCK_LABELS).some((k) => {
+							const key = k as keyof StockData;
+							return (localDesired[key] ?? 0) !== (desiredData[key] ?? 0);
+						});
+						const hasBoxChanges = Object.keys(STOCK_LABELS).some((k) => {
+							const key = k as keyof StockData;
+							return (localBoxSizes[key] ?? 0) !== (boxSizes[key] ?? 0);
+						});
+						const hasChanges = hasStockChanges || hasBoxChanges;
 
-						<button
-							onClick={saveDesiredStocks}
-							disabled={savingDesired}
-							className="flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white px-4 md:px-6 py-2.5 md:py-3 rounded-2xl font-black shadow-lg shadow-blue-100 dark:shadow-none transition-all cursor-pointer text-xs md:text-sm">
-							{savingDesired ? (
-								<RefreshCw className="animate-spin" size={18} />
-							) : (
-								<Save size={18} />
-							)}
-							SALVAR METAS
-						</button>
-					</div>
+						return (
+							<div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 md:gap-4">
+								<div className="relative flex-1 max-w-full sm:max-w-md group">
+									<Search
+										size={18}
+										className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-500 transition-colors"
+									/>
+									<input
+										type="text"
+										placeholder="Filtrar por pacote/sabor..."
+										value={searchTerm}
+										onChange={(e) => setSearchTerm(e.target.value)}
+										className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl py-2.5 md:py-3 pl-12 pr-4 text-xs md:text-sm font-bold text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all shadow-sm"
+									/>
+								</div>
+
+								<div className="relative" title={!hasChanges && !savingDesired ? "Faça alterações para salvar" : ""}>
+									<button
+										onClick={saveDesiredStocks}
+										disabled={!hasChanges || savingDesired}
+										className={`flex items-center justify-center gap-2 px-4 md:px-6 py-2.5 md:py-3 rounded-2xl font-black transition-all text-xs md:text-sm ${
+											hasChanges && !savingDesired
+												? "bg-emerald-600 hover:bg-emerald-700 text-white shadow-xl shadow-emerald-500/40 ring-4 ring-emerald-400/40 animate-pulse cursor-pointer scale-105"
+												: "bg-slate-200 dark:bg-slate-800 text-slate-400 dark:text-slate-500 cursor-not-allowed opacity-70"
+										}`}>
+										{savingDesired ? (
+											<RefreshCw className="animate-spin" size={18} />
+										) : (
+											<Save size={18} />
+										)}
+										SALVAR METAS
+									</button>
+								</div>
+							</div>
+						);
+					})()}
 
 					<div className="bg-white dark:bg-slate-900 rounded-2xl md:rounded-[2rem] border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden transition-colors">
 						<div className="overflow-x-auto">
@@ -623,7 +648,9 @@ export default function EstoquePedidosPage() {
 																value={desiredVal}
 																placeholder="0"
 																onChange={(e) => handleLocalDesiredChange(itemKey, e.target.value)}
-																className="w-24 md:w-32 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl py-1.5 md:py-2 px-2 md:px-3 text-center text-sm md:text-lg font-black text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+																onFocus={(e) => e.target.select()}
+																onClick={(e) => e.currentTarget.select()}
+																className="w-24 md:w-32 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl py-1.5 md:py-2 px-2 md:px-3 text-center text-sm md:text-lg font-black text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all cursor-pointer"
 															/>
 														</div>
 													</td>
@@ -638,7 +665,9 @@ export default function EstoquePedidosPage() {
 																value={boxVal}
 																placeholder="Qtd/cx"
 																onChange={(e) => handleLocalBoxSizeChange(itemKey, e.target.value)}
-																className="w-20 md:w-28 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl py-1.5 md:py-2 px-2 md:px-3 text-center text-sm md:text-base font-black text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-all"
+																onFocus={(e) => e.target.select()}
+																onClick={(e) => e.currentTarget.select()}
+																className="w-20 md:w-28 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl py-1.5 md:py-2 px-2 md:px-3 text-center text-sm md:text-base font-black text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-all cursor-pointer"
 																title="Quantidade de sacos/pacotes por caixa"
 															/>
 														</div>
