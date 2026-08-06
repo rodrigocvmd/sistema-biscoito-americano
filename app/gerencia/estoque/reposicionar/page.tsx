@@ -627,7 +627,7 @@ export default function EstoqueReposicionarPage() {
 				@media print {
 					@page {
 						size: A4;
-						margin: 8mm auto;
+						margin: 10mm;
 					}
 					* {
 						-webkit-print-color-adjust: exact !important;
@@ -638,11 +638,9 @@ export default function EstoqueReposicionarPage() {
 						height: auto !important;
 						min-height: 0 !important;
 						overflow: visible !important;
-						margin: 0 auto !important;
+						margin: 0 !important;
 						padding: 0 !important;
 						width: 100% !important;
-						display: flex !important;
-						justify-content: center !important;
 					}
 					body {
 						background: white !important;
@@ -653,10 +651,8 @@ export default function EstoqueReposicionarPage() {
 					}
 					main {
 						padding: 0 !important;
-						margin: 0 auto !important;
+						margin: 0 !important;
 						width: 100% !important;
-						display: flex !important;
-						justify-content: center !important;
 					}
 					nav, header, footer, .print\\:hidden, button {
 						display: none !important;
@@ -664,20 +660,18 @@ export default function EstoqueReposicionarPage() {
 					/* Summary Modal Printing */
 					#modal-resumo-print {
 						position: static !important;
-						display: flex !important;
-						flex-direction: column !important;
-						align-items: center !important;
-						justify-content: flex-start !important;
+						display: block !important;
 						width: 100% !important;
-						max-width: 190mm !important;
-						margin: 0 auto !important;
-						padding: 0 !important;
+						max-width: 100% !important;
+						margin: 0 !important;
+						padding-top: 0 !important;
 						border: none !important;
 						box-shadow: none !important;
 						background: white !important;
+						text-align: left !important;
 					}
 					#modal-resumo-print > div {
-						max-width: 190mm !important;
+						max-width: 100% !important;
 						width: 100% !important;
 						max-height: none !important;
 						height: auto !important;
@@ -687,37 +681,29 @@ export default function EstoqueReposicionarPage() {
 						box-shadow: none !important;
 						background: white !important;
 						padding: 0 !important;
-						margin: 0 auto !important;
-					}
-					.p-8, .p-6 {
-						padding: 4px !important;
+						margin: 0 !important;
+						text-align: left !important;
 					}
 					.text-2xl {
-						font-size: 14pt !important;
-						text-align: center;
-						margin-bottom: 8px !important;
+						font-size: 15pt !important;
+						text-align: left !important;
+						margin-bottom: 12px !important;
 						color: black !important;
 						font-weight: bold !important;
 					}
 					.text-sm, .text-slate-600 {
-						font-size: 9.5pt !important;
+						font-size: 10.5pt !important;
 						color: black !important;
 					}
 					.text-xs {
-						font-size: 9pt !important;
+						font-size: 10pt !important;
 						color: black !important;
 					}
 					.bg-slate-50, .dark\\:bg-slate-800, .bg-white, .dark\\:bg-slate-900 {
 						background: transparent !important;
 					}
-					.mb-3, .mb-4, .mb-6, .mb-10 {
-						margin-bottom: 4px !important;
-					}
-					.space-y-6 > * + * {
-						margin-top: 6px !important;
-					}
-					.space-y-4 > * + * {
-						margin-top: 4px !important;
+					#modal-resumo-print, #modal-resumo-print * {
+						text-align: left !important;
 					}
 					/* Hide other elements that might overlap */
 					.fixed.inset-0:not(#modal-resumo-print) {
@@ -1025,18 +1011,19 @@ export default function EstoqueReposicionarPage() {
 
 			{showSummary && (
 				<div id="modal-resumo-print" className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
+
 					<div className="bg-white dark:bg-slate-900 rounded-[2rem] w-full max-w-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh] border border-slate-200 dark:border-slate-800">
-						<div className="p-8 border-b border-slate-100 dark:border-slate-800 flex items-center justify-center print:border-b-2 print:border-black">
+						<div className="p-8 border-b border-slate-100 dark:border-slate-800 flex items-center justify-center print:hidden">
 							<div>
-								<h2 className="text-2xl font-black text-slate-800 dark:text-slate-200 tracking-tight print:text-black">
+								<h2 className="text-2xl font-black text-slate-800 dark:text-slate-200 tracking-tight">
 									Reposicionamento - {new Date().toLocaleDateString("pt-BR")}
 								</h2>
 							</div>
 						</div>
 
-						<div className="p-8 overflow-y-auto flex-1 print:overflow-visible">
+						<div className="p-8 overflow-y-auto flex-1 print:overflow-visible print:p-0">
 							{calculateOptimizedSummary().length > 0 ? (
-								<div className="space-y-4 print:space-y-3">
+								<div className="space-y-4 print:space-y-12 print:pt-4 w-full flex flex-col items-start text-left">
 									{(() => {
 										const grouped = new Map<
 											string,
@@ -1064,47 +1051,35 @@ export default function EstoqueReposicionarPage() {
 										});
 
 										return (
-											<div className="space-y-4 print:space-y-4 w-full mx-auto">
+											<div className="space-y-4 print:space-y-12 w-full flex flex-col items-start text-left">
 												{sortedGroups.map((group, groupIdx) => {
-													const prevGroup = groupIdx > 0 ? sortedGroups[groupIdx - 1] : null;
-													const showSectionHeader = !prevGroup || prevGroup.from !== group.from;
-
 													return (
-														<Fragment key={groupIdx}>
-															{showSectionHeader && (
-																<div className="pt-3 pb-1 border-b-2 border-slate-200 dark:border-slate-700 print:border-slate-400 mb-2 text-left">
-																	<span className="text-xs font-black uppercase text-blue-600 dark:text-blue-400 print:text-black tracking-wider">
-																		Saídas de {STORE_NAMES[group.from]}
-																	</span>
-																</div>
-															)}
-															<div className="grid grid-cols-2 gap-3 print:gap-3 w-full mx-auto justify-center mb-3">
-																{[0, 1].map((copyIndex) => (
-																	<div
-																		key={`${groupIdx}-${copyIndex}`}
-																		className="p-4 bg-slate-50/90 dark:bg-slate-800/80 rounded-2xl border border-slate-200 dark:border-slate-700 print:bg-white print:border print:border-slate-400 print:rounded-xl print:p-3 print:break-inside-avoid shadow-sm print:shadow-none">
-																		<div className="flex items-center gap-2 mb-2 pb-1.5 border-b border-slate-200 dark:border-slate-700 print:border-slate-300">
-																			<span className="text-xs md:text-sm font-black text-blue-600 dark:text-blue-400 uppercase tracking-tight print:text-black flex items-center gap-1.5">
-																				{STORE_NAMES[group.from]}
-																				<ArrowRight size={14} className="text-blue-400 dark:text-blue-500 print:text-black" />
-																				{STORE_NAMES[group.to]}:
-																			</span>
-																		</div>
-																		<ul className="space-y-1.5 mt-2">
-																			{group.items.map((item, i) => (
-																				<li key={i} className="flex items-center gap-2 text-slate-700 dark:text-slate-200 font-bold text-xs md:text-sm print:text-black">
-																					<span className="w-3.5 h-3.5 rounded border border-slate-400 dark:border-slate-500 print:border-black flex-shrink-0 inline-block" />
-																					<span>
-																						<strong className="font-black text-slate-900 dark:text-white print:text-black mr-1">{item.qty}</strong>
-																						{item.label}
-																					</span>
-																				</li>
-																			))}
-																		</ul>
+														<div key={groupIdx} className="flex flex-row items-stretch gap-3 print:gap-x-6 w-full text-left mb-3 print:mb-12">
+															{[0, 1].map((copyIndex) => (
+																<div
+																	key={`${groupIdx}-${copyIndex}`}
+																	className="p-4 bg-slate-50/90 dark:bg-slate-800/80 rounded-2xl border border-slate-200 dark:border-slate-700 print:bg-white print:border print:border-slate-400 print:rounded-xl print:p-3 print:break-inside-avoid shadow-sm print:shadow-none text-left print:w-auto print:min-w-[14rem]">
+																	<div className="flex items-center justify-start gap-2 mb-2 pb-1.5 border-b border-slate-200 dark:border-slate-700 print:border-slate-300 text-left">
+																		<span className="text-xs md:text-sm font-black text-blue-600 dark:text-blue-400 uppercase tracking-tight print:text-black print:text-[11.5pt] flex items-center gap-1.5 text-left whitespace-nowrap">
+																			{STORE_NAMES[group.from]}
+																			<ArrowRight size={14} className="text-blue-400 dark:text-blue-500 print:text-black" />
+																			{STORE_NAMES[group.to]}:
+																		</span>
 																	</div>
-																))}
-															</div>
-														</Fragment>
+																	<ul className="space-y-1.5 mt-2 text-left">
+																		{group.items.map((item, i) => (
+																			<li key={i} className="flex items-center justify-start gap-2 text-slate-700 dark:text-slate-200 font-bold text-xs md:text-sm print:text-black print:text-[11pt] text-left whitespace-nowrap">
+																				<span className="w-3.5 h-3.5 rounded border border-slate-400 dark:border-slate-500 print:border-black flex-shrink-0 inline-block" />
+																				<span className="text-left">
+																					<strong className="font-black text-slate-900 dark:text-white print:text-black mr-1">{item.qty}</strong>
+																					{item.label}
+																				</span>
+																			</li>
+																		))}
+																	</ul>
+																</div>
+															))}
+														</div>
 													);
 												})}
 											</div>
