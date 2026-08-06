@@ -40,28 +40,10 @@ export default function EstoquePedidosPage() {
 	const [searchTerm, setSearchTerm] = useState("");
 	const [hideOpen, setHideOpen] = useState(false);
 
-	// Desired Stock States
-	const [desiredData, setDesiredData] = useState<Record<StoreId, Partial<StockData>>>({
-		conjunto: {},
-		terraco: {},
-		lago: {},
-		noroeste: {},
-	});
-	const [localDesired, setLocalDesired] = useState<Record<StoreId, Partial<StockData>>>({
-		conjunto: {},
-		terraco: {},
-		lago: {},
-		noroeste: {},
-	});
+	// Desired Stock States (Agora global por item, mantendo persistência de backup/compatibilidade no Firestore sob o doc "global")
+	const [desiredData, setDesiredData] = useState<Partial<StockData>>({});
+	const [localDesired, setLocalDesired] = useState<Partial<StockData>>({});
 	const [savingDesired, setSavingDesired] = useState(false);
-
-	const rotateStores = () => {
-		setAllData((prev) => {
-			if (prev.length < 2) return prev;
-			const [first, ...rest] = prev;
-			return [...rest, first];
-		});
-	};
 
 	const formatHistoryLabel = (date: Date) => {
 		const day = String(date.getDate()).padStart(2, "0");
@@ -130,23 +112,27 @@ export default function EstoquePedidosPage() {
 		fetchSessions();
 	}, []);
 
-	// 3. Fetch desired stocks
+	// 3. Fetch desired stocks (Global doc logic with store fallback sum if needed)
 	useEffect(() => {
 		const unsubscribeDesired = onSnapshot(collection(db, "desiredStocks"), (snapshot) => {
-			const desiredMap: Record<StoreId, Partial<StockData>> = {
-				conjunto: {},
-				terraco: {},
-				lago: {},
-				noroeste: {},
-			};
-			snapshot.docs.forEach((doc) => {
-				const storeId = doc.id as StoreId;
-				if (desiredMap[storeId]) {
-					desiredMap[storeId] = doc.data().stock || {};
-				}
-			});
-			setDesiredData(desiredMap);
-			setLocalDesired(JSON.parse(JSON.stringify(desiredMap)));
+			let aggregated: Partial<StockData> = {};
+			const globalDoc = snapshot.docs.find((d) => d.id === "global");
+			
+			if (globalDoc && globalDoc.data().stock) {
+				aggregated = globalDoc.data().stock || {};
+			} else {
+				// Sum existing per-store records if global record does not exist yet
+				snapshot.docs.forEach((d) => {
+					const storeStock = (d.data().stock || {}) as Partial<StockData>;
+					Object.entries(storeStock).forEach(([k, val]) => {
+						const key = k as keyof StockData;
+						aggregated[key] = (aggregated[key] || 0) + (val || 0);
+					});
+				});
+			}
+
+			setDesiredData(aggregated);
+			setLocalDesired({ ...aggregated });
 		});
 
 		return () => unsubscribeDesired();
@@ -189,15 +175,12 @@ export default function EstoquePedidosPage() {
 		}
 	}, [selectedSessionId, realCurrentData, sessions]);
 
-	// Save Desired Stock
+	// Save Desired Stock globally
 	const saveDesiredStocks = async () => {
 		setSavingDesired(true);
 		try {
-			const storeIds = STORE_ORDER;
-			for (const storeId of storeIds) {
-				const docRef = doc(db, "desiredStocks", storeId);
-				await setDoc(docRef, { stock: localDesired[storeId] || {} }, { merge: true });
-			}
+			const docRef = doc(db, "desiredStocks", "global");
+			await setDoc(docRef, { stock: localDesired }, { merge: true });
 			alert("Quantidades desejáveis salvas com sucesso!");
 		} catch (error) {
 			console.error("Erro ao salvar quantidades desejáveis:", error);
@@ -207,14 +190,11 @@ export default function EstoquePedidosPage() {
 		}
 	};
 
-	const handleLocalDesiredChange = (storeId: StoreId, itemKey: keyof StockData, value: string) => {
+	const handleLocalDesiredChange = (itemKey: keyof StockData, value: string) => {
 		const numValue = value === "" ? 0 : Math.max(0, parseInt(value, 10) || 0);
 		setLocalDesired((prev) => ({
 			...prev,
-			[storeId]: {
-				...prev[storeId],
-				[itemKey]: numValue,
-			},
+			[itemKey]: numValue,
 		}));
 	};
 
@@ -409,132 +389,79 @@ export default function EstoquePedidosPage() {
 							<table className="w-full border-collapse">
 								<thead>
 									<tr className="bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700">
-										<th className="p-3 md:p-6 text-left text-xs md:text-[0.9375rem] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest sticky left-0 bg-slate-50 dark:bg-slate-800 z-20 min-w-[7.5rem] md:min-w-[11.25rem]">
-											<div className="flex items-center gap-3 md:gap-9">
-												ITEM
-												<button
-													onClick={rotateStores}
-													className="cursor-pointer p-1.5 md:p-2 bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-xl hover:bg-blue-600 dark:hover:bg-blue-500 hover:text-white transition-all shadow-sm print:hidden"
-													title="Mover primeira loja para o final">
-													<ArrowLeftRight size={18} className="md:w-[22px] md:h-[22px]" />
-												</button>
-											</div>
+										<th className="p-3 md:p-6 text-left text-xs md:text-[0.9375rem] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest min-w-[7.5rem] md:min-w-[11.25rem]">
+											ITEM
 										</th>
-										<th className="p-3 md:p-6 text-center text-[0.65rem] md:text-[0.75rem] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest sticky left-[7.5rem] md:left-[11.25rem] bg-slate-50 dark:bg-slate-800 border-l border-r border-slate-200 dark:border-slate-700 z-20 min-w-[7rem] md:min-w-[9.375rem]">
-											SALDO GERAL (4 LOJAS)
+										<th className="p-3 md:p-6 text-center text-xs md:text-[0.9375rem] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest min-w-[7rem] md:min-w-[9.375rem]">
+											QUANTIDADE ATUAL (4 LOJAS)
 										</th>
-										{allData.map((store) => (
-											<th
-												key={store.id}
-												className="p-3 md:p-6 text-center text-[0.6rem] md:text-[0.6875rem] font-black text-blue-600 dark:text-blue-400 tracking-widest border-l border-slate-200 dark:border-slate-700 min-w-[6.5rem] md:min-w-[8.75rem]">
-												<div className="flex flex-col items-center gap-1 md:gap-2">
-													<span className="text-[0.7rem] md:text-[0.87rem] font-extrabold text-slate-600 dark:text-slate-400 bg-white dark:bg-slate-900 px-2 md:px-3 py-0.5 md:py-1 rounded-full border border-slate-100 dark:border-slate-700 whitespace-nowrap">
-														{formatDate(store.lastStockUpdate)}
-													</span>
-													<span className="leading-tight text-lg md:text-2xl">{store.name}</span>
-												</div>
-											</th>
-										))}
+										<th className="p-3 md:p-6 text-center text-xs md:text-[0.9375rem] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest min-w-[7rem] md:min-w-[9.375rem]">
+											DESEJÁVEL (METAS)
+										</th>
 									</tr>
 								</thead>
 								<tbody>
 									{sortStockEntries(Object.entries(STOCK_LABELS))
 										.filter(([_, label]) => label.toLowerCase().includes(searchTerm.toLowerCase()))
 										.map(([key, label]) => {
+											const totalQty = allData.reduce((sum, store) => sum + (store.stock[key] || 0), 0);
+											const totalOpen = allData.reduce((sum, store) => {
+												const openVal = store.isUnits?.[key];
+												const count = typeof openVal === "boolean" ? (openVal ? 1 : 0) : openVal || 0;
+												return sum + count;
+											}, 0);
+											const desiredQty = desiredData[key as keyof StockData] || 0;
+											const diff = totalQty - desiredQty;
+											const hasDesired = desiredQty > 0;
+
 											return (
 												<tr
 													key={key}
 													className="border-b border-slate-100 dark:border-slate-800 hover:bg-blue-50/30 dark:hover:bg-blue-900/20 transition-colors group">
-													<td className="p-3 md:p-6 text-sm md:text-xl font-black text-slate-600 dark:text-slate-400 sticky left-0 bg-white dark:bg-slate-900 group-hover:bg-blue-50/30 dark:group-hover:bg-blue-900/20 z-10 border-r border-slate-50 dark:border-slate-800 transition-colors uppercase">
+													<td className="p-3 md:p-6 text-sm md:text-xl font-black text-slate-600 dark:text-slate-400 bg-white dark:bg-slate-900 group-hover:bg-blue-50/30 dark:group-hover:bg-blue-900/20 transition-colors uppercase">
 														{label}
 													</td>
-													{(() => {
-														const totalQty = allData.reduce((sum, store) => sum + (store.stock[key] || 0), 0);
-														const totalDesired = allData.reduce((sum, store) => sum + (desiredData[store.id]?.[key] || 0), 0);
-														const totalDiff = totalQty - totalDesired;
-														const hasAnyDesired = allData.some((store) => (desiredData[store.id]?.[key] || 0) > 0);
-
-														return (
-															<td className="p-3 md:p-6 border-l border-r border-slate-100 dark:border-slate-800 text-center sticky left-[7.5rem] md:left-[11.25rem] bg-white dark:bg-slate-900 group-hover:bg-blue-50/30 dark:group-hover:bg-blue-900/20 z-10 min-w-[7rem] md:min-w-[9.375rem] transition-colors">
-																{hasAnyDesired ? (
-																	<div className="flex flex-col items-center gap-1">
-																		<span className="text-base md:text-2xl font-black text-slate-800 dark:text-slate-200">
-																			{totalQty} / {totalDesired}
-																		</span>
-																		{totalDiff < 0 ? (
-																			<span className="px-2 md:px-2.5 py-0.5 rounded-full bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 font-extrabold whitespace-nowrap text-xs md:text-lg border border-rose-100 dark:border-rose-900/50">
-																				Faltando {Math.abs(totalDiff)}
-																			</span>
-																		) : totalDiff > 0 ? (
-																			<span className="px-2 md:px-2.5 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 font-extrabold whitespace-nowrap text-xs md:text-lg border border-emerald-100 dark:border-emerald-900/50">
-																				Sobrando {totalDiff}
-																			</span>
-																		) : (
-																			<span className="px-2 md:px-2.5 py-0.5 rounded-full bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 font-extrabold whitespace-nowrap text-[10px] md:text-xs border border-blue-100 dark:border-blue-900/50">
-																				Ideal
-																			</span>
-																		)}
-																	</div>
+													<td className="p-3 md:p-6 border-l border-r border-slate-100 dark:border-slate-800 text-center bg-white dark:bg-slate-900 group-hover:bg-blue-50/30 dark:group-hover:bg-blue-900/20 transition-colors">
+														<div className="flex justify-center items-center gap-1">
+															<span
+																className={`text-base md:text-2xl font-black ${
+																	totalQty === 0 && (totalOpen === 0 || hideOpen)
+																		? "text-slate-300 dark:text-slate-400"
+																		: "text-slate-900 dark:text-slate-100"
+																}`}>
+																{totalQty}
+															</span>
+															{!hideOpen && totalOpen > 0 && (
+																<span className="text-xs md:text-2xl font-black text-slate-400 dark:text-slate-500 whitespace-nowrap">
+																	{totalQty > 0 ? `+ ${totalOpen} ab` : `${totalOpen} ab`}
+																</span>
+															)}
+														</div>
+													</td>
+													<td className="p-3 md:p-6 text-center bg-white dark:bg-slate-900 group-hover:bg-blue-50/30 dark:group-hover:bg-blue-900/20 transition-colors">
+														{hasDesired ? (
+															<div className="flex flex-col items-center gap-1">
+																<span className="text-base md:text-xl font-black text-slate-800 dark:text-slate-200">
+																	Meta: {desiredQty}
+																</span>
+																{diff < 0 ? (
+																	<span className="px-2 md:px-3 py-0.5 rounded-full bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 font-extrabold whitespace-nowrap text-xs md:text-sm border border-rose-100 dark:border-rose-900/50">
+																		Faltando {Math.abs(diff)}
+																	</span>
+																) : diff > 0 ? (
+																	<span className="px-2 md:px-3 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 font-extrabold whitespace-nowrap text-xs md:text-sm border border-emerald-100 dark:border-emerald-900/50">
+																		Sobrando {diff}
+																	</span>
 																) : (
-																	<span className="text-slate-300 dark:text-slate-650 font-black">-</span>
+																	<span className="px-2 md:px-3 py-0.5 rounded-full bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 font-extrabold whitespace-nowrap text-xs md:text-sm border border-blue-100 dark:border-blue-900/50">
+																		Ideal
+																	</span>
 																)}
-															</td>
-														);
-													})()}
-													{allData.map((store) => {
-														const qty = store.stock[key] || 0;
-														const openVal = store.isUnits?.[key];
-														const openCount = typeof openVal === "boolean" ? (openVal ? 1 : 0) : openVal || 0;
-														const desiredQty = desiredData[store.id]?.[key] || 0;
-														const diff = qty - desiredQty;
-														const hasDesired = desiredQty > 0;
-
-														return (
-															<td
-																key={store.id}
-																className="p-3 md:p-6 border-l border-slate-100 dark:border-slate-800 text-center">
-																<div className="flex flex-col items-center gap-1 md:gap-1.5">
-																	<div className="flex justify-center items-center">
-																		{qty > 0 || openCount === 0 || hideOpen ? (
-																			<span
-																				className={`pr-1 md:pr-2 text-base md:text-2xl font-black ${
-																					qty === 0 && (openCount === 0 || hideOpen)
-																						? "text-slate-300 dark:text-slate-400"
-																						: "text-slate-900 dark:text-slate-100"
-																				}`}>
-																				{qty}
-																			</span>
-																		) : null}
-																		{!hideOpen && openCount > 0 && (
-																			<span className="text-xs md:text-2xl font-black text-slate-400 dark:text-slate-500 whitespace-nowrap">
-																				{qty > 0 ? `+ ${openCount} ab` : `${openCount} ab`}
-																			</span>
-																		)}
-																	</div>
-																	
-																	{/* Desired Stock Comparison Badge */}
-																	{hasDesired && (
-																		<div className="flex flex-col items-center text-xs md:text-[1.1rem] font-bold">
-																			<span className="text-slate-400 dark:text-slate-200">Meta: {desiredQty}</span>
-																			{diff < 0 ? (
-																				<span className="mt-0.5 md:mt-1 px-1.5 md:px-2.5 py-0.5 rounded-full bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 font-extrabold whitespace-nowrap border border-rose-100 dark:border-rose-900/50">
-																					Faltando {Math.abs(diff)}
-																				</span>
-																			) : diff > 0 ? (
-																				<span className="mt-0.5 md:mt-1 px-1.5 md:px-2.5 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 font-extrabold whitespace-nowrap border border-emerald-100 dark:border-emerald-900/50">
-																					Sobrando {diff}
-																				</span>
-																			) : (
-																				<span className="mt-0.5 md:mt-1 px-1.5 md:px-2.5 py-0.5 rounded-full bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 font-extrabold whitespace-nowrap border border-blue-100 dark:border-blue-900/50">
-																					Ideal
-																				</span>
-																			)}
-																		</div>
-																	)}
-																</div>
-															</td>
-														);
-													})}
+															</div>
+														) : (
+															<span className="text-slate-300 dark:text-slate-600 font-black text-lg">-</span>
+														)}
+													</td>
 												</tr>
 											);
 										})}
@@ -579,48 +506,38 @@ export default function EstoquePedidosPage() {
 							<table className="w-full border-collapse">
 								<thead>
 									<tr className="bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700">
-										<th className="p-3 md:p-6 text-left text-xs md:text-[0.9375rem] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest sticky left-0 bg-slate-50 dark:bg-slate-800 z-20 min-w-[7.5rem] md:min-w-[11.25rem]">
+										<th className="p-3 md:p-6 text-left text-xs md:text-[0.9375rem] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest min-w-[7.5rem] md:min-w-[11.25rem]">
 											ITEM
 										</th>
-										{Object.keys(STORE_NAMES).map((id) => (
-											<th
-												key={id}
-												className="p-3 md:p-6 text-center text-sm md:text-lg font-black text-slate-600 dark:text-slate-300 border-l border-slate-200 dark:border-slate-700 min-w-[6.5rem] md:min-w-[8.75rem]">
-												{STORE_NAMES[id as StoreId]}
-											</th>
-										))}
+										<th className="p-3 md:p-6 text-center text-xs md:text-[0.9375rem] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest min-w-[7.5rem] md:min-w-[11.25rem]">
+											QUANTIDADE DESEJÁVEL
+										</th>
 									</tr>
 								</thead>
 								<tbody>
 									{sortStockEntries(Object.entries(STOCK_LABELS))
 										.filter(([_, label]) => label.toLowerCase().includes(searchTerm.toLowerCase()))
 										.map(([key, label]) => {
+											const value = localDesired[key as keyof StockData] ?? "";
 											return (
 												<tr
 													key={key}
 													className="border-b border-slate-100 dark:border-slate-800 hover:bg-blue-50/30 dark:hover:bg-blue-900/20 transition-colors group">
-													<td className="p-3 md:p-6 text-sm md:text-xl font-black text-slate-600 dark:text-slate-400 sticky left-0 bg-white dark:bg-slate-900 group-hover:bg-blue-50/30 dark:group-hover:bg-blue-900/20 z-10 border-r border-slate-50 dark:border-slate-800 transition-colors uppercase">
+													<td className="p-3 md:p-6 text-sm md:text-xl font-black text-slate-600 dark:text-slate-400 bg-white dark:bg-slate-900 group-hover:bg-blue-50/30 dark:group-hover:bg-blue-900/20 transition-colors uppercase">
 														{label}
 													</td>
-													{(Object.keys(STORE_NAMES) as StoreId[]).map((storeId) => {
-														const value = localDesired[storeId]?.[key] ?? "";
-														return (
-															<td
-																key={storeId}
-																className="p-3 md:p-6 border-l border-slate-100 dark:border-slate-800 text-center">
-																<div className="flex justify-center">
-																	<input
-																		type="number"
-																		min="0"
-																		value={value}
-																		placeholder="0"
-																		onChange={(e) => handleLocalDesiredChange(storeId, key, e.target.value)}
-																		className="w-16 md:w-20 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl py-1.5 md:py-2 px-2 md:px-3 text-center text-sm md:text-lg font-black text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
-																	/>
-																</div>
-															</td>
-														);
-													})}
+													<td className="p-3 md:p-6 border-l border-slate-100 dark:border-slate-800 text-center">
+														<div className="flex justify-center">
+															<input
+																type="number"
+																min="0"
+																value={value}
+																placeholder="0"
+																onChange={(e) => handleLocalDesiredChange(key as keyof StockData, e.target.value)}
+																className="w-24 md:w-32 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl py-1.5 md:py-2 px-2 md:px-3 text-center text-sm md:text-lg font-black text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+															/>
+														</div>
+													</td>
 												</tr>
 											);
 										})}
@@ -633,3 +550,4 @@ export default function EstoquePedidosPage() {
 		</>
 	);
 }
+

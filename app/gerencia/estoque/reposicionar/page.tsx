@@ -1021,7 +1021,7 @@ export default function EstoqueReposicionarPage() {
 							</div>
 						</div>
 
-						<div className="p-3.5 md:p-4 overflow-y-auto flex-1 print:overflow-visible print:p-0">
+						<div className="p-3.5 md:p-4 overflow-y-auto custom-scrollbar flex-1 print:overflow-visible print:p-0">
 							{calculateOptimizedSummary().length > 0 ? (
 								<div className="space-y-4 print:space-y-12 print:pt-4 w-full flex flex-col items-start text-left">
 									{(() => {
