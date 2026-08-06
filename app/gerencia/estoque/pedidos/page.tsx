@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { db } from "@/lib/firebase";
 import { collection, onSnapshot, getDocs, query, limit, doc, setDoc } from "firebase/firestore";
 import { STOCK_LABELS, StockData, STORE_NAMES, StoreId, formatDate, sortStockEntries } from "@/types";
-import { RefreshCw, ArrowLeftRight, Printer, Search, Eye, EyeOff, ChevronDown, Save, FileText, Settings } from "lucide-react";
+import { RefreshCw, ArrowLeftRight, Printer, Search, Eye, EyeOff, ChevronDown, Save, FileText, Settings, Package } from "lucide-react";
 
 interface FullStoreData {
 	id: StoreId;
@@ -40,9 +40,14 @@ export default function EstoquePedidosPage() {
 	const [searchTerm, setSearchTerm] = useState("");
 	const [hideOpen, setHideOpen] = useState(false);
 
-	// Desired Stock States (Agora global por item, mantendo persistência de backup/compatibilidade no Firestore sob o doc "global")
+	// Desired Stock States
 	const [desiredData, setDesiredData] = useState<Partial<StockData>>({});
 	const [localDesired, setLocalDesired] = useState<Partial<StockData>>({});
+	
+	// Box Sizes (Pacotes por caixa)
+	const [boxSizes, setBoxSizes] = useState<Partial<StockData>>({});
+	const [localBoxSizes, setLocalBoxSizes] = useState<Partial<StockData>>({});
+
 	const [savingDesired, setSavingDesired] = useState(false);
 
 	const formatHistoryLabel = (date: Date) => {
@@ -112,27 +117,31 @@ export default function EstoquePedidosPage() {
 		fetchSessions();
 	}, []);
 
-	// 3. Fetch desired stocks (Global doc logic with store fallback sum if needed)
+	// 3. Fetch desired stocks & box sizes (Global doc logic with store fallback sum if needed)
 	useEffect(() => {
 		const unsubscribeDesired = onSnapshot(collection(db, "desiredStocks"), (snapshot) => {
-			let aggregated: Partial<StockData> = {};
+			let aggregatedStock: Partial<StockData> = {};
+			let aggregatedBoxSizes: Partial<StockData> = {};
 			const globalDoc = snapshot.docs.find((d) => d.id === "global");
 			
-			if (globalDoc && globalDoc.data().stock) {
-				aggregated = globalDoc.data().stock || {};
+			if (globalDoc) {
+				const data = globalDoc.data();
+				aggregatedStock = data.stock || {};
+				aggregatedBoxSizes = data.boxSizes || {};
 			} else {
-				// Sum existing per-store records if global record does not exist yet
 				snapshot.docs.forEach((d) => {
 					const storeStock = (d.data().stock || {}) as Partial<StockData>;
 					Object.entries(storeStock).forEach(([k, val]) => {
 						const key = k as keyof StockData;
-						aggregated[key] = (aggregated[key] || 0) + (val || 0);
+						aggregatedStock[key] = (aggregatedStock[key] || 0) + (val || 0);
 					});
 				});
 			}
 
-			setDesiredData(aggregated);
-			setLocalDesired({ ...aggregated });
+			setDesiredData(aggregatedStock);
+			setLocalDesired({ ...aggregatedStock });
+			setBoxSizes(aggregatedBoxSizes);
+			setLocalBoxSizes({ ...aggregatedBoxSizes });
 		});
 
 		return () => unsubscribeDesired();
@@ -175,15 +184,15 @@ export default function EstoquePedidosPage() {
 		}
 	}, [selectedSessionId, realCurrentData, sessions]);
 
-	// Save Desired Stock globally
+	// Save Desired Stock & Box Sizes globally
 	const saveDesiredStocks = async () => {
 		setSavingDesired(true);
 		try {
 			const docRef = doc(db, "desiredStocks", "global");
-			await setDoc(docRef, { stock: localDesired }, { merge: true });
-			alert("Quantidades desejáveis salvas com sucesso!");
+			await setDoc(docRef, { stock: localDesired, boxSizes: localBoxSizes }, { merge: true });
+			alert("Quantidades e configurações de caixa salvas com sucesso!");
 		} catch (error) {
-			console.error("Erro ao salvar quantidades desejáveis:", error);
+			console.error("Erro ao salvar metas e caixas:", error);
 			alert("Erro ao salvar. Verifique o console.");
 		} finally {
 			setSavingDesired(false);
@@ -193,6 +202,14 @@ export default function EstoquePedidosPage() {
 	const handleLocalDesiredChange = (itemKey: keyof StockData, value: string) => {
 		const numValue = value === "" ? 0 : Math.max(0, parseInt(value, 10) || 0);
 		setLocalDesired((prev) => ({
+			...prev,
+			[itemKey]: numValue,
+		}));
+	};
+
+	const handleLocalBoxSizeChange = (itemKey: keyof StockData, value: string) => {
+		const numValue = value === "" ? 0 : Math.max(0, parseInt(value, 10) || 0);
+		setLocalBoxSizes((prev) => ({
 			...prev,
 			[itemKey]: numValue,
 		}));
@@ -390,7 +407,7 @@ export default function EstoquePedidosPage() {
 								<thead>
 									<tr className="bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700">
 										<th className="p-3 md:p-6 text-left text-xs md:text-[0.9375rem] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest min-w-[7.5rem] md:min-w-[11.25rem]">
-											ITEM
+											PACOTES
 										</th>
 										<th className="p-3 md:p-6 text-center text-xs md:text-[0.9375rem] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest min-w-[7rem] md:min-w-[9.375rem]">
 											QUANTIDADE ATUAL (4 LOJAS)
@@ -398,21 +415,53 @@ export default function EstoquePedidosPage() {
 										<th className="p-3 md:p-6 text-center text-xs md:text-[0.9375rem] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest min-w-[7rem] md:min-w-[9.375rem]">
 											DESEJÁVEL (METAS)
 										</th>
+										<th className="p-3 md:p-6 text-center text-xs md:text-[0.9375rem] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest min-w-[7rem] md:min-w-[9.375rem]">
+											CAIXAS (PEDIDO)
+										</th>
 									</tr>
 								</thead>
 								<tbody>
 									{sortStockEntries(Object.entries(STOCK_LABELS))
 										.filter(([_, label]) => label.toLowerCase().includes(searchTerm.toLowerCase()))
 										.map(([key, label]) => {
-											const totalQty = allData.reduce((sum, store) => sum + (store.stock[key] || 0), 0);
+											const itemKey = key as keyof StockData;
+											const totalQty = allData.reduce((sum, store) => sum + (store.stock[itemKey] || 0), 0);
 											const totalOpen = allData.reduce((sum, store) => {
-												const openVal = store.isUnits?.[key];
+												const openVal = store.isUnits?.[itemKey];
 												const count = typeof openVal === "boolean" ? (openVal ? 1 : 0) : openVal || 0;
 												return sum + count;
 											}, 0);
-											const desiredQty = desiredData[key as keyof StockData] || 0;
+											const desiredQty = desiredData[itemKey] || 0;
 											const diff = totalQty - desiredQty;
 											const hasDesired = desiredQty > 0;
+
+											const boxSize = boxSizes[itemKey] || 0;
+											let boxMessage = null;
+
+											if (hasDesired && boxSize > 0) {
+												const absDiff = Math.abs(diff);
+												const boxesCount = Math.ceil(absDiff / boxSize);
+												
+												if (diff < 0) {
+													boxMessage = (
+														<span className="px-2.5 md:px-3 py-1 rounded-full bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 font-extrabold whitespace-nowrap text-xs md:text-sm border border-amber-200 dark:border-amber-900/50">
+															Pedir {boxesCount} {boxesCount === 1 ? "cx" : "cxs"} ({boxSize} un/cx)
+														</span>
+													);
+												} else if (diff > 0) {
+													boxMessage = (
+														<span className="px-2.5 md:px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-extrabold whitespace-nowrap text-xs md:text-sm border border-slate-200 dark:border-slate-700">
+															+ {boxesCount} {boxesCount === 1 ? "cx" : "cxs"} além da meta
+														</span>
+													);
+												} else {
+													boxMessage = (
+														<span className="px-2.5 md:px-3 py-1 rounded-full bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 font-extrabold whitespace-nowrap text-xs md:text-sm border border-blue-100 dark:border-blue-900/50">
+															Estoque Completo
+														</span>
+													);
+												}
+											}
 
 											return (
 												<tr
@@ -438,7 +487,7 @@ export default function EstoquePedidosPage() {
 															)}
 														</div>
 													</td>
-													<td className="p-3 md:p-6 text-center bg-white dark:bg-slate-900 group-hover:bg-blue-50/30 dark:group-hover:bg-blue-900/20 transition-colors">
+													<td className="p-3 md:p-6 text-center border-r border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 group-hover:bg-blue-50/30 dark:group-hover:bg-blue-900/20 transition-colors">
 														{hasDesired ? (
 															<div className="flex flex-col items-center gap-1">
 																<span className="text-base md:text-xl font-black text-slate-800 dark:text-slate-200">
@@ -462,6 +511,17 @@ export default function EstoquePedidosPage() {
 															<span className="text-slate-300 dark:text-slate-600 font-black text-lg">-</span>
 														)}
 													</td>
+													<td className="p-3 md:p-6 text-center bg-white dark:bg-slate-900 group-hover:bg-blue-50/30 dark:group-hover:bg-blue-900/20 transition-colors">
+														{boxMessage ? (
+															<div className="flex flex-col items-center justify-center">
+																{boxMessage}
+															</div>
+														) : (
+															<span className="text-slate-300 dark:text-slate-600 font-black text-sm">
+																{boxSize === 0 ? "(Configurar cx nas metas)" : "-"}
+															</span>
+														)}
+													</td>
 												</tr>
 											);
 										})}
@@ -481,7 +541,7 @@ export default function EstoquePedidosPage() {
 							/>
 							<input
 								type="text"
-								placeholder="Filtrar sabor..."
+								placeholder="Filtrar por pacote/sabor..."
 								value={searchTerm}
 								onChange={(e) => setSearchTerm(e.target.value)}
 								className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl py-2.5 md:py-3 pl-12 pr-4 text-xs md:text-sm font-bold text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all shadow-sm"
@@ -507,10 +567,13 @@ export default function EstoquePedidosPage() {
 								<thead>
 									<tr className="bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700">
 										<th className="p-3 md:p-6 text-left text-xs md:text-[0.9375rem] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest min-w-[7.5rem] md:min-w-[11.25rem]">
-											ITEM
+											PACOTES
 										</th>
 										<th className="p-3 md:p-6 text-center text-xs md:text-[0.9375rem] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest min-w-[7.5rem] md:min-w-[11.25rem]">
-											QUANTIDADE DESEJÁVEL
+											QUANTIDADE DESEJÁVEL (PACOTES)
+										</th>
+										<th className="p-3 md:p-6 text-center text-xs md:text-[0.9375rem] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest min-w-[7.5rem] md:min-w-[11.25rem]">
+											PACOTES / CAIXA
 										</th>
 									</tr>
 								</thead>
@@ -518,7 +581,10 @@ export default function EstoquePedidosPage() {
 									{sortStockEntries(Object.entries(STOCK_LABELS))
 										.filter(([_, label]) => label.toLowerCase().includes(searchTerm.toLowerCase()))
 										.map(([key, label]) => {
-											const value = localDesired[key as keyof StockData] ?? "";
+											const itemKey = key as keyof StockData;
+											const desiredVal = localDesired[itemKey] ?? "";
+											const boxVal = localBoxSizes[itemKey] ?? "";
+
 											return (
 												<tr
 													key={key}
@@ -526,15 +592,31 @@ export default function EstoquePedidosPage() {
 													<td className="p-3 md:p-6 text-sm md:text-xl font-black text-slate-600 dark:text-slate-400 bg-white dark:bg-slate-900 group-hover:bg-blue-50/30 dark:group-hover:bg-blue-900/20 transition-colors uppercase">
 														{label}
 													</td>
-													<td className="p-3 md:p-6 border-l border-slate-100 dark:border-slate-800 text-center">
+													<td className="p-3 md:p-6 border-l border-r border-slate-100 dark:border-slate-800 text-center">
 														<div className="flex justify-center">
 															<input
 																type="number"
 																min="0"
-																value={value}
+																value={desiredVal}
 																placeholder="0"
-																onChange={(e) => handleLocalDesiredChange(key as keyof StockData, e.target.value)}
+																onChange={(e) => handleLocalDesiredChange(itemKey, e.target.value)}
 																className="w-24 md:w-32 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl py-1.5 md:py-2 px-2 md:px-3 text-center text-sm md:text-lg font-black text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+															/>
+														</div>
+													</td>
+													<td className="p-3 md:p-6 text-center">
+														<div className="flex justify-center items-center gap-2">
+															<div className="p-2 rounded-xl bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-900/50 shrink-0">
+																<Package size={18} />
+															</div>
+															<input
+																type="number"
+																min="0"
+																value={boxVal}
+																placeholder="Qtd/cx"
+																onChange={(e) => handleLocalBoxSizeChange(itemKey, e.target.value)}
+																className="w-20 md:w-28 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl py-1.5 md:py-2 px-2 md:px-3 text-center text-sm md:text-base font-black text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-all"
+																title="Quantidade de sacos/pacotes por caixa"
 															/>
 														</div>
 													</td>
@@ -550,4 +632,5 @@ export default function EstoquePedidosPage() {
 		</>
 	);
 }
+
 
