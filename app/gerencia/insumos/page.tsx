@@ -237,7 +237,14 @@ export default function InsumosPage() {
 							className="w-full flex items-center justify-between p-8 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all cursor-pointer group">
 							<div className="flex items-center gap-4 text-left">
 								<div
-									className={`${activeCount > 0 ? "bg-blue-600 shadow-blue-100 dark:shadow-none" : "bg-slate-300 dark:bg-slate-700 shadow-slate-100 dark:shadow-none"} text-white p-5 rounded-[24px] shadow-lg group-hover:scale-105 transition-all`}>
+									id="insumosStoreIcon"
+									className={`${
+										activeCount === 0 && deliveringCount === 0
+											? "bg-green-600 shadow-green-100 dark:shadow-none"
+											: activeCount > 0 || deliveringCount > 0
+												? "bg-blue-600 shadow-blue-100 dark:shadow-none"
+												: "bg-slate-300 dark:bg-slate-700 shadow-slate-100 dark:shadow-none"
+									} text-white p-5 rounded-[24px] shadow-lg group-hover:scale-105 transition-all`}>
 									<Store size={36} />
 								</div>
 								<div>
@@ -245,17 +252,33 @@ export default function InsumosPage() {
 										{store.name}
 									</h3>
 									<div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-3">
-										<p
-											className={`font-bold uppercase tracking-[0.2em] ${activeCount > 0 ? "text-slate-600 dark:text-slate-400" : "text-slate-400 dark:text-slate-500"}`}>
-											<span className="text-xl font-extrabold text-blue-600 dark:text-blue-400">{activeCount}</span>{" "}
-											{activeCount === 1 ? "Pedido Pendente" : "Pedidos Pendentes"}
-										</p>
-										<span className="text-slate-300 dark:text-slate-700 hidden sm:inline">•</span>
-										<p
-											className={`font-bold uppercase tracking-[0.2em] ${deliveringCount > 0 ? "text-slate-600 dark:text-slate-400" : "text-slate-400 dark:text-slate-500"}`}>
-											<span className="text-xl font-extrabold text-blue-600 dark:text-blue-400">{deliveringCount}</span>{" "}
-											{deliveringCount === 1 ? "Pedido a Entregar" : "Pedidos a Entregar"}
-										</p>
+										{activeCount === 0 && deliveringCount === 0 ? (
+											<p className="font-bold uppercase tracking-[0.2em] text-green-600 dark:text-green-400">
+												Nada pendente
+											</p>
+										) : (
+											<>
+												{activeCount > 0 && (
+													<p className="font-bold uppercase tracking-[0.2em] text-slate-600 dark:text-slate-400">
+														<span className="text-xl font-extrabold text-blue-600 dark:text-blue-400">
+															{activeCount}
+														</span>{" "}
+														{activeCount === 1 ? "Pedido Pendente" : "Pedidos Pendentes"}
+													</p>
+												)}
+												{activeCount > 0 && deliveringCount > 0 && (
+													<span className="text-slate-300 dark:text-slate-700 hidden sm:inline">•</span>
+												)}
+												{deliveringCount > 0 && (
+													<p className="font-bold uppercase tracking-[0.2em] text-slate-600 dark:text-slate-400">
+														<span className="text-xl font-extrabold text-blue-600 dark:text-blue-400">
+															{deliveringCount}
+														</span>{" "}
+														{deliveringCount === 1 ? "Pedido a Entregar" : "Pedidos a Entregar"}
+													</p>
+												)}
+											</>
+										)}
 									</div>
 								</div>
 							</div>
@@ -461,7 +484,8 @@ export default function InsumosPage() {
 						</div>
 					)}
 				</div>
-			)})}
+			);
+		})}
 
 			{allData.length === 0 && (
 				<div className="bg-white dark:bg-slate-900 rounded-3xl p-12 text-center border border-slate-200 dark:border-slate-800 border-dashed">
