@@ -268,8 +268,8 @@ export default function StockPage({ params }: { params: Promise<{ store: string 
 						<p className="text-sm text-amber-600 dark:text-amber-500 font-bold flex items-center gap-1.5 mt-1">
 							<AlertCircle size={16} />
 							{isConferenceMode
-								? "Modo de Conferência Ativo. Indique divergências nos itens correspondentes."
-								: "Apenas leitura. Ative o Modo de Congerência para alterações no estoque."}
+								? "Conferência Ativa. Indique divergências nos itens correspondentes."
+								: "Apenas leitura. Ative a Conferência de Estoque para fazer alterações nas quantidades."}
 						</p>
 					</div>
 
@@ -289,7 +289,7 @@ export default function StockPage({ params }: { params: Promise<{ store: string 
 							}`}
 						>
 							{isConferenceMode ? <ClipboardX size={20} /> : <ClipboardCheck size={20} />}
-							{isConferenceMode ? "Desativar Conferência" : "Modo de Conferência"}
+							{isConferenceMode ? "Desativar Conferência" : "Conferência de Estoque"}
 						</button>
 
 						{/* Update Divergent Button */}
@@ -401,26 +401,26 @@ export default function StockPage({ params }: { params: Promise<{ store: string 
 			{selectedDivergenceItem && (
 				<div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
 					<div className="bg-white dark:bg-slate-900 w-full max-w-md rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden animate-in zoom-in-95 duration-200">
-						<div className="p-6 pb-4 border-b border-slate-100 dark:border-slate-800">
+						<div className="p-6 pb-4 border-b border-slate-100 dark:border-slate-800 text-center">
 							<h3 className="text-xl font-black text-slate-800 dark:text-slate-100">
 								Indicar Divergência
 							</h3>
-							<p className="text-xs text-amber-600 dark:text-amber-500 font-bold uppercase tracking-wider mt-1">
+							<p className="text-base md:text-lg text-amber-600 dark:text-amber-500 font-black uppercase tracking-wider mt-1">
 								{STOCK_LABELS[selectedDivergenceItem]}
 							</p>
 						</div>
 
 						<div className="p-6 space-y-4">
-							<div className="grid grid-cols-2 gap-3 bg-slate-50 dark:bg-slate-800/50 p-3 rounded-2xl border border-slate-100 dark:border-slate-800 text-xs font-bold text-slate-500">
-								<div>
+							<div className="grid grid-cols-2 gap-3 bg-slate-50 dark:bg-slate-800/50 p-3 rounded-2xl border border-slate-100 dark:border-slate-800 text-xs font-bold text-slate-500 text-center">
+								<div className="flex flex-col items-center justify-center">
 									Estoque atual:
-									<div className="text-lg font-black text-slate-800 dark:text-slate-200 mt-0.5">
+									<div className="text-lg font-black text-slate-800 dark:text-slate-200 mt-0.5 text-center">
 										{stock[selectedDivergenceItem] || 0} pacotes
 									</div>
 								</div>
-								<div>
+								<div className="flex flex-col items-center justify-center">
 									Abertos atual:
-									<div className="text-lg font-black text-slate-800 dark:text-slate-200 mt-0.5">
+									<div className="text-lg font-black text-slate-800 dark:text-slate-200 mt-0.5 text-center">
 										{typeof isUnits[selectedDivergenceItem] === "boolean"
 											? (isUnits[selectedDivergenceItem] ? 1 : 0)
 											: isUnits[selectedDivergenceItem] || 0}{" "}
@@ -430,8 +430,8 @@ export default function StockPage({ params }: { params: Promise<{ store: string 
 							</div>
 
 							<div className="grid grid-cols-2 gap-4">
-								<div className="space-y-1">
-									<label className="text-xs font-bold text-slate-400 dark:text-slate-500 block pl-1">
+								<div className="space-y-1 text-center">
+									<label className="text-xs font-bold text-slate-400 dark:text-slate-500 block text-center">
 										Qtd. Fechados Correta
 									</label>
 									<input
@@ -439,12 +439,14 @@ export default function StockPage({ params }: { params: Promise<{ store: string 
 										min="0"
 										value={modalClosedQty}
 										onChange={(e) => setModalClosedQty(e.target.value)}
-										className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500 transition-all text-slate-800 dark:text-slate-200 font-black text-lg"
+										onFocus={(e) => e.target.select()}
+										onClick={(e) => e.currentTarget.select()}
+										className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500 transition-all text-slate-800 dark:text-slate-200 font-black text-lg text-center cursor-pointer"
 										placeholder="0"
 									/>
 								</div>
-								<div className="space-y-1">
-									<label className="text-xs font-bold text-slate-400 dark:text-slate-500 block pl-1">
+								<div className="space-y-1 text-center">
+									<label className="text-xs font-bold text-slate-400 dark:text-slate-500 block text-center">
 										Qtd. Abertos Correta
 									</label>
 									<input
@@ -452,21 +454,23 @@ export default function StockPage({ params }: { params: Promise<{ store: string 
 										min="0"
 										value={modalOpenQty}
 										onChange={(e) => setModalOpenQty(e.target.value)}
-										className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500 transition-all text-slate-800 dark:text-slate-200 font-black text-lg"
+										onFocus={(e) => e.target.select()}
+										onClick={(e) => e.currentTarget.select()}
+										className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500 transition-all text-slate-800 dark:text-slate-200 font-black text-lg text-center cursor-pointer"
 										placeholder="0"
 									/>
 								</div>
 							</div>
 
-							<div className="space-y-1">
-								<label className="text-xs font-bold text-slate-400 dark:text-slate-500 block pl-1">
+							<div className="space-y-1 text-center">
+								<label className="text-xs font-bold text-slate-400 dark:text-slate-500 block text-center">
 									Observação / Apontamentos (se houver)
 								</label>
 								<textarea
 									value={modalObs}
 									onChange={(e) => setModalObs(e.target.value)}
 									placeholder="Indicar o motivo da divergência..."
-									className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500 transition-all text-slate-800 dark:text-slate-200 font-medium text-sm h-24 resize-none"
+									className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500 transition-all text-slate-800 dark:text-slate-200 font-medium text-sm h-24 resize-none text-center"
 								/>
 							</div>
 						</div>
@@ -474,13 +478,13 @@ export default function StockPage({ params }: { params: Promise<{ store: string 
 						<div className="flex border-t border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50">
 							<button
 								onClick={() => setSelectedDivergenceItem(null)}
-								className="flex-1 px-6 py-5 text-slate-500 dark:text-slate-400 font-black hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors border-r border-slate-100 dark:border-slate-800"
+								className="flex-1 px-6 py-5 text-slate-500 dark:text-slate-400 font-black hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors border-r border-slate-100 dark:border-slate-800 cursor-pointer"
 							>
 								CANCELAR
 							</button>
 							<button
 								onClick={handleSaveDivergence}
-								className="flex-1 px-6 py-5 text-amber-600 dark:text-amber-400 font-black hover:bg-amber-50 dark:hover:bg-amber-950/20 transition-colors"
+								className="flex-1 px-6 py-5 text-amber-600 dark:text-amber-400 font-black hover:bg-amber-50 dark:hover:bg-amber-950/20 transition-colors cursor-pointer"
 							>
 								CONFIRMAR
 							</button>
