@@ -218,27 +218,19 @@ export default function InsumosPage() {
 		const term = searchTerm.trim().toLowerCase();
 		if (!term) return [];
 
-		// Mapeia por nome de insumo quais lojas pediram e seus status
-		const resultsMap = new Map<string, { storeId: StoreId; storeName: string; count: number; hasPending: boolean; hasDelivering: boolean }[]>();
+		// Mapeia por nome de insumo quais lojas têm pedidos
+		const resultsMap = new Map<string, { storeId: StoreId; storeName: string; orderId: string; checked: boolean }[]>();
 
 		allData.forEach((store) => {
 			store.pendingOrders.forEach((order) => {
 				if (order.name.toLowerCase().includes(term)) {
 					const existing = resultsMap.get(order.name) || [];
-					const storeEntry = existing.find((e) => e.storeId === store.id);
-					if (storeEntry) {
-						storeEntry.count += 1;
-						if (order.checkedByGerencia) storeEntry.hasDelivering = true;
-						else storeEntry.hasPending = true;
-					} else {
-						existing.push({
-							storeId: store.id,
-							storeName: store.name,
-							count: 1,
-							hasPending: !order.checkedByGerencia,
-							hasDelivering: !!order.checkedByGerencia,
-						});
-					}
+					existing.push({
+						storeId: store.id,
+						storeName: store.name,
+						orderId: order.id,
+						checked: !!order.checkedByGerencia,
+					});
 					resultsMap.set(order.name, existing);
 				}
 			});
@@ -249,6 +241,23 @@ export default function InsumosPage() {
 			stores,
 		}));
 	})();
+
+	const handleGoToOrder = (storeId: StoreId, orderId: string) => {
+		// Abre o toggle da loja
+		setExpandedStores((prev) => ({ ...prev, [storeId]: true }));
+
+		// Aguarda o render e rola até o pedido
+		setTimeout(() => {
+			const element = document.getElementById(`order-${storeId}-${orderId}`);
+			if (element) {
+				element.scrollIntoView({ behavior: "smooth", block: "center" });
+				element.classList.add("ring-4", "ring-blue-500", "scale-[1.02]");
+				setTimeout(() => {
+					element.classList.remove("ring-4", "ring-blue-500", "scale-[1.02]");
+				}, 2000);
+			}
+		}, 150);
+	};
 
 	return (
 		<div className="space-y-8">
@@ -282,7 +291,7 @@ export default function InsumosPage() {
 						{searchResults.length > 0 ? (
 							<div className="space-y-2.5">
 								<p className="text-xs font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">
-									Lojas com pedidos para &quot;{searchTerm}&quot;:
+									Lojas com pedido de &quot;{searchTerm}&quot; (clique para abrir):
 								</p>
 								<div className="grid grid-cols-1 md:grid-cols-2 gap-3">
 									{searchResults.map(({ itemName, stores }) => (
@@ -296,24 +305,15 @@ export default function InsumosPage() {
 												</span>
 											</div>
 											<div className="flex flex-wrap gap-2 pt-1 border-t border-slate-200/60 dark:border-slate-700/60">
-												{stores.map((s) => (
+												{stores.map((s, idx) => (
 													<button
-														key={s.storeId}
-														onClick={() => {
-															setExpandedStores((prev) => ({ ...prev, [s.storeId]: true }));
-														}}
+														key={`${s.storeId}-${s.orderId}-${idx}`}
+														onClick={() => handleGoToOrder(s.storeId, s.orderId)}
 														className="cursor-pointer inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white dark:bg-slate-700 text-xs md:text-sm font-black border border-slate-200 dark:border-slate-600 shadow-sm hover:border-blue-500 hover:text-blue-600 dark:hover:text-blue-400 transition-all">
-														<span className="text-slate-800 dark:text-slate-200">{s.storeName}:</span>
-														{s.hasPending && (
-															<span className="text-amber-600 dark:text-amber-400 font-black">
-																{s.count} {s.hasDelivering ? "ped." : "pendente(s)"}
-															</span>
-														)}
-														{s.hasDelivering && (
-															<span className="text-blue-600 dark:text-blue-400 font-black">
-																{s.hasPending ? "/ a entregar" : `${s.count} a entregar`}
-															</span>
-														)}
+														<span className="text-slate-800 dark:text-slate-200">{s.storeName}</span>
+														<span className={`text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded-md ${s.checked ? "bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-400" : "bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-400"}`}>
+															{s.checked ? "A entregar" : "Pendente"}
+														</span>
 													</button>
 												))}
 											</div>
@@ -455,7 +455,8 @@ export default function InsumosPage() {
 												return (
 													<div
 														key={order.id}
-														className={`p-6 rounded-[32px] border flex flex-col justify-between gap-4 transition-all ${
+														id={`order-${store.id}-${order.id}`}
+														className={`p-6 rounded-[32px] border flex flex-col justify-between gap-4 transition-all duration-300 ${
 															isChecked
 																? "bg-slate-100 dark:bg-slate-800/50 border-slate-200 dark:border-slate-800 opacity-80"
 																: "bg-slate-50 dark:bg-slate-800 border-slate-100 dark:border-slate-700 hover:bg-white dark:hover:bg-slate-700 hover:border-blue-200 dark:hover:border-blue-800 hover:shadow-xl dark:hover:shadow-none"

@@ -905,30 +905,8 @@ export default function EstoqueReposicionarPage() {
 			</div>
 
 			{activeSubTab === "reposicionar" ? (
-				<div className="space-y-8 print:hidden">
-			{/* Action Bar */}
-			<div className="flex flex-col md:flex-row gap-4 items-center justify-between bg-white dark:bg-slate-900 p-4 md:p-6 rounded-2xl md:rounded-[2rem] border border-slate-200 dark:border-slate-800 shadow-sm transition-colors print:hidden">
-				<div className="flex flex-col gap-1 shrink-0 text-center md:text-left">
-					<h2 className="text-xl md:text-2xl font-black text-slate-800 dark:text-slate-200 uppercase tracking-tight">
-						Reposicionamento
-					</h2>
-					<p className="text-[10px] md:text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">
-						Movimente pacotes entre as lojas
-					</p>
-				</div>
-				<div className="flex-1 flex items-center justify-center w-full md:w-auto">
-					<button
-						onClick={finalizeReposition}
-						disabled={savingRepos}
-						className="flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white px-6 md:px-8 py-3 rounded-2xl font-black text-xs md:text-sm shadow-md shadow-blue-100 dark:shadow-none transition-all cursor-pointer uppercase tracking-widest">
-						{savingRepos ? <RefreshCw className="animate-spin" size={16} /> : <Save size={16} />}
-						{savingRepos ? "Gerando..." : "Gerar Resumo"}
-					</button>
-				</div>
-				<div className="hidden md:block w-[140px] shrink-0" />
-			</div>
-
-			{/* Filter Bar */}
+				<div className="space-y-6 print:hidden">
+			{/* Filter & Controls Bar */}
 			<div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 md:gap-4 print:hidden">
 				<div className="bg-white dark:bg-slate-900 p-2.5 md:p-3 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex items-center gap-4 flex-1 transition-colors">
 					<div className="relative flex-1 group">
@@ -957,6 +935,17 @@ export default function EstoqueReposicionarPage() {
 						Histórico
 					</button>
 				</div>
+			</div>
+
+			{/* Botão Topo: Gerar Resumo Centralizado */}
+			<div className="flex justify-center items-center py-1">
+				<button
+					onClick={finalizeReposition}
+					disabled={savingRepos}
+					className="flex items-center justify-center gap-2.5 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white px-8 md:px-12 py-3 md:py-3.5 rounded-2xl font-black text-xs md:text-sm shadow-lg shadow-blue-500/20 dark:shadow-none hover:shadow-blue-500/30 hover:scale-[1.02] transition-all cursor-pointer uppercase tracking-widest">
+					{savingRepos ? <RefreshCw className="animate-spin" size={16} /> : <Save size={16} />}
+					{savingRepos ? "Gerando..." : "Gerar Resumo"}
+				</button>
 			</div>
 
 			{showPostFinalizationBanner && (
@@ -1225,6 +1214,17 @@ export default function EstoqueReposicionarPage() {
 						</tbody>
 					</table>
 				</div>
+			</div>
+
+			{/* Botão Rodapé: Gerar Resumo Centralizado */}
+			<div className="flex justify-center items-center py-3">
+				<button
+					onClick={finalizeReposition}
+					disabled={savingRepos}
+					className="flex items-center justify-center gap-2.5 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white px-8 md:px-12 py-3.5 md:py-4 rounded-2xl font-black text-xs md:text-sm shadow-xl shadow-blue-500/20 dark:shadow-none hover:shadow-blue-500/30 hover:scale-[1.02] transition-all cursor-pointer uppercase tracking-widest">
+					{savingRepos ? <RefreshCw className="animate-spin" size={16} /> : <Save size={16} />}
+					{savingRepos ? "Gerando..." : "Gerar Resumo"}
+				</button>
 			</div>
 			</div>
 			) : (
