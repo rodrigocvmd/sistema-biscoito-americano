@@ -27,6 +27,8 @@ import {
 	CheckCircle2,
 	Trash2,
 	ArrowLeftRight,
+	Search,
+	X,
 } from "lucide-react";
 
 interface FullStoreData {
@@ -38,16 +40,15 @@ interface FullStoreData {
 	deliveringCount: number;
 }
 
-const STORE_ORDER: StoreId[] = ["lago", "noroeste", "terraco", "conjunto"];
+const STORE_ORDER: StoreId[] = ["lago", "terraco", "noroeste", "conjunto"];
 
 export default function InsumosPage() {
 	const [loading, setLoading] = useState(true);
 	const [allData, setAllData] = useState<FullStoreData[]>([]);
-	const [expandedStores, setExpandedStores] = useState<Record<string, boolean>>({
-		lago: true,
-	});
+	const [expandedStores, setExpandedStores] = useState<Record<string, boolean>>({});
 	const [showHistory, setShowHistory] = useState<Record<string, boolean>>({});
 	const [insumosSort, setInsumosSort] = useState<"default" | "urgency" | "date">("urgency");
+	const [searchTerm, setSearchTerm] = useState("");
 
 	const rotateStores = () => {
 		setAllData((prev) => {
@@ -212,8 +213,125 @@ export default function InsumosPage() {
 		);
 	}
 
+	// Cálculo dos resultados de busca de insumos em pedidos pendentes e a entregar
+	const searchResults = (() => {
+		const term = searchTerm.trim().toLowerCase();
+		if (!term) return [];
+
+		// Mapeia por nome de insumo quais lojas pediram e seus status
+		const resultsMap = new Map<string, { storeId: StoreId; storeName: string; count: number; hasPending: boolean; hasDelivering: boolean }[]>();
+
+		allData.forEach((store) => {
+			store.pendingOrders.forEach((order) => {
+				if (order.name.toLowerCase().includes(term)) {
+					const existing = resultsMap.get(order.name) || [];
+					const storeEntry = existing.find((e) => e.storeId === store.id);
+					if (storeEntry) {
+						storeEntry.count += 1;
+						if (order.checkedByGerencia) storeEntry.hasDelivering = true;
+						else storeEntry.hasPending = true;
+					} else {
+						existing.push({
+							storeId: store.id,
+							storeName: store.name,
+							count: 1,
+							hasPending: !order.checkedByGerencia,
+							hasDelivering: !!order.checkedByGerencia,
+						});
+					}
+					resultsMap.set(order.name, existing);
+				}
+			});
+		});
+
+		return Array.from(resultsMap.entries()).map(([itemName, stores]) => ({
+			itemName,
+			stores,
+		}));
+	})();
+
 	return (
 		<div className="space-y-8">
+			{/* Barra de Pesquisa de Insumos */}
+			<div className="bg-white dark:bg-slate-900 p-4 md:p-6 rounded-[32px] border border-slate-200 dark:border-slate-800 shadow-sm space-y-4 transition-all">
+				<div className="relative flex-1 group">
+					<Search
+						size={20}
+						className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-500 transition-colors"
+					/>
+					<input
+						type="text"
+						placeholder="Pesquisar insumo nos pedidos pendentes e a entregar..."
+						value={searchTerm}
+						onChange={(e) => setSearchTerm(e.target.value)}
+						className="w-full bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-2xl py-3.5 pl-12 pr-10 text-sm md:text-base font-bold text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all shadow-inner"
+					/>
+					{searchTerm && (
+						<button
+							onClick={() => setSearchTerm("")}
+							className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1 rounded-full hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors cursor-pointer"
+							title="Limpar busca">
+							<X size={16} />
+						</button>
+					)}
+				</div>
+
+				{/* Resultados da Busca */}
+				{searchTerm.trim() && (
+					<div className="space-y-3 pt-2 border-t border-slate-100 dark:border-slate-800 animate-in fade-in duration-200">
+						{searchResults.length > 0 ? (
+							<div className="space-y-2.5">
+								<p className="text-xs font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">
+									Lojas com pedidos para &quot;{searchTerm}&quot;:
+								</p>
+								<div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+									{searchResults.map(({ itemName, stores }) => (
+										<div
+											key={itemName}
+											className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 flex flex-col gap-2.5">
+											<div className="flex items-center gap-2">
+												<Package size={18} className="text-blue-600 dark:text-blue-400 shrink-0" />
+												<span className="text-base font-black text-slate-800 dark:text-slate-100 uppercase tracking-tight">
+													{itemName}
+												</span>
+											</div>
+											<div className="flex flex-wrap gap-2 pt-1 border-t border-slate-200/60 dark:border-slate-700/60">
+												{stores.map((s) => (
+													<button
+														key={s.storeId}
+														onClick={() => {
+															setExpandedStores((prev) => ({ ...prev, [s.storeId]: true }));
+														}}
+														className="cursor-pointer inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white dark:bg-slate-700 text-xs md:text-sm font-black border border-slate-200 dark:border-slate-600 shadow-sm hover:border-blue-500 hover:text-blue-600 dark:hover:text-blue-400 transition-all">
+														<span className="text-slate-800 dark:text-slate-200">{s.storeName}:</span>
+														{s.hasPending && (
+															<span className="text-amber-600 dark:text-amber-400 font-black">
+																{s.count} {s.hasDelivering ? "ped." : "pendente(s)"}
+															</span>
+														)}
+														{s.hasDelivering && (
+															<span className="text-blue-600 dark:text-blue-400 font-black">
+																{s.hasPending ? "/ a entregar" : `${s.count} a entregar`}
+															</span>
+														)}
+													</button>
+												))}
+											</div>
+										</div>
+									))}
+								</div>
+							</div>
+						) : (
+							<div className="py-4 text-center">
+								<p className="text-sm font-bold text-slate-400 dark:text-slate-500">
+									Nenhum pedido pendente ou a entregar encontrado para &quot;{searchTerm}&quot;.
+								</p>
+							</div>
+						)}
+					</div>
+				)}
+			</div>
+
 			<div className="flex justify-center items-center pt-2">
 				<button
 					onClick={rotateStores}

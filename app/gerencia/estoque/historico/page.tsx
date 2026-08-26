@@ -24,7 +24,7 @@ import {
 	ChevronRight,
 } from "lucide-react";
 
-const STORE_ORDER: StoreId[] = ["lago", "noroeste", "terraco", "conjunto"];
+const STORE_ORDER: StoreId[] = ["lago", "terraco", "noroeste", "conjunto"];
 
 export default function GlobalStockHistoryPage() {
 	const [selectedStore, setSelectedStore] = useState<StoreId>("lago");

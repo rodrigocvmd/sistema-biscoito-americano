@@ -28,7 +28,7 @@ interface RepositionSnapshotDoc {
 	>;
 }
 
-const STORE_ORDER: StoreId[] = ["lago", "noroeste", "terraco", "conjunto"];
+const STORE_ORDER: StoreId[] = ["lago", "terraco", "noroeste", "conjunto"];
 
 export default function EstoquePedidosPage() {
 	const [activeSubTab, setActiveSubTab] = useState<"comparativo" | "desejavel">("comparativo");
