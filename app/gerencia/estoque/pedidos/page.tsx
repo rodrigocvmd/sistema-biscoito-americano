@@ -444,40 +444,42 @@ export default function EstoquePedidosPage() {
 												const boxesCount = Math.ceil(absDiff / boxSize);
 												const totalOrderedPackages = boxesCount * boxSize;
 												const caixasLabel = boxesCount === 1 ? "Caixa" : "Caixas";
-												const pacotesLabel = totalOrderedPackages === 1 ? "Pacote" : "Pacotes";
+												const pacotesLabel = totalOrderedPackages === 1 ? "pacote" : "pacotes";
 												
 												if (diff < 0) {
 													boxMessageNode = (
 														<div className="flex flex-col items-center">
-															<span className="text-base md:text-xl font-black text-rose-600 dark:text-rose-400">
-																Pedir {boxesCount} {caixasLabel} ({totalOrderedPackages} {pacotesLabel})
-															</span>
-														</div>
-													);
-												} else if (diff > 0) {
-													const totalExtraPackages = boxesCount * boxSize;
-													const extraPacotesLabel = totalExtraPackages === 1 ? "Pacote" : "Pacotes";
-													boxMessageNode = (
-														<div className="flex flex-col items-center">
-															<span className="text-base md:text-xl font-black text-emerald-600 dark:text-emerald-400">
-																{boxesCount} {caixasLabel} ({totalExtraPackages} {extraPacotesLabel}) acima da meta
+															<span className="text-base md:text-xl font-black text-slate-800 dark:text-slate-200">
+																Pedir{" "}
+																<span className="text-rose-600 dark:text-rose-400 font-black">
+																	{boxesCount}
+																</span>{" "}
+																{caixasLabel} ({totalOrderedPackages} {pacotesLabel})
 															</span>
 														</div>
 													);
 												} else {
 													boxMessageNode = (
 														<div className="flex flex-col items-center">
-															<span className="text-base md:text-xl font-black text-blue-600 dark:text-blue-400">
-																Na meta
+															<span className="text-base md:text-xl font-black text-slate-800 dark:text-slate-200">
+																Pedir{" "}
+																<span className="text-blue-600 dark:text-blue-400 font-black">
+																	0
+																</span>{" "}
+																caixas (acima da meta)
 															</span>
 														</div>
 													);
 												}
-											} else if (hasDesired && diff === 0) {
+											} else if (hasDesired && diff >= 0) {
 												boxMessageNode = (
 													<div className="flex flex-col items-center">
-														<span className="text-base md:text-xl font-black text-blue-600 dark:text-blue-400">
-															Na meta
+														<span className="text-base md:text-xl font-black text-slate-800 dark:text-slate-200">
+															Pedir{" "}
+															<span className="text-blue-600 dark:text-blue-400 font-black">
+																0
+															</span>{" "}
+															caixas (acima da meta)
 														</span>
 													</div>
 												);
@@ -550,6 +552,71 @@ export default function EstoquePedidosPage() {
 											);
 										})}
 								</tbody>
+								{(() => {
+									const filteredEntries = sortStockEntries(Object.entries(STOCK_LABELS))
+										.filter(([_, label]) => label.toLowerCase().includes(searchTerm.toLowerCase()));
+
+									let totalBoxesToOrder = 0;
+									let totalPackagesToOrder = 0;
+
+									filteredEntries.forEach(([key]) => {
+										const itemKey = key as keyof StockData;
+										const totalQty = allData.reduce((sum, store) => sum + (store.stock[itemKey] || 0), 0);
+										const desiredQty = desiredData[itemKey] || 0;
+										const diff = totalQty - desiredQty;
+										const boxSize = boxSizes[itemKey] || 0;
+
+										if (desiredQty > 0 && boxSize > 0 && diff < 0) {
+											const boxesCount = Math.ceil(Math.abs(diff) / boxSize);
+											totalBoxesToOrder += boxesCount;
+											totalPackagesToOrder += boxesCount * boxSize;
+										}
+									});
+
+									const totalCaixasLabel = totalBoxesToOrder === 1 ? "Caixa" : "Caixas";
+									const totalPacotesLabel = totalPackagesToOrder === 1 ? "pacote" : "pacotes";
+
+									return (
+										<tfoot>
+											<tr className="bg-slate-100/80 dark:bg-slate-800/90 border-t-2 border-slate-300 dark:border-slate-600 font-black">
+												<td className="p-3 md:p-6 text-sm md:text-xl font-black text-slate-800 dark:text-slate-100 uppercase">
+													TOTAL												</td>
+												<td className="p-3 md:p-6 border-l border-r border-slate-200 dark:border-slate-700 text-center text-slate-400 dark:text-slate-500">
+													-
+												</td>
+												<td className="p-3 md:p-6 border-r border-slate-200 dark:border-slate-700 text-center text-slate-400 dark:text-slate-500">
+													-
+												</td>
+												<td className="p-3 md:p-6 border-r border-slate-200 dark:border-slate-700 text-center text-slate-400 dark:text-slate-500">
+													-
+												</td>
+												<td className="p-3 md:p-6 text-center">
+													{totalBoxesToOrder > 0 ? (
+														<div className="flex flex-col items-center">
+															<span className="text-base md:text-xl font-black text-slate-800 dark:text-slate-200">
+																{" "}
+																<span className="text-rose-600 dark:text-rose-400 font-black">
+																	{totalBoxesToOrder}
+																</span>{" "}
+																{totalCaixasLabel} ({totalPackagesToOrder} {totalPacotesLabel})
+															</span>
+														</div>
+													) : (
+														<div className="flex flex-col items-center">
+															<span className="text-base md:text-xl font-black text-slate-800 dark:text-slate-200">
+																Pedir{" "}
+																<span className="text-blue-600 dark:text-blue-400 font-black">
+																	0
+																</span>{" "}
+																caixas (acima da meta)
+															</span>
+														</div>
+													)}
+												</td>
+											</tr>
+										</tfoot>
+									);
+								})()}
 							</table>
 						</div>
 					</div>
@@ -618,7 +685,7 @@ export default function EstoquePedidosPage() {
 											QUANTIDADE DESEJÁVEL (PACOTES)
 										</th>
 										<th className="p-3 md:p-6 text-center text-xs md:text-[0.9375rem] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest min-w-[7.5rem] md:min-w-[11.25rem]">
-											PACOTES / CAIXA
+											PACOTES POR CAIXA
 										</th>
 									</tr>
 								</thead>
