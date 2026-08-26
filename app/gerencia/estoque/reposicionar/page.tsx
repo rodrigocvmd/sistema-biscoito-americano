@@ -568,7 +568,7 @@ export default function EstoqueReposicionarPage() {
 		window.print();
 	};
 
-	const handleWhatsApp = () => {
+	const handleWhatsApp = async () => {
 		const movements = calculateOptimizedSummary();
 		if (movements.length === 0) return;
 
@@ -605,8 +605,38 @@ export default function EstoqueReposicionarPage() {
 			text += `\n`;
 		});
 
+		// 1. Tentar Web Share API nativa (iOS / Android), que abre a folha nativa de compartilhamento direto para o WhatsApp e outros apps
+		if (typeof navigator !== "undefined" && navigator.share) {
+			try {
+				await navigator.share({
+					title: `Resumo de Reposicionamento - ${new Date().toLocaleDateString("pt-BR")}`,
+					text: text,
+				});
+				return;
+			} catch (err: any) {
+				// Se o usuário apenas cancelou o compartilhamento, encerra sem abrir outra aba
+				if (err.name === "AbortError") {
+					return;
+				}
+				console.warn("Navigator share falhou, tentando fallback:", err);
+			}
+		}
+
+		// 2. Fallback caso navigator.share não esteja disponível ou falhe
+		const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent || "");
 		const encodedText = encodeURIComponent(text);
-		window.open(`https://web.whatsapp.com/send?text=${encodedText}`, "_blank");
+
+		if (isMobile) {
+			// Em dispositivos móveis / iOS sem Web Share, usa o protocolo direto do app do WhatsApp ou api.whatsapp.com
+			window.location.href = `whatsapp://send?text=${encodedText}`;
+			// Fallback caso o esquema whatsapp:// não responda
+			setTimeout(() => {
+				window.location.href = `https://api.whatsapp.com/send?text=${encodedText}`;
+			}, 700);
+		} else {
+			// No Desktop, abre o WhatsApp Web em nova aba
+			window.open(`https://web.whatsapp.com/send?text=${encodedText}`, "_blank");
+		}
 	};
 
 	const fetchAllHistory = async () => {
