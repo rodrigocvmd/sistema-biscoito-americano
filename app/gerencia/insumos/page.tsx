@@ -42,7 +42,7 @@ interface FullStoreData {
 	deliveringCount: number;
 }
 
-const STORE_ORDER: StoreId[] = ["lago", "terraco", "noroeste", "conjunto"];
+const STORE_ORDER: StoreId[] = ["lago", "terraco", "conjunto", "noroeste"];
 
 export default function InsumosPage() {
 	const [loading, setLoading] = useState(true);

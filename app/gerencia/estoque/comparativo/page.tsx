@@ -27,7 +27,7 @@ interface RepositionSession {
 	timestamp: any; // Timestamp de finalização
 }
 
-const STORES: StoreId[] = ["lago", "terraco", "noroeste", "conjunto"];
+const STORES: StoreId[] = ["lago", "terraco", "conjunto", "noroeste"];
 
 export default function EstoqueComparativoPage() {
 	const [sessions, setSessions] = useState<RepositionSession[]>([]);

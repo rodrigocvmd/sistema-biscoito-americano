@@ -14,7 +14,7 @@ interface FullStoreData {
 	isUnits: Partial<Record<keyof StockData, number>>;
 }
 
-const STORE_ORDER: StoreId[] = ["lago", "terraco", "noroeste", "conjunto"];
+const STORE_ORDER: StoreId[] = ["lago", "terraco", "conjunto", "noroeste"];
 
 export default function EstoqueAtualPage() {
 	const [loading, setLoading] = useState(true);
