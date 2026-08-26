@@ -1061,6 +1061,18 @@ export default function EstoqueReposicionarPage() {
 														)}
 
 														<div className="flex flex-col items-center justify-center gap-0.5 md:gap-1 min-h-[2.5rem] md:min-h-[3rem]">
+															{/* Indicativo de Proporção Desejável (Tag vazia com espectro de vermelho a verde) - Primeiro item no topo */}
+															{targetQty !== null && !isSourceCell && !isTargetCell && (() => {
+																const indicator = getProportionIndicatorColor(v, targetQty);
+																return (
+																	<div
+																		className="w-7 h-1.5 md:w-9 md:h-2 rounded-full transition-all duration-300 transform mb-0.5 hover:scale-125 cursor-default"
+																		style={indicator.style}
+																		title={`Proporção ideal: ${targetQty} un. (Atual: ${v} un. | Diferença: ${indicator.diffText})`}
+																	/>
+																);
+															})()}
+
 															{/* Quantidade atual em estoque na célula */}
 															<div className="flex items-center gap-1">
 																{(v > 0 || initialOpenCount === 0 || hideOpen) && (
@@ -1075,18 +1087,6 @@ export default function EstoqueReposicionarPage() {
 																	</span>
 																)}
 															</div>
-
-															{/* Indicativo de Proporção Desejável (Tag vazia com espectro de vermelho a verde) */}
-															{targetQty !== null && !isSourceCell && !isTargetCell && (() => {
-																const indicator = getProportionIndicatorColor(v, targetQty);
-																return (
-																	<div
-																		className="w-7 h-1.5 md:w-9 md:h-2 rounded-full transition-all duration-300 transform mt-0.5 hover:scale-125"
-																		style={indicator.style}
-																		title={`Proporção ideal: ${targetQty} un. (Atual: ${v} un. | Diferença: ${indicator.diffText})`}
-																	/>
-																);
-															})()}
 
 															{/* Badges de Estado */}
 															{isSourceCell ? (
@@ -1269,7 +1269,7 @@ export default function EstoqueReposicionarPage() {
 											</th>
 										))}
 										<th className="p-3 md:p-6 text-center text-xs md:text-[0.9375rem] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest min-w-[6rem] md:min-w-[8rem]">
-											SOMA DEFINIDA
+											PACOTES RESTANTES
 										</th>
 									</tr>
 								</thead>
@@ -1285,7 +1285,7 @@ export default function EstoqueReposicionarPage() {
 												0
 											);
 
-											const isSumMatching = metaGlobal > 0 ? sumDefined === metaGlobal : true;
+											const remaining = Math.max(0, metaGlobal - sumDefined);
 
 											return (
 												<tr
@@ -1330,17 +1330,12 @@ export default function EstoqueReposicionarPage() {
 														<div className="flex justify-center items-center gap-1">
 															<span
 																className={`text-base md:text-xl font-black ${
-																	!isSumMatching
+																	remaining > 0
 																		? "text-amber-600 dark:text-amber-400"
-																		: "text-slate-800 dark:text-slate-200"
+																		: "text-emerald-600 dark:text-emerald-400"
 																}`}>
-																{sumDefined}
+																{remaining}
 															</span>
-															{metaGlobal > 0 && !isSumMatching && (
-																<span className="text-[10px] md:text-xs font-bold text-amber-600 dark:text-amber-400" title={`Meta global é ${metaGlobal}`}>
-																	(meta: {metaGlobal})
-																</span>
-															)}
 														</div>
 													</td>
 												</tr>
