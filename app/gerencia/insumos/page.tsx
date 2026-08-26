@@ -29,6 +29,8 @@ import {
 	ArrowLeftRight,
 	Search,
 	X,
+	GripVertical,
+	ArrowUpDown,
 } from "lucide-react";
 
 interface FullStoreData {
@@ -47,7 +49,8 @@ export default function InsumosPage() {
 	const [allData, setAllData] = useState<FullStoreData[]>([]);
 	const [expandedStores, setExpandedStores] = useState<Record<string, boolean>>({});
 	const [showHistory, setShowHistory] = useState<Record<string, boolean>>({});
-	const [insumosSort, setInsumosSort] = useState<"default" | "urgency" | "date">("urgency");
+	const [insumosSort, setInsumosSort] = useState<"default" | "urgency" | "date" | "alphabetical" | "manual">("urgency");
+	const [manualOrderMap, setManualOrderMap] = useState<Record<string, string[]>>({});
 	const [searchTerm, setSearchTerm] = useState("");
 
 	const rotateStores = () => {
@@ -56,6 +59,137 @@ export default function InsumosPage() {
 			const [first, ...rest] = prev;
 			return [...rest, first];
 		});
+	};
+
+	// Função de ordenação base padrão de acordo com a seleção atual (não-manual)
+	const getBaseSortedOrders = (orders: SupplyOrder[], sortType: "default" | "urgency" | "date" | "alphabetical") => {
+		return [...orders].sort((a, b) => {
+			if (a.checkedByGerencia && !b.checkedByGerencia) return 1;
+			if (!a.checkedByGerencia && b.checkedByGerencia) return -1;
+
+			if (sortType === "alphabetical") {
+				return a.name.localeCompare(b.name, "pt-BR");
+			}
+			if (sortType === "urgency") {
+				const weight: Record<string, number> = {
+					Urgente: 3,
+					Acabando: 2,
+					Adiantando: 1,
+				};
+				return (weight[b.urgency] || 0) - (weight[a.urgency] || 0);
+			}
+			if (sortType === "date") {
+				return (a.createdAt?.toMillis() || 0) - (b.createdAt?.toMillis() || 0);
+			}
+			return 0;
+		});
+	};
+
+	// Obter a lista final de pedidos de uma loja (aplicando manual se ativo)
+	const getStoreDisplayOrders = (store: FullStoreData) => {
+		const baseSorted = getBaseSortedOrders(
+			store.pendingOrders,
+			insumosSort === "manual" ? "urgency" : insumosSort
+		);
+
+		if (insumosSort !== "manual" || !manualOrderMap[store.id]) {
+			return baseSorted;
+		}
+
+		// Ordenação manual: separa pendentes e a entregar
+		const pendingList = baseSorted.filter((o) => !o.checkedByGerencia);
+		const deliveringList = baseSorted.filter((o) => !!o.checkedByGerencia);
+
+		const orderIds = manualOrderMap[store.id];
+		const sortByIds = (list: SupplyOrder[]) => {
+			return [...list].sort((a, b) => {
+				const idxA = orderIds.indexOf(a.id);
+				const idxB = orderIds.indexOf(b.id);
+				if (idxA === -1 && idxB === -1) return 0;
+				if (idxA === -1) return 1;
+				if (idxB === -1) return -1;
+				return idxA - idxB;
+			});
+		};
+
+		return [...sortByIds(pendingList), ...sortByIds(deliveringList)];
+	};
+
+	// Estado para drag and drop
+	const [draggingItem, setDraggingItem] = useState<{ storeId: StoreId; orderId: string; checked: boolean } | null>(null);
+	const [dragOverItem, setDragOverItem] = useState<string | null>(null);
+
+	// Handlers de Drag and Drop
+	const handleDragStart = (e: React.DragEvent, storeId: StoreId, orderId: string, isChecked: boolean) => {
+		setDraggingItem({ storeId, orderId, checked: isChecked });
+		e.dataTransfer.effectAllowed = "move";
+		e.dataTransfer.setData("text/plain", orderId);
+	};
+
+	const handleDragOver = (e: React.DragEvent, targetOrderId: string, targetChecked: boolean, targetStoreId: StoreId) => {
+		// Permite drop apenas se pertencer à mesma loja e ao mesmo grupo (pendente ou a entregar)
+		if (draggingItem && draggingItem.storeId === targetStoreId && draggingItem.checked === targetChecked) {
+			e.preventDefault();
+			e.dataTransfer.dropEffect = "move";
+			if (dragOverItem !== targetOrderId) {
+				setDragOverItem(targetOrderId);
+			}
+		}
+	};
+
+	const handleDragLeave = () => {
+		setDragOverItem(null);
+	};
+
+	const handleDrop = (e: React.DragEvent, store: FullStoreData, targetOrderId: string, targetChecked: boolean) => {
+		e.preventDefault();
+		setDragOverItem(null);
+
+		if (!draggingItem || draggingItem.storeId !== store.id || draggingItem.checked !== targetChecked || draggingItem.orderId === targetOrderId) {
+			setDraggingItem(null);
+			return;
+		}
+
+		const currentOrders = getStoreDisplayOrders(store);
+		const sourceOrderId = draggingItem.orderId;
+		const isChecked = draggingItem.checked;
+
+		// Apenas reorganiza no grupo correspondente (pendentes ou a entregar)
+		const groupOrders = currentOrders.filter((o) => !!o.checkedByGerencia === isChecked);
+		const sourceIndex = groupOrders.findIndex((o) => o.id === sourceOrderId);
+		const targetIndex = groupOrders.findIndex((o) => o.id === targetOrderId);
+
+		if (sourceIndex === -1 || targetIndex === -1) {
+			setDraggingItem(null);
+			return;
+		}
+
+		const newGroupOrders = [...groupOrders];
+		const [movedOrder] = newGroupOrders.splice(sourceIndex, 1);
+		newGroupOrders.splice(targetIndex, 0, movedOrder);
+
+		// Reconstroi a lista total mantendo pendentes no topo e a entregar abaixo
+		const pendingFinal = isChecked ? currentOrders.filter((o) => !o.checkedByGerencia) : newGroupOrders;
+		const deliveringFinal = isChecked ? newGroupOrders : currentOrders.filter((o) => !!o.checkedByGerencia);
+		const finalIds = [...pendingFinal.map((o) => o.id), ...deliveringFinal.map((o) => o.id)];
+
+		setManualOrderMap((prev) => ({
+			...prev,
+			[store.id]: finalIds,
+		}));
+		setInsumosSort("manual");
+		setDraggingItem(null);
+	};
+
+	const handleDragEnd = () => {
+		setDraggingItem(null);
+		setDragOverItem(null);
+	};
+
+	// Ao trocar para uma ordenação específica, reseta a ordenação manual
+	const handleSelectSort = (sort: "default" | "urgency" | "date" | "alphabetical") => {
+		setInsumosSort(sort);
+		setManualOrderMap({});
 	};
 
 	// Persistir ordenação
@@ -413,59 +547,73 @@ export default function InsumosPage() {
 						<div className="p-8 pt-0 border-t border-slate-50 dark:border-slate-800 animate-in slide-in-from-top-2 duration-300">
 							{store.pendingOrders.length > 0 ? (
 								<>
-									<div className="flex flex-wrap items-center gap-4 py-6 border-b border-slate-50 dark:border-slate-800 mb-3">
-										<span className="text-[12px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">
-											Ordenar:
-										</span>
-										<div className="flex flex-wrap bg-slate-100 dark:bg-slate-800 p-1.5 rounded-xl gap-1 w-fit max-w-full">
-											{["default", "urgency", "date"].map((sort) => (
-												<button
-													key={sort}
-													onClick={() => setInsumosSort(sort as any)}
-													className={`cursor-pointer px-4 py-2 rounded-lg text-sm font-black transition-all whitespace-nowrap ${insumosSort === sort ? "bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-sm" : "text-slate-500 dark:text-slate-400"}`}>
-													{sort === "default" ? "Padrão" : sort === "urgency" ? "Urgência" : "Data"}
-												</button>
-											))}
+									<div className="flex flex-wrap items-center justify-between gap-4 py-6 border-b border-slate-50 dark:border-slate-800 mb-3">
+										<div className="flex flex-wrap items-center gap-3">
+											<span className="text-[12px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">
+												Ordenar:
+											</span>
+											<div className="flex flex-wrap bg-slate-100 dark:bg-slate-800 p-1.5 rounded-xl gap-1 w-fit max-w-full">
+												{[
+													{ id: "default", label: "Padrão" },
+													{ id: "urgency", label: "Urgência" },
+													{ id: "date", label: "Data" },
+													{ id: "alphabetical", label: "Alfabética" },
+												].map((sort) => (
+													<button
+														key={sort.id}
+														onClick={() => handleSelectSort(sort.id as any)}
+														className={`cursor-pointer px-4 py-2 rounded-lg text-sm font-black transition-all whitespace-nowrap ${insumosSort === sort.id ? "bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-sm" : "text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200"}`}>
+														{sort.label}
+													</button>
+												))}
+											</div>
 										</div>
+
+										{insumosSort === "manual" && manualOrderMap[store.id] && (
+											<div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-400 text-xs font-black uppercase tracking-wider animate-in fade-in">
+												<ArrowUpDown size={14} />
+												<span>Ordem manual personalizada</span>
+											</div>
+										)}
 									</div>
 
 									<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-										{[...store.pendingOrders]
-											.sort((a, b) => {
-												if (a.checkedByGerencia && !b.checkedByGerencia) return 1;
-												if (!a.checkedByGerencia && b.checkedByGerencia) return -1;
+										{(() => {
+											const displayOrders = getStoreDisplayOrders(store);
 
-												if (insumosSort === "urgency") {
-													const weight: Record<string, number> = {
-														Urgente: 3,
-														Acabando: 2,
-														Adiantando: 1,
-													};
-													return (weight[b.urgency] || 0) - (weight[a.urgency] || 0);
-												}
-												if (insumosSort === "date") {
-													return (a.createdAt?.toMillis() || 0) - (b.createdAt?.toMillis() || 0);
-												}
-												return 0;
-											})
-											.map((order) => {
+											return displayOrders.map((order) => {
 												const norm = normalizeUrgency(order.urgency);
 												const isChecked = order.checkedByGerencia || false;
+												const isBeingDragged = draggingItem?.orderId === order.id;
+												const isDropTarget = dragOverItem === order.id;
 
 												return (
 													<div
 														key={order.id}
 														id={`order-${store.id}-${order.id}`}
-														className={`p-6 rounded-[32px] border flex flex-col justify-between gap-4 transition-all duration-300 ${
-															isChecked
-																? "bg-slate-100 dark:bg-slate-800/50 border-slate-200 dark:border-slate-800 opacity-80"
-																: "bg-slate-50 dark:bg-slate-800 border-slate-100 dark:border-slate-700 hover:bg-white dark:hover:bg-slate-700 hover:border-blue-200 dark:hover:border-blue-800 hover:shadow-xl dark:hover:shadow-none"
+														draggable={true}
+														onDragStart={(e) => handleDragStart(e, store.id, order.id, isChecked)}
+														onDragOver={(e) => handleDragOver(e, order.id, isChecked, store.id)}
+														onDragLeave={handleDragLeave}
+														onDrop={(e) => handleDrop(e, store, order.id, isChecked)}
+														onDragEnd={handleDragEnd}
+														className={`p-6 rounded-[32px] border flex flex-col justify-between gap-4 transition-all duration-200 cursor-grab active:cursor-grabbing select-none ${
+															isBeingDragged
+																? "opacity-30 scale-95 border-dashed border-blue-500 bg-blue-50/50 dark:bg-blue-950/30 shadow-none"
+																: isDropTarget
+																	? "ring-4 ring-blue-500 scale-[1.03] bg-blue-50/80 dark:bg-blue-900/40 border-blue-400"
+																	: isChecked
+																		? "bg-slate-100 dark:bg-slate-800/50 border-slate-200 dark:border-slate-800 opacity-80"
+																		: "bg-slate-50 dark:bg-slate-800 border-slate-100 dark:border-slate-700 hover:bg-white dark:hover:bg-slate-700 hover:border-blue-200 dark:hover:border-blue-800 hover:shadow-xl dark:hover:shadow-none"
 														}`}>
 														<div className="space-y-4">
 															<div className="flex items-center justify-between gap-4">
-																<p className="text-2xl font-black leading-tight text-slate-800 dark:text-slate-200">
-																	{order.name}
-																</p>
+																<div className="flex items-center gap-2 flex-1">
+																	<GripVertical size={20} className="text-slate-300 dark:text-slate-600 hover:text-slate-500 shrink-0" />
+																	<p className="text-2xl font-black leading-tight text-slate-800 dark:text-slate-200">
+																		{order.name}
+																	</p>
+																</div>
 																<button
 																	type="button"
 																	id="checkBtn"
@@ -529,7 +677,8 @@ export default function InsumosPage() {
 														</div>
 													</div>
 												);
-											})}
+											});
+										})()}
 									</div>
 								</>
 							) : (
