@@ -989,11 +989,11 @@ export default function EstoqueReposicionarPage() {
 											</tr>
 										)}
 										<tr
-											className={`border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50/50 dark:hover:bg-slate-800/50 transition-colors ${isExpanded ? "bg-blue-50/30 dark:bg-blue-900/20" : ""}`}>
-											<td className="p-3 md:p-4 sticky left-0 bg-white dark:bg-slate-900 group-hover:bg-slate-50/50 dark:group-hover:bg-slate-800/50 z-10 border-r border-slate-50 dark:border-slate-800 border-b border-slate-100 dark:border-slate-800 transition-colors">
+											className={`border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50/50 dark:hover:bg-slate-800/50 ${isExpanded ? "bg-blue-50/30 dark:bg-blue-900/20" : ""}`}>
+											<td className="p-3 md:p-4 sticky left-0 bg-white dark:bg-slate-900 group-hover:bg-slate-50/50 dark:group-hover:bg-slate-800/50 z-10 border-r border-slate-50 dark:border-slate-800 border-b border-slate-100 dark:border-slate-800">
 												<button
 													onClick={() => setExpandedItem(isExpanded ? null : itemKey)}
-													className="flex items-center gap-1.5 md:gap-2 text-xs md:text-[1.2rem] font-black text-slate-600 dark:text-slate-400 uppercase hover:text-blue-600 dark:hover:text-blue-400 transition-colors cursor-pointer text-left">
+													className="flex items-center gap-1.5 md:gap-2 text-xs md:text-[1.2rem] font-black text-slate-600 dark:text-slate-400 uppercase hover:text-blue-600 dark:hover:text-blue-400 cursor-pointer text-left">
 													{isExpanded ? <ChevronUp size={14} className="md:w-[16px] md:h-[16px]" /> : <ChevronDown size={14} className="md:w-[16px] md:h-[16px]" />}
 													{label}
 												</button>
@@ -1018,7 +1018,7 @@ export default function EstoqueReposicionarPage() {
 													: null;
 												const isTargetMet = targetQty !== null && v === targetQty;
 
-												let cellStyle = "relative p-2 md:p-3 text-center border-l border-slate-50 dark:border-slate-800 border-b border-slate-100 dark:border-slate-800 cursor-pointer transition-colors select-none ";
+												let cellStyle = "relative p-2 md:p-3 text-center border-l border-slate-50 dark:border-slate-800 border-b border-slate-100 dark:border-slate-800 cursor-pointer select-none ";
 												if (isSourceCell) {
 													cellStyle += "bg-red-50 dark:bg-red-900/30 ring-2 ring-inset ring-red-500";
 												} else if (isTargetCell) {
@@ -1039,7 +1039,7 @@ export default function EstoqueReposicionarPage() {
 																	e.stopPropagation();
 																	setActiveSelection(null);
 																}}
-																className="absolute top-1 right-1 md:top-1.5 md:right-1.5 p-0.5 rounded-full bg-red-600 hover:bg-red-700 text-white shadow transition-colors cursor-pointer z-10"
+																className="absolute top-1 right-1 md:top-1.5 md:right-1.5 p-0.5 rounded-full bg-red-600 hover:bg-red-700 text-white shadow cursor-pointer z-10"
 																title="Cancelar seleção">
 																<X size={11} strokeWidth={3} />
 															</button>
@@ -1051,7 +1051,7 @@ export default function EstoqueReposicionarPage() {
 																const indicator = getProportionIndicatorColor(v, targetQty);
 																return (
 																	<div
-																		className="w-7 h-1.5 mb-2 md:w-9 md:h-2 rounded-full cursor-default transition-all"
+																		className="w-7 h-1.5 mb-2 md:w-9 md:h-2 rounded-full cursor-default"
 																		style={indicator.style}
 																		title={`Proporção ideal: ${targetQty} un. (Atual: ${v} un. | Diferença: ${indicator.diffText})`}
 																	/>
@@ -1073,20 +1073,20 @@ export default function EstoqueReposicionarPage() {
 																)}
 															</div>
 
-															{/* Badges de Estado / Diferença */}
+															{/* Badges de Estado / Diferença com chaves estáticas separadas para o React reconciliar sem morph de DOM */}
 															{isSourceCell ? (
-																<span className="text-[9px] md:text-[11px] font-black px-1.5 py-0.5 !mt-2 rounded-md bg-red-600 text-white uppercase tracking-tight inline-flex items-center gap-1 whitespace-nowrap">
+																<div key={`badge-source-${id}`} className="text-[9px] md:text-[11px] font-black px-1.5 py-0.5 !mt-2 rounded-md bg-red-600 text-white uppercase tracking-tight inline-flex items-center gap-1 whitespace-nowrap">
 																	<span>-{activeSelection.qty} saindo</span>
-																</span>
+																</div>
 															) : isTargetCell ? (
-																<span className="text-[9px] md:text-[11px] font-black px-1.5 py-0.5 rounded-md bg-emerald-600 text-white uppercase tracking-tight inline-flex items-center gap-1 whitespace-nowrap">
+																<div key={`badge-target-${id}`} className="text-[9px] md:text-[11px] font-black px-1.5 py-0.5 rounded-md bg-emerald-600 text-white uppercase tracking-tight inline-flex items-center gap-1 whitespace-nowrap">
 																	<span>+{activeSelection.qty} enviar</span>
-																</span>
+																</div>
 															) : (
 																(receiving || sending) && (
-																	<span className={`text-xs md:text-[1.2rem] font-black leading-none ${receiving ? "text-green-600 dark:text-green-500" : "text-red-600 dark:text-red-500"}`}>
+																	<div key={`badge-diff-${id}`} className={`!mt-1 text-xs md:text-[1.2rem] font-black leading-none ${receiving ? "text-green-600 dark:text-green-500" : "text-red-600 dark:text-red-500"}`}>
 																		{receiving ? `+${v - initial}` : `-${initial - v}`}
-																	</span>
+																	</div>
 																)
 															)}
 														</div>
