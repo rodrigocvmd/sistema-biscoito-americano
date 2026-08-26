@@ -1447,47 +1447,67 @@ export default function EstoqueReposicionarPage() {
 													})}
 												</div>
 
-												{/* Visão exclusiva de Impressão: Duplicado (2 vias para corte) alinhadas à esquerda com largura uniforme */}
-												<div className="hidden print:flex flex-col space-y-4 print:space-y-12 w-full">
-													{sortedGroups.map((group, groupIdx) => {
-														const totalGroupQty = group.items.reduce((acc, item) => acc + item.qty, 0);
+												{/* Visão exclusiva de Impressão: Usando estrutura table para repetir margem de cabeçalho no topo de TODAS as folhas */}
+												<table className="hidden print:table w-full border-collapse border-none bg-transparent">
+													<thead className="print:table-header-group">
+														<tr>
+															<th className="h-8 print:h-12 border-none bg-transparent p-0"></th>
+														</tr>
+													</thead>
+													<tfoot className="print:table-footer-group">
+														<tr>
+															<th className="h-6 print:h-8 border-none bg-transparent p-0"></th>
+														</tr>
+													</tfoot>
+													<tbody className="print:table-row-group">
+														<tr>
+															<td className="border-none bg-transparent p-0">
+																<div className="flex flex-col space-y-4 print:space-y-10 w-full pl-2">
+																	{sortedGroups.map((group, groupIdx) => {
+																		const totalGroupQty = group.items.reduce((acc, item) => acc + item.qty, 0);
 
-														return (
-															<div key={`print-${groupIdx}`} className="flex flex-row items-stretch gap-3 print:gap-x-6 w-full text-left mb-3 print:mb-12">
-																{[0, 1].map((copyIndex) => (
-																	<div
-																		key={`${groupIdx}-${copyIndex}`}
-																		className="bg-white border border-slate-400 rounded-xl p-3 break-inside-avoid shadow-none text-left w-[18.5rem] flex flex-col justify-between">
-																		<div>
-																			<div className="flex items-center justify-start gap-2 mb-2 pb-1.5 border-b border-slate-300 text-left">
-																				<span className="font-black text-black text-[11.5pt] flex items-center gap-1.5 text-left whitespace-nowrap uppercase">
-																					{STORE_NAMES[group.from]}
-																					<ArrowRight size={14} className="text-black" />
-																					{STORE_NAMES[group.to]}:
-																				</span>
-																			</div>
-																			<ul className="space-y-1.5 mt-2 text-left">
-																				{group.items.map((item, i) => (
-																					<li key={i} className="flex items-center justify-start gap-2 text-black font-bold text-[11pt] text-left whitespace-nowrap">
-																						<span className="w-3.5 h-3.5 rounded border border-black flex-shrink-0 inline-block" />
-																						<span className="text-left">
-																							<strong className="font-black text-black mr-1">{item.qty}</strong>
-																							{item.label}
-																						</span>
-																					</li>
+																		return (
+																			<div
+																				key={`print-${groupIdx}`}
+																				className="flex flex-row items-stretch gap-3 print:gap-x-6 w-full text-left mb-3 print:mb-8 break-inside-avoid page-break-inside-avoid">
+																				{[0, 1].map((copyIndex) => (
+																					<div
+																						key={`${groupIdx}-${copyIndex}`}
+																						className="bg-white border border-slate-400 rounded-xl p-3 break-inside-avoid page-break-inside-avoid shadow-none text-left w-[18.5rem] flex flex-col justify-between">
+																						<div>
+																							<div className="flex items-center justify-start gap-2 mb-2 pb-1.5 border-b border-slate-300 text-left">
+																								<span className="font-black text-black text-[11.5pt] flex items-center gap-1.5 text-left whitespace-nowrap uppercase">
+																									{STORE_NAMES[group.from]}
+																									<ArrowRight size={14} className="text-black" />
+																									{STORE_NAMES[group.to]}:
+																								</span>
+																							</div>
+																							<ul className="space-y-1.5 mt-2 text-left">
+																								{group.items.map((item, i) => (
+																									<li key={i} className="flex items-center justify-start gap-2 text-black font-bold text-[11pt] text-left whitespace-nowrap">
+																										<span className="w-3.5 h-3.5 rounded border border-black flex-shrink-0 inline-block" />
+																										<span className="text-left">
+																											<strong className="font-black text-black mr-1">{item.qty}</strong>
+																											{item.label}
+																										</span>
+																									</li>
+																								))}
+																							</ul>
+																						</div>
+																						<div className="mt-3 pt-1.5 border-t border-slate-400 flex items-center justify-between text-black text-[11pt] font-black">
+																							<span>Total:</span>
+																							<span>{totalGroupQty} pacotes</span>
+																						</div>
+																					</div>
 																				))}
-																			</ul>
-																		</div>
-																		<div className="mt-3 pt-1.5 border-t border-slate-400 flex items-center justify-between text-black text-[11pt] font-black">
-																			<span>Total:</span>
-																			<span>{totalGroupQty} pacotes</span>
-																		</div>
-																	</div>
-																))}
-															</div>
-														);
-													})}
-												</div>
+																			</div>
+																		);
+																	})}
+																</div>
+															</td>
+														</tr>
+													</tbody>
+												</table>
 											</div>
 										);
 									})()}
