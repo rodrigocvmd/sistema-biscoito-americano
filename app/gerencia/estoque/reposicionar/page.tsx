@@ -116,16 +116,11 @@ export default function EstoqueReposicionarPage() {
 
 	const [startingRepo, setStartingRepo] = useState(false);
 	const [isFinalizedSession, setIsFinalizedSession] = useState(false);
-	const [showPostFinalizationBanner, setShowPostFinalizationBanner] = useState(false);
-	const [showEditConfirmModal, setShowEditConfirmModal] = useState(false);
 	const [lastFinalizedDate, setLastFinalizedDate] = useState<string | null>(null);
 	const isSavedThisRun = useRef(false);
 
 	const handleCloseSummary = () => {
 		setShowSummary(false);
-		if (isFinalizedSession) {
-			setShowPostFinalizationBanner(true);
-		}
 	};
 
 	// Sempre que houver qualquer modificação na projeção de estoque, invalidar o status de salvo.
@@ -359,7 +354,6 @@ export default function EstoqueReposicionarPage() {
 			localStorage.removeItem("repos_last_finalized_date");
 			isSavedThisRun.current = false;
 			setIsFinalizedSession(false);
-			setShowPostFinalizationBanner(false);
 			setLastFinalizedDate(null);
 
 			setShowResetConfirm(false);
@@ -929,13 +923,6 @@ export default function EstoqueReposicionarPage() {
 						{hideOpen ? <Eye size={14} /> : <EyeOff size={14} />}
 						{hideOpen ? "Mostrar Abertos" : "Ocultar Abertos"}
 					</button>
-					<button
-						onClick={fetchAllHistory}
-						disabled={loadingAllHistory}
-						className="flex-1 sm:flex-none justify-center cursor-pointer flex items-center gap-2 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 px-4 md:px-6 py-2.5 md:py-3.5 rounded-2xl font-black text-xs transition-all border border-slate-200 dark:border-slate-800 uppercase tracking-widest disabled:opacity-50 shadow-sm">
-						{loadingAllHistory ? <RefreshCw className="animate-spin" size={14} /> : <History size={14} />}
-						Histórico
-					</button>
 				</div>
 			</div>
 
@@ -949,24 +936,6 @@ export default function EstoqueReposicionarPage() {
 					{savingRepos ? "Gerando..." : "Gerar Resumo"}
 				</button>
 			</div>
-
-			{showPostFinalizationBanner && (
-				<div className="bg-red-50 dark:bg-red-950/40 border-2 border-red-500/50 rounded-2xl p-4 md:p-6 shadow-sm space-y-4 print:hidden animate-in fade-in duration-200 flex flex-col items-center text-center">
-					<div className="flex flex-col sm:flex-row items-center justify-center gap-3">
-						<AlertCircle className="text-red-600 dark:text-red-400 shrink-0" size={28} />
-						<p className="text-sm md:text-lg font-black text-red-800 dark:text-red-200 text-center">
-							Números abaixo referentes ao último reposicionamento {lastFinalizedDate ? `(${lastFinalizedDate})` : `(${formatDate(new Date())})`} podem estar incorretos devido a movimentações de estoque posteriores.
-						</p>
-					</div>
-					<div className="flex justify-center items-center w-full pt-1">
-						<button
-							onClick={() => setShowEditConfirmModal(true)}
-							className="cursor-pointer bg-red-600 hover:bg-red-700 text-white px-4 md:px-6 py-2.5 md:py-3 rounded-xl text-xs md:text-sm font-black transition-all uppercase tracking-wider shadow-md shadow-red-200 dark:shadow-none">
-							Continuar ou editar último reposicionamento
-						</button>
-					</div>
-				</div>
-			)}
 
 			<div className="bg-white dark:bg-slate-900 rounded-2xl md:rounded-[2rem] border border-slate-200 dark:border-slate-800 shadow-sm transition-colors print:hidden">
 				<div className="overflow-x-auto overflow-y-visible">
@@ -1021,7 +990,7 @@ export default function EstoqueReposicionarPage() {
 										)}
 										<tr
 											className={`border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50/50 dark:hover:bg-slate-800/50 transition-colors ${isExpanded ? "bg-blue-50/30 dark:bg-blue-900/20" : ""}`}>
-											<td className="p-3 md:p-5 sticky left-0 bg-white dark:bg-slate-900 group-hover:bg-slate-50/50 dark:group-hover:bg-slate-800/50 z-10 border-r border-slate-50 dark:border-slate-800 border-b border-slate-100 dark:border-slate-800 transition-colors">
+											<td className="p-3 md:p-4 sticky left-0 bg-white dark:bg-slate-900 group-hover:bg-slate-50/50 dark:group-hover:bg-slate-800/50 z-10 border-r border-slate-50 dark:border-slate-800 border-b border-slate-100 dark:border-slate-800 transition-colors">
 												<button
 													onClick={() => setExpandedItem(isExpanded ? null : itemKey)}
 													className="flex items-center gap-1.5 md:gap-2 text-xs md:text-[1.2rem] font-black text-slate-600 dark:text-slate-400 uppercase hover:text-blue-600 dark:hover:text-blue-400 transition-colors cursor-pointer text-left">
@@ -1049,11 +1018,11 @@ export default function EstoqueReposicionarPage() {
 													: null;
 												const isTargetMet = targetQty !== null && v === targetQty;
 
-												let cellStyle = "relative p-3 md:p-5 text-center border-l border-slate-50 dark:border-slate-800 border-b border-slate-100 dark:border-slate-800 cursor-pointer transition-all select-none ";
+												let cellStyle = "relative p-2 md:p-3 text-center border-l border-slate-50 dark:border-slate-800 border-b border-slate-100 dark:border-slate-800 cursor-pointer transition-colors select-none ";
 												if (isSourceCell) {
-													cellStyle += "bg-red-50 dark:bg-red-900/30 ring-2 ring-red-500 shadow-md";
+													cellStyle += "bg-red-50 dark:bg-red-900/30 ring-2 ring-inset ring-red-500";
 												} else if (isTargetCell) {
-													cellStyle += "bg-emerald-50/70 dark:bg-emerald-900/30 ring-2 ring-dashed ring-emerald-500 hover:bg-emerald-100 dark:hover:bg-emerald-900/50";
+													cellStyle += "bg-emerald-50/70 dark:bg-emerald-900/30 ring-2 ring-inset ring-dashed ring-emerald-500 hover:bg-emerald-100 dark:hover:bg-emerald-900/50";
 												} else {
 													cellStyle += "hover:bg-slate-100/60 dark:hover:bg-slate-800/60";
 												}
@@ -1070,19 +1039,19 @@ export default function EstoqueReposicionarPage() {
 																	e.stopPropagation();
 																	setActiveSelection(null);
 																}}
-																className="absolute top-1 right-1 md:top-2 md:right-2 p-0.5 md:p-1 rounded-full bg-red-600 hover:bg-red-700 text-white shadow-md transition-all cursor-pointer z-10"
+																className="absolute top-1 right-1 md:top-1.5 md:right-1.5 p-0.5 rounded-full bg-red-600 hover:bg-red-700 text-white shadow transition-colors cursor-pointer z-10"
 																title="Cancelar seleção">
-																<X size={12} strokeWidth={3} className="md:w-[13px] md:h-[13px]" />
+																<X size={11} strokeWidth={3} />
 															</button>
 														)}
 
-														<div className="flex flex-col items-center justify-center gap-0.5 md:gap-1 min-h-[2.5rem] md:min-h-[3rem]">
-															{/* Indicativo de Proporção Desejável (Tag vazia com espectro de vermelho a verde) - Primeiro item no topo */}
+														<div className="flex flex-col items-center justify-center h-full min-h-[4.75rem] md:min-h-[5.25rem] gap-1">
+															{/* Indicativo de Proporção Desejável (Tag vazia com espectro de vermelho a verde) */}
 															{targetQty !== null && !isSourceCell && !isTargetCell && (() => {
 																const indicator = getProportionIndicatorColor(v, targetQty);
 																return (
 																	<div
-																		className="w-7 h-1.5 md:w-9 md:h-2 rounded-full transition-all duration-300 transform mb-0.5 hover:scale-125 cursor-default"
+																		className="w-7 h-1.5 mb-2 md:w-9 md:h-2 rounded-full cursor-default transition-all"
 																		style={indicator.style}
 																		title={`Proporção ideal: ${targetQty} un. (Atual: ${v} un. | Diferença: ${indicator.diffText})`}
 																	/>
@@ -1090,45 +1059,32 @@ export default function EstoqueReposicionarPage() {
 															})()}
 
 															{/* Quantidade atual em estoque na célula */}
-															<div className="flex items-center gap-1">
+															<div className="flex items-center justify-center gap-1">
 																{(v > 0 || initialOpenCount === 0 || hideOpen) && (
 																	<span
-																		className={`text-base md:text-[1.7rem] font-black ${(initialOpenCount > 0 && !hideOpen) ? "text-slate-900 dark:text-slate-200" : (v === 0 && (initialOpenCount === 0 || hideOpen)) ? "text-slate-400 dark:text-slate-600" : "text-slate-900 dark:text-slate-200"}`}>
+																		className={`text-base md:text-[1.7rem] font-black leading-none ${(initialOpenCount > 0 && !hideOpen) ? "text-slate-900 dark:text-slate-200" : (v === 0 && (initialOpenCount === 0 || hideOpen)) ? "text-slate-400 dark:text-slate-600" : "text-slate-900 dark:text-slate-200"}`}>
 																		{v}
 																	</span>
 																)}
 																{!hideOpen && initialOpenCount > 0 && (
-																	<span className="text-xs md:text-[1.7rem] font-bold text-slate-400 dark:text-slate-500 whitespace-nowrap">
+																	<span className="text-xs md:text-[1.7rem] font-bold text-slate-400 dark:text-slate-500 whitespace-nowrap leading-none">
 																		{v > 0 ? `+ ${initialOpenCount} ab` : `${initialOpenCount} ab`}
 																	</span>
 																)}
 															</div>
 
-															{/* Badges de Estado */}
+															{/* Badges de Estado / Diferença */}
 															{isSourceCell ? (
-																<span className="text-[10px] md:text-xs font-bold px-1.5 md:px-3 py-0.5 md:py-1 rounded-full bg-red-600 text-white shadow-md uppercase tracking-wider animate-in zoom-in-90 duration-150 inline-flex flex-wrap justify-center items-center gap-1">
-																	<span className="text-xs md:text-sm font-black text-amber-300 bg-red-800/80 px-1.5 md:px-2 py-0.5 rounded-lg border border-amber-300/40 shadow-inner">
-																		{activeSelection.qty}
-																	</span>
-																	<span>saindo do</span>
-																	<span className="text-xs md:text-sm font-black text-white bg-red-800/80 px-1.5 md:px-2 py-0.5 rounded-lg border border-white/40 shadow-inner">
-																		{STORE_NAMES[id]}
-																	</span>
+																<span className="text-[9px] md:text-[11px] font-black px-1.5 py-0.5 !mt-2 rounded-md bg-red-600 text-white uppercase tracking-tight inline-flex items-center gap-1 whitespace-nowrap">
+																	<span>-{activeSelection.qty} saindo</span>
 																</span>
 															) : isTargetCell ? (
-																<span className="text-[10px] md:text-xs font-bold px-1.5 md:px-3 py-0.5 md:py-1 rounded-full bg-emerald-600 text-white shadow-md uppercase tracking-wider animate-in zoom-in-90 duration-150 inline-flex flex-wrap justify-center items-center gap-1">
-																	<span>Enviar</span>
-																	<span className="text-xs md:text-sm font-black text-amber-300 bg-emerald-800/80 px-1.5 md:px-2 py-0.5 rounded-lg border border-amber-300/40 shadow-inner">
-																		{activeSelection.qty}
-																	</span>
-																	<span>para o</span>
-																	<span className="text-xs md:text-sm font-black text-white bg-emerald-800/80 px-1.5 md:px-2 py-0.5 rounded-lg border border-white/40 shadow-inner">
-																		{STORE_NAMES[id]}
-																	</span>
+																<span className="text-[9px] md:text-[11px] font-black px-1.5 py-0.5 rounded-md bg-emerald-600 text-white uppercase tracking-tight inline-flex items-center gap-1 whitespace-nowrap">
+																	<span>+{activeSelection.qty} enviar</span>
 																</span>
 															) : (
 																(receiving || sending) && (
-																	<span className={`text-xs md:text-[1.35rem] font-black ${receiving ? "text-green-600 dark:text-green-500" : "text-red-600 dark:text-red-500"}`}>
+																	<span className={`text-xs md:text-[1.2rem] font-black leading-none ${receiving ? "text-green-600 dark:text-green-500" : "text-red-600 dark:text-red-500"}`}>
 																		{receiving ? `+${v - initial}` : `-${initial - v}`}
 																	</span>
 																)
@@ -1568,39 +1524,6 @@ export default function EstoqueReposicionarPage() {
 								onClick={handleConfirmStockWarning} 
 								className="flex-1 px-6 py-4 rounded-2xl font-black text-[0.75rem] uppercase tracking-widest bg-red-600 hover:bg-red-700 text-white shadow-lg shadow-red-100 dark:shadow-none transition-all cursor-pointer">
 								Continuar
-							</button>
-						</div>
-					</div>
-				</div>
-			)}
-			{showEditConfirmModal && (
-				<div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[60] flex items-center justify-center p-4 animate-in fade-in duration-200">
-					<div className="bg-white dark:bg-slate-900 rounded-[2rem] w-full max-w-xl shadow-2xl overflow-hidden flex flex-col border border-amber-200 dark:border-amber-900/30">
-						<div className="p-8 text-center space-y-5">
-							<div className="mx-auto w-20 h-20 bg-amber-100 dark:bg-amber-900/20 rounded-full flex items-center justify-center">
-								<AlertCircle className="text-amber-600 dark:text-amber-400" size={40} />
-							</div>
-							<h3 className="text-2xl md:text-3xl font-black text-slate-800 dark:text-slate-200 tracking-tight">Editar Úlimo Reposicionamento</h3>
-							<p className="text-base md:text-xl text-slate-600 dark:text-slate-300 font-bold leading-relaxed">
-								Caso o último reposicionamento tenha sido finalizado há um tempo, as atualizações de estoque terão feito os números estarem incorretos. Nesse caso, inicie um novo reposicionamento.
-							</p>
-							<p className="text-sm md:text-lg font-black text-amber-700 dark:text-amber-400 uppercase tracking-wider">
-								Prossiga apenas se quer editar um reposicionamento recente (que acabou de finalizar).
-							</p>
-						</div>
-						<div className="p-6 bg-slate-50 dark:bg-slate-800/50 border-t border-slate-100 dark:border-slate-800 flex gap-4">
-							<button 
-								onClick={() => setShowEditConfirmModal(false)} 
-								className="flex-1 px-6 py-4 rounded-2xl font-black text-sm md:text-lg uppercase tracking-widest bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-100 dark:shadow-none transition-all cursor-pointer">
-								Voltar
-							</button>
-							<button 
-								onClick={() => {
-									setShowEditConfirmModal(false);
-									setShowPostFinalizationBanner(false);
-								}} 
-								className="flex-1 px-6 py-4 rounded-2xl font-black text-sm md:text-lg uppercase tracking-widest bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-100 dark:shadow-none transition-all cursor-pointer">
-								Prosseguir
 							</button>
 						</div>
 					</div>
