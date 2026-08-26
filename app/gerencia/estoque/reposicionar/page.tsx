@@ -109,7 +109,7 @@ export default function EstoqueReposicionarPage() {
 	const [allHistory, setAllHistory] = useState<RepositionHistory[]>([]);
 	const [loadingAllHistory, setLoadingAllHistory] = useState(false);
 	const [showSummary, setShowSummary] = useState(false);
-	const [showResetConfirm, setShowResetConfirm] = useState(false);
+	const [showResetConfirm, setShowResetConfirm] = useState(true);
 
 	const [searchTerm, setSearchTerm] = useState("");
 	const [hideOpen, setHideOpen] = useState(false);
@@ -907,7 +907,7 @@ export default function EstoqueReposicionarPage() {
 			{activeSubTab === "reposicionar" ? (
 				<div className="space-y-8 print:hidden">
 			{/* Action Bar */}
-			<div className="flex flex-col md:flex-row gap-4 items-center bg-white dark:bg-slate-900 p-4 md:p-6 rounded-2xl md:rounded-[2rem] border border-slate-200 dark:border-slate-800 shadow-sm transition-colors print:hidden">
+			<div className="flex flex-col md:flex-row gap-4 items-center justify-between bg-white dark:bg-slate-900 p-4 md:p-6 rounded-2xl md:rounded-[2rem] border border-slate-200 dark:border-slate-800 shadow-sm transition-colors print:hidden">
 				<div className="flex flex-col gap-1 shrink-0 text-center md:text-left">
 					<h2 className="text-xl md:text-2xl font-black text-slate-800 dark:text-slate-200 uppercase tracking-tight">
 						Reposicionamento
@@ -916,21 +916,16 @@ export default function EstoqueReposicionarPage() {
 						Movimente pacotes entre as lojas
 					</p>
 				</div>
-				<div className="flex-1 flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-2 sm:gap-3 w-full sm:w-auto">
-					<button
-						onClick={resetProjectedStocks}
-						className="cursor-pointer flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-4 md:px-5 py-2.5 rounded-xl font-black text-xs md:text-sm shadow-md shadow-emerald-100 dark:shadow-none transition-all uppercase tracking-widest">
-						<RefreshCw size={14} />
-						Iniciar reposicionamento
-					</button>
+				<div className="flex-1 flex items-center justify-center w-full md:w-auto">
 					<button
 						onClick={finalizeReposition}
 						disabled={savingRepos}
-						className="flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white px-4 md:px-5 py-2.5 rounded-xl font-black text-xs md:text-sm shadow-md shadow-blue-100 dark:shadow-none transition-all cursor-pointer uppercase tracking-widest">
-						{savingRepos ? <RefreshCw className="animate-spin" size={14} /> : <Save size={14} />}
-						{savingRepos ? "Finalizando..." : "Finalizar Reposicionamento"}
+						className="flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white px-6 md:px-8 py-3 rounded-2xl font-black text-xs md:text-sm shadow-md shadow-blue-100 dark:shadow-none transition-all cursor-pointer uppercase tracking-widest">
+						{savingRepos ? <RefreshCw className="animate-spin" size={16} /> : <Save size={16} />}
+						{savingRepos ? "Gerando..." : "Gerar Resumo"}
 					</button>
 				</div>
+				<div className="hidden md:block w-[140px] shrink-0" />
 			</div>
 
 			{/* Filter Bar */}
@@ -1590,23 +1585,25 @@ export default function EstoqueReposicionarPage() {
 									<RefreshCw className="text-blue-600 dark:text-blue-400" size={40} />
 								)}
 							</div>
-							<h3 className="text-2xl md:text-3xl font-black text-slate-800 dark:text-slate-200 tracking-tight">Iniciar Reposicionamento</h3>
+							<h3 className="text-2xl md:text-3xl font-black text-slate-800 dark:text-slate-200 tracking-tight">
+								Iniciar novo reposicionamento?
+							</h3>
 							<p className="text-base md:text-xl text-slate-500 dark:text-slate-400 font-bold leading-relaxed">
-								O resumo anterior será zerado e o estoque será atualizado para o estoque atual informado pelas lojas.
+								Ao confirmar, o estoque será atualizado com as quantidades atuais das lojas para um novo reposicionamento. Caso cancele, você visualizará o estado do último reposicionamento salvo.
 							</p>
 						</div>
 						<div className="p-6 bg-slate-50 dark:bg-slate-800/50 border-t border-slate-100 dark:border-slate-800 flex gap-4">
 							<button 
 								onClick={() => setShowResetConfirm(false)} 
 								disabled={startingRepo}
-								className="flex-1 px-6 py-4 rounded-2xl font-black text-sm md:text-lg uppercase tracking-widest bg-red-600 hover:bg-red-700 text-white shadow-lg disabled:opacity-50 cursor-pointer text-center">
+								className="flex-1 px-6 py-4 rounded-2xl font-black text-sm md:text-lg uppercase tracking-widest bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-300 dark:hover:bg-slate-600 shadow-sm disabled:opacity-50 cursor-pointer text-center transition-all">
 								Cancelar
 							</button>
 							<button 
 								onClick={confirmResetProjectedStocks} 
 								disabled={startingRepo}
-								className="flex-1 px-6 py-4 rounded-2xl font-black text-sm md:text-lg uppercase tracking-widest bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg disabled:opacity-50 cursor-pointer text-center">
-								{startingRepo ? "Iniciando..." : "Prosseguir"}
+								className="flex-1 px-6 py-4 rounded-2xl font-black text-sm md:text-lg uppercase tracking-widest bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg disabled:opacity-50 cursor-pointer text-center transition-all">
+								{startingRepo ? "Iniciando..." : "Confirmar"}
 							</button>
 						</div>
 					</div>
