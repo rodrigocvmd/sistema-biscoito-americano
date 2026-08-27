@@ -216,23 +216,40 @@ export default function EstoqueReposicionarPage() {
 		return () => unsubscribeDesired();
 	}, []);
 
-	// Helper para calcular a cor do espectro de vermelho (distante) a verde (ideal)
+	// Helper para calcular a cor do espectro de vermelho (abaixo) -> verde (adequada) -> azul (acima)
 	const getProportionIndicatorColor = (currentVal: number, targetVal: number) => {
+		const diff = currentVal - targetVal;
 		if (targetVal === 0 && currentVal === 0) {
 			return { bg: "bg-emerald-500", style: { backgroundColor: "hsl(142, 76%, 45%)" }, diffText: "0" };
 		}
-		const diff = Math.abs(currentVal - targetVal);
-		// Normalização da distância: quanto maior a discrepância relativa ao alvo (ou a 5 un.), mais próximo de 0 (vermelho)
+		if (diff === 0) {
+			return {
+				style: {
+					backgroundColor: "hsl(142, 76%, 45%)",
+					boxShadow: "0 0 6px hsla(142, 76%, 45%, 0.4)",
+				},
+				diffText: "0",
+			};
+		}
+
 		const maxRef = Math.max(targetVal, 4);
-		const ratio = Math.min(diff / maxRef, 1); // 0 = exato (perfeito), 1 = muito longe
-		// Matiz HSL: 142 (verde) quando ratio=0, até 0 (vermelho puro) quando ratio=1
-		const hue = Math.round(142 * (1 - ratio));
+		const ratio = Math.min(Math.abs(diff) / maxRef, 1); // 0 = ideal, 1 = máxima divergência
+
+		let hue: number;
+		if (diff > 0) {
+			// Acima da meta: de verde (142) até azul (217)
+			hue = Math.round(142 + (217 - 142) * ratio);
+		} else {
+			// Abaixo da meta: de verde (142) até vermelho (0)
+			hue = Math.round(142 * (1 - ratio));
+		}
+
 		return {
 			style: {
 				backgroundColor: `hsl(${hue}, 85%, 45%)`,
 				boxShadow: `0 0 6px hsla(${hue}, 85%, 45%, 0.4)`,
 			},
-			diffText: diff === 0 ? "0" : (currentVal > targetVal ? `+${diff}` : `-${diff}`),
+			diffText: diff > 0 ? `+${diff}` : `${diff}`,
 		};
 	};
 
@@ -926,8 +943,8 @@ export default function EstoqueReposicionarPage() {
 				</div>
 			</div>
 
-			{/* Botão Topo: Gerar Resumo Centralizado */}
-			<div className="flex justify-center items-center py-1">
+			{/* Botão Topo: Gerar Resumo e Legenda de Proporção */}
+			<div className="relative flex flex-col md:flex-row items-center justify-center gap-3 md:gap-4 py-1">
 				<button
 					onClick={finalizeReposition}
 					disabled={savingRepos}
@@ -935,6 +952,32 @@ export default function EstoqueReposicionarPage() {
 					{savingRepos ? <RefreshCw className="animate-spin" size={16} /> : <Save size={16} />}
 					{savingRepos ? "Gerando..." : "Gerar Resumo"}
 				</button>
+
+				{/* Legenda de Proporção (ao lado em telas md+, abaixo em telas menores) */}
+				<div className="md:absolute md:right-0 flex flex-col items-center md:items-end gap-1 bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 px-3.5 py-2 rounded-2xl shadow-sm">
+					<span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+						Proporção
+					</span>
+					<div className="flex items-center gap-2">
+						<span className="text-[9px] font-black text-red-600 dark:text-red-400 tracking-tight uppercase">
+							A MENOS
+						</span>
+						<div
+							className="w-24 md:w-28 h-2 rounded-full shadow-inner"
+							style={{
+								background: "linear-gradient(to right, hsl(0, 85%, 45%), hsl(142, 76%, 45%), hsl(217, 85%, 45%))",
+							}}
+						/>
+						<span className="text-[9px] font-black text-blue-600 dark:text-blue-400 tracking-tight uppercase">
+							A MAIS
+						</span>
+					</div>
+					<div className="w-full flex justify-center -mt-0.5">
+						<span className="text-[8px] font-black text-emerald-600 dark:text-emerald-400 tracking-tight uppercase">
+							● IDEAL
+						</span>
+					</div>
+				</div>
 			</div>
 
 			<div className="bg-white dark:bg-slate-900 rounded-2xl md:rounded-[2rem] border border-slate-200 dark:border-slate-800 shadow-sm transition-colors print:hidden">
@@ -1046,7 +1089,7 @@ export default function EstoqueReposicionarPage() {
 														)}
 
 														<div className="flex flex-col items-center justify-center h-full min-h-[4.75rem] md:min-h-[5.25rem] gap-1">
-															{/* Indicativo de Proporção Desejável (Tag vazia com espectro de vermelho a verde) */}
+															{/* Indicativo de Proporção Desejável (Tag vazia com espectro de vermelho a azul) */}
 															{targetQty !== null && !isSourceCell && !isTargetCell && (() => {
 																const indicator = getProportionIndicatorColor(v, targetQty);
 																return (
