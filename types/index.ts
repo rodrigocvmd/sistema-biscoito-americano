@@ -22,11 +22,11 @@ export interface StockData {
 	triploChocolate: number;
 	redNinho: number;
 	redNutella: number;
-	classicoRed: number;
+	redVelvet: number;
 	eclipse: number;
 	alpino: number;
 	americanCookie: number;
-	novoOreo: number;
+	oreo: number;
 	sorveteCaixa: number;
 	sorvetePote: number;
 	brookie: number;
@@ -47,11 +47,11 @@ export const STOCK_LABELS: Record<keyof StockData, string> = {
 	triploChocolate: "TRIPLO CHOCOLATE",
 	redNinho: "RED NINHO",
 	redNutella: "RED NUTELLA",
-	classicoRed: "CLÁSSICO RED",
+	redVelvet: "RED VELVET",
 	eclipse: "ECLIPSE",
 	alpino: "ALPINO",
 	americanCookie: "AMERICAN COOKIE",
-	novoOreo: "NOVO OREO",
+	oreo: "OREO",
 	brookie: "BROOKIE MARMITINHA",
 	sorveteCaixa: "SORVETE (CAIXA)",
 	sorvetePote: "SORVETE (POTE)",

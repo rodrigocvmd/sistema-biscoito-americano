@@ -955,7 +955,7 @@ export default function EstoqueReposicionarPage() {
 
 				{/* Legenda de Proporção (ao lado em telas md+, abaixo em telas menores) */}
 				<div className="md:absolute md:right-0 flex flex-col items-center md:items-end gap-1 bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 px-3.5 py-2 rounded-2xl shadow-sm">
-					<span className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+					<span className="w-full text-center text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider">
 						Proporção
 					</span>
 					<div className="flex items-center gap-2">
@@ -973,8 +973,8 @@ export default function EstoqueReposicionarPage() {
 						</span>
 					</div>
 					<div className="w-full flex justify-center -mt-0.5">
-						<span className="text-[8px] font-black text-emerald-600 dark:text-emerald-400 tracking-tight uppercase">
-							● IDEAL
+						<span className="text-[9px] font-black text-emerald-600 dark:text-emerald-400 tracking-tight uppercase">
+							IDEAL
 						</span>
 					</div>
 				</div>

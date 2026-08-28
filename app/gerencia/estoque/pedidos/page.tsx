@@ -416,7 +416,7 @@ export default function EstoquePedidosPage() {
 											DIFERENÇA
 										</th>
 										<th className="p-3 md:p-6 text-center text-xs md:text-[0.9375rem] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest min-w-[8rem] md:min-w-[11rem]">
-											CAIXAS A PEDIR
+											PACOTES A PEDIR
 										</th>
 									</tr>
 								</thead>
@@ -444,17 +444,17 @@ export default function EstoquePedidosPage() {
 												const boxesCount = Math.ceil(absDiff / boxSize);
 												const totalOrderedPackages = boxesCount * boxSize;
 												const caixasLabel = boxesCount === 1 ? "Caixa" : "Caixas";
-												const pacotesLabel = totalOrderedPackages === 1 ? "pacote" : "pacotes";
+												const pacotesLabel = totalOrderedPackages === 1 ? "Pacote" : "Pacotes";
 												
 												if (diff < 0) {
 													boxMessageNode = (
 														<div className="flex flex-col items-center">
 															<span className="text-base md:text-xl font-black text-slate-800 dark:text-slate-200">
-																Pedir{" "}
+																{" "}
 																<span className="text-rose-600 dark:text-rose-400 font-black">
-																	{boxesCount}
+																	{totalOrderedPackages}
 																</span>{" "}
-																{caixasLabel} ({totalOrderedPackages} {pacotesLabel})
+																{pacotesLabel} ({boxesCount} {caixasLabel})
 															</span>
 														</div>
 													);
@@ -462,11 +462,11 @@ export default function EstoquePedidosPage() {
 													boxMessageNode = (
 														<div className="flex flex-col items-center">
 															<span className="text-base md:text-xl font-black text-slate-800 dark:text-slate-200">
-																Pedir{" "}
+																{" "}
 																<span className="text-blue-600 dark:text-blue-400 font-black">
 																	0
 																</span>{" "}
-																caixas (acima da meta)
+																Pacotes (acima da meta)
 															</span>
 														</div>
 													);
@@ -475,11 +475,11 @@ export default function EstoquePedidosPage() {
 												boxMessageNode = (
 													<div className="flex flex-col items-center">
 														<span className="text-base md:text-xl font-black text-slate-800 dark:text-slate-200">
-															Pedir{" "}
+															{" "}
 															<span className="text-blue-600 dark:text-blue-400 font-black">
 																0
 															</span>{" "}
-															caixas (acima da meta)
+															Pacotes (acima da meta)
 														</span>
 													</div>
 												);
@@ -604,7 +604,7 @@ export default function EstoquePedidosPage() {
 													) : (
 														<div className="flex flex-col items-center">
 															<span className="text-base md:text-xl font-black text-slate-800 dark:text-slate-200">
-																Pedir{" "}
+																{" "}
 																<span className="text-blue-600 dark:text-blue-400 font-black">
 																	0
 																</span>{" "}
