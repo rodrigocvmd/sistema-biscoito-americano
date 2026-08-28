@@ -170,7 +170,7 @@ const INVENTORY_DATA = [
 			"SACO DE LIXO",
 			"PANO DE PRATO",
 			"SABÃO LÍQUIDO",
-			"BUXA",
+			"BUCHA",
 			"PERFEX",
 			"KIBOA",
 			"PAPEL TOALHA",
@@ -194,6 +194,19 @@ export default function SuppliesPage({ params }: { params: Promise<{ store: stri
 	const [editingOrder, setEditingOrder] = useState<{ id: string; urgency: UrgencyLevel } | null>(
 		null,
 	);
+	const [sortOrder, setSortOrder] = useState<"urgency" | "date" | "alphabetical">("urgency");
+
+	// Persistir ordenação no localStorage da loja
+	useEffect(() => {
+		const savedSort = localStorage.getItem("biscoito_store_insumos_sort");
+		if (savedSort === "urgency" || savedSort === "date" || savedSort === "alphabetical") {
+			setSortOrder(savedSort);
+		}
+	}, []);
+
+	useEffect(() => {
+		localStorage.setItem("biscoito_store_insumos_sort", sortOrder);
+	}, [sortOrder]);
 
 	// Combobox State
 	const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -462,10 +475,38 @@ export default function SuppliesPage({ params }: { params: Promise<{ store: stri
 
 			{/* Pending List */}
 			<section className="space-y-4">
-				<h3 className="text-lg font-bold text-slate-700 dark:text-slate-300 flex items-center gap-2 ml-1">
-					<Package className="text-slate-400 dark:text-slate-600" size={20} />
-					Insumos Pendentes ({pendingOrders.length})
-				</h3>
+				<div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+					<h3 className="text-lg font-bold text-slate-700 dark:text-slate-300 flex items-center gap-2 ml-1">
+						<Package className="text-slate-400 dark:text-slate-600" size={20} />
+						Insumos Pendentes ({pendingOrders.length})
+					</h3>
+
+					{pendingOrders.length > 0 && (
+						<div className="flex items-center gap-2">
+							<span className="text-[11px] md:text-xs font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+								Ordenar:
+							</span>
+							<div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-xl gap-1">
+								{[
+									{ id: "urgency", label: "Urgência" },
+									{ id: "date", label: "Data" },
+									{ id: "alphabetical", label: "Alfabética" },
+								].map((sort) => (
+									<button
+										key={sort.id}
+										onClick={() => setSortOrder(sort.id as any)}
+										className={`cursor-pointer px-3 py-1.5 rounded-lg text-xs font-black transition-all whitespace-nowrap ${
+											sortOrder === sort.id
+												? "bg-white dark:bg-slate-700 text-red-600 dark:text-red-400 shadow-sm"
+												: "text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200"
+										}`}>
+										{sort.label}
+									</button>
+								))}
+							</div>
+						</div>
+					)}
+				</div>
 				{pendingOrders.length === 0 ? (
 					<div className="bg-slate-100/50 dark:bg-slate-800/50 border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-2xl p-10 text-center">
 						<p className="text-slate-400 dark:text-slate-500 font-medium">
@@ -474,7 +515,28 @@ export default function SuppliesPage({ params }: { params: Promise<{ store: stri
 					</div>
 				) : (
 					<div className="grid md:grid-cols-2 gap-3">
-						{pendingOrders.map((order) => (
+						{[...pendingOrders]
+							.sort((a, b) => {
+								if (sortOrder === "alphabetical") {
+									return a.name.localeCompare(b.name, "pt-BR");
+								}
+								if (sortOrder === "urgency") {
+									const weight: Record<string, number> = {
+										Urgente: 3,
+										Acabando: 2,
+										Adiantando: 1,
+									};
+									const diff = (weight[b.urgency] || 0) - (weight[a.urgency] || 0);
+									if (diff !== 0) return diff;
+									return (b.createdAt?.toMillis() || 0) - (a.createdAt?.toMillis() || 0);
+								}
+								if (sortOrder === "date") {
+									// Mais recentes primeiro
+									return (b.createdAt?.toMillis() || 0) - (a.createdAt?.toMillis() || 0);
+								}
+								return 0;
+							})
+							.map((order) => (
 							<div
 								key={order.id}
 								className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4 group hover:border-red-200 dark:hover:border-red-900/50 transition-all">
