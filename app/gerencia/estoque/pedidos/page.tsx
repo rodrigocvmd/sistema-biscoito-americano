@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { db } from "@/lib/firebase";
 import { collection, onSnapshot, getDocs, query, limit, doc, setDoc } from "firebase/firestore";
 import { STOCK_LABELS, StockData, STORE_NAMES, StoreId, formatDate, sortStockEntries } from "@/types";
-import { RefreshCw, ArrowLeftRight, Printer, Search, Eye, EyeOff, ChevronDown, Save, FileText, Settings, Package } from "lucide-react";
+import { RefreshCw, ArrowLeftRight, Printer, Search, Eye, EyeOff, ChevronDown, Save, FileText, Settings, Package, DollarSign } from "lucide-react";
 
 interface FullStoreData {
 	id: StoreId;
@@ -30,8 +30,32 @@ interface RepositionSnapshotDoc {
 
 const STORE_ORDER: StoreId[] = ["lago", "terraco", "conjunto", "noroeste"];
 
+const DEFAULT_UNIT_PRICES: Partial<Record<keyof StockData, number>> = {
+	alpino: 7.7,
+	americanCookie: 6.67,
+	brigadeiro: 5.45,
+	brookie: 12.0,
+	brownie: 5.2,
+	classicoAoLeite: 5.2,
+	cocoDourado: 7.5,
+	eclipse: 6.6,
+	kinderBueno: 10.55,
+	lotus: 9.3,
+	macadamia: 5.2,
+	mms: 4.95,
+	newYork: 5.2,
+	nutella: 6.6,
+	oreo: 6.9,
+	ovomaltine: 6.6,
+	pistache: 6.9,
+	redVelvet: 5.2,
+	redNinho: 6.2,
+	redNutella: 6.6,
+	triploChocolate: 5.2,
+};
+
 export default function EstoquePedidosPage() {
-	const [activeSubTab, setActiveSubTab] = useState<"comparativo" | "desejavel">("comparativo");
+	const [activeSubTab, setActiveSubTab] = useState<"comparativo" | "desejavel" | "valoresUnitarios">("comparativo");
 	const [loading, setLoading] = useState(true);
 	const [allData, setAllData] = useState<FullStoreData[]>([]);
 	const [realCurrentData, setRealCurrentData] = useState<FullStoreData[]>([]);
@@ -48,7 +72,12 @@ export default function EstoquePedidosPage() {
 	const [boxSizes, setBoxSizes] = useState<Partial<StockData>>({});
 	const [localBoxSizes, setLocalBoxSizes] = useState<Partial<StockData>>({});
 
+	// Unit Prices (Valores unitários por sabor)
+	const [unitPrices, setUnitPrices] = useState<Partial<Record<keyof StockData, number>>>(DEFAULT_UNIT_PRICES);
+	const [localUnitPrices, setLocalUnitPrices] = useState<Partial<Record<keyof StockData, number>>>(DEFAULT_UNIT_PRICES);
+
 	const [savingDesired, setSavingDesired] = useState(false);
+	const [savingUnitPrices, setSavingUnitPrices] = useState(false);
 
 	const formatHistoryLabel = (date: Date) => {
 		const day = String(date.getDate()).padStart(2, "0");
@@ -117,17 +146,19 @@ export default function EstoquePedidosPage() {
 		fetchSessions();
 	}, []);
 
-	// 3. Fetch desired stocks & box sizes (Global doc logic with store fallback sum if needed)
+	// 3. Fetch desired stocks, box sizes & unit prices (Global doc logic with store fallback sum if needed)
 	useEffect(() => {
 		const unsubscribeDesired = onSnapshot(collection(db, "desiredStocks"), (snapshot) => {
 			let aggregatedStock: Partial<StockData> = {};
 			let aggregatedBoxSizes: Partial<StockData> = {};
+			let fetchedUnitPrices: Partial<Record<keyof StockData, number>> = {};
 			const globalDoc = snapshot.docs.find((d) => d.id === "global");
 			
 			if (globalDoc) {
 				const data = globalDoc.data();
 				aggregatedStock = data.stock || {};
 				aggregatedBoxSizes = data.boxSizes || {};
+				fetchedUnitPrices = data.unitPrices || {};
 			} else {
 				snapshot.docs.forEach((d) => {
 					const storeStock = (d.data().stock || {}) as Partial<StockData>;
@@ -142,6 +173,10 @@ export default function EstoquePedidosPage() {
 			setLocalDesired({ ...aggregatedStock });
 			setBoxSizes(aggregatedBoxSizes);
 			setLocalBoxSizes({ ...aggregatedBoxSizes });
+
+			const mergedPrices = { ...DEFAULT_UNIT_PRICES, ...fetchedUnitPrices };
+			setUnitPrices(mergedPrices);
+			setLocalUnitPrices({ ...mergedPrices });
 		});
 
 		return () => unsubscribeDesired();
@@ -199,6 +234,21 @@ export default function EstoquePedidosPage() {
 		}
 	};
 
+	// Save Unit Prices globally
+	const saveUnitPrices = async () => {
+		setSavingUnitPrices(true);
+		try {
+			const docRef = doc(db, "desiredStocks", "global");
+			await setDoc(docRef, { unitPrices: localUnitPrices }, { merge: true });
+			setActiveSubTab("comparativo");
+		} catch (error) {
+			console.error("Erro ao salvar valores unitários:", error);
+			alert("Erro ao salvar. Verifique o console.");
+		} finally {
+			setSavingUnitPrices(false);
+		}
+	};
+
 	const handleLocalDesiredChange = (itemKey: keyof StockData, value: string) => {
 		const numValue = value === "" ? 0 : Math.max(0, parseInt(value, 10) || 0);
 		setLocalDesired((prev) => ({
@@ -210,6 +260,15 @@ export default function EstoquePedidosPage() {
 	const handleLocalBoxSizeChange = (itemKey: keyof StockData, value: string) => {
 		const numValue = value === "" ? 0 : Math.max(0, parseInt(value, 10) || 0);
 		setLocalBoxSizes((prev) => ({
+			...prev,
+			[itemKey]: numValue,
+		}));
+	};
+
+	const handleLocalUnitPriceChange = (itemKey: keyof StockData, value: string) => {
+		const normalized = value.replace(",", ".");
+		const numValue = normalized === "" ? 0 : Math.max(0, parseFloat(normalized) || 0);
+		setLocalUnitPrices((prev) => ({
 			...prev,
 			[itemKey]: numValue,
 		}));
@@ -329,6 +388,16 @@ export default function EstoquePedidosPage() {
 					}`}>
 					<Settings size={16} />
 					ESTOQUE DESEJÁVEL (METAS)
+				</button>
+				<button
+					onClick={() => setActiveSubTab("valoresUnitarios")}
+					className={`flex items-center gap-2 px-3 md:px-4 py-2 rounded-xl text-xs md:text-sm font-black whitespace-nowrap shrink-0 transition-all cursor-pointer ${
+						activeSubTab === "valoresUnitarios"
+							? "bg-slate-105 dark:bg-slate-800 text-blue-600 dark:text-blue-400 border border-slate-200 dark:border-slate-700"
+							: "text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-900"
+					}`}>
+					<DollarSign size={16} />
+					VALORES UNITÁRIOS
 				</button>
 			</div>
 
@@ -621,7 +690,7 @@ export default function EstoquePedidosPage() {
 						</div>
 					</div>
 				</>
-			) : (
+			) : activeSubTab === "desejavel" ? (
 				// Desired Stock Configuration View
 				<div className="space-y-6">
 					{/* Verificação de alterações nas metas ou caixas */}
@@ -733,6 +802,108 @@ export default function EstoquePedidosPage() {
 																onClick={(e) => e.currentTarget.select()}
 																className="w-20 md:w-28 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl py-1.5 md:py-2 px-2 md:px-3 text-center text-sm md:text-base font-black text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-all cursor-pointer"
 																title="Quantidade de sacos/pacotes por caixa"
+															/>
+														</div>
+													</td>
+												</tr>
+											);
+										})}
+								</tbody>
+							</table>
+						</div>
+					</div>
+				</div>
+			) : (
+				// Unit Prices Configuration View
+				<div className="space-y-6">
+					{/* Verificação de alterações nos valores unitários */}
+					{(() => {
+						const hasChanges = Object.keys(STOCK_LABELS)
+							.filter((key) => key !== "sorveteCaixa" && key !== "sorvetePote")
+							.some((k) => {
+								const key = k as keyof StockData;
+								return (localUnitPrices[key] ?? DEFAULT_UNIT_PRICES[key] ?? 0) !== (unitPrices[key] ?? DEFAULT_UNIT_PRICES[key] ?? 0);
+							});
+
+						return (
+							<div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 md:gap-4">
+								<div className="relative flex-1 max-w-full sm:max-w-md group">
+									<Search
+										size={18}
+										className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-500 transition-colors"
+									/>
+									<input
+										type="text"
+										placeholder="Filtrar por sabor..."
+										value={searchTerm}
+										onChange={(e) => setSearchTerm(e.target.value)}
+										className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl py-2.5 md:py-3 pl-12 pr-4 text-xs md:text-sm font-bold text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all shadow-sm"
+									/>
+								</div>
+
+								<div className="relative" title={!hasChanges && !savingUnitPrices ? "Faça alterações para salvar" : ""}>
+									<button
+										onClick={saveUnitPrices}
+										disabled={!hasChanges || savingUnitPrices}
+										className={`flex items-center justify-center gap-2 px-4 md:px-6 py-2.5 md:py-3 rounded-2xl font-black transition-all text-xs md:text-sm ${
+											hasChanges && !savingUnitPrices
+												? "bg-emerald-600 hover:bg-emerald-700 text-white shadow-xl shadow-emerald-500/40 ring-4 ring-emerald-400/40 animate-pulse cursor-pointer scale-105"
+												: "bg-slate-200 dark:bg-slate-800 text-slate-400 dark:text-slate-500 cursor-not-allowed opacity-70"
+										}`}>
+										{savingUnitPrices ? (
+											<RefreshCw className="animate-spin" size={18} />
+										) : (
+											<Save size={18} />
+										)}
+										SALVAR VALORES
+									</button>
+								</div>
+							</div>
+						);
+					})()}
+
+					<div className="bg-white dark:bg-slate-900 rounded-2xl md:rounded-[2rem] border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden transition-colors">
+						<div className="overflow-x-auto">
+							<table className="w-full border-collapse">
+								<thead>
+									<tr className="bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700">
+										<th className="p-3 md:p-6 text-left text-xs md:text-[0.9375rem] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest min-w-[7.5rem] md:min-w-[11.25rem]">
+											SABOR / ITEM
+										</th>
+										<th className="p-3 md:p-6 text-center text-xs md:text-[0.9375rem] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest min-w-[7.5rem] md:min-w-[11.25rem]">
+											VALOR UNITÁRIO (R$)
+										</th>
+									</tr>
+								</thead>
+								<tbody>
+									{sortStockEntries(Object.entries(STOCK_LABELS))
+										.filter(([key, label]) => key !== "sorveteCaixa" && key !== "sorvetePote" && label.toLowerCase().includes(searchTerm.toLowerCase()))
+										.map(([key, label]) => {
+											const itemKey = key as keyof StockData;
+											const priceVal = localUnitPrices[itemKey] !== undefined ? localUnitPrices[itemKey] : (DEFAULT_UNIT_PRICES[itemKey] ?? "");
+
+											return (
+												<tr
+													key={key}
+													className="border-b border-slate-100 dark:border-slate-800 hover:bg-blue-50/30 dark:hover:bg-blue-900/20 transition-colors group">
+													<td className="p-3 md:p-6 text-sm md:text-xl font-black text-slate-600 dark:text-slate-400 bg-white dark:bg-slate-900 group-hover:bg-blue-50/30 dark:group-hover:bg-blue-900/20 transition-colors uppercase">
+														{label}
+													</td>
+													<td className="p-3 md:p-6 text-center">
+														<div className="flex justify-center items-center gap-2">
+															<span className="text-sm md:text-lg font-black text-slate-400 dark:text-slate-500">
+																R$
+															</span>
+															<input
+																type="number"
+																step="0.01"
+																min="0"
+																value={priceVal}
+																placeholder="0.00"
+																onChange={(e) => handleLocalUnitPriceChange(itemKey, e.target.value)}
+																onFocus={(e) => e.target.select()}
+																onClick={(e) => e.currentTarget.select()}
+																className="w-28 md:w-36 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl py-1.5 md:py-2 px-2 md:px-3 text-center text-sm md:text-lg font-black text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all cursor-pointer"
 															/>
 														</div>
 													</td>
