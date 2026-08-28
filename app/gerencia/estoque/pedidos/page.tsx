@@ -30,32 +30,32 @@ interface RepositionSnapshotDoc {
 
 const STORE_ORDER: StoreId[] = ["lago", "terraco", "conjunto", "noroeste"];
 
-const DEFAULT_UNIT_PRICES: Partial<Record<keyof StockData, number>> = {
-	alpino: 7.7,
-	americanCookie: 6.67,
-	brigadeiro: 5.45,
-	brookie: 12.0,
-	brownie: 5.2,
-	classicoAoLeite: 5.2,
-	cocoDourado: 7.5,
-	eclipse: 6.6,
-	kinderBueno: 10.55,
-	lotus: 9.3,
-	macadamia: 5.2,
-	mms: 4.95,
-	newYork: 5.2,
-	nutella: 6.6,
-	oreo: 6.9,
-	ovomaltine: 6.6,
-	pistache: 6.9,
-	redVelvet: 5.2,
-	redNinho: 6.2,
-	redNutella: 6.6,
-	triploChocolate: 5.2,
+const DEFAULT_PACKAGE_PRICES: Partial<Record<keyof StockData, number>> = {
+	alpino: 184.8,
+	americanCookie: 160.08,
+	brigadeiro: 130.8,
+	brookie: 288.0,
+	brownie: 124.8,
+	classicoAoLeite: 124.8,
+	cocoDourado: 180.0,
+	eclipse: 158.4,
+	kinderBueno: 253.2,
+	lotus: 223.2,
+	macadamia: 124.8,
+	mms: 118.8,
+	newYork: 124.8,
+	nutella: 158.4,
+	oreo: 165.6,
+	ovomaltine: 158.4,
+	pistache: 165.6,
+	redVelvet: 124.8,
+	redNinho: 148.8,
+	redNutella: 158.4,
+	triploChocolate: 124.8,
 };
 
 export default function EstoquePedidosPage() {
-	const [activeSubTab, setActiveSubTab] = useState<"comparativo" | "desejavel" | "valoresUnitarios">("comparativo");
+	const [activeSubTab, setActiveSubTab] = useState<"comparativo" | "desejavel" | "valoresPacote">("comparativo");
 	const [loading, setLoading] = useState(true);
 	const [allData, setAllData] = useState<FullStoreData[]>([]);
 	const [realCurrentData, setRealCurrentData] = useState<FullStoreData[]>([]);
@@ -72,12 +72,12 @@ export default function EstoquePedidosPage() {
 	const [boxSizes, setBoxSizes] = useState<Partial<StockData>>({});
 	const [localBoxSizes, setLocalBoxSizes] = useState<Partial<StockData>>({});
 
-	// Unit Prices (Valores unitários por sabor)
-	const [unitPrices, setUnitPrices] = useState<Partial<Record<keyof StockData, number>>>(DEFAULT_UNIT_PRICES);
-	const [localUnitPrices, setLocalUnitPrices] = useState<Partial<Record<keyof StockData, number>>>(DEFAULT_UNIT_PRICES);
+	// Package Prices (Valores por pacote por sabor)
+	const [packagePrices, setPackagePrices] = useState<Partial<Record<keyof StockData, number>>>(DEFAULT_PACKAGE_PRICES);
+	const [localPackagePrices, setLocalPackagePrices] = useState<Partial<Record<keyof StockData, number>>>(DEFAULT_PACKAGE_PRICES);
 
 	const [savingDesired, setSavingDesired] = useState(false);
-	const [savingUnitPrices, setSavingUnitPrices] = useState(false);
+	const [savingPackagePrices, setSavingPackagePrices] = useState(false);
 
 	const formatHistoryLabel = (date: Date) => {
 		const day = String(date.getDate()).padStart(2, "0");
@@ -146,19 +146,19 @@ export default function EstoquePedidosPage() {
 		fetchSessions();
 	}, []);
 
-	// 3. Fetch desired stocks, box sizes & unit prices (Global doc logic with store fallback sum if needed)
+	// 3. Fetch desired stocks, box sizes & package prices (Global doc logic with store fallback sum if needed)
 	useEffect(() => {
 		const unsubscribeDesired = onSnapshot(collection(db, "desiredStocks"), (snapshot) => {
 			let aggregatedStock: Partial<StockData> = {};
 			let aggregatedBoxSizes: Partial<StockData> = {};
-			let fetchedUnitPrices: Partial<Record<keyof StockData, number>> = {};
+			let fetchedPackagePrices: Partial<Record<keyof StockData, number>> = {};
 			const globalDoc = snapshot.docs.find((d) => d.id === "global");
 			
 			if (globalDoc) {
 				const data = globalDoc.data();
 				aggregatedStock = data.stock || {};
 				aggregatedBoxSizes = data.boxSizes || {};
-				fetchedUnitPrices = data.unitPrices || {};
+				fetchedPackagePrices = data.packagePrices || {};
 			} else {
 				snapshot.docs.forEach((d) => {
 					const storeStock = (d.data().stock || {}) as Partial<StockData>;
@@ -174,9 +174,9 @@ export default function EstoquePedidosPage() {
 			setBoxSizes(aggregatedBoxSizes);
 			setLocalBoxSizes({ ...aggregatedBoxSizes });
 
-			const mergedPrices = { ...DEFAULT_UNIT_PRICES, ...fetchedUnitPrices };
-			setUnitPrices(mergedPrices);
-			setLocalUnitPrices({ ...mergedPrices });
+			const mergedPrices = { ...DEFAULT_PACKAGE_PRICES, ...fetchedPackagePrices };
+			setPackagePrices(mergedPrices);
+			setLocalPackagePrices({ ...mergedPrices });
 		});
 
 		return () => unsubscribeDesired();
@@ -234,18 +234,18 @@ export default function EstoquePedidosPage() {
 		}
 	};
 
-	// Save Unit Prices globally
-	const saveUnitPrices = async () => {
-		setSavingUnitPrices(true);
+	// Save Package Prices globally
+	const savePackagePrices = async () => {
+		setSavingPackagePrices(true);
 		try {
 			const docRef = doc(db, "desiredStocks", "global");
-			await setDoc(docRef, { unitPrices: localUnitPrices }, { merge: true });
+			await setDoc(docRef, { packagePrices: localPackagePrices }, { merge: true });
 			setActiveSubTab("comparativo");
 		} catch (error) {
-			console.error("Erro ao salvar valores unitários:", error);
+			console.error("Erro ao salvar valores por pacote:", error);
 			alert("Erro ao salvar. Verifique o console.");
 		} finally {
-			setSavingUnitPrices(false);
+			setSavingPackagePrices(false);
 		}
 	};
 
@@ -265,10 +265,10 @@ export default function EstoquePedidosPage() {
 		}));
 	};
 
-	const handleLocalUnitPriceChange = (itemKey: keyof StockData, value: string) => {
+	const handleLocalPackagePriceChange = (itemKey: keyof StockData, value: string) => {
 		const normalized = value.replace(",", ".");
 		const numValue = normalized === "" ? 0 : Math.max(0, parseFloat(normalized) || 0);
-		setLocalUnitPrices((prev) => ({
+		setLocalPackagePrices((prev) => ({
 			...prev,
 			[itemKey]: numValue,
 		}));
@@ -390,14 +390,14 @@ export default function EstoquePedidosPage() {
 					ESTOQUE DESEJÁVEL (METAS)
 				</button>
 				<button
-					onClick={() => setActiveSubTab("valoresUnitarios")}
+					onClick={() => setActiveSubTab("valoresPacote")}
 					className={`flex items-center gap-2 px-3 md:px-4 py-2 rounded-xl text-xs md:text-sm font-black whitespace-nowrap shrink-0 transition-all cursor-pointer ${
-						activeSubTab === "valoresUnitarios"
+						activeSubTab === "valoresPacote"
 							? "bg-slate-105 dark:bg-slate-800 text-blue-600 dark:text-blue-400 border border-slate-200 dark:border-slate-700"
 							: "text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-900"
 					}`}>
 					<DollarSign size={16} />
-					VALORES UNITÁRIOS
+					VALORES POR PACOTE
 				</button>
 			</div>
 
@@ -814,15 +814,15 @@ export default function EstoquePedidosPage() {
 					</div>
 				</div>
 			) : (
-				// Unit Prices Configuration View
+				// Package Prices Configuration View
 				<div className="space-y-6">
-					{/* Verificação de alterações nos valores unitários */}
+					{/* Verificação de alterações nos valores por pacote */}
 					{(() => {
 						const hasChanges = Object.keys(STOCK_LABELS)
 							.filter((key) => key !== "sorveteCaixa" && key !== "sorvetePote")
 							.some((k) => {
 								const key = k as keyof StockData;
-								return (localUnitPrices[key] ?? DEFAULT_UNIT_PRICES[key] ?? 0) !== (unitPrices[key] ?? DEFAULT_UNIT_PRICES[key] ?? 0);
+								return (localPackagePrices[key] ?? DEFAULT_PACKAGE_PRICES[key] ?? 0) !== (packagePrices[key] ?? DEFAULT_PACKAGE_PRICES[key] ?? 0);
 							});
 
 						return (
@@ -841,16 +841,16 @@ export default function EstoquePedidosPage() {
 									/>
 								</div>
 
-								<div className="relative" title={!hasChanges && !savingUnitPrices ? "Faça alterações para salvar" : ""}>
+								<div className="relative" title={!hasChanges && !savingPackagePrices ? "Faça alterações para salvar" : ""}>
 									<button
-										onClick={saveUnitPrices}
-										disabled={!hasChanges || savingUnitPrices}
+										onClick={savePackagePrices}
+										disabled={!hasChanges || savingPackagePrices}
 										className={`flex items-center justify-center gap-2 px-4 md:px-6 py-2.5 md:py-3 rounded-2xl font-black transition-all text-xs md:text-sm ${
-											hasChanges && !savingUnitPrices
+											hasChanges && !savingPackagePrices
 												? "bg-emerald-600 hover:bg-emerald-700 text-white shadow-xl shadow-emerald-500/40 ring-4 ring-emerald-400/40 animate-pulse cursor-pointer scale-105"
 												: "bg-slate-200 dark:bg-slate-800 text-slate-400 dark:text-slate-500 cursor-not-allowed opacity-70"
 										}`}>
-										{savingUnitPrices ? (
+										{savingPackagePrices ? (
 											<RefreshCw className="animate-spin" size={18} />
 										) : (
 											<Save size={18} />
@@ -871,7 +871,7 @@ export default function EstoquePedidosPage() {
 											SABOR / ITEM
 										</th>
 										<th className="p-3 md:p-6 text-center text-xs md:text-[0.9375rem] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest min-w-[7.5rem] md:min-w-[11.25rem]">
-											VALOR UNITÁRIO (R$)
+											VALOR POR PACOTE (R$) <span className="text-[0.65rem] md:text-xs font-normal text-slate-400 dark:text-slate-500 block">(24 unidades)</span>
 										</th>
 									</tr>
 								</thead>
@@ -880,7 +880,7 @@ export default function EstoquePedidosPage() {
 										.filter(([key, label]) => key !== "sorveteCaixa" && key !== "sorvetePote" && label.toLowerCase().includes(searchTerm.toLowerCase()))
 										.map(([key, label]) => {
 											const itemKey = key as keyof StockData;
-											const priceVal = localUnitPrices[itemKey] !== undefined ? localUnitPrices[itemKey] : (DEFAULT_UNIT_PRICES[itemKey] ?? "");
+											const priceVal = localPackagePrices[itemKey] !== undefined ? localPackagePrices[itemKey] : (DEFAULT_PACKAGE_PRICES[itemKey] ?? "");
 
 											return (
 												<tr
@@ -900,7 +900,7 @@ export default function EstoquePedidosPage() {
 																min="0"
 																value={priceVal}
 																placeholder="0.00"
-																onChange={(e) => handleLocalUnitPriceChange(itemKey, e.target.value)}
+																onChange={(e) => handleLocalPackagePriceChange(itemKey, e.target.value)}
 																onFocus={(e) => e.target.select()}
 																onClick={(e) => e.currentTarget.select()}
 																className="w-28 md:w-36 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl py-1.5 md:py-2 px-2 md:px-3 text-center text-sm md:text-lg font-black text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all cursor-pointer"
