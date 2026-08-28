@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { db } from "@/lib/firebase";
 import { collection, onSnapshot, getDocs, query, limit, doc, setDoc } from "firebase/firestore";
 import { STOCK_LABELS, StockData, STORE_NAMES, StoreId, formatDate, sortStockEntries } from "@/types";
-import { RefreshCw, ArrowLeftRight, Printer, Search, Eye, EyeOff, ChevronDown, Save, FileText, Settings, Package, DollarSign, Calculator, ShoppingCart, Copy, Check } from "lucide-react";
+import { RefreshCw, ArrowLeftRight, Printer, Search, Eye, EyeOff, ChevronDown, Save, FileText, Settings, Package, DollarSign, Calculator, ShoppingCart, Copy, Check, Plus, Minus } from "lucide-react";
 
 interface FullStoreData {
 	id: StoreId;
@@ -294,10 +294,35 @@ export default function EstoquePedidosPage() {
 	};
 
 	const handleCustomPackageChange = (itemKey: keyof StockData, value: string) => {
-		const numValue = value === "" ? 0 : Math.max(0, parseInt(value, 10) || 0);
+		if (value === "") {
+			setCustomOrderPackages((prev) => ({
+				...prev,
+				[itemKey]: 0,
+			}));
+			return;
+		}
+
+		const parsed = Math.max(0, parseInt(value, 10) || 0);
+		const boxSize = boxSizes[itemKey] || 1;
+		
+		// Arredonda para o múltiplo do tamanho da caixa mais próximo
+		const rounded = Math.round(parsed / boxSize) * boxSize;
+
 		setCustomOrderPackages((prev) => ({
 			...prev,
-			[itemKey]: numValue,
+			[itemKey]: rounded,
+		}));
+	};
+
+	const stepCustomPackage = (itemKey: keyof StockData, deltaBoxes: number) => {
+		const boxSize = boxSizes[itemKey] || 1;
+		const suggested = getSuggestedOrderPackages(itemKey);
+		const current = customOrderPackages[itemKey] !== undefined ? (customOrderPackages[itemKey] || 0) : suggested;
+		const next = Math.max(0, current + deltaBoxes * boxSize);
+
+		setCustomOrderPackages((prev) => ({
+			...prev,
+			[itemKey]: next,
 		}));
 	};
 
@@ -948,15 +973,25 @@ export default function EstoquePedidosPage() {
 																<td className="p-3 md:p-6 text-center border-l border-r border-slate-100 dark:border-slate-800">
 																	<div className="flex flex-col items-center justify-center gap-1">
 																		<div className="flex items-center justify-center gap-1.5">
+																			<button
+																				type="button"
+																				onClick={() => stepCustomPackage(itemKey, -1)}
+																				disabled={(qty || 0) <= 0}
+																				className="w-8 h-8 md:w-9 md:h-9 flex items-center justify-center rounded-xl bg-slate-105 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer shadow-sm active:scale-95"
+																				title={`Diminuir 1 caixa (-${boxSizes[itemKey] || 1} pcts)`}>
+																				<Minus size={14} />
+																			</button>
+
 																			<input
 																				type="number"
 																				min="0"
+																				step={boxSizes[itemKey] || 1}
 																				value={qty === 0 ? "" : qty}
 																				placeholder="0"
 																				onChange={(e) => handleCustomPackageChange(itemKey, e.target.value)}
 																				onFocus={(e) => e.target.select()}
 																				onClick={(e) => e.currentTarget.select()}
-																				className={`w-20 md:w-28 bg-white dark:bg-slate-800 border rounded-xl py-1.5 md:py-2 px-2 md:px-3 text-center text-sm md:text-lg font-black transition-all cursor-pointer focus:outline-none focus:ring-2 ${
+																				className={`w-18 md:w-24 bg-white dark:bg-slate-800 border rounded-xl py-1.5 md:py-2 px-2 md:px-3 text-center text-sm md:text-lg font-black transition-all cursor-pointer focus:outline-none focus:ring-2 ${
 																					isModified
 																						? "border-amber-400 dark:border-amber-500 text-amber-600 dark:text-amber-400 focus:ring-amber-500/20"
 																						: (qty || 0) > 0
@@ -964,15 +999,25 @@ export default function EstoquePedidosPage() {
 																						: "border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 focus:ring-blue-500/20"
 																				}`}
 																			/>
-																			<span className="text-xs md:text-sm font-bold text-slate-400 dark:text-slate-500">
-																				pcts
-																			</span>
+
+																			<button
+																				type="button"
+																				onClick={() => stepCustomPackage(itemKey, 1)}
+																				className="w-8 h-8 md:w-9 md:h-9 flex items-center justify-center rounded-xl bg-slate-105 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 transition-all cursor-pointer shadow-sm active:scale-95"
+																				title={`Aumentar 1 caixa (+${boxSizes[itemKey] || 1} pcts)`}>
+																				<Plus size={14} />
+																			</button>
 																		</div>
-																		{isModified && (
-																			<span className="text-[0.65rem] md:text-xs font-bold text-amber-500">
-																				(Sugerido: {suggested})
+																		<div className="flex items-center gap-1.5 text-[0.68rem] md:text-xs">
+																			<span className="font-bold text-slate-400 dark:text-slate-500">
+																				{boxSizes[itemKey] ? `${boxSizes[itemKey]} pcts/cx` : "1 pct/cx"}
 																			</span>
-																		)}
+																			{isModified && (
+																				<span className="font-bold text-amber-500">
+																					• Sugerido: {suggested}
+																				</span>
+																			)}
+																		</div>
 																	</div>
 																</td>
 																<td className="p-3 md:p-6 text-center border-r border-slate-100 dark:border-slate-800">
