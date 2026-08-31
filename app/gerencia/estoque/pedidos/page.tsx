@@ -79,6 +79,7 @@ export default function EstoquePedidosPage() {
 	// Custom Order Packages (para simulação e edição na sub-aba VALOR DO PEDIDO)
 	const [customOrderPackages, setCustomOrderPackages] = useState<Partial<Record<keyof StockData, number>>>({});
 	const [copiedSummary, setCopiedSummary] = useState(false);
+	const [showSummary, setShowSummary] = useState(false);
 
 	const [savingDesired, setSavingDesired] = useState(false);
 	const [savingPackagePrices, setSavingPackagePrices] = useState(false);
@@ -795,8 +796,8 @@ export default function EstoquePedidosPage() {
 						});
 
 						const handleCopyOrderSummary = () => {
-							let text = `📦 *RESUMO DO PEDIDO DE ESTOQUE*\n`;
-							text += `📅 Data: ${new Date().toLocaleDateString("pt-BR")} às ${new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}\n\n`;
+							let text = `*RESUMO DO PEDIDO DE ESTOQUE*\n`;
+							text += `Data: ${new Date().toLocaleDateString("pt-BR")} às ${new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}\n\n`;
 							text += `*ITENS A PEDIR:*\n`;
 
 							let itemsCount = 0;
@@ -818,10 +819,10 @@ export default function EstoquePedidosPage() {
 							}
 
 							text += `\n━━━━━━━━━━━━━━━━━━━━\n`;
-							text += `📦 *Total de Pacotes:* ${totalPackages} pacotes\n`;
-							text += `💰 *Subtotal:* R$ ${baseTotalValue.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}\n`;
-							text += `🏛️ *Impostos (+8%):* R$ ${taxValue.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}\n`;
-							text += `💵 *VALOR TOTAL ESTIMADO:* R$ ${finalTotalValue.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+							text += `*Total de Pacotes:* ${totalPackages} pacotes\n`;
+							text += `*Subtotal:* R$ ${baseTotalValue.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}\n`;
+							text += `*Impostos Estimados (+8%):* R$ ${taxValue.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}\n`;
+							text += `*VALOR TOTAL ESTIMADO:* R$ ${finalTotalValue.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
 							navigator.clipboard.writeText(text);
 							setCopiedSummary(true);
@@ -889,7 +890,7 @@ export default function EstoquePedidosPage() {
 									</div>
 								</div>
 
-								{/* Actions Bar */}
+								{/* Actions Bar & Botão Topo: Gerar Resumo */}
 								<div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 md:gap-4">
 									<div className="relative flex-1 max-w-full sm:max-w-md group">
 										<Search
@@ -905,8 +906,8 @@ export default function EstoquePedidosPage() {
 										/>
 									</div>
 
-									<div className="flex items-center gap-2 sm:gap-3 justify-end flex-wrap sm:flex-nowrap">
-										{hasCustomModifications && (
+									{hasCustomModifications && (
+										<div className="flex items-center gap-2 sm:gap-3 justify-end flex-wrap sm:flex-nowrap">
 											<button
 												onClick={resetCustomOrderToSuggested}
 												className="flex-1 sm:flex-none justify-center flex items-center gap-2 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-800 px-3 md:px-4 py-2.5 md:py-3 rounded-2xl font-black shadow-sm transition-all cursor-pointer text-xs md:text-sm"
@@ -914,17 +915,20 @@ export default function EstoquePedidosPage() {
 												<RefreshCw size={16} />
 												RESTAURAR SUGERIDO
 											</button>
-										)}
-
-										<button
-											onClick={handleCopyOrderSummary}
-											className="flex-1 sm:flex-none justify-center flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 md:px-6 py-2.5 md:py-3 rounded-2xl font-black shadow-lg shadow-blue-500/20 transition-all cursor-pointer text-xs md:text-sm">
-											{copiedSummary ? <Check size={18} className="text-emerald-300" /> : <Copy size={18} />}
-											{copiedSummary ? "RESUMO COPIADO!" : "COPIAR RESUMO"}
-										</button>
-									</div>
+										</div>
+									)}
+										{/* Botão Topo: Gerar Resumo Centralizado */}
+									<div className="flex justify-center items-center py-1">
+									<button
+										onClick={() => setShowSummary(true)}
+										className="flex items-center justify-center gap-2.5 bg-blue-600 hover:bg-blue-700 text-white px-8 md:px-12 py-3 md:py-3.5 rounded-2xl font-black text-xs md:text-sm shadow-lg shadow-blue-500/20 dark:shadow-none hover:shadow-blue-500/30 hover:scale-[1.02] transition-all cursor-pointer uppercase tracking-widest">
+										<FileText size={16} />
+										Gerar Resumo
+									</button>
+								</div>
 								</div>
 
+								
 								{/* Table */}
 								<div className="bg-white dark:bg-slate-900 rounded-2xl md:rounded-[2rem] border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden transition-colors">
 									<div className="overflow-x-auto">
@@ -955,10 +959,21 @@ export default function EstoquePedidosPage() {
 														const itemKey = key as keyof StockData;
 														const suggested = getSuggestedOrderPackages(itemKey);
 														const qty = customOrderPackages[itemKey] !== undefined ? customOrderPackages[itemKey] : suggested;
+														const currentQty = qty || 0;
 														const pricePerPkg = packagePrices[itemKey] ?? DEFAULT_PACKAGE_PRICES[itemKey] ?? 0;
-														const subtotalItem = (qty || 0) * pricePerPkg;
+														const subtotalItem = currentQty * pricePerPkg;
 														const finalItem = subtotalItem * 1.08;
 														const isModified = customOrderPackages[itemKey] !== undefined && customOrderPackages[itemKey] !== suggested;
+
+														// Determina a estilização do input conforme sugerido / a mais / a menos
+														let inputColorClasses = "border-emerald-500 dark:border-emerald-500 text-emerald-600 dark:text-emerald-400 focus:ring-emerald-500/20";
+														if (currentQty > suggested) {
+															// A mais: azul
+															inputColorClasses = "border-blue-500 dark:border-blue-500 text-blue-600 dark:text-blue-400 focus:ring-blue-500/20";
+														} else if (currentQty < suggested) {
+															// A menos: vermelho
+															inputColorClasses = "border-rose-500 dark:border-rose-500 text-rose-600 dark:text-rose-400 focus:ring-rose-500/20";
+														}
 
 														return (
 															<tr
@@ -976,7 +991,7 @@ export default function EstoquePedidosPage() {
 																			<button
 																				type="button"
 																				onClick={() => stepCustomPackage(itemKey, -1)}
-																				disabled={(qty || 0) <= 0}
+																				disabled={currentQty <= 0}
 																				className="w-8 h-8 md:w-9 md:h-9 flex items-center justify-center rounded-xl bg-slate-105 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer shadow-sm active:scale-95"
 																				title={`Diminuir 1 caixa (-${boxSizes[itemKey] || 1} pcts)`}>
 																				<Minus size={14} />
@@ -986,18 +1001,12 @@ export default function EstoquePedidosPage() {
 																				type="number"
 																				min="0"
 																				step={boxSizes[itemKey] || 1}
-																				value={qty === 0 ? "" : qty}
+																				value={currentQty === 0 ? "" : currentQty}
 																				placeholder="0"
 																				onChange={(e) => handleCustomPackageChange(itemKey, e.target.value)}
 																				onFocus={(e) => e.target.select()}
 																				onClick={(e) => e.currentTarget.select()}
-																				className={`w-18 md:w-24 bg-white dark:bg-slate-800 border rounded-xl py-1.5 md:py-2 px-2 md:px-3 text-center text-sm md:text-lg font-black transition-all cursor-pointer focus:outline-none focus:ring-2 ${
-																					isModified
-																						? "border-amber-400 dark:border-amber-500 text-amber-600 dark:text-amber-400 focus:ring-amber-500/20"
-																						: (qty || 0) > 0
-																						? "border-rose-300 dark:border-rose-800 text-rose-600 dark:text-rose-400 focus:ring-rose-500/20"
-																						: "border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 focus:ring-blue-500/20"
-																				}`}
+																				className={`w-18 md:w-24 bg-white dark:bg-slate-800 border-2 rounded-xl py-1.5 md:py-2 px-2 md:px-3 text-center text-sm md:text-lg font-black transition-all cursor-pointer focus:outline-none focus:ring-2 ${inputColorClasses}`}
 																			/>
 
 																			<button
@@ -1008,12 +1017,12 @@ export default function EstoquePedidosPage() {
 																				<Plus size={14} />
 																			</button>
 																		</div>
-																		<div className="flex items-center gap-1.5 text-[0.68rem] md:text-xs">
+																		<div className="flex items-center gap-1.5 text-[0.68rem] md:text-sm">
 																			<span className="font-bold text-slate-400 dark:text-slate-500">
-																				{boxSizes[itemKey] ? `${boxSizes[itemKey]} pcts/cx` : "1 pct/cx"}
+																				{boxSizes[itemKey] ? `${boxSizes[itemKey]} pacotes` : "pacote"}
 																			</span>
 																			{isModified && (
-																				<span className="font-bold text-amber-500">
+																				<span className={`font-bold ${currentQty > suggested ? "text-blue-500" : "text-rose-500"}`}>
 																					• Sugerido: {suggested}
 																				</span>
 																			)}
@@ -1066,6 +1075,16 @@ export default function EstoquePedidosPage() {
 											</tfoot>
 										</table>
 									</div>
+								</div>
+
+								{/* Botão Rodapé: Gerar Resumo Centralizado */}
+								<div className="flex justify-center items-center py-3">
+									<button
+										onClick={() => setShowSummary(true)}
+										className="flex items-center justify-center gap-2.5 bg-blue-600 hover:bg-blue-700 text-white px-8 md:px-12 py-3.5 md:py-4 rounded-2xl font-black text-xs md:text-sm shadow-xl shadow-blue-500/20 dark:shadow-none hover:shadow-blue-500/30 hover:scale-[1.02] transition-all cursor-pointer uppercase tracking-widest">
+										<FileText size={16} />
+										Gerar Resumo
+									</button>
 								</div>
 							</>
 						);
@@ -1295,6 +1314,241 @@ export default function EstoquePedidosPage() {
 							</table>
 						</div>
 					</div>
+				</div>
+			)}
+
+			{/* Modal de Resumo do Pedido */}
+			{showSummary && (
+				<div id="modal-resumo-print" className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-3 md:p-6 animate-in fade-in duration-200">
+					{(() => {
+						const cookieEntries = sortStockEntries(Object.entries(STOCK_LABELS))
+							.filter(([key]) => key !== "sorveteCaixa" && key !== "sorvetePote");
+
+						let totalPackages = 0;
+						let baseTotalValue = 0;
+						const activeItems: { label: string; qty: number; boxesCount: number; boxSize: number; totalItem: number }[] = [];
+
+						cookieEntries.forEach(([key, label]) => {
+							const itemKey = key as keyof StockData;
+							const suggested = getSuggestedOrderPackages(itemKey);
+							const qty = customOrderPackages[itemKey] !== undefined ? (customOrderPackages[itemKey] || 0) : suggested;
+							const pricePerPkg = packagePrices[itemKey] ?? DEFAULT_PACKAGE_PRICES[itemKey] ?? 0;
+							const totalItem = qty * pricePerPkg;
+							const boxSize = boxSizes[itemKey] || 1;
+							const boxesCount = Math.ceil(qty / boxSize);
+
+							if (qty > 0) {
+								totalPackages += qty;
+								baseTotalValue += totalItem;
+								activeItems.push({
+									label,
+									qty,
+									boxesCount,
+									boxSize,
+									totalItem,
+								});
+							}
+						});
+
+						const taxRate = 0.08;
+						const taxValue = baseTotalValue * taxRate;
+						const finalTotalValue = baseTotalValue * 1.08;
+
+						const handleWhatsApp = async () => {
+							if (activeItems.length === 0) return;
+
+							let text = `*RESUMO DO PEDIDO DE ESTOQUE*\n`;
+							text += `Data: ${new Date().toLocaleDateString("pt-BR")} às ${new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}\n\n`;
+							text += `*ITENS A PEDIR:*\n`;
+
+							activeItems.forEach((item) => {
+								const caixasLabel = item.boxesCount === 1 ? "cx" : "cxs";
+								text += `• ${item.label}: *${item.qty} ${item.qty === 1 ? "pacote" : "pacotes"}* (${item.boxesCount} ${caixasLabel}) - R$ ${item.totalItem.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}\n`;
+							});
+
+							text += `\n━━━━━━━━━━━━━━━━━━━━\n`;
+							text += `*Total de Pacotes:* ${totalPackages} pacotes\n`;
+							text += `*Subtotal:* R$ ${baseTotalValue.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}\n`;
+							text += `*Impostos Estimados (+8%):* R$ ${taxValue.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}\n`;
+							text += `*VALOR TOTAL ESTIMADO:* R$ ${finalTotalValue.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+							const userAgent = typeof navigator !== "undefined" ? navigator.userAgent || "" : "";
+							const isMobileUserAgent = /Android|iPhone|iPad|iPod|webOS|BlackBerry|IEMobile|Opera Mini/i.test(userAgent);
+							const isSmallScreen = typeof window !== "undefined" ? window.innerWidth <= 768 : false;
+							const isMobile = isMobileUserAgent || isSmallScreen;
+
+							if (isMobile && typeof navigator !== "undefined" && typeof navigator.share === "function") {
+								try {
+									await navigator.share({
+										title: `Resumo do Pedido de Estoque - ${new Date().toLocaleDateString("pt-BR")}`,
+										text: text,
+									});
+									return;
+								} catch (err: any) {
+									if (err.name === "AbortError") return;
+									console.warn("Navigator share falhou, tentando fallback:", err);
+								}
+							}
+
+							const encodedText = encodeURIComponent(text);
+							if (isMobile) {
+								window.location.href = `whatsapp://send?text=${encodedText}`;
+								setTimeout(() => {
+									window.location.href = `https://api.whatsapp.com/send?text=${encodedText}`;
+								}, 700);
+							} else {
+								window.open(`https://web.whatsapp.com/send?text=${encodedText}`, "_blank");
+							}
+						};
+
+						return (
+							<div className="bg-white dark:bg-slate-900 rounded-[2rem] w-full max-w-full sm:max-w-2xl md:max-w-4xl lg:max-w-5xl shadow-2xl overflow-hidden flex flex-col max-h-[92vh] border border-slate-200 dark:border-slate-800">
+								<div className="p-3.5 md:p-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-center print:hidden whitespace-nowrap">
+									<div>
+										<h2 className="text-lg md:text-xl font-black text-slate-800 dark:text-slate-200 tracking-tight text-center uppercase">
+											Resumo do Pedido de Estoque - {new Date().toLocaleDateString("pt-BR")}
+										</h2>
+									</div>
+								</div>
+
+								<div className="p-3.5 md:p-6 overflow-y-auto custom-scrollbar flex-1 print:overflow-visible print:p-0">
+									{activeItems.length > 0 ? (
+										<div className="space-y-4 print:space-y-6 w-full flex flex-col items-stretch">
+											{/* Visualização em tela: Cards com itens do pedido */}
+											<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4 w-full print:hidden">
+												{activeItems.map((item, idx) => (
+													<div
+														key={idx}
+														className="p-3.5 md:p-4 bg-slate-50/90 dark:bg-slate-800/80 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col justify-between">
+														<div>
+															<div className="flex items-center justify-between gap-2 mb-2 pb-1.5 border-b border-slate-200 dark:border-slate-700">
+																<span className="text-xs md:text-sm font-black text-slate-800 dark:text-slate-200 uppercase tracking-tight truncate">
+																	{item.label}
+																</span>
+																<span className="text-xs font-black text-blue-600 dark:text-blue-400 shrink-0">
+																	{item.boxesCount} {item.boxesCount === 1 ? "cx" : "cxs"}
+																</span>
+															</div>
+															<div className="flex items-center justify-between text-xs md:text-sm">
+																<span className="text-slate-500 dark:text-slate-400 font-bold">
+																	Quantidade:
+																</span>
+																<strong className="font-black text-slate-900 dark:text-white">
+																	{item.qty} {item.qty === 1 ? "pct" : "pcts"}
+																</strong>
+															</div>
+															<div className="flex items-center justify-between text-xs md:text-sm mt-1">
+																<span className="text-slate-500 dark:text-slate-400 font-bold">
+																	Subtotal:
+																</span>
+																<span className="font-black text-slate-700 dark:text-slate-300">
+																	R$ {item.totalItem.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+																</span>
+															</div>
+														</div>
+													</div>
+												))}
+											</div>
+
+											{/* Resumo Financeiro no Modal */}
+											<div className="bg-slate-50 dark:bg-slate-800/70 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 print:hidden">
+												<div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-center sm:text-left">
+													<div>
+														<span className="text-xs font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider block">
+															Total de Pacotes
+														</span>
+														<span className="text-lg md:text-xl font-black text-slate-800 dark:text-slate-100">
+															{totalPackages} pacotes
+														</span>
+													</div>
+													<div>
+														<span className="text-xs font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider block">
+															Subtotal
+														</span>
+														<span className="text-lg md:text-xl font-black text-slate-700 dark:text-slate-300">
+															R$ {baseTotalValue.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+														</span>
+													</div>
+													<div>
+														<span className="text-xs font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-wider block">
+															Total Estimado (+8%)
+														</span>
+														<span className="text-lg md:text-xl font-black text-emerald-600 dark:text-emerald-400">
+															R$ {finalTotalValue.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+														</span>
+													</div>
+												</div>
+											</div>
+
+											{/* Visão de Impressão */}
+											<div className="hidden print:block w-full text-black">
+												<table className="w-full border-collapse">
+													<thead>
+														<tr className="border-b-2 border-black">
+															<th className="p-2 text-left text-sm font-black uppercase">Sabor / Item</th>
+															<th className="p-2 text-center text-sm font-black uppercase">Pacotes</th>
+															<th className="p-2 text-center text-sm font-black uppercase">Caixas</th>
+															<th className="p-2 text-right text-sm font-black uppercase">Subtotal (R$)</th>
+														</tr>
+													</thead>
+													<tbody>
+														{activeItems.map((item, i) => (
+															<tr key={i} className="border-b border-slate-300">
+																<td className="p-2 font-bold text-sm">{item.label}</td>
+																<td className="p-2 text-center font-black text-sm">{item.qty}</td>
+																<td className="p-2 text-center font-bold text-sm">{item.boxesCount} ({item.boxSize} p/ cx)</td>
+																<td className="p-2 text-right font-black text-sm">
+																	R$ {item.totalItem.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+																</td>
+															</tr>
+														))}
+													</tbody>
+													<tfoot>
+														<tr className="border-t-2 border-black font-black">
+															<td className="p-2 text-left uppercase">TOTAL</td>
+															<td className="p-2 text-center">{totalPackages} pcts</td>
+															<td className="p-2 text-center">-</td>
+															<td className="p-2 text-right">
+																R$ {finalTotalValue.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+															</td>
+														</tr>
+													</tfoot>
+												</table>
+											</div>
+										</div>
+									) : (
+										<div className="text-center py-10">
+											<p className="text-slate-400 dark:text-slate-500 font-bold uppercase tracking-widest">
+												Nenhum item com quantidade a pedir selecionado.
+											</p>
+										</div>
+									)}
+								</div>
+
+								<div className="p-4 md:p-6 bg-slate-50 dark:bg-slate-800/50 border-t border-slate-100 dark:border-slate-800 flex flex-col items-center gap-3 transition-colors print:hidden">
+									<div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-3 w-full max-w-lg">
+										<button
+											onClick={handleWhatsApp}
+											disabled={activeItems.length === 0}
+											className="flex-1 flex items-center justify-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-white px-5 py-3 rounded-2xl font-black text-xs md:text-[0.75rem] uppercase tracking-widest shadow-md shadow-emerald-100 dark:shadow-none transition-all disabled:opacity-50 cursor-pointer">
+											Enviar no WhatsApp
+										</button>
+										<button
+											onClick={() => window.print()}
+											disabled={activeItems.length === 0}
+											className="flex-1 flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-5 py-3 rounded-2xl font-black text-xs md:text-[0.75rem] uppercase tracking-widest shadow-md shadow-blue-100 dark:shadow-none transition-all disabled:opacity-50 cursor-pointer">
+											Imprimir
+										</button>
+									</div>
+									<button
+										onClick={() => setShowSummary(false)}
+										className="w-full sm:w-auto min-w-[140px] px-6 py-2.5 rounded-2xl font-black text-xs md:text-[0.75rem] uppercase tracking-widest text-slate-500 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-800 hover:shadow-sm transition-all cursor-pointer border border-transparent hover:border-slate-200 dark:hover:border-slate-700">
+										Fechar
+									</button>
+								</div>
+							</div>
+						);
+					})()}
 				</div>
 			)}
 		</>
