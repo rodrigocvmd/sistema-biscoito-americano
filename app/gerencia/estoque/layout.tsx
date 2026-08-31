@@ -49,6 +49,10 @@ export interface FullStoreData {
 export default function EstoqueLayout({ children }: { children: React.ReactNode }) {
 	const pathname = usePathname();
 
+	useEffect(() => {
+		window.scrollTo(0, 0);
+	}, [pathname]);
+
 	const tabs = [
 		{ id: "atual", label: "ESTOQUE ATUAL", href: "/gerencia/estoque/atual" },
 		{ id: "reposicionar", label: "REPOSICIONAR", href: "/gerencia/estoque/reposicionar" },

@@ -16,8 +16,12 @@ export default function GerenciaLayout({
 
 	const tabs = [
 		{ id: "insumos", label: "Insumos", href: "/gerencia/insumos", icon: LayoutDashboard },
-		{ id: "estoque", label: "Estoque", href: "/gerencia/estoque", icon: Package },
+		{ id: "estoque", label: "Estoque", href: "/gerencia/estoque/atual", icon: Package },
 	];
+
+	useEffect(() => {
+		window.scrollTo(0, 0);
+	}, [pathname]);
 
 	useEffect(() => {
 		const savedScale = localStorage.getItem("gerencia-ui-scale");
