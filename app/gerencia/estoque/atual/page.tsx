@@ -222,6 +222,9 @@ export default function EstoqueAtualPage() {
 										</button>
 									</div>
 								</th>
+								<th className="p-3 md:p-6 text-center text-xs md:text-[0.9375rem] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest border-l border-slate-200 dark:border-slate-700 min-w-[5.5rem] md:min-w-[7.5rem]">
+									TOTAL
+								</th>
 								{allData.map((store) => (
 									<th
 										key={store.id}
@@ -237,47 +240,153 @@ export default function EstoqueAtualPage() {
 							</tr>
 						</thead>
 						<tbody>
-							{sortStockEntries(Object.entries(STOCK_LABELS))
-								.filter(([_, label]) => label.toLowerCase().includes(searchTerm.toLowerCase()))
-								.map(([key, label]) => {
-									return (
-										<tr
-											key={key}
-											className="border-b border-slate-100 dark:border-slate-800 hover:bg-blue-50/30 dark:hover:bg-blue-900/20 transition-colors group">
-											<td className="p-3 md:p-6 text-sm md:text-xl font-black text-slate-600 dark:text-slate-400 sticky left-0 bg-white dark:bg-slate-900 group-hover:bg-blue-50/30 dark:group-hover:bg-blue-900/20 z-10 border-r border-slate-50 dark:border-slate-800 transition-colors uppercase">
-												{label}
-											</td>
-											{allData.map((store) => {
-												const qty = store.stock[key] || 0;
-												const openVal = store.isUnits?.[key];
-												const openCount = typeof openVal === "boolean" ? (openVal ? 1 : 0) : openVal || 0;
-												return (
-													<td
-														key={store.id}
-														className="p-3 md:p-6 text-center border-l border-slate-100 dark:border-slate-800">
+							{(() => {
+								const filteredEntries = sortStockEntries(Object.entries(STOCK_LABELS)).filter(([_, label]) =>
+									label.toLowerCase().includes(searchTerm.toLowerCase())
+								);
+
+								// Helper para extrair número de abertos de forma consistente
+								const getOpenCount = (store: FullStoreData, key: keyof StockData) => {
+									const openVal = store.isUnits?.[key];
+									return typeof openVal === "boolean" ? (openVal ? 1 : 0) : openVal || 0;
+								};
+
+								// Totais por loja (pacotes fechados e pacotes abertos)
+								const storeTotals = allData.map((store) => {
+									const closed = filteredEntries.reduce((sum, [key]) => sum + (store.stock[key] || 0), 0);
+									const open = filteredEntries.reduce((sum, [key]) => sum + getOpenCount(store, key), 0);
+									return { closed, open };
+								});
+
+								const overallClosed = storeTotals.reduce((sum, s) => sum + s.closed, 0);
+								const overallOpen = storeTotals.reduce((sum, s) => sum + s.open, 0);
+
+								const renderTotalRow = (isTop: boolean) => (
+									<tr
+										key={isTop ? "total-row-top" : "total-row-bottom"}
+										className={`border-b border-slate-200 dark:border-slate-700 font-black ${
+											isTop
+												? "bg-slate-100/80 dark:bg-slate-800/80 border-b-2"
+												: "bg-slate-100/80 dark:bg-slate-800/80 border-t-2"
+										}`}>
+										<td className="p-3 md:p-5 text-sm md:text-lg font-black text-slate-700 dark:text-slate-200 sticky left-0 bg-slate-100/90 dark:bg-slate-800/90 z-10 border-r border-slate-200 dark:border-slate-700 uppercase">
+											TOTAL DE PACOTES
+										</td>
+										<td className="p-3 md:p-5 text-center border-l border-slate-200 dark:border-slate-700 bg-blue-50/50 dark:bg-blue-900/30">
+											<div className="flex justify-center items-center">
+												{overallClosed > 0 || overallOpen === 0 || hideOpen ? (
+													<span
+														className={`pr-1 md:pr-2 text-base md:text-2xl font-black ${
+															overallClosed === 0 && (overallOpen === 0 || hideOpen)
+																? "text-slate-300 dark:text-slate-600"
+																: "text-blue-600 dark:text-blue-400"
+														}`}>
+														{overallClosed}
+													</span>
+												) : null}
+												{!hideOpen && overallOpen > 0 && (
+													<span className="text-xs md:text-2xl font-black text-blue-400/80 dark:text-blue-400/70 whitespace-nowrap">
+														{overallClosed > 0 ? `+ ${overallOpen} aberto` : `${overallOpen} aberto`}
+													</span>
+												)}
+											</div>
+										</td>
+										{allData.map((store, idx) => {
+											const { closed, open } = storeTotals[idx];
+											return (
+												<td
+													key={`total-${isTop ? "top" : "bottom"}-${store.id}`}
+													className="p-3 md:p-5 text-center border-l border-slate-200 dark:border-slate-700">
+													<div className="flex justify-center items-center">
+														{closed > 0 || open === 0 || hideOpen ? (
+															<span
+																className={`pr-1 md:pr-2 text-base md:text-2xl font-black ${
+																	closed === 0 && (open === 0 || hideOpen)
+																		? "text-slate-300 dark:text-slate-400"
+																		: "text-slate-900 dark:text-slate-100"
+																}`}>
+																{closed}
+															</span>
+														) : null}
+														{!hideOpen && open > 0 && (
+															<span className="text-xs md:text-2xl font-black text-slate-400 dark:text-slate-500 whitespace-nowrap">
+																{closed > 0 ? `+ ${open} aberto` : `${open} aberto`}
+															</span>
+														)}
+													</div>
+												</td>
+											);
+										})}
+									</tr>
+								);
+
+								return (
+									<>
+										{renderTotalRow(true)}
+										{filteredEntries.map(([key, label]) => {
+											const itemClosedTotal = allData.reduce((sum, store) => sum + (store.stock[key] || 0), 0);
+											const itemOpenTotal = allData.reduce((sum, store) => sum + getOpenCount(store, key), 0);
+
+											return (
+												<tr
+													key={key}
+													className="border-b border-slate-100 dark:border-slate-800 hover:bg-blue-50/30 dark:hover:bg-blue-900/20 transition-colors group">
+													<td className="p-3 md:p-6 text-sm md:text-xl font-black text-slate-600 dark:text-slate-400 sticky left-0 bg-white dark:bg-slate-900 group-hover:bg-blue-50/30 dark:group-hover:bg-blue-900/20 z-10 border-r border-slate-50 dark:border-slate-800 transition-colors uppercase">
+														{label}
+													</td>
+													<td className="p-3 md:p-6 text-center border-l border-slate-100 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-800/40">
 														<div className="flex justify-center items-center">
-															{qty > 0 || openCount === 0 || hideOpen ? (
+															{itemClosedTotal > 0 || itemOpenTotal === 0 || hideOpen ? (
 																<span
 																	className={`pr-1 md:pr-2 text-base md:text-2xl font-black ${
-																		qty === 0 && (openCount === 0 || hideOpen)
-																			? "text-slate-300 dark:text-slate-400"
-																			: "text-slate-900 dark:text-slate-100"
+																		itemClosedTotal === 0 && (itemOpenTotal === 0 || hideOpen)
+																			? "text-slate-300 dark:text-slate-600"
+																			: "text-blue-600 dark:text-blue-400"
 																	}`}>
-																	{qty}
+																	{itemClosedTotal}
 																</span>
 															) : null}
-															{!hideOpen && openCount > 0 && (
-																<span className="text-xs md:text-2xl font-black text-slate-400 dark:text-slate-500 whitespace-nowrap">
-																	{qty > 0 ? `+ ${openCount} aberto` : `${openCount} aberto`}
+															{!hideOpen && itemOpenTotal > 0 && (
+																<span className="text-xs md:text-2xl font-black text-blue-400/80 dark:text-blue-400/70 whitespace-nowrap">
+																	{itemClosedTotal > 0 ? `+ ${itemOpenTotal} aberto` : `${itemOpenTotal} aberto`}
 																</span>
 															)}
 														</div>
 													</td>
-												);
-											})}
-										</tr>
-									);
-								})}
+													{allData.map((store) => {
+														const qty = store.stock[key] || 0;
+														const openCount = getOpenCount(store, key);
+														return (
+															<td
+																key={store.id}
+																className="p-3 md:p-6 text-center border-l border-slate-100 dark:border-slate-800">
+																<div className="flex justify-center items-center">
+																	{qty > 0 || openCount === 0 || hideOpen ? (
+																		<span
+																			className={`pr-1 md:pr-2 text-base md:text-2xl font-black ${
+																				qty === 0 && (openCount === 0 || hideOpen)
+																					? "text-slate-300 dark:text-slate-400"
+																					: "text-slate-900 dark:text-slate-100"
+																			}`}>
+																			{qty}
+																		</span>
+																	) : null}
+																	{!hideOpen && openCount > 0 && (
+																		<span className="text-xs md:text-2xl font-black text-slate-400 dark:text-slate-500 whitespace-nowrap">
+																			{qty > 0 ? `+ ${openCount} aberto` : `${openCount} aberto`}
+																		</span>
+																	)}
+																</div>
+															</td>
+														);
+													})}
+												</tr>
+											);
+										})}
+										{renderTotalRow(false)}
+									</>
+								);
+							})()}
 						</tbody>
 					</table>
 				</div>
