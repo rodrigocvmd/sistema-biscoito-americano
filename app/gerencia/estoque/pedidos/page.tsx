@@ -67,6 +67,18 @@ export default function EstoquePedidosPage() {
 	// Desired Stock States
 	const [desiredData, setDesiredData] = useState<Partial<StockData>>({});
 	const [localDesired, setLocalDesired] = useState<Partial<StockData>>({});
+	const [storeDesired, setStoreDesired] = useState<Record<StoreId, Partial<StockData>>>({
+		lago: {},
+		terraco: {},
+		conjunto: {},
+		noroeste: {},
+	});
+	const [localStoreDesired, setLocalStoreDesired] = useState<Record<StoreId, Partial<StockData>>>({
+		lago: {},
+		terraco: {},
+		conjunto: {},
+		noroeste: {},
+	});
 	
 	// Box Sizes (Pacotes por caixa)
 	const [boxSizes, setBoxSizes] = useState<Partial<StockData>>({});
@@ -144,14 +156,49 @@ export default function EstoquePedidosPage() {
 			let aggregatedStock: Partial<StockData> = {};
 			let aggregatedBoxSizes: Partial<StockData> = {};
 			let fetchedPackagePrices: Partial<Record<keyof StockData, number>> = {};
+			const storeProps: Record<StoreId, Partial<StockData>> = {
+				lago: {},
+				terraco: {},
+				conjunto: {},
+				noroeste: {},
+			};
+
 			const globalDoc = snapshot.docs.find((d) => d.id === "global");
-			
+
 			if (globalDoc) {
 				const data = globalDoc.data();
 				aggregatedStock = data.stock || {};
 				aggregatedBoxSizes = data.boxSizes || {};
 				fetchedPackagePrices = data.packagePrices || {};
-			} else {
+				if (data.storeProportions) {
+					STORE_ORDER.forEach((sId) => {
+						storeProps[sId] = data.storeProportions[sId] || {};
+					});
+				}
+			}
+
+			// Individual store doc fallback/override
+			snapshot.docs.forEach((d) => {
+				if (STORE_ORDER.includes(d.id as StoreId)) {
+					const sId = d.id as StoreId;
+					const storeStock = (d.data().stock || {}) as Partial<StockData>;
+					if (Object.keys(storeStock).length > 0) {
+						storeProps[sId] = { ...storeProps[sId], ...storeStock };
+					}
+				}
+			});
+
+			// If store proportions exist, compute aggregatedStock as the sum of all stores
+			const hasStoreValues = STORE_ORDER.some((sId) => Object.keys(storeProps[sId]).length > 0);
+			if (hasStoreValues) {
+				const sumStock: Partial<StockData> = {};
+				Object.keys(STOCK_LABELS).forEach((k) => {
+					const key = k as keyof StockData;
+					const sum = STORE_ORDER.reduce((acc, sId) => acc + (storeProps[sId]?.[key] || 0), 0);
+					sumStock[key] = sum;
+				});
+				aggregatedStock = sumStock;
+			} else if (!globalDoc) {
 				snapshot.docs.forEach((d) => {
 					const storeStock = (d.data().stock || {}) as Partial<StockData>;
 					Object.entries(storeStock).forEach(([k, val]) => {
@@ -163,6 +210,8 @@ export default function EstoquePedidosPage() {
 
 			setDesiredData(aggregatedStock);
 			setLocalDesired({ ...aggregatedStock });
+			setStoreDesired(storeProps);
+			setLocalStoreDesired(JSON.parse(JSON.stringify(storeProps)));
 			setBoxSizes(aggregatedBoxSizes);
 			setLocalBoxSizes({ ...aggregatedBoxSizes });
 
@@ -258,8 +307,30 @@ export default function EstoquePedidosPage() {
 	const saveDesiredStocks = async () => {
 		setSavingDesired(true);
 		try {
+			// Calcula o total consolidado de todas as lojas para cada sabor
+			const calculatedTotalStock: Partial<StockData> = {};
+			Object.keys(STOCK_LABELS).forEach((k) => {
+				const key = k as keyof StockData;
+				const sum = STORE_ORDER.reduce((acc, sId) => acc + (localStoreDesired[sId]?.[key] || 0), 0);
+				calculatedTotalStock[key] = sum;
+			});
+
 			const docRef = doc(db, "desiredStocks", "global");
-			await setDoc(docRef, { stock: localDesired, boxSizes: localBoxSizes }, { merge: true });
+			await setDoc(
+				docRef,
+				{
+					stock: calculatedTotalStock,
+					storeProportions: localStoreDesired,
+					boxSizes: localBoxSizes,
+				},
+				{ merge: true }
+			);
+
+			for (const sId of STORE_ORDER) {
+				const storeDocRef = doc(db, "desiredStocks", sId);
+				await setDoc(storeDocRef, { stock: localStoreDesired[sId] || {} }, { merge: true });
+			}
+
 			setActiveSubTab("comparativo");
 		} catch (error) {
 			console.error("Erro ao salvar metas e caixas:", error);
@@ -284,12 +355,24 @@ export default function EstoquePedidosPage() {
 		}
 	};
 
-	const handleLocalDesiredChange = (itemKey: keyof StockData, value: string) => {
+	const handleLocalStoreDesiredChange = (storeId: StoreId, itemKey: keyof StockData, value: string) => {
 		const numValue = value === "" ? 0 : Math.max(0, parseInt(value, 10) || 0);
-		setLocalDesired((prev) => ({
-			...prev,
-			[itemKey]: numValue,
-		}));
+		setLocalStoreDesired((prev) => {
+			const updatedStore = {
+				...prev[storeId],
+				[itemKey]: numValue,
+			};
+			const nextState = {
+				...prev,
+				[storeId]: updatedStore,
+			};
+			const newTotal = STORE_ORDER.reduce((sum, sId) => sum + (nextState[sId]?.[itemKey] || 0), 0);
+			setLocalDesired((dPrev) => ({
+				...dPrev,
+				[itemKey]: newTotal,
+			}));
+			return nextState;
+		});
 	};
 
 	const handleLocalBoxSizeChange = (itemKey: keyof StockData, value: string) => {
@@ -1167,9 +1250,11 @@ export default function EstoquePedidosPage() {
 				<div className="space-y-6">
 					{/* Verificação de alterações nas metas ou caixas */}
 					{(() => {
-						const hasStockChanges = Object.keys(STOCK_LABELS).some((k) => {
-							const key = k as keyof StockData;
-							return (localDesired[key] ?? 0) !== (desiredData[key] ?? 0);
+						const hasStockChanges = STORE_ORDER.some((sId) => {
+							return Object.keys(STOCK_LABELS).some((k) => {
+								const key = k as keyof StockData;
+								return (localStoreDesired[sId]?.[key] ?? 0) !== (storeDesired[sId]?.[key] ?? 0);
+							});
 						});
 						const hasBoxChanges = Object.keys(STOCK_LABELS).some((k) => {
 							const key = k as keyof StockData;
@@ -1219,13 +1304,20 @@ export default function EstoquePedidosPage() {
 							<table className="w-full border-collapse">
 								<thead>
 									<tr className="bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700">
-										<th className="p-3 md:p-6 text-left text-xs md:text-[0.9375rem] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest min-w-[7.5rem] md:min-w-[11.25rem]">
+										<th className="p-3 md:p-6 text-left text-xs md:text-[0.9375rem] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest min-w-[7.5rem] md:min-w-[11.25rem] sticky left-0 bg-slate-50 dark:bg-slate-800 z-10 shadow-[2px_0_5px_rgba(0,0,0,0.05)]">
 											PACOTES
 										</th>
-										<th className="p-3 md:p-6 text-center text-xs md:text-[0.9375rem] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest min-w-[7.5rem] md:min-w-[11.25rem]">
-											QUANTIDADE DESEJÁVEL (PACOTES)
+										<th className="p-3 md:p-6 text-center text-xs md:text-[0.9375rem] font-black text-blue-600 dark:text-blue-400 uppercase tracking-widest min-w-[5.5rem] md:min-w-[7rem] bg-blue-50/50 dark:bg-blue-950/20 border-x border-slate-200 dark:border-slate-700">
+											TOTAL
 										</th>
-										<th className="p-3 md:p-6 text-center text-xs md:text-[0.9375rem] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest min-w-[7.5rem] md:min-w-[11.25rem]">
+										{STORE_ORDER.map((storeId) => (
+											<th
+												key={storeId}
+												className="p-3 md:p-6 text-center text-xs md:text-[0.9375rem] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest min-w-[5.5rem] md:min-w-[7rem] border-r border-slate-200 dark:border-slate-700">
+												{STORE_NAMES[storeId] || storeId}
+											</th>
+										))}
+										<th className="p-3 md:p-6 text-center text-xs md:text-[0.9375rem] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest min-w-[7.5rem] md:min-w-[10rem]">
 											PACOTES POR CAIXA
 										</th>
 									</tr>
@@ -1235,34 +1327,51 @@ export default function EstoquePedidosPage() {
 										.filter(([_, label]) => label.toLowerCase().includes(searchTerm.toLowerCase()))
 										.map(([key, label]) => {
 											const itemKey = key as keyof StockData;
-											const desiredVal = localDesired[itemKey] ?? "";
+											const totalVal = STORE_ORDER.reduce(
+												(acc, sId) => acc + (localStoreDesired[sId]?.[itemKey] || 0),
+												0
+											);
 											const boxVal = localBoxSizes[itemKey] ?? "";
 
 											return (
 												<tr
 													key={key}
 													className="border-b border-slate-100 dark:border-slate-800 hover:bg-blue-50/30 dark:hover:bg-blue-900/20 transition-colors group">
-													<td className="p-3 md:p-6 text-sm md:text-xl font-black text-slate-600 dark:text-slate-400 bg-white dark:bg-slate-900 group-hover:bg-blue-50/30 dark:group-hover:bg-blue-900/20 transition-colors uppercase">
+													<td className="p-3 md:p-6 text-sm md:text-base font-black text-slate-600 dark:text-slate-300 bg-white dark:bg-slate-900 group-hover:bg-blue-50/30 dark:group-hover:bg-blue-900/20 transition-colors uppercase sticky left-0 z-10 shadow-[2px_0_5px_rgba(0,0,0,0.05)]">
 														{label}
 													</td>
-													<td className="p-3 md:p-6 border-l border-r border-slate-100 dark:border-slate-800 text-center">
-														<div className="flex justify-center">
-															<input
-																type="number"
-																min="0"
-																value={desiredVal}
-																placeholder="0"
-																onChange={(e) => handleLocalDesiredChange(itemKey, e.target.value)}
-																onFocus={(e) => e.target.select()}
-																onClick={(e) => e.currentTarget.select()}
-																className="w-24 md:w-32 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl py-1.5 md:py-2 px-2 md:px-3 text-center text-sm md:text-lg font-black text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all cursor-pointer"
-															/>
-														</div>
+													<td className="p-3 md:p-6 border-l border-r border-slate-100 dark:border-slate-800 text-center bg-blue-50/30 dark:bg-blue-950/10">
+														<span className="text-sm md:text-lg font-black text-blue-600 dark:text-blue-400">
+															{totalVal}
+														</span>
 													</td>
+													{STORE_ORDER.map((sId) => {
+														const val = localStoreDesired[sId]?.[itemKey] ?? "";
+														return (
+															<td
+																key={sId}
+																className="p-2 md:p-4 border-r border-slate-100 dark:border-slate-800 text-center">
+																<div className="flex justify-center">
+																	<input
+																		type="number"
+																		min="0"
+																		value={val}
+																		placeholder="0"
+																		onChange={(e) =>
+																			handleLocalStoreDesiredChange(sId, itemKey, e.target.value)
+																		}
+																		onFocus={(e) => e.target.select()}
+																		onClick={(e) => e.currentTarget.select()}
+																		className="w-16 md:w-20 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl py-1 md:py-1.5 px-1.5 md:px-2 text-center text-xs md:text-sm font-black text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all cursor-pointer"
+																	/>
+																</div>
+															</td>
+														);
+													})}
 													<td className="p-3 md:p-6 text-center">
 														<div className="flex justify-center items-center gap-2">
-															<div className="p-2 rounded-xl bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-900/50 shrink-0">
-																<Package size={18} />
+															<div className="p-1.5 rounded-xl bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-900/50 shrink-0">
+																<Package size={16} />
 															</div>
 															<input
 																type="number"
@@ -1272,7 +1381,7 @@ export default function EstoquePedidosPage() {
 																onChange={(e) => handleLocalBoxSizeChange(itemKey, e.target.value)}
 																onFocus={(e) => e.target.select()}
 																onClick={(e) => e.currentTarget.select()}
-																className="w-20 md:w-28 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl py-1.5 md:py-2 px-2 md:px-3 text-center text-sm md:text-base font-black text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-all cursor-pointer"
+																className="w-16 md:w-24 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl py-1 md:py-1.5 px-1.5 md:px-2 text-center text-xs md:text-sm font-black text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-all cursor-pointer"
 																title="Quantidade de sacos/pacotes por caixa"
 															/>
 														</div>
