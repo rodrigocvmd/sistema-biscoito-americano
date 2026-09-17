@@ -850,7 +850,7 @@ export default function EstoquePedidosPage() {
 												<tr
 													key={key}
 													className="border-b border-slate-100 dark:border-slate-800 hover:bg-blue-50/30 dark:hover:bg-blue-900/20 transition-colors group">
-													<td className="p-3 md:p-5 text-xs md:text-base font-black text-slate-600 dark:text-slate-400 bg-white dark:bg-slate-900 group-hover:bg-blue-50/30 dark:group-hover:bg-blue-900/20 transition-colors uppercase sticky left-0 z-10">
+													<td className="p-3 md:p-5 text-sm md:text-lg font-black text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-900 group-hover:bg-blue-50/30 dark:group-hover:bg-blue-900/20 transition-colors uppercase sticky left-0 z-10">
 														{label}
 													</td>
 
@@ -867,12 +867,12 @@ export default function EstoquePedidosPage() {
 														return (
 															<td
 																key={storeId}
-																className="p-2 md:p-3 text-center border-l border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 group-hover:bg-blue-50/30 dark:group-hover:bg-blue-900/20 transition-colors">
+																className="p-2 md:p-3.5 text-center border-l border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 group-hover:bg-blue-50/30 dark:group-hover:bg-blue-900/20 transition-colors">
 																<div className="flex flex-col items-center justify-center gap-1.5 py-1">
 																	{/* Apenas os dois números: Quantidade Atual (com itens adicionados) / Desejável */}
 																	<div className="flex items-baseline justify-center gap-1 font-black px-0.5">
 																		<span
-																			className={`text-base md:text-xl font-black transition-colors ${
+																			className={`text-lg md:text-2xl font-black transition-colors ${
 																				orderVal > 0
 																					? currentWithOrder < storeDesiredVal
 																						? "text-rose-600 dark:text-rose-400"
@@ -886,14 +886,14 @@ export default function EstoquePedidosPage() {
 																			title={`Estoque original: ${storeStockVal}${orderVal > 0 ? ` (+${orderVal} adicionados = ${currentWithOrder})` : ""}`}>
 																			{currentWithOrder}
 																		</span>
-																		<span className="text-slate-400 dark:text-slate-500 text-xs md:text-sm font-bold">/</span>
+																		<span className="text-slate-400 dark:text-slate-500 text-sm md:text-base font-bold">/</span>
 																		<span
-																			className="text-xs md:text-base font-bold text-slate-400 dark:text-slate-500"
+																			className="text-sm md:text-lg font-bold text-slate-400 dark:text-slate-500"
 																			title={`Meta desejável em ${STORE_NAMES[storeId]}: ${storeDesiredVal}`}>
 																			{storeDesiredVal > 0 ? storeDesiredVal : "-"}
 																		</span>
 																		{!hideOpen && storeOpenCount > 0 && (
-																			<span className="text-[0.65rem] md:text-xs font-bold text-slate-400 dark:text-slate-500 whitespace-nowrap ml-0.5">
+																			<span className="text-xs md:text-sm font-bold text-slate-400 dark:text-slate-500 whitespace-nowrap ml-0.5">
 																				+{storeOpenCount}ab
 																			</span>
 																		)}
@@ -940,7 +940,7 @@ export default function EstoquePedidosPage() {
 																<div className="flex flex-col items-center justify-center gap-0.5">
 																	<div className="flex justify-center items-center gap-1">
 																		<span
-																			className={`text-base md:text-xl font-black ${
+																			className={`text-lg md:text-2xl font-black ${
 																				totalOrdered > 0
 																					? "text-blue-600 dark:text-blue-400"
 																					: totalQty === 0 && (totalOpen === 0 || hideOpen)
@@ -957,7 +957,7 @@ export default function EstoquePedidosPage() {
 																		)}
 																	</div>
 																	{totalOrdered > 0 && (
-																		<span className="text-[0.65rem] md:text-xs font-bold text-slate-400 dark:text-slate-500">
+																		<span className="text-xs md:text-sm font-bold text-slate-400 dark:text-slate-500">
 																			estoque: {totalQty} (+{totalOrdered})
 																		</span>
 																	)}
@@ -969,7 +969,7 @@ export default function EstoquePedidosPage() {
 													{/* Desejável Total */}
 													<td className="p-3 md:p-5 text-center border-l border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 group-hover:bg-blue-50/30 dark:group-hover:bg-blue-900/20 transition-colors">
 														{hasDesired ? (
-															<span className="text-sm md:text-lg font-black text-slate-800 dark:text-slate-200">
+															<span className="text-base md:text-xl font-black text-slate-800 dark:text-slate-200">
 																{desiredQty}
 															</span>
 														) : (
@@ -989,32 +989,27 @@ export default function EstoquePedidosPage() {
 
 																	return (
 																		<div className="flex flex-col items-center justify-center">
-																			<span className="text-xs md:text-base font-black text-slate-800 dark:text-slate-200">
+																			<span className="text-base md:text-2xl font-black text-slate-800 dark:text-slate-200">
 																				<span className="text-rose-600 dark:text-rose-400 font-black">
 																					{totalOrderedPackages}
 																				</span>{" "}
 																				{pacotesLabel}{" "}
-																				<span className="text-slate-600 dark:text-slate-400 font-bold text-xs md:text-sm">
+																				<span className="text-slate-600 dark:text-slate-400 font-bold text-sm md:text-lg">
 																					({minBoxes} {caixasLabel})
 																				</span>
 																			</span>
-																			{totalOrderedPackages !== sumStorePackages && (
-																				<span className="text-[0.65rem] md:text-xs font-bold text-slate-400 dark:text-slate-500">
-																					soma lojas: {sumStorePackages} pcts
-																				</span>
-																			)}
 																		</div>
 																	);
 																} else {
 																	return (
 																		<div className="flex flex-col items-center justify-center">
-																			<span className="text-xs md:text-base font-black text-slate-800 dark:text-slate-200">
+																			<span className="text-base md:text-2xl font-black text-slate-800 dark:text-slate-200">
 																				<span className="text-rose-600 dark:text-rose-400 font-black">
 																					{sumStorePackages}
 																				</span>{" "}
 																				{sumStorePackages === 1 ? "Pacote" : "Pacotes"}
 																			</span>
-																			<span className="text-[0.65rem] font-bold text-amber-500">
+																			<span className="text-xs md:text-sm font-bold text-amber-500">
 																				(cx não definida nas metas)
 																			</span>
 																		</div>
@@ -1023,7 +1018,7 @@ export default function EstoquePedidosPage() {
 															}
 
 															return (
-																<span className="text-slate-300 dark:text-slate-600 font-bold text-xs md:text-sm">
+																<span className="text-slate-300 dark:text-slate-600 font-bold text-sm md:text-lg">
 																	0 Pacotes
 																</span>
 															);
@@ -1072,7 +1067,7 @@ export default function EstoquePedidosPage() {
 									return (
 										<tfoot>
 											<tr className="bg-slate-100/80 dark:bg-slate-800/90 border-t-2 border-slate-300 dark:border-slate-600 font-black">
-												<td className="p-3 md:p-5 text-xs md:text-lg font-black text-slate-800 dark:text-slate-100 uppercase sticky left-0 bg-slate-100 dark:bg-slate-800 z-10">
+												<td className="p-3 md:p-5 text-sm md:text-xl font-black text-slate-800 dark:text-slate-100 uppercase sticky left-0 bg-slate-100 dark:bg-slate-800 z-10">
 													TOTAL
 												</td>
 												{STORE_ORDER.map((storeId) => {
@@ -1083,31 +1078,31 @@ export default function EstoquePedidosPage() {
 													return (
 														<td key={storeId} className="p-2 md:p-3 border-l border-slate-200 dark:border-slate-700 text-center">
 															{storeSum > 0 ? (
-																<span className="text-xs md:text-sm font-black text-blue-600 dark:text-blue-400">
+																<span className="text-sm md:text-base font-black text-blue-600 dark:text-blue-400">
 																	{storeSum} pcts
 																</span>
 															) : (
-																<span className="text-slate-400 dark:text-slate-500">-</span>
+																<span className="text-slate-400 dark:text-slate-500 text-sm md:text-base">-</span>
 															)}
 														</td>
 													);
 												})}
-												<td className="p-3 md:p-5 border-l-2 border-slate-300 dark:border-slate-600 text-center font-black text-xs md:text-sm text-slate-800 dark:text-slate-200">
+												<td className="p-3 md:p-5 border-l-2 border-slate-300 dark:border-slate-600 text-center font-black text-sm md:text-base text-slate-800 dark:text-slate-200">
 													{grandTotalStockWithOrder > 0 ? `${grandTotalStockWithOrder} pcts` : "-"}
 												</td>
-												<td className="p-3 md:p-5 border-l border-slate-200 dark:border-slate-700 text-center text-slate-400 dark:text-slate-500">
+												<td className="p-3 md:p-5 border-l border-slate-200 dark:border-slate-700 text-center text-slate-400 dark:text-slate-500 text-sm md:text-base">
 													-
 												</td>
 												<td className="p-3 md:p-5 border-l border-slate-200 dark:border-slate-700 text-center">
 													{totalPackagesToOrder > 0 ? (
 														<div className="flex flex-col items-center">
-															<span className="text-sm md:text-lg font-black text-slate-800 dark:text-slate-200">
+															<span className="text-base md:text-2xl font-black text-slate-800 dark:text-slate-200">
 																<span className="text-rose-600 dark:text-rose-400 font-black">
 																	{totalPackagesToOrder}
 																</span>{" "}
 																{totalPacotesLabel}{" "}
 																{totalBoxesToOrder > 0 && (
-																	<span className="text-slate-600 dark:text-slate-400 font-bold text-xs md:text-sm">
+																	<span className="text-slate-600 dark:text-slate-400 font-bold text-sm md:text-lg">
 																		({totalBoxesToOrder} {totalCaixasLabel})
 																	</span>
 																)}
@@ -1115,7 +1110,7 @@ export default function EstoquePedidosPage() {
 														</div>
 													) : (
 														<div className="flex flex-col items-center">
-															<span className="text-sm md:text-lg font-black text-slate-400 dark:text-slate-500">
+															<span className="text-base md:text-xl font-black text-slate-400 dark:text-slate-500">
 																0 Pacotes
 															</span>
 														</div>
