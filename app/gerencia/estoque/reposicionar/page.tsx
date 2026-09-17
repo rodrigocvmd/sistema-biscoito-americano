@@ -1578,7 +1578,7 @@ export default function EstoqueReposicionarPage() {
 			)}
 			{showResetConfirm && (
 				<div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[60] flex items-center justify-center p-4 animate-in fade-in duration-200">
-					<div className="bg-white dark:bg-slate-900 rounded-[2rem] w-full max-w-xl shadow-2xl overflow-hidden flex flex-col border border-blue-200 dark:border-blue-900/30">
+					<div className="bg-white dark:bg-slate-900 rounded-[2rem] w-full max-w-xl shadow-2xl border border-blue-200 dark:border-blue-900/30 overflow-hidden flex flex-col">
 						<div className="p-8 text-center space-y-5">
 							<div className="mx-auto w-20 h-20 bg-blue-100 dark:bg-blue-900/20 rounded-full flex items-center justify-center">
 								{startingRepo ? (
@@ -1587,25 +1587,22 @@ export default function EstoqueReposicionarPage() {
 									<RefreshCw className="text-blue-600 dark:text-blue-400" size={40} />
 								)}
 							</div>
-							<h3 className="text-2xl md:text-3xl font-black text-slate-800 dark:text-slate-200 tracking-tight">
-								Iniciar novo reposicionamento?
+							<h3 className="text-xl md:text-2xl font-black text-slate-800 dark:text-slate-200 tracking-tight leading-snug">
+								Deseja acessar o último reposicionamento ou iniciar um novo?
 							</h3>
-							<p className="text-base md:text-xl text-slate-500 dark:text-slate-400 font-bold leading-relaxed">
-								Ao confirmar, o estoque será atualizado com as quantidades atuais das lojas para um novo reposicionamento. Caso cancele, você visualizará o estado do último reposicionamento salvo.
-							</p>
 						</div>
 						<div className="p-6 bg-slate-50 dark:bg-slate-800/50 border-t border-slate-100 dark:border-slate-800 flex gap-4">
 							<button 
 								onClick={() => setShowResetConfirm(false)} 
 								disabled={startingRepo}
-								className="flex-1 px-6 py-4 rounded-2xl font-black text-sm md:text-lg uppercase tracking-widest bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-300 dark:hover:bg-slate-600 shadow-sm disabled:opacity-50 cursor-pointer text-center transition-all">
-								Cancelar
+								className="flex-1 px-6 py-4 rounded-2xl font-black text-sm md:text-base uppercase tracking-wider bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-300 dark:hover:bg-slate-600 shadow-sm disabled:opacity-50 cursor-pointer text-center transition-all">
+								Acessar último
 							</button>
 							<button 
 								onClick={confirmResetProjectedStocks} 
 								disabled={startingRepo}
-								className="flex-1 px-6 py-4 rounded-2xl font-black text-sm md:text-lg uppercase tracking-widest bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg disabled:opacity-50 cursor-pointer text-center transition-all">
-								{startingRepo ? "Iniciando..." : "Confirmar"}
+								className="flex-1 px-6 py-4 rounded-2xl font-black text-sm md:text-base uppercase tracking-wider bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg disabled:opacity-50 cursor-pointer text-center transition-all">
+								{startingRepo ? "Iniciando..." : "Iniciar novo"}
 							</button>
 						</div>
 					</div>

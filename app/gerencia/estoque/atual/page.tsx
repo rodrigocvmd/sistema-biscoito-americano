@@ -261,6 +261,9 @@ export default function EstoqueAtualPage() {
 								const overallClosed = storeTotals.reduce((sum, s) => sum + s.closed, 0);
 								const overallOpen = storeTotals.reduce((sum, s) => sum + s.open, 0);
 
+								// Helper para pluralização do termo aberto
+								const formatOpenText = (count: number) => `${count} ${count > 1 ? "abertos" : "aberto"}`;
+
 								const renderTotalRow = (isTop: boolean) => (
 									<tr
 										key={isTop ? "total-row-top" : "total-row-bottom"}
@@ -278,15 +281,15 @@ export default function EstoqueAtualPage() {
 													<span
 														className={`pr-1 md:pr-2 text-base md:text-2xl font-black ${
 															overallClosed === 0 && (overallOpen === 0 || hideOpen)
-																? "text-slate-300 dark:text-slate-600"
-																: "text-blue-600 dark:text-blue-400"
+																? "text-slate-300 dark:text-slate-400"
+																: "text-slate-900 dark:text-slate-100"
 														}`}>
 														{overallClosed}
 													</span>
 												) : null}
 												{!hideOpen && overallOpen > 0 && (
-													<span className="text-xs md:text-2xl font-black text-blue-400/80 dark:text-blue-400/70 whitespace-nowrap">
-														{overallClosed > 0 ? `+ ${overallOpen} aberto` : `${overallOpen} aberto`}
+													<span className="text-xs md:text-2xl font-black text-slate-400 dark:text-slate-500 whitespace-nowrap">
+														{overallClosed > 0 ? `+ ${formatOpenText(overallOpen)}` : formatOpenText(overallOpen)}
 													</span>
 												)}
 											</div>
@@ -310,7 +313,7 @@ export default function EstoqueAtualPage() {
 														) : null}
 														{!hideOpen && open > 0 && (
 															<span className="text-xs md:text-2xl font-black text-slate-400 dark:text-slate-500 whitespace-nowrap">
-																{closed > 0 ? `+ ${open} aberto` : `${open} aberto`}
+																{closed > 0 ? `+ ${formatOpenText(open)}` : formatOpenText(open)}
 															</span>
 														)}
 													</div>
@@ -340,15 +343,15 @@ export default function EstoqueAtualPage() {
 																<span
 																	className={`pr-1 md:pr-2 text-base md:text-2xl font-black ${
 																		itemClosedTotal === 0 && (itemOpenTotal === 0 || hideOpen)
-																			? "text-slate-300 dark:text-slate-600"
-																			: "text-blue-600 dark:text-blue-400"
+																			? "text-slate-300 dark:text-slate-400"
+																			: "text-slate-900 dark:text-slate-100"
 																	}`}>
 																	{itemClosedTotal}
 																</span>
 															) : null}
 															{!hideOpen && itemOpenTotal > 0 && (
-																<span className="text-xs md:text-2xl font-black text-blue-400/80 dark:text-blue-400/70 whitespace-nowrap">
-																	{itemClosedTotal > 0 ? `+ ${itemOpenTotal} aberto` : `${itemOpenTotal} aberto`}
+																<span className="text-xs md:text-2xl font-black text-slate-400 dark:text-slate-500 whitespace-nowrap">
+																	{itemClosedTotal > 0 ? `+ ${formatOpenText(itemOpenTotal)}` : formatOpenText(itemOpenTotal)}
 																</span>
 															)}
 														</div>
@@ -373,7 +376,7 @@ export default function EstoqueAtualPage() {
 																	) : null}
 																	{!hideOpen && openCount > 0 && (
 																		<span className="text-xs md:text-2xl font-black text-slate-400 dark:text-slate-500 whitespace-nowrap">
-																			{qty > 0 ? `+ ${openCount} aberto` : `${openCount} aberto`}
+																			{qty > 0 ? `+ ${formatOpenText(openCount)}` : formatOpenText(openCount)}
 																		</span>
 																	)}
 																</div>
