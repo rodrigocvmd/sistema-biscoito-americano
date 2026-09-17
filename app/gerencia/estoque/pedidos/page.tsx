@@ -84,17 +84,6 @@ export default function EstoquePedidosPage() {
 	const [savingDesired, setSavingDesired] = useState(false);
 	const [savingPackagePrices, setSavingPackagePrices] = useState(false);
 
-	const formatHistoryLabel = (date: Date) => {
-		const day = String(date.getDate()).padStart(2, "0");
-		const month = String(date.getMonth() + 1).padStart(2, "0");
-		const weekDays = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
-		const weekDay = weekDays[date.getDay()];
-		
-		const hours = String(date.getHours()).padStart(2, "0");
-		const minutes = String(date.getMinutes()).padStart(2, "0");
-		
-		return `${day}/${month} (${weekDay}) - ${hours}:${minutes}`;
-	};
 
 	// 1. Fetch current real stock data
 	useEffect(() => {
@@ -535,15 +524,6 @@ export default function EstoquePedidosPage() {
 										className="appearance-none w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl py-2.5 md:py-3 pl-4 pr-10 text-xs md:text-sm font-black text-slate-700 dark:text-slate-200 cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all shadow-sm">
 										<option value="atual">Estoque Real</option>
 										<option value="pos_reposicionamento">Estoque Pós Reposicionamento</option>
-										{sessions.length > 0 && (
-											<optgroup label="Histórico de Reposicionamentos">
-												{sessions.map((s) => (
-													<option key={s.id || s.sessionId} value={s.sessionId || s.id}>
-														{formatHistoryLabel(s.timestamp.toDate())}
-													</option>
-												))}
-											</optgroup>
-										)}
 									</select>
 									<ChevronDown size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 group-hover:text-blue-500 pointer-events-none transition-colors" />
 								</div>
