@@ -427,6 +427,37 @@ export default function EstoquePedidosPage() {
 		return 0;
 	};
 
+	const stepStoreOrder = (storeId: StoreId, itemKey: keyof StockData, delta: number) => {
+		setStoreOrderPackages((prev) => {
+			const current = prev[storeId]?.[itemKey] || 0;
+			const nextVal = Math.max(0, current + delta);
+			const nextStoreData = {
+				...prev[storeId],
+				[itemKey]: nextVal,
+			};
+			const nextState = {
+				...prev,
+				[storeId]: nextStoreData,
+			};
+
+			const sumStores = STORE_ORDER.reduce(
+				(acc, s) => acc + (s === storeId ? nextVal : (prev[s]?.[itemKey] || 0)),
+				0
+			);
+
+			const boxSize = boxSizes[itemKey] || 1;
+			const boxes = Math.ceil(sumStores / boxSize);
+			const totalPackages = boxes * boxSize;
+
+			setCustomOrderPackages((prevCustom) => ({
+				...prevCustom,
+				[itemKey]: totalPackages,
+			}));
+
+			return nextState;
+		});
+	};
+
 	const handleStoreOrderChange = (storeId: StoreId, itemKey: keyof StockData, value: string) => {
 		const parsed = value === "" ? 0 : Math.max(0, parseInt(value, 10) || 0);
 		setStoreOrderPackages((prev) => {
@@ -777,10 +808,10 @@ export default function EstoquePedidosPage() {
 										{STORE_ORDER.map((storeId) => (
 											<th
 												key={storeId}
-												className="p-2 md:p-3 text-center text-xs md:text-[0.875rem] font-black text-slate-600 dark:text-slate-300 uppercase tracking-wider min-w-[5.5rem] md:min-w-[8rem] border-l border-slate-200/60 dark:border-slate-700/60">
+												className="p-2 md:p-3 text-center text-xs md:text-[0.875rem] font-black text-slate-600 dark:text-slate-300 uppercase tracking-wider min-w-[6.5rem] md:min-w-[9.5rem] border-l border-slate-200/60 dark:border-slate-700/60">
 												<div>{STORE_NAMES[storeId]}</div>
 												<div className="text-[0.62rem] md:text-[0.68rem] font-bold text-slate-400 normal-case tracking-normal mt-0.5">
-													Estoque / Meta • Pedir
+													Estoque / Meta
 												</div>
 											</th>
 										))}
@@ -823,86 +854,117 @@ export default function EstoquePedidosPage() {
 														{label}
 													</td>
 
-													{/* Quantidades por loja individual com relação à quantidade desejável e campo para pedir */}
+													{/* Quantidades por loja individual: apenas estoque atual (com alterações) e desejável */}
 													{STORE_ORDER.map((storeId) => {
 														const store = allData.find((s) => s.id === storeId);
 														const storeStockVal = store?.stock[itemKey] || 0;
 														const storeOpenVal = store?.isUnits?.[itemKey];
 														const storeOpenCount = typeof storeOpenVal === "boolean" ? (storeOpenVal ? 1 : 0) : storeOpenVal || 0;
 														const storeDesiredVal = storeDesired[storeId]?.[itemKey] || 0;
-														const orderVal = storeOrderPackages[storeId]?.[itemKey];
+														const orderVal = storeOrderPackages[storeId]?.[itemKey] || 0;
+														const currentWithOrder = storeStockVal + orderVal;
 
 														return (
 															<td
 																key={storeId}
 																className="p-2 md:p-3 text-center border-l border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 group-hover:bg-blue-50/30 dark:group-hover:bg-blue-900/20 transition-colors">
-																<div className="flex flex-col items-center justify-center gap-1.5 py-0.5">
-																	{/* Relação Estoque / Meta Desejável */}
-																	<div className="flex items-center justify-center gap-1 font-black">
+																<div className="flex flex-col items-center justify-center gap-1.5 py-1">
+																	{/* Apenas os dois números: Quantidade Atual (com itens adicionados) / Desejável */}
+																	<div className="flex items-baseline justify-center gap-1 font-black px-0.5">
 																		<span
-																			className={`text-xs md:text-sm ${
-																				storeDesiredVal > 0 && storeStockVal < storeDesiredVal
-																					? "text-rose-600 dark:text-rose-400 font-black"
+																			className={`text-base md:text-xl font-black transition-colors ${
+																				orderVal > 0
+																					? currentWithOrder < storeDesiredVal
+																						? "text-rose-600 dark:text-rose-400"
+																						: "text-blue-600 dark:text-blue-400"
+																					: storeDesiredVal > 0 && storeStockVal < storeDesiredVal
+																					? "text-rose-600 dark:text-rose-400"
 																					: storeStockVal === 0 && (storeOpenCount === 0 || hideOpen)
 																					? "text-slate-300 dark:text-slate-600"
-																					: "text-slate-700 dark:text-slate-200"
+																					: "text-slate-800 dark:text-slate-100"
 																			}`}
-																			title={`Estoque atual em ${STORE_NAMES[storeId]}: ${storeStockVal}`}>
-																			{storeStockVal}
+																			title={`Estoque original: ${storeStockVal}${orderVal > 0 ? ` (+${orderVal} adicionados = ${currentWithOrder})` : ""}`}>
+																			{currentWithOrder}
 																		</span>
-																		<span className="text-slate-300 dark:text-slate-600 text-[0.7rem] font-bold">/</span>
+																		<span className="text-slate-400 dark:text-slate-500 text-xs md:text-sm font-bold">/</span>
 																		<span
-																			className="text-xs md:text-sm font-bold text-slate-400 dark:text-slate-500"
+																			className="text-xs md:text-base font-bold text-slate-400 dark:text-slate-500"
 																			title={`Meta desejável em ${STORE_NAMES[storeId]}: ${storeDesiredVal}`}>
 																			{storeDesiredVal > 0 ? storeDesiredVal : "-"}
 																		</span>
 																		{!hideOpen && storeOpenCount > 0 && (
-																			<span className="text-[0.6rem] md:text-[0.65rem] font-bold text-slate-400 dark:text-slate-500 whitespace-nowrap ml-0.5">
+																			<span className="text-[0.65rem] md:text-xs font-bold text-slate-400 dark:text-slate-500 whitespace-nowrap ml-0.5">
 																				+{storeOpenCount}ab
 																			</span>
 																		)}
 																	</div>
 
-																	{/* Input para adicionar itens a pedir para esta loja */}
-																	<div className="flex items-center justify-center print:hidden">
-																		<input
-																			type="number"
-																			min="0"
-																			placeholder="0"
-																			value={orderVal === undefined || orderVal === 0 ? "" : orderVal}
-																			onChange={(e) => handleStoreOrderChange(storeId, itemKey, e.target.value)}
-																			onFocus={(e) => e.target.select()}
-																			onClick={(e) => e.currentTarget.select()}
-																			className="w-12 md:w-16 text-center py-1 px-1.5 text-xs md:text-sm font-black rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all shadow-inner"
-																			title={`Adicionar pacotes a pedir para ${STORE_NAMES[storeId]}`}
-																		/>
+																	{/* Botões Menos e Mais ABAIXO dos números */}
+																	<div className="flex items-center justify-center gap-2 print:hidden">
+																		<button
+																			type="button"
+																			onClick={() => stepStoreOrder(storeId, itemKey, -1)}
+																			disabled={orderVal <= 0}
+																			className="w-7 h-7 md:w-8 md:h-8 flex items-center justify-center rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 disabled:opacity-20 disabled:cursor-not-allowed transition-all cursor-pointer shadow-sm active:scale-95 shrink-0"
+																			title={orderVal <= 0 ? "Quantidade no nível do estoque" : `Remover 1 unidade adicionada (atual: ${currentWithOrder})`}>
+																			<Minus size={14} className="stroke-[2.5]" />
+																		</button>
+
+																		<button
+																			type="button"
+																			onClick={() => stepStoreOrder(storeId, itemKey, 1)}
+																			className="w-7 h-7 md:w-8 md:h-8 flex items-center justify-center rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 transition-all cursor-pointer shadow-sm active:scale-95 shrink-0"
+																			title={`Adicionar 1 unidade para o pedido (ficará com: ${currentWithOrder + 1})`}>
+																			<Plus size={14} className="stroke-[2.5]" />
+																		</button>
 																	</div>
+
 																	<span className="hidden print:inline text-xs font-bold">
-																		{orderVal ? `Pedir: ${orderVal}` : ""}
+																		{orderVal > 0 ? `(+${orderVal} pedido)` : ""}
 																	</span>
 																</div>
 															</td>
 														);
 													})}
 
-													{/* Quantidade Total */}
-													<td className="p-3 md:p-5 border-l-2 border-slate-200 dark:border-slate-700 text-center bg-slate-50/40 dark:bg-slate-800/40 group-hover:bg-blue-50/40 dark:group-hover:bg-blue-900/30 transition-colors">
-														<div className="flex justify-center items-center gap-1">
-															<span
-																className={`text-base md:text-xl font-black ${
-																	totalQty === 0 && (totalOpen === 0 || hideOpen)
-																		? "text-slate-300 dark:text-slate-400"
-																		: "text-slate-900 dark:text-slate-100"
-																}`}>
-																{totalQty}
-															</span>
-															{!hideOpen && totalOpen > 0 && (
-																<span className="text-xs md:text-sm font-black text-slate-400 dark:text-slate-500 whitespace-nowrap">
-																	{totalQty > 0 ? `+ ${totalOpen} ab` : `${totalOpen} ab`}
-																</span>
-															)}
-														</div>
-													</td>
+													{/* Quantidade Total: soma das lojas incluindo itens sendo adicionados para o pedido */}
+													{(() => {
+														const totalOrdered = STORE_ORDER.reduce(
+															(sum, sId) => sum + (Number(storeOrderPackages[sId]?.[itemKey]) || 0),
+															0
+														);
+														const totalQtyWithOrder = totalQty + totalOrdered;
+
+														return (
+															<td className="p-3 md:p-5 border-l-2 border-slate-200 dark:border-slate-700 text-center bg-slate-50/40 dark:bg-slate-800/40 group-hover:bg-blue-50/40 dark:group-hover:bg-blue-900/30 transition-colors">
+																<div className="flex flex-col items-center justify-center gap-0.5">
+																	<div className="flex justify-center items-center gap-1">
+																		<span
+																			className={`text-base md:text-xl font-black ${
+																				totalOrdered > 0
+																					? "text-blue-600 dark:text-blue-400"
+																					: totalQty === 0 && (totalOpen === 0 || hideOpen)
+																					? "text-slate-300 dark:text-slate-400"
+																					: "text-slate-900 dark:text-slate-100"
+																			}`}
+																			title={`Estoque total das lojas: ${totalQty}${totalOrdered > 0 ? ` (+${totalOrdered} pedido = ${totalQtyWithOrder})` : ""}`}>
+																			{totalQtyWithOrder}
+																		</span>
+																		{!hideOpen && totalOpen > 0 && (
+																			<span className="text-xs md:text-sm font-black text-slate-400 dark:text-slate-500 whitespace-nowrap">
+																				{totalQtyWithOrder > 0 ? `+ ${totalOpen} ab` : `${totalOpen} ab`}
+																			</span>
+																		)}
+																	</div>
+																	{totalOrdered > 0 && (
+																		<span className="text-[0.65rem] md:text-xs font-bold text-slate-400 dark:text-slate-500">
+																			estoque: {totalQty} (+{totalOrdered})
+																		</span>
+																	)}
+																</div>
+															</td>
+														);
+													})()}
 
 													{/* Desejável Total */}
 													<td className="p-3 md:p-5 text-center border-l border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 group-hover:bg-blue-50/30 dark:group-hover:bg-blue-900/20 transition-colors">
@@ -1000,6 +1062,13 @@ export default function EstoquePedidosPage() {
 									const totalCaixasLabel = totalBoxesToOrder === 1 ? "Caixa" : "Caixas";
 									const totalPacotesLabel = totalPackagesToOrder === 1 ? "pacote" : "pacotes";
 
+									const grandTotalStockWithOrder = filteredEntries.reduce((sum, [key]) => {
+										const itemKey = key as keyof StockData;
+										const storeStockSum = allData.reduce((acc, store) => acc + (store.stock[itemKey] || 0), 0);
+										const orderSum = STORE_ORDER.reduce((acc, sId) => acc + (Number(storeOrderPackages[sId]?.[itemKey]) || 0), 0);
+										return sum + storeStockSum + orderSum;
+									}, 0);
+
 									return (
 										<tfoot>
 											<tr className="bg-slate-100/80 dark:bg-slate-800/90 border-t-2 border-slate-300 dark:border-slate-600 font-black">
@@ -1023,8 +1092,8 @@ export default function EstoquePedidosPage() {
 														</td>
 													);
 												})}
-												<td className="p-3 md:p-5 border-l-2 border-slate-300 dark:border-slate-600 text-center text-slate-400 dark:text-slate-500">
-													-
+												<td className="p-3 md:p-5 border-l-2 border-slate-300 dark:border-slate-600 text-center font-black text-xs md:text-sm text-slate-800 dark:text-slate-200">
+													{grandTotalStockWithOrder > 0 ? `${grandTotalStockWithOrder} pcts` : "-"}
 												</td>
 												<td className="p-3 md:p-5 border-l border-slate-200 dark:border-slate-700 text-center text-slate-400 dark:text-slate-500">
 													-
