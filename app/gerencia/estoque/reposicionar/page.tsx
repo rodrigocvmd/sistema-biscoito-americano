@@ -6,6 +6,8 @@ import {
 	collection,
 	onSnapshot,
 	getDocs,
+	getDoc,
+	setDoc,
 	query,
 	orderBy,
 	where,
@@ -45,7 +47,6 @@ import {
 	PieChart,
 	Check,
 } from "lucide-react";
-import { setDoc } from "firebase/firestore";
 
 interface FullStoreData {
 	id: StoreId;
@@ -109,6 +110,7 @@ export default function EstoqueReposicionarPage() {
 	const [allHistory, setAllHistory] = useState<RepositionHistory[]>([]);
 	const [loadingAllHistory, setLoadingAllHistory] = useState(false);
 	const [showSummary, setShowSummary] = useState(false);
+	const [showFinalizedSuccessModal, setShowFinalizedSuccessModal] = useState(false);
 	const [showResetConfirm, setShowResetConfirm] = useState(true);
 
 	const [searchTerm, setSearchTerm] = useState("");
@@ -499,16 +501,19 @@ export default function EstoqueReposicionarPage() {
 		return movements;
 	};
 
-	const finalizeReposition = async () => {
-		const optimizedMovements = calculateOptimizedSummary();
-		if (optimizedMovements.length === 0) {
+	const handleRequestFinalize = () => {
+		const movements = calculateOptimizedSummary();
+		if (movements.length === 0) {
 			alert("Não há movimentações para finalizar.");
 			return;
 		}
+		setShowSummary(true);
+	};
 
-		if (isSavedThisRun.current) {
-			setIsFinalizedSession(true);
-			setShowSummary(true);
+	const executeFinalizeReposition = async () => {
+		const optimizedMovements = calculateOptimizedSummary();
+		if (optimizedMovements.length === 0) {
+			alert("Não há movimentações para finalizar.");
 			return;
 		}
 
@@ -535,10 +540,12 @@ export default function EstoqueReposicionarPage() {
 
 			// Salva a versão final do estoque de todas as lojas para futuras comparações
 			const currentSessionId = localStorage.getItem("repos_session_id") || doc(collection(db, "unused")).id;
+			const formattedNow = formatDate(new Date());
 			const endState = {
 				sessionId: currentSessionId,
 				type: "fim",
 				timestamp: Timestamp.now(),
+				formattedDate: formattedNow,
 				stores: {
 					lago: {
 						stock: projectedStocks.lago,
@@ -559,20 +566,193 @@ export default function EstoqueReposicionarPage() {
 				},
 			};
 			await addDoc(collection(db, "repositionSnapshots"), endState);
+			await setDoc(doc(db, "repositionState", "latest"), endState);
 			localStorage.removeItem("repos_session_id");
 
-			const formattedNow = formatDate(new Date());
 			setLastFinalizedDate(formattedNow);
 			localStorage.setItem("repos_last_finalized_date", formattedNow);
+			localStorage.setItem("repos_projected_stocks", JSON.stringify(projectedStocks));
 			isSavedThisRun.current = true;
 			setIsFinalizedSession(true);
-			setShowSummary(true);
+			setShowSummary(false);
+			setShowFinalizedSuccessModal(true);
 		} catch (error) {
 			console.error("Erro ao finalizar reposicionamento:", error);
-			alert("Erro ao salvar no histórico. Verifique o console.");
+			alert("Erro ao salvar reposicionamento no banco de dados. Verifique o console.");
 		} finally {
 			setSavingRepos(false);
 		}
+	};
+
+	const handleAccessLastReposition = async () => {
+		setStartingRepo(true);
+		try {
+			let lastData: any = null;
+
+			// 1. Tentar pegar o documento direto 'latest'
+			try {
+				const latestDocSnap = await getDoc(doc(db, "repositionState", "latest"));
+				if (latestDocSnap.exists()) {
+					lastData = latestDocSnap.data();
+				}
+			} catch (e) {
+				console.error("Erro ao ler doc repositionState/latest:", e);
+			}
+
+			// 2. Fallback: buscar na coleção repositionSnapshots pelo último com type 'fim'
+			if (!lastData) {
+				try {
+					const q = query(
+						collection(db, "repositionSnapshots"),
+						where("type", "==", "fim"),
+						orderBy("timestamp", "desc"),
+						limit(1)
+					);
+					const querySnap = await getDocs(q);
+					if (!querySnap.empty) {
+						lastData = querySnap.docs[0].data();
+					}
+				} catch (e) {
+					console.error("Erro ao buscar último snapshot de reposicionamento:", e);
+				}
+			}
+
+			if (lastData && lastData.stores) {
+				const loadedStocks: Record<StoreId, Partial<StockData>> = {
+					lago: lastData.stores.lago?.stock || {},
+					conjunto: lastData.stores.conjunto?.stock || {},
+					terraco: lastData.stores.terraco?.stock || {},
+					noroeste: lastData.stores.noroeste?.stock || {},
+				};
+				setProjectedStocks(loadedStocks);
+				localStorage.setItem("repos_projected_stocks", JSON.stringify(loadedStocks));
+
+				const dateStr =
+					lastData.formattedDate ||
+					(lastData.timestamp?.toDate ? formatDate(lastData.timestamp.toDate()) : null);
+				if (dateStr) {
+					setLastFinalizedDate(dateStr);
+					localStorage.setItem("repos_last_finalized_date", dateStr);
+				}
+				if (lastData.sessionId) {
+					localStorage.setItem("repos_session_id", lastData.sessionId);
+				}
+				isInitialized.current = true;
+				isSavedThisRun.current = true;
+				setIsFinalizedSession(true);
+			} else {
+				// Se não havia nada no banco, mantém o do localStorage (se houver) ou inicializa de allData
+				const savedProjected = localStorage.getItem("repos_projected_stocks");
+				if (savedProjected) {
+					setProjectedStocks(JSON.parse(savedProjected));
+					isInitialized.current = true;
+				} else if (allData.length > 0) {
+					const initialProjected: any = {};
+					allData.forEach((store) => {
+						initialProjected[store.id] = { ...store.stock };
+					});
+					setProjectedStocks(initialProjected);
+					isInitialized.current = true;
+				}
+			}
+			setShowResetConfirm(false);
+		} catch (err) {
+			console.error("Erro ao acessar último reposicionamento:", err);
+			alert("Erro ao carregar o último reposicionamento da base de dados.");
+			setShowResetConfirm(false);
+		} finally {
+			setStartingRepo(false);
+		}
+	};
+
+	const renderPrintableReceipt = () => {
+		const movements = calculateOptimizedSummary();
+		if (movements.length === 0) return null;
+
+		const grouped = new Map<
+			string,
+			{ from: StoreId; to: StoreId; items: { label: string; qty: number }[] }
+		>();
+		movements.forEach((move) => {
+			const key = `${move.from}-${move.to}`;
+			if (!grouped.has(key)) {
+				grouped.set(key, { from: move.from, to: move.to, items: [] });
+			}
+			grouped.get(key)!.items.push({
+				label: STOCK_LABELS[move.item],
+				qty: move.qty,
+			});
+		});
+
+		const storeOrder: StoreId[] = ["lago", "terraco", "conjunto", "noroeste"];
+		const sortedGroups = Array.from(grouped.values()).sort((a, b) => {
+			const fromDiff = storeOrder.indexOf(a.from) - storeOrder.indexOf(b.from);
+			if (fromDiff !== 0) return fromDiff;
+			return storeOrder.indexOf(a.to) - storeOrder.indexOf(b.to);
+		});
+
+		return (
+			<table className="hidden print:table w-full border-collapse border-none bg-transparent">
+				<thead className="print:table-header-group">
+					<tr>
+						<th className="h-8 print:h-12 border-none bg-transparent p-0"></th>
+					</tr>
+				</thead>
+				<tfoot className="print:table-footer-group">
+					<tr>
+						<th className="h-6 print:h-8 border-none bg-transparent p-0"></th>
+					</tr>
+				</tfoot>
+				<tbody className="print:table-row-group">
+					<tr>
+						<td className="border-none bg-transparent p-0">
+							<div className="flex flex-col space-y-4 print:space-y-10 w-full pl-2">
+								{sortedGroups.map((group, groupIdx) => {
+									const totalGroupQty = group.items.reduce((acc, item) => acc + item.qty, 0);
+
+									return (
+										<div
+											key={`print-${groupIdx}`}
+											className="flex flex-row items-stretch gap-3 print:gap-x-6 w-full text-left mb-3 print:mb-8 break-inside-avoid page-break-inside-avoid">
+											{[0, 1].map((copyIndex) => (
+												<div
+													key={`${groupIdx}-${copyIndex}`}
+													className="bg-white border border-slate-400 rounded-xl p-3 break-inside-avoid page-break-inside-avoid shadow-none text-left w-[18.5rem] flex flex-col justify-between">
+													<div>
+														<div className="flex items-center justify-start gap-2 mb-2 pb-1.5 border-b border-slate-300 text-left">
+															<span className="font-black text-black text-[11.5pt] flex items-center gap-1.5 text-left whitespace-nowrap uppercase">
+																{STORE_NAMES[group.from]}
+																<ArrowRight size={14} className="text-black" />
+																{STORE_NAMES[group.to]}:
+															</span>
+														</div>
+														<ul className="space-y-1.5 mt-2 text-left">
+															{group.items.map((item, i) => (
+																<li key={i} className="flex items-center justify-start gap-2 text-black font-bold text-[11pt] text-left whitespace-nowrap">
+																	<span className="w-3.5 h-3.5 rounded border border-black flex-shrink-0 inline-block" />
+																	<span className="text-left">
+																		<strong className="font-black text-black mr-1">{item.qty}</strong>
+																		{item.label}
+																	</span>
+																</li>
+															))}
+														</ul>
+													</div>
+													<div className="mt-3 pt-1.5 border-t border-slate-400 flex items-center justify-between text-black text-[11pt] font-black">
+														<span>Total:</span>
+														<span>{totalGroupQty} pacotes</span>
+													</div>
+												</div>
+											))}
+										</div>
+									);
+								})}
+							</div>
+						</td>
+					</tr>
+				</tbody>
+			</table>
+		);
 	};
 
 	const handlePrint = () => {
@@ -947,14 +1127,14 @@ export default function EstoqueReposicionarPage() {
 				</div>
 			</div>
 
-			{/* Botão Topo: Gerar Resumo e Legenda de Proporção */}
+			{/* Botão Topo: Finalizar reposicionamento e Legenda de Proporção */}
 			<div className="relative flex flex-col md:flex-row items-center justify-center gap-3 md:gap-4 py-1">
 				<button
-					onClick={finalizeReposition}
+					onClick={handleRequestFinalize}
 					disabled={savingRepos}
 					className="flex items-center justify-center gap-2.5 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white px-8 md:px-12 py-3 md:py-3.5 rounded-2xl font-black text-xs md:text-sm shadow-lg shadow-blue-500/20 dark:shadow-none hover:shadow-blue-500/30 hover:scale-[1.02] transition-all cursor-pointer uppercase tracking-widest">
 					{savingRepos ? <RefreshCw className="animate-spin" size={16} /> : <Save size={16} />}
-					{savingRepos ? "Gerando..." : "Gerar Resumo"}
+					{savingRepos ? "Processando..." : "Finalizar reposicionamento"}
 				</button>
 
 				{/* Legenda de Proporção (ao lado em telas md+, abaixo em telas menores) */}
@@ -1221,14 +1401,14 @@ export default function EstoqueReposicionarPage() {
 				</div>
 			</div>
 
-			{/* Botão Rodapé: Gerar Resumo Centralizado */}
+			{/* Botão Rodapé: Finalizar reposicionamento Centralizado */}
 			<div className="flex justify-center items-center py-3">
 				<button
-					onClick={finalizeReposition}
+					onClick={handleRequestFinalize}
 					disabled={savingRepos}
 					className="flex items-center justify-center gap-2.5 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white px-8 md:px-12 py-3.5 md:py-4 rounded-2xl font-black text-xs md:text-sm shadow-xl shadow-blue-500/20 dark:shadow-none hover:shadow-blue-500/30 hover:scale-[1.02] transition-all cursor-pointer uppercase tracking-widest">
 					{savingRepos ? <RefreshCw className="animate-spin" size={16} /> : <Save size={16} />}
-					{savingRepos ? "Gerando..." : "Gerar Resumo"}
+					{savingRepos ? "Processando..." : "Finalizar reposicionamento"}
 				</button>
 			</div>
 			</div>
@@ -1382,12 +1562,13 @@ export default function EstoqueReposicionarPage() {
 				<div id="modal-resumo-print" className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-3 md:p-6 animate-in fade-in duration-200">
 
 					<div className="bg-white dark:bg-slate-900 rounded-[2rem] w-full max-w-full sm:max-w-2xl md:max-w-4xl lg:max-w-5xl shadow-2xl overflow-hidden flex flex-col max-h-[92vh] border border-slate-200 dark:border-slate-800">
-						<div className="p-3.5 md:p-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-center print:hidden whitespace-nowrap">
-							<div>
-								<h2 className="text-lg md:text-xl font-black text-slate-800 dark:text-slate-200 tracking-tight text-center uppercase">
-									Resumo de Reposicionamento - {new Date().toLocaleDateString("pt-BR")}
-								</h2>
-							</div>
+						<div className="p-3.5 md:p-5 border-b border-slate-100 dark:border-slate-800 flex flex-col items-center justify-center print:hidden">
+							<h2 className="text-lg md:text-xl font-black text-slate-800 dark:text-slate-200 tracking-tight text-center uppercase">
+								Verificação de Reposicionamento - {new Date().toLocaleDateString("pt-BR")}
+							</h2>
+							<p className="text-xs text-slate-500 dark:text-slate-400 font-bold mt-1 text-center">
+								Confira as transferências calculadas abaixo antes de confirmar o reposicionamento.
+							</p>
 						</div>
 
 						<div className="p-3.5 md:p-6 overflow-y-auto custom-scrollbar flex-1 print:overflow-visible print:p-0">
@@ -1524,27 +1705,63 @@ export default function EstoqueReposicionarPage() {
 							)}
 						</div>
 
-						<div className="p-4 md:p-6 bg-slate-50 dark:bg-slate-800/50 border-t border-slate-100 dark:border-slate-800 flex flex-col items-center gap-3 transition-colors print:hidden">
-							<div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-3 w-full max-w-lg">
+						<div className="p-4 md:p-6 bg-slate-50 dark:bg-slate-800/50 border-t border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-3 md:gap-4 transition-colors print:hidden">
+							<button
+								onClick={() => setShowSummary(false)}
+								disabled={savingRepos}
+								className="flex-1 sm:flex-none min-w-[200px] px-6 py-3.5 rounded-2xl font-black text-xs md:text-sm uppercase tracking-wider bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-300 dark:hover:bg-slate-600 shadow-sm transition-all cursor-pointer text-center">
+								Editar reposicionamento
+							</button>
+							<button
+								onClick={executeFinalizeReposition}
+								disabled={savingRepos}
+								className="flex-1 sm:flex-none min-w-[220px] flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-400 text-white px-8 py-3.5 rounded-2xl font-black text-xs md:text-sm uppercase tracking-wider shadow-lg shadow-emerald-500/20 dark:shadow-none transition-all cursor-pointer text-center">
+								{savingRepos ? <RefreshCw className="animate-spin" size={18} /> : <Check size={18} />}
+								{savingRepos ? "Finalizando..." : "Finalizar reposicionamento"}
+							</button>
+						</div>
+					</div>
+				</div>
+			)}
+
+			{showFinalizedSuccessModal && (
+				<div id="modal-resumo-print" className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
+					<div className="bg-white dark:bg-slate-900 rounded-[2rem] w-full max-w-lg shadow-2xl overflow-hidden flex flex-col border border-emerald-200 dark:border-emerald-900/30">
+						<div className="p-6 md:p-8 text-center space-y-4 print:hidden">
+							<div className="mx-auto w-16 h-16 bg-emerald-100 dark:bg-emerald-900/30 rounded-full flex items-center justify-center text-emerald-600 dark:text-emerald-400">
+								<Check size={36} className="stroke-[3]" />
+							</div>
+							<h3 className="text-xl md:text-2xl font-black text-slate-800 dark:text-slate-100 tracking-tight">
+								Reposicionamento Finalizado com Sucesso!
+							</h3>
+							<p className="text-slate-600 dark:text-slate-300 font-bold text-xs md:text-sm leading-relaxed">
+								O reposicionamento foi registrado no banco de dados e já está disponível para outros dispositivos e no select <span className="text-blue-600 dark:text-blue-400 font-black">Comparativo de Estoque</span> na rota de Pedidos.
+							</p>
+						</div>
+
+						<div className="p-5 md:p-6 bg-slate-50 dark:bg-slate-800/50 border-t border-slate-100 dark:border-slate-800 flex flex-col gap-3 print:hidden">
+							<div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-3 w-full">
 								<button
 									onClick={handleWhatsApp}
-									disabled={calculateOptimizedSummary().length === 0}
-									className="flex-1 flex items-center justify-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-white px-5 py-3 rounded-2xl font-black text-xs md:text-[0.75rem] uppercase tracking-widest shadow-md shadow-emerald-100 dark:shadow-none transition-all disabled:opacity-50 cursor-pointer">
+									className="flex-1 flex items-center justify-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-white px-5 py-3.5 rounded-2xl font-black text-xs md:text-[0.75rem] uppercase tracking-widest shadow-md shadow-emerald-500/20 transition-all cursor-pointer">
+									<MessageCircle size={16} />
 									Enviar no WhatsApp
 								</button>
 								<button
 									onClick={handlePrint}
-									disabled={calculateOptimizedSummary().length === 0}
-									className="flex-1 flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-5 py-3 rounded-2xl font-black text-xs md:text-[0.75rem] uppercase tracking-widest shadow-md shadow-blue-100 dark:shadow-none transition-all disabled:opacity-50 cursor-pointer">
+									className="flex-1 flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-5 py-3.5 rounded-2xl font-black text-xs md:text-[0.75rem] uppercase tracking-widest shadow-md shadow-blue-500/20 transition-all cursor-pointer">
+									<Printer size={16} />
 									Imprimir
 								</button>
 							</div>
 							<button
-								onClick={handleCloseSummary}
-								className="w-full sm:w-auto min-w-[140px] px-6 py-2.5 rounded-2xl font-black text-xs md:text-[0.75rem] uppercase tracking-widest text-slate-500 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-800 hover:shadow-sm transition-all cursor-pointer border border-transparent hover:border-slate-200 dark:hover:border-slate-700">
+								onClick={() => setShowFinalizedSuccessModal(false)}
+								className="w-full py-3 rounded-2xl font-black text-xs md:text-[0.75rem] uppercase tracking-widest text-slate-500 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-800 hover:shadow-sm transition-all cursor-pointer border border-transparent hover:border-slate-200 dark:hover:border-slate-700">
 								Fechar
 							</button>
 						</div>
+
+						{renderPrintableReceipt()}
 					</div>
 				</div>
 			)}
@@ -1593,10 +1810,10 @@ export default function EstoqueReposicionarPage() {
 						</div>
 						<div className="p-6 bg-slate-50 dark:bg-slate-800/50 border-t border-slate-100 dark:border-slate-800 flex gap-4">
 							<button 
-								onClick={() => setShowResetConfirm(false)} 
+								onClick={handleAccessLastReposition} 
 								disabled={startingRepo}
 								className="flex-1 px-6 py-4 rounded-2xl font-black text-sm md:text-base uppercase tracking-wider bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-300 dark:hover:bg-slate-600 shadow-sm disabled:opacity-50 cursor-pointer text-center transition-all">
-								Acessar último
+								{startingRepo ? "Carregando..." : "Acessar último"}
 							</button>
 							<button 
 								onClick={confirmResetProjectedStocks} 

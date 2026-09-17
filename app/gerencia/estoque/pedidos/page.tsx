@@ -124,31 +124,29 @@ export default function EstoquePedidosPage() {
 		return () => unsubscribeStores();
 	}, []);
 
-	// 2. Fetch finalized reposition snapshots
+	// 2. Fetch finalized reposition snapshots (real-time listener)
 	useEffect(() => {
-		const fetchSessions = async () => {
-			try {
-				const snapshotsRef = collection(db, "repositionSnapshots");
-				const q = query(
-					snapshotsRef,
-					limit(200)
-				);
-				const querySnapshot = await getDocs(q);
+		const snapshotsRef = collection(db, "repositionSnapshots");
+		const q = query(snapshotsRef, limit(200));
+		const unsubscribe = onSnapshot(
+			q,
+			(querySnapshot) => {
 				const docs = querySnapshot.docs.map((doc) => ({
 					id: doc.id,
 					...doc.data(),
 				})) as RepositionSnapshotDoc[];
-				
+
 				const finishedSessions = docs
-					.filter((d) => d.type === "fim")
+					.filter((d) => d.type === "fim" && d.timestamp)
 					.sort((a, b) => b.timestamp.toMillis() - a.timestamp.toMillis());
 				setSessions(finishedSessions);
-			} catch (error) {
-				console.error("Erro ao buscar históricos para seleção:", error);
+			},
+			(error) => {
+				console.error("Erro ao escutar históricos de reposicionamento:", error);
 			}
-		};
+		);
 
-		fetchSessions();
+		return () => unsubscribe();
 	}, []);
 
 	// 3. Fetch desired stocks, box sizes & package prices (Global doc logic with store fallback sum if needed)
@@ -196,6 +194,49 @@ export default function EstoquePedidosPage() {
 					return currentIdOrder.map((id) => realCurrentData.find((d) => d.id === id)!);
 				}
 				return realCurrentData;
+			});
+		} else if (selectedSessionId === "pos_reposicionamento") {
+			// Procura o último reposicionamento finalizado salvo no banco
+			const latestSession = sessions.length > 0 ? sessions[0] : null;
+			// Procura projeção em andamento/salva localmente no navegador
+			let localProjected: Record<StoreId, Partial<StockData>> | null = null;
+			try {
+				const saved = localStorage.getItem("repos_projected_stocks");
+				if (saved) {
+					localProjected = JSON.parse(saved);
+				}
+			} catch (e) {
+				console.error("Erro ao ler repos_projected_stocks do localStorage:", e);
+			}
+
+			const storeIds = STORE_ORDER;
+			const newFullData = storeIds.map((id) => {
+				const realStore = realCurrentData.find((d) => d.id === id);
+				let stockAfterRepo: Partial<StockData> = {};
+
+				if (localProjected && localProjected[id] && Object.keys(localProjected[id]).length > 0) {
+					stockAfterRepo = localProjected[id];
+				} else if (latestSession && latestSession.stores[id]?.stock) {
+					stockAfterRepo = latestSession.stores[id].stock;
+				} else if (realStore) {
+					stockAfterRepo = realStore.stock;
+				}
+
+				return {
+					id,
+					name: STORE_NAMES[id],
+					lastStockUpdate: latestSession ? latestSession.timestamp.toDate() : (realStore?.lastStockUpdate || null),
+					stock: stockAfterRepo,
+					isUnits: realStore?.isUnits || (latestSession?.stores[id]?.isUnits || {}),
+				};
+			});
+
+			setAllData((currentData) => {
+				if (currentData.length > 0) {
+					const currentIdOrder = currentData.map((d) => d.id);
+					return currentIdOrder.map((id) => newFullData.find((d) => d.id === id)!);
+				}
+				return newFullData;
 			});
 		} else {
 			const selectedSession = sessions.find((s) => s.sessionId === selectedSessionId || s.id === selectedSessionId);
@@ -477,7 +518,7 @@ export default function EstoquePedidosPage() {
 				<>
 					<div className="hidden print:block">
 						<h1 className="text-2xl font-black uppercase">
-							Relatório de Estoque (Pedidos) - {selectedSessionId === "atual" ? "Atual Real" : "Projetado"} - {new Date().toLocaleDateString("pt-BR")}
+							Relatório de Estoque (Pedidos) - {selectedSessionId === "atual" ? "Estoque Atual Real" : selectedSessionId === "pos_reposicionamento" ? "Estoque Pós Reposicionamento" : "Histórico Projetado"} - {new Date().toLocaleDateString("pt-BR")}
 						</h1>
 					</div>
 
@@ -485,19 +526,24 @@ export default function EstoquePedidosPage() {
 					<div className="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center justify-between gap-3 md:gap-4 print:hidden mb-6">
 						<div className="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-3 md:gap-4 flex-1 min-w-0">
 							{/* Dropdown Select */}
-							<div className="flex flex-col gap-1 w-full sm:w-auto min-w-0 sm:min-w-[260px]">
-								<span className="text-[0.75rem] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest ml-1">Estoque após Reposicionamento</span>
+							<div className="flex flex-col gap-1 w-full sm:w-auto min-w-0 sm:min-w-[280px]">
+								<span className="text-[0.75rem] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest ml-1">Comparativo de Estoque</span>
 								<div className="relative group">
 									<select
 										value={selectedSessionId}
 										onChange={(e) => setSelectedSessionId(e.target.value)}
 										className="appearance-none w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl py-2.5 md:py-3 pl-4 pr-10 text-xs md:text-sm font-black text-slate-700 dark:text-slate-200 cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all shadow-sm">
-										<option value="atual">Estoque Atual Real</option>
-										{sessions.map((s) => (
-											<option key={s.id || s.sessionId} value={s.sessionId || s.id}>
-												{formatHistoryLabel(s.timestamp.toDate())}
-											</option>
-										))}
+										<option value="atual">Estoque Real</option>
+										<option value="pos_reposicionamento">Estoque Pós Reposicionamento</option>
+										{sessions.length > 0 && (
+											<optgroup label="Histórico de Reposicionamentos">
+												{sessions.map((s) => (
+													<option key={s.id || s.sessionId} value={s.sessionId || s.id}>
+														{formatHistoryLabel(s.timestamp.toDate())}
+													</option>
+												))}
+											</optgroup>
+										)}
 									</select>
 									<ChevronDown size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 group-hover:text-blue-500 pointer-events-none transition-colors" />
 								</div>
@@ -544,19 +590,26 @@ export default function EstoquePedidosPage() {
 							<table className="w-full border-collapse">
 								<thead>
 									<tr className="bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700">
-										<th className="p-3 md:p-6 text-left text-xs md:text-[0.9375rem] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest min-w-[7.5rem] md:min-w-[11.25rem]">
+										<th className="p-3 md:p-5 text-left text-xs md:text-[0.875rem] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest min-w-[7.5rem] md:min-w-[10.5rem] sticky left-0 bg-slate-50 dark:bg-slate-800 z-10">
 											SABOR
 										</th>
-										<th className="p-3 md:p-6 text-center text-xs md:text-[0.9375rem] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest min-w-[7rem] md:min-w-[9rem]">
-											QUANTIDADE ATUAL
+										{STORE_ORDER.map((storeId) => (
+											<th
+												key={storeId}
+												className="p-2 md:p-4 text-center text-xs md:text-[0.875rem] font-black text-slate-600 dark:text-slate-300 uppercase tracking-wider min-w-[5.5rem] md:min-w-[7.5rem] border-l border-slate-200/60 dark:border-slate-700/60">
+												{STORE_NAMES[storeId]}
+											</th>
+										))}
+										<th className="p-3 md:p-5 text-center text-xs md:text-[0.875rem] font-black text-slate-800 dark:text-slate-200 uppercase tracking-wider min-w-[6.5rem] md:min-w-[8.5rem] border-l-2 border-slate-200 dark:border-slate-700 bg-slate-100/50 dark:bg-slate-800/80">
+											TOTAL
 										</th>
-										<th className="p-3 md:p-6 text-center text-xs md:text-[0.9375rem] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest min-w-[6.5rem] md:min-w-[8.5rem]">
+										<th className="p-3 md:p-5 text-center text-xs md:text-[0.875rem] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest min-w-[6rem] md:min-w-[8rem] border-l border-slate-200/60 dark:border-slate-700/60">
 											DESEJÁVEL
 										</th>
-										<th className="p-3 md:p-6 text-center text-xs md:text-[0.9375rem] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest min-w-[7rem] md:min-w-[9.5rem]">
+										<th className="p-3 md:p-5 text-center text-xs md:text-[0.875rem] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest min-w-[6.5rem] md:min-w-[8.5rem] border-l border-slate-200/60 dark:border-slate-700/60">
 											DIFERENÇA
 										</th>
-										<th className="p-3 md:p-6 text-center text-xs md:text-[0.9375rem] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest min-w-[8rem] md:min-w-[11rem]">
+										<th className="p-3 md:p-5 text-center text-xs md:text-[0.875rem] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest min-w-[7.5rem] md:min-w-[10.5rem] border-l border-slate-200/60 dark:border-slate-700/60">
 											PACOTES A PEDIR
 										</th>
 									</tr>
@@ -590,8 +643,7 @@ export default function EstoquePedidosPage() {
 												if (diff < 0) {
 													boxMessageNode = (
 														<div className="flex flex-col items-center">
-															<span className="text-base md:text-xl font-black text-slate-800 dark:text-slate-200">
-																{" "}
+															<span className="text-sm md:text-lg font-black text-slate-800 dark:text-slate-200">
 																<span className="text-rose-600 dark:text-rose-400 font-black">
 																	{totalOrderedPackages}
 																</span>{" "}
@@ -602,8 +654,7 @@ export default function EstoquePedidosPage() {
 												} else {
 													boxMessageNode = (
 														<div className="flex flex-col items-center">
-															<span className="text-base md:text-xl font-black text-slate-800 dark:text-slate-200">
-																{" "}
+															<span className="text-sm md:text-lg font-black text-slate-800 dark:text-slate-200">
 																<span className="text-blue-600 dark:text-blue-400 font-black">
 																	0
 																</span>{" "}
@@ -615,8 +666,7 @@ export default function EstoquePedidosPage() {
 											} else if (hasDesired && diff >= 0) {
 												boxMessageNode = (
 													<div className="flex flex-col items-center">
-														<span className="text-base md:text-xl font-black text-slate-800 dark:text-slate-200">
-															{" "}
+														<span className="text-sm md:text-lg font-black text-slate-800 dark:text-slate-200">
 															<span className="text-blue-600 dark:text-blue-400 font-black">
 																0
 															</span>{" "}
@@ -630,13 +680,45 @@ export default function EstoquePedidosPage() {
 												<tr
 													key={key}
 													className="border-b border-slate-100 dark:border-slate-800 hover:bg-blue-50/30 dark:hover:bg-blue-900/20 transition-colors group">
-													<td className="p-3 md:p-6 text-sm md:text-xl font-black text-slate-600 dark:text-slate-400 bg-white dark:bg-slate-900 group-hover:bg-blue-50/30 dark:group-hover:bg-blue-900/20 transition-colors uppercase">
+													<td className="p-3 md:p-5 text-xs md:text-base font-black text-slate-600 dark:text-slate-400 bg-white dark:bg-slate-900 group-hover:bg-blue-50/30 dark:group-hover:bg-blue-900/20 transition-colors uppercase sticky left-0 z-10">
 														{label}
 													</td>
-													<td className="p-3 md:p-6 border-l border-r border-slate-100 dark:border-slate-800 text-center bg-white dark:bg-slate-900 group-hover:bg-blue-50/30 dark:group-hover:bg-blue-900/20 transition-colors">
+
+													{/* Quantidades por loja individual */}
+													{STORE_ORDER.map((storeId) => {
+														const store = allData.find((s) => s.id === storeId);
+														const storeStockVal = store?.stock[itemKey] || 0;
+														const storeOpenVal = store?.isUnits?.[itemKey];
+														const storeOpenCount = typeof storeOpenVal === "boolean" ? (storeOpenVal ? 1 : 0) : storeOpenVal || 0;
+
+														return (
+															<td
+																key={storeId}
+																className="p-2 md:p-4 text-center border-l border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 group-hover:bg-blue-50/30 dark:group-hover:bg-blue-900/20 transition-colors">
+																<div className="flex justify-center items-center gap-1">
+																	<span
+																		className={`text-sm md:text-lg font-black ${
+																			storeStockVal === 0 && (storeOpenCount === 0 || hideOpen)
+																				? "text-slate-300 dark:text-slate-600"
+																				: "text-slate-700 dark:text-slate-200"
+																		}`}>
+																		{storeStockVal}
+																	</span>
+																	{!hideOpen && storeOpenCount > 0 && (
+																		<span className="text-[0.65rem] md:text-xs font-black text-slate-400 dark:text-slate-500 whitespace-nowrap">
+																			{storeStockVal > 0 ? `+ ${storeOpenCount} ab` : `${storeOpenCount} ab`}
+																		</span>
+																	)}
+																</div>
+															</td>
+														);
+													})}
+
+													{/* Quantidade Total */}
+													<td className="p-3 md:p-5 border-l-2 border-slate-200 dark:border-slate-700 text-center bg-slate-50/40 dark:bg-slate-800/40 group-hover:bg-blue-50/40 dark:group-hover:bg-blue-900/30 transition-colors">
 														<div className="flex justify-center items-center gap-1">
 															<span
-																className={`text-base md:text-2xl font-black ${
+																className={`text-base md:text-xl font-black ${
 																	totalQty === 0 && (totalOpen === 0 || hideOpen)
 																		? "text-slate-300 dark:text-slate-400"
 																		: "text-slate-900 dark:text-slate-100"
@@ -644,47 +726,53 @@ export default function EstoquePedidosPage() {
 																{totalQty}
 															</span>
 															{!hideOpen && totalOpen > 0 && (
-																<span className="text-xs md:text-2xl font-black text-slate-400 dark:text-slate-500 whitespace-nowrap">
+																<span className="text-xs md:text-sm font-black text-slate-400 dark:text-slate-500 whitespace-nowrap">
 																	{totalQty > 0 ? `+ ${totalOpen} ab` : `${totalOpen} ab`}
 																</span>
 															)}
 														</div>
 													</td>
-													<td className="p-3 md:p-6 text-center border-r border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 group-hover:bg-blue-50/30 dark:group-hover:bg-blue-900/20 transition-colors">
+
+													{/* Desejável */}
+													<td className="p-3 md:p-5 text-center border-l border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 group-hover:bg-blue-50/30 dark:group-hover:bg-blue-900/20 transition-colors">
 														{hasDesired ? (
-															<span className="text-base md:text-2xl font-black text-slate-800 dark:text-slate-200">
+															<span className="text-sm md:text-lg font-black text-slate-800 dark:text-slate-200">
 																{desiredQty}
 															</span>
 														) : (
-															<span className="text-slate-300 dark:text-slate-600 font-black text-lg">-</span>
+															<span className="text-slate-300 dark:text-slate-600 font-black text-base">-</span>
 														)}
 													</td>
-													<td className="p-3 md:p-6 text-center border-r border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 group-hover:bg-blue-50/30 dark:group-hover:bg-blue-900/20 transition-colors">
+
+													{/* Diferença */}
+													<td className="p-3 md:p-5 text-center border-l border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 group-hover:bg-blue-50/30 dark:group-hover:bg-blue-900/20 transition-colors">
 														{hasDesired ? (
 															<div className="flex flex-col items-center justify-center">
 																{diff < 0 ? (
-																	<span className="px-2.5 md:px-3 py-1 rounded-full bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 font-black whitespace-nowrap text-sm md:text-lg border border-rose-100 dark:border-rose-900/50 shadow-sm">
+																	<span className="px-2 md:px-2.5 py-0.5 md:py-1 rounded-full bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 font-black whitespace-nowrap text-xs md:text-base border border-rose-100 dark:border-rose-900/50 shadow-sm">
 																		Faltando {Math.abs(diff)}
 																	</span>
 																) : diff > 0 ? (
-																	<span className="px-2.5 md:px-3 py-1 rounded-full bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 font-black whitespace-nowrap text-sm md:text-lg border border-emerald-100 dark:border-emerald-900/50 shadow-sm">
+																	<span className="px-2 md:px-2.5 py-0.5 md:py-1 rounded-full bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 font-black whitespace-nowrap text-xs md:text-base border border-emerald-100 dark:border-emerald-900/50 shadow-sm">
 																		Sobrando {diff}
 																	</span>
 																) : (
-																	<span className="px-2.5 md:px-3 py-1 rounded-full bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 font-black whitespace-nowrap text-sm md:text-lg border border-blue-100 dark:border-blue-900/50 shadow-sm">
+																	<span className="px-2 md:px-2.5 py-0.5 md:py-1 rounded-full bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 font-black whitespace-nowrap text-xs md:text-base border border-blue-100 dark:border-blue-900/50 shadow-sm">
 																		Ideal
 																	</span>
 																)}
 															</div>
 														) : (
-															<span className="text-slate-300 dark:text-slate-600 font-black text-lg">-</span>
+															<span className="text-slate-300 dark:text-slate-600 font-black text-base">-</span>
 														)}
 													</td>
-													<td className="p-3 md:p-6 text-center bg-white dark:bg-slate-900 group-hover:bg-blue-50/30 dark:group-hover:bg-blue-900/20 transition-colors">
+
+													{/* Pacotes a Pedir */}
+													<td className="p-3 md:p-5 text-center border-l border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 group-hover:bg-blue-50/30 dark:group-hover:bg-blue-900/20 transition-colors">
 														{boxMessageNode ? (
 															boxMessageNode
 														) : (
-															<span className="text-slate-300 dark:text-slate-600 font-bold text-xs md:text-sm">
+															<span className="text-slate-300 dark:text-slate-600 font-bold text-xs">
 																{boxSize === 0 && hasDesired ? "(Configurar cx nas metas)" : "-"}
 															</span>
 														)}
@@ -720,22 +808,27 @@ export default function EstoquePedidosPage() {
 									return (
 										<tfoot>
 											<tr className="bg-slate-100/80 dark:bg-slate-800/90 border-t-2 border-slate-300 dark:border-slate-600 font-black">
-												<td className="p-3 md:p-6 text-sm md:text-xl font-black text-slate-800 dark:text-slate-100 uppercase">
-													TOTAL												</td>
-												<td className="p-3 md:p-6 border-l border-r border-slate-200 dark:border-slate-700 text-center text-slate-400 dark:text-slate-500">
+												<td className="p-3 md:p-5 text-xs md:text-lg font-black text-slate-800 dark:text-slate-100 uppercase sticky left-0 bg-slate-100 dark:bg-slate-800 z-10">
+													TOTAL
+												</td>
+												{STORE_ORDER.map((storeId) => (
+													<td key={storeId} className="p-2 md:p-4 border-l border-slate-200 dark:border-slate-700 text-center text-slate-400 dark:text-slate-500">
+														-
+													</td>
+												))}
+												<td className="p-3 md:p-5 border-l-2 border-slate-300 dark:border-slate-600 text-center text-slate-400 dark:text-slate-500">
 													-
 												</td>
-												<td className="p-3 md:p-6 border-r border-slate-200 dark:border-slate-700 text-center text-slate-400 dark:text-slate-500">
+												<td className="p-3 md:p-5 border-l border-slate-200 dark:border-slate-700 text-center text-slate-400 dark:text-slate-500">
 													-
 												</td>
-												<td className="p-3 md:p-6 border-r border-slate-200 dark:border-slate-700 text-center text-slate-400 dark:text-slate-500">
+												<td className="p-3 md:p-5 border-l border-slate-200 dark:border-slate-700 text-center text-slate-400 dark:text-slate-500">
 													-
 												</td>
-												<td className="p-3 md:p-6 text-center">
+												<td className="p-3 md:p-5 border-l border-slate-200 dark:border-slate-700 text-center">
 													{totalBoxesToOrder > 0 ? (
 														<div className="flex flex-col items-center">
-															<span className="text-base md:text-xl font-black text-slate-800 dark:text-slate-200">
-																{" "}
+															<span className="text-sm md:text-lg font-black text-slate-800 dark:text-slate-200">
 																<span className="text-rose-600 dark:text-rose-400 font-black">
 																	{totalBoxesToOrder}
 																</span>{" "}
@@ -744,8 +837,7 @@ export default function EstoquePedidosPage() {
 														</div>
 													) : (
 														<div className="flex flex-col items-center">
-															<span className="text-base md:text-xl font-black text-slate-800 dark:text-slate-200">
-																{" "}
+															<span className="text-sm md:text-lg font-black text-slate-800 dark:text-slate-200">
 																<span className="text-blue-600 dark:text-blue-400 font-black">
 																	0
 																</span>{" "}
