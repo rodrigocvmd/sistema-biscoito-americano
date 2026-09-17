@@ -468,37 +468,114 @@ export default function EstoqueReposicionarPage() {
 	const sortedItems = sortStockEntries(Object.entries(STOCK_LABELS))
 		.filter(([_, label]) => label.toLowerCase().includes(searchTerm.toLowerCase()));
 
+	const TARGET_STORES_ORDER: StoreId[] = ["noroeste", "conjunto", "terraco"];
+
 	const calculateOptimizedSummary = () => {
 		const movements: { item: keyof StockData; from: StoreId; to: StoreId; qty: number }[] = [];
-		sortedItems.forEach(([itemKey, _]) => {
-			const storeChanges: { storeId: StoreId; diff: number }[] = [];
-			allData.forEach((store) => {
-				const initial = store.stock[itemKey] || 0;
-				const projected = projectedStocks[store.id][itemKey] || 0;
-				const diff = projected - initial;
-				if (diff !== 0) storeChanges.push({ storeId: store.id, diff });
+		const allItems = sortStockEntries(Object.entries(STOCK_LABELS));
+
+		allItems.forEach(([itemKey, _]) => {
+			const lagoInitial = allData.find((d) => d.id === "lago")?.stock[itemKey] || 0;
+
+			// Calcula a necessidade física de cada loja de destino (apenas se projetado > inicial)
+			const storeNeeds = TARGET_STORES_ORDER.map((storeId) => {
+				const initial = allData.find((d) => d.id === storeId)?.stock[itemKey] || 0;
+				const projected = projectedStocks[storeId]?.[itemKey] || 0;
+				const needed = Math.max(0, projected - initial);
+				return { storeId, needed };
 			});
-			const sources = storeChanges.filter((c) => c.diff < 0).sort((a, b) => a.diff - b.diff);
-			const sinks = storeChanges.filter((c) => c.diff > 0).sort((a, b) => b.diff - a.diff);
-			let sourceIdx = 0;
-			let sinkIdx = 0;
-			while (sourceIdx < sources.length && sinkIdx < sinks.length) {
-				const source = sources[sourceIdx];
-				const sink = sinks[sinkIdx];
-				const amountToMove = Math.min(Math.abs(source.diff), sink.diff);
-				movements.push({
-					item: itemKey,
-					from: source.storeId,
-					to: sink.storeId,
-					qty: amountToMove,
+
+			const totalNeeded = storeNeeds.reduce((sum, s) => sum + s.needed, 0);
+			if (totalNeeded === 0 || lagoInitial <= 0) {
+				return;
+			}
+
+			// Se Lago tem estoque suficiente para suprir todas as necessidades das demais lojas:
+			if (lagoInitial >= totalNeeded) {
+				storeNeeds.forEach(({ storeId, needed }) => {
+					if (needed > 0) {
+						movements.push({
+							item: itemKey,
+							from: "lago",
+							to: storeId,
+							qty: needed,
+						});
+					}
 				});
-				source.diff += amountToMove;
-				sink.diff -= amountToMove;
-				if (source.diff === 0) sourceIdx++;
-				if (sink.diff === 0) sinkIdx++;
+			} else {
+				// Caso o Lago tenha menos estoque do que a soma das necessidades:
+				// Distribui o estoque disponível do Lago proporcionalmente
+				const allocations: { storeId: StoreId; qty: number; remainder: number }[] = storeNeeds.map(
+					({ storeId, needed }) => {
+						if (needed === 0) return { storeId, qty: 0, remainder: 0 };
+						const raw = (needed / totalNeeded) * lagoInitial;
+						const floorQty = Math.floor(raw);
+						return {
+							storeId,
+							qty: floorQty,
+							remainder: raw - floorQty,
+						};
+					}
+				);
+
+				let allocatedSum = allocations.reduce((sum, a) => sum + a.qty, 0);
+				let unassigned = lagoInitial - allocatedSum;
+
+				// Distribui eventuais unidades restantes para as lojas com maiores frações
+				allocations
+					.slice()
+					.sort((a, b) => b.remainder - a.remainder)
+					.forEach((alloc) => {
+						if (unassigned > 0 && alloc.remainder > 0) {
+							const target = allocations.find((a) => a.storeId === alloc.storeId);
+							if (target) {
+								target.qty += 1;
+								unassigned -= 1;
+							}
+						}
+					});
+
+				TARGET_STORES_ORDER.forEach((sId) => {
+					const alloc = allocations.find((a) => a.storeId === sId);
+					if (alloc && alloc.qty > 0) {
+						movements.push({
+							item: itemKey,
+							from: "lago",
+							to: sId,
+							qty: alloc.qty,
+						});
+					}
+				});
 			}
 		});
-		return movements;
+
+		// Ordena os movimentos finais garantindo rigorosamente a sequência: Lago -> Noroeste, Lago -> Conjunto, Lago -> Terraço
+		return movements.sort((a, b) => {
+			return TARGET_STORES_ORDER.indexOf(a.to) - TARGET_STORES_ORDER.indexOf(b.to);
+		});
+	};
+
+	const calculateAdjustedPhysicalStocks = () => {
+		const movements = calculateOptimizedSummary();
+		const adjusted: Record<StoreId, Partial<StockData>> = {
+			lago: {},
+			noroeste: {},
+			conjunto: {},
+			terraco: {},
+		};
+
+		// Inicia com o estoque real atual de cada loja
+		allData.forEach((store) => {
+			adjusted[store.id] = { ...store.stock };
+		});
+
+		// Aplica apenas as transferências que fisicamente saem do Lago para as demais lojas
+		movements.forEach((move) => {
+			adjusted[move.from][move.item] = (adjusted[move.from][move.item] || 0) - move.qty;
+			adjusted[move.to][move.item] = (adjusted[move.to][move.item] || 0) + move.qty;
+		});
+
+		return adjusted;
 	};
 
 	const handleRequestFinalize = () => {
@@ -519,6 +596,8 @@ export default function EstoqueReposicionarPage() {
 
 		setSavingRepos(true);
 		try {
+			const adjustedStocks = calculateAdjustedPhysicalStocks();
+
 			await runTransaction(db, async (transaction) => {
 				for (const move of optimizedMovements) {
 					const newId = doc(collection(db, "unused")).id;
@@ -528,9 +607,9 @@ export default function EstoqueReposicionarPage() {
 						fromStore: move.from,
 						toStore: move.to,
 						beforeFrom: allData.find((d) => d.id === move.from)?.stock[move.item] || 0,
-						afterFrom: projectedStocks[move.from][move.item] || 0,
+						afterFrom: adjustedStocks[move.from][move.item] || 0,
 						beforeTo: allData.find((d) => d.id === move.to)?.stock[move.item] || 0,
-						afterTo: projectedStocks[move.to][move.item] || 0,
+						afterTo: adjustedStocks[move.to][move.item] || 0,
 						difference: move.qty,
 					};
 					transaction.set(doc(db, "stores", move.from, "repositions", newId), historyEntry);
@@ -538,7 +617,7 @@ export default function EstoqueReposicionarPage() {
 				}
 			});
 
-			// Salva a versão final do estoque de todas as lojas para futuras comparações
+			// Salva a versão final do estoque de todas as lojas ajustada à realidade física
 			const currentSessionId = localStorage.getItem("repos_session_id") || doc(collection(db, "unused")).id;
 			const formattedNow = formatDate(new Date());
 			const endState = {
@@ -548,19 +627,19 @@ export default function EstoqueReposicionarPage() {
 				formattedDate: formattedNow,
 				stores: {
 					lago: {
-						stock: projectedStocks.lago,
+						stock: adjustedStocks.lago,
 						isUnits: allData.find((d) => d.id === "lago")?.isUnits || {},
 					},
 					conjunto: {
-						stock: projectedStocks.conjunto,
+						stock: adjustedStocks.conjunto,
 						isUnits: allData.find((d) => d.id === "conjunto")?.isUnits || {},
 					},
 					terraco: {
-						stock: projectedStocks.terraco,
+						stock: adjustedStocks.terraco,
 						isUnits: allData.find((d) => d.id === "terraco")?.isUnits || {},
 					},
 					noroeste: {
-						stock: projectedStocks.noroeste,
+						stock: adjustedStocks.noroeste,
 						isUnits: allData.find((d) => d.id === "noroeste")?.isUnits || {},
 					},
 				},
@@ -569,9 +648,12 @@ export default function EstoqueReposicionarPage() {
 			await setDoc(doc(db, "repositionState", "latest"), endState);
 			localStorage.removeItem("repos_session_id");
 
+			// Atualiza o estado da tela para o estoque físico ajustado
+			setProjectedStocks(adjustedStocks);
+			localStorage.setItem("repos_projected_stocks", JSON.stringify(adjustedStocks));
+
 			setLastFinalizedDate(formattedNow);
 			localStorage.setItem("repos_last_finalized_date", formattedNow);
-			localStorage.setItem("repos_projected_stocks", JSON.stringify(projectedStocks));
 			isSavedThisRun.current = true;
 			setIsFinalizedSession(true);
 			setShowSummary(false);
@@ -684,11 +766,8 @@ export default function EstoqueReposicionarPage() {
 			});
 		});
 
-		const storeOrder: StoreId[] = ["lago", "terraco", "conjunto", "noroeste"];
 		const sortedGroups = Array.from(grouped.values()).sort((a, b) => {
-			const fromDiff = storeOrder.indexOf(a.from) - storeOrder.indexOf(b.from);
-			if (fromDiff !== 0) return fromDiff;
-			return storeOrder.indexOf(a.to) - storeOrder.indexOf(b.to);
+			return TARGET_STORES_ORDER.indexOf(a.to) - TARGET_STORES_ORDER.indexOf(b.to);
 		});
 
 		return (
@@ -778,12 +857,8 @@ export default function EstoqueReposicionarPage() {
 			});
 		});
 
-		const storeOrder: StoreId[] = ["lago", "terraco", "conjunto", "noroeste"];
-
 		const sortedGroups = Array.from(grouped.values()).sort((a, b) => {
-			const fromDiff = storeOrder.indexOf(a.from) - storeOrder.indexOf(b.from);
-			if (fromDiff !== 0) return fromDiff;
-			return storeOrder.indexOf(a.to) - storeOrder.indexOf(b.to);
+			return TARGET_STORES_ORDER.indexOf(a.to) - TARGET_STORES_ORDER.indexOf(b.to);
 		});
 
 		let text = `*Resumo de Reposicionamento - ${new Date().toLocaleDateString("pt-BR")}*\n\n`;
@@ -1592,12 +1667,8 @@ export default function EstoqueReposicionarPage() {
 											});
 										});
 
-										const storeOrder: StoreId[] = ["lago", "terraco", "conjunto", "noroeste"];
-
 										const sortedGroups = Array.from(grouped.values()).sort((a, b) => {
-											const fromDiff = storeOrder.indexOf(a.from) - storeOrder.indexOf(b.from);
-											if (fromDiff !== 0) return fromDiff;
-											return storeOrder.indexOf(a.to) - storeOrder.indexOf(b.to);
+											return TARGET_STORES_ORDER.indexOf(a.to) - TARGET_STORES_ORDER.indexOf(b.to);
 										});
 
 										return (
@@ -1631,67 +1702,7 @@ export default function EstoqueReposicionarPage() {
 													})}
 												</div>
 
-												{/* Visão exclusiva de Impressão: Usando estrutura table para repetir margem de cabeçalho no topo de TODAS as folhas */}
-												<table className="hidden print:table w-full border-collapse border-none bg-transparent">
-													<thead className="print:table-header-group">
-														<tr>
-															<th className="h-8 print:h-12 border-none bg-transparent p-0"></th>
-														</tr>
-													</thead>
-													<tfoot className="print:table-footer-group">
-														<tr>
-															<th className="h-6 print:h-8 border-none bg-transparent p-0"></th>
-														</tr>
-													</tfoot>
-													<tbody className="print:table-row-group">
-														<tr>
-															<td className="border-none bg-transparent p-0">
-																<div className="flex flex-col space-y-4 print:space-y-10 w-full pl-2">
-																	{sortedGroups.map((group, groupIdx) => {
-																		const totalGroupQty = group.items.reduce((acc, item) => acc + item.qty, 0);
-
-																		return (
-																			<div
-																				key={`print-${groupIdx}`}
-																				className="flex flex-row items-stretch gap-3 print:gap-x-6 w-full text-left mb-3 print:mb-8 break-inside-avoid page-break-inside-avoid">
-																				{[0, 1].map((copyIndex) => (
-																					<div
-																						key={`${groupIdx}-${copyIndex}`}
-																						className="bg-white border border-slate-400 rounded-xl p-3 break-inside-avoid page-break-inside-avoid shadow-none text-left w-[18.5rem] flex flex-col justify-between">
-																						<div>
-																							<div className="flex items-center justify-start gap-2 mb-2 pb-1.5 border-b border-slate-300 text-left">
-																								<span className="font-black text-black text-[11.5pt] flex items-center gap-1.5 text-left whitespace-nowrap uppercase">
-																									{STORE_NAMES[group.from]}
-																									<ArrowRight size={14} className="text-black" />
-																									{STORE_NAMES[group.to]}:
-																								</span>
-																							</div>
-																							<ul className="space-y-1.5 mt-2 text-left">
-																								{group.items.map((item, i) => (
-																									<li key={i} className="flex items-center justify-start gap-2 text-black font-bold text-[11pt] text-left whitespace-nowrap">
-																										<span className="w-3.5 h-3.5 rounded border border-black flex-shrink-0 inline-block" />
-																										<span className="text-left">
-																											<strong className="font-black text-black mr-1">{item.qty}</strong>
-																											{item.label}
-																										</span>
-																									</li>
-																								))}
-																							</ul>
-																						</div>
-																						<div className="mt-3 pt-1.5 border-t border-slate-400 flex items-center justify-between text-black text-[11pt] font-black">
-																							<span>Total:</span>
-																							<span>{totalGroupQty} pacotes</span>
-																						</div>
-																					</div>
-																				))}
-																			</div>
-																		);
-																	})}
-																</div>
-															</td>
-														</tr>
-													</tbody>
-												</table>
+												{renderPrintableReceipt()}
 											</div>
 										);
 									})()}
