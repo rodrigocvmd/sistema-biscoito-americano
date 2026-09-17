@@ -399,7 +399,7 @@ export default function EstoquePedidosPage() {
 		}));
 	};
 
-	// Helper para obter os pacotes sugeridos ou calculados a partir dos pedidos das lojas
+	// Helper para obter os pacotes sugeridos ou calculados a partir dos pedidos das lojas (coluna 'Pacotes a pedir')
 	const getSuggestedOrderPackages = (itemKey: keyof StockData): number => {
 		const sumStores = STORE_ORDER.reduce((sum, sId) => sum + (Number(storeOrderPackages[sId]?.[itemKey]) || 0), 0);
 		const boxSize = boxSizes[itemKey] || 0;
@@ -412,18 +412,6 @@ export default function EstoquePedidosPage() {
 			return sumStores;
 		}
 
-		// Fallback: cálculo de déficit se o usuário ainda não adicionou manualmente
-		const sumDeficits = STORE_ORDER.reduce((acc, sId) => {
-			const store = allData.find((s) => s.id === sId);
-			const stockVal = store?.stock[itemKey] || 0;
-			const desVal = storeDesired[sId]?.[itemKey] || 0;
-			return acc + Math.max(0, desVal - stockVal);
-		}, 0);
-
-		if (sumDeficits > 0 && boxSize > 0) {
-			const boxesCount = Math.ceil(sumDeficits / boxSize);
-			return boxesCount * boxSize;
-		}
 		return 0;
 	};
 
@@ -572,6 +560,16 @@ export default function EstoquePedidosPage() {
 		setCustomOrderPackages(resetObj);
 	};
 
+	const handleReviewOrder = () => {
+		const syncedObj: Partial<Record<keyof StockData, number>> = {};
+		Object.keys(STOCK_LABELS).forEach((k) => {
+			const itemKey = k as keyof StockData;
+			syncedObj[itemKey] = getSuggestedOrderPackages(itemKey);
+		});
+		setCustomOrderPackages(syncedObj);
+		setActiveSubTab("valorPedido");
+	};
+
 	if (loading) {
 		return (
 			<div className="flex flex-col items-center justify-center p-12">
@@ -678,7 +676,7 @@ export default function EstoquePedidosPage() {
 					COMPARATIVO DE ESTOQUE
 				</button>
 				<button
-					onClick={() => setActiveSubTab("valorPedido")}
+					onClick={handleReviewOrder}
 					className={`flex items-center gap-2 px-3 md:px-4 py-2 rounded-xl text-xs md:text-sm font-black whitespace-nowrap shrink-0 transition-all cursor-pointer ${
 						activeSubTab === "valorPedido"
 							? "bg-slate-105 dark:bg-slate-800 text-blue-600 dark:text-blue-400 border border-slate-200 dark:border-slate-700"
@@ -789,7 +787,7 @@ export default function EstoquePedidosPage() {
 							</button>
 
 							<button
-								onClick={() => setActiveSubTab("valorPedido")}
+								onClick={handleReviewOrder}
 								className="flex-1 sm:flex-none justify-center flex items-center gap-2 md:gap-2.5 bg-emerald-600 hover:bg-emerald-700 text-white px-4 md:px-6 py-2.5 md:py-3 rounded-2xl font-black shadow-lg shadow-emerald-600/20 dark:shadow-none hover:scale-[1.02] active:scale-95 transition-all cursor-pointer text-xs md:text-sm uppercase tracking-wider">
 								<ShoppingCart size={18} />
 								REVISAR PEDIDO
@@ -1127,7 +1125,7 @@ export default function EstoquePedidosPage() {
 					{/* Botão Inferior: Revisar Pedido */}
 					<div className="flex justify-center items-center py-5 print:hidden">
 						<button
-							onClick={() => setActiveSubTab("valorPedido")}
+							onClick={handleReviewOrder}
 							className="flex items-center justify-center gap-2.5 bg-emerald-600 hover:bg-emerald-700 text-white px-8 md:px-12 py-3.5 md:py-4 rounded-2xl font-black text-xs md:text-sm shadow-xl shadow-emerald-500/20 dark:shadow-none hover:shadow-emerald-500/30 hover:scale-[1.02] active:scale-95 transition-all cursor-pointer uppercase tracking-widest">
 							<ShoppingCart size={18} />
 							REVISAR PEDIDO
