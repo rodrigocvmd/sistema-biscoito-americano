@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ChevronLeft, ZoomIn, ZoomOut, LayoutDashboard, Package, Store } from "lucide-react";
+import { ChevronLeft, ZoomIn, ZoomOut, LayoutDashboard, Package, Store, Users } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -17,6 +17,7 @@ export default function GerenciaLayout({
 	const tabs = [
 		{ id: "insumos", label: "Insumos", href: "/gerencia/insumos", icon: LayoutDashboard },
 		{ id: "estoque", label: "Estoque", href: "/gerencia/estoque/atual", icon: Package },
+		{ id: "funcionarios", label: "Funcionários", href: "/gerencia/funcionarios", icon: Users },
 	];
 
 	useEffect(() => {
