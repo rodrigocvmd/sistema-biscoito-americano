@@ -15,9 +15,14 @@ import {
 import FuncionariosTab from "./components/funcionarios-tab";
 import EscalaTab from "./components/escala-tab";
 import FinanceiroTab from "./components/financeiro-tab";
-import { Calendar, DollarSign, Users, Loader2 } from "lucide-react";
+import HorariosTab from "./components/horarios-tab";
+import { Calendar, DollarSign, Users, Loader2, Clock } from "lucide-react";
+import {
+	subscribeLojasHorarios,
+} from "@/lib/funcionarios-service";
+import { HorarioSemanaLoja, HORARIO_PADRAO_SEMANA } from "@/types/funcionarios";
 
-type MainSubTab = "escala" | "financeiro" | "funcionarios";
+type MainSubTab = "escala" | "horarios" | "financeiro" | "funcionarios";
 
 export default function FuncionariosPage() {
 	const [activeTab, setActiveTab] = useState<MainSubTab>("escala");
@@ -26,6 +31,12 @@ export default function FuncionariosPage() {
 	const [funcionarios, setFuncionarios] = useState<Funcionario[]>([]);
 	const [escalas, setEscalas] = useState<EscalaItem[]>([]);
 	const [lancamentos, setLancamentos] = useState<LancamentoFinanceiro[]>([]);
+	const [lojasHorarios, setLojasHorarios] = useState<Record<StoreId, HorarioSemanaLoja>>({
+		conjunto: HORARIO_PADRAO_SEMANA,
+		terraco: HORARIO_PADRAO_SEMANA,
+		lago: HORARIO_PADRAO_SEMANA,
+		noroeste: HORARIO_PADRAO_SEMANA,
+	});
 	const [loading, setLoading] = useState(true);
 
 	// Estado do Mês/Ano selecionado (formato YYYY-MM)
@@ -36,7 +47,7 @@ export default function FuncionariosPage() {
 		return `${year}-${month}`;
 	});
 
-	// Loja selecionada para a aba de Escala
+	// Loja selecionada para a aba de Escala e Horários
 	const [selectedLojaEscala, setSelectedLojaEscala] = useState<StoreId>("lago");
 
 	// Inscrição em Tempo Real: Funcionários
@@ -44,6 +55,14 @@ export default function FuncionariosPage() {
 		const unsubscribe = subscribeFuncionarios((data) => {
 			setFuncionarios(data);
 			setLoading(false);
+		});
+		return () => unsubscribe();
+	}, []);
+
+	// Inscrição em Tempo Real: Horários das Lojas
+	useEffect(() => {
+		const unsubscribe = subscribeLojasHorarios((configs) => {
+			setLojasHorarios(configs);
 		});
 		return () => unsubscribe();
 	}, []);
@@ -66,6 +85,7 @@ export default function FuncionariosPage() {
 
 	const subTabs: { id: MainSubTab; label: string; icon: typeof Calendar; count?: number }[] = [
 		{ id: "escala", label: "Escala", icon: Calendar, count: escalas.length },
+		{ id: "horarios", label: "Horários", icon: Clock },
 		{ id: "financeiro", label: "Financeiro", icon: DollarSign },
 		{ id: "funcionarios", label: "Funcionários", icon: Users, count: funcionarios.length },
 	];
@@ -133,6 +153,15 @@ export default function FuncionariosPage() {
 							onSelectLoja={setSelectedLojaEscala}
 							mesAnoStr={mesAnoStr}
 							onChangeMesAno={setMesAnoStr}
+							lojasHorarios={lojasHorarios}
+						/>
+					)}
+
+					{activeTab === "horarios" && (
+						<HorariosTab
+							lojasHorarios={lojasHorarios}
+							selectedLoja={selectedLojaEscala}
+							onSelectLoja={setSelectedLojaEscala}
 						/>
 					)}
 

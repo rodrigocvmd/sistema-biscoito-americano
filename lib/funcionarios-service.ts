@@ -3,6 +3,7 @@ import {
 	collection,
 	doc,
 	addDoc,
+	setDoc,
 	updateDoc,
 	deleteDoc,
 	onSnapshot,
@@ -14,12 +15,19 @@ import {
 	getDocs,
 	writeBatch,
 } from "firebase/firestore";
-import { Funcionario, EscalaItem, LancamentoFinanceiro } from "@/types/funcionarios";
+import {
+	Funcionario,
+	EscalaItem,
+	LancamentoFinanceiro,
+	HorarioSemanaLoja,
+	HORARIO_PADRAO_SEMANA,
+} from "@/types/funcionarios";
 import { StoreId } from "@/types";
 
 const FUNCIONARIOS_COLLECTION = "funcionarios";
 const ESCALAS_COLLECTION = "escalas";
 const FINANCEIRO_COLLECTION = "financeiro_lancamentos";
+const LOJAS_HORARIOS_COLLECTION = "lojas_horarios";
 
 // ==================== FUNCIONÁRIOS ====================
 
@@ -144,6 +152,156 @@ export const updateEscala = async (id: string, data: Partial<Omit<EscalaItem, "i
 export const deleteEscala = async (id: string) => {
 	const ref = doc(db, ESCALAS_COLLECTION, id);
 	return await deleteDoc(ref);
+};
+
+export interface GerarEscalaMensalParams {
+	funcionarioId: string;
+	funcionarioNome: string;
+	funcionarioCargo?: string;
+	lojaId: StoreId;
+	mesAnoStr: string; // YYYY-MM
+	regime: "12x36" | "6x1";
+	primeiroDiaTrabalho: string; // YYYY-MM-DD
+	horarioInicio: string; // ex: "10:00"
+	horarioFim: string; // ex: "22:00" (12h) ou "19:00" (9h)
+	diaDescansoSemanal?: number; // 0 = Domingo, 1 = Segunda, ..., 6 = Sábado
+	gerarDiasDeFolga?: boolean;
+}
+
+export const gerarEscalaAutomaticaMes = async (params: GerarEscalaMensalParams) => {
+	const {
+		funcionarioId,
+		funcionarioNome,
+		funcionarioCargo,
+		lojaId,
+		mesAnoStr,
+		regime,
+		primeiroDiaTrabalho,
+		horarioInicio,
+		horarioFim,
+		diaDescansoSemanal = 0,
+		gerarDiasDeFolga = true,
+	} = params;
+
+	const [ano, mes] = mesAnoStr.split("-").map(Number);
+	const totalDiasMes = new Date(ano, mes, 0).getDate();
+	const startDay = parseInt(primeiroDiaTrabalho.split("-")[2], 10);
+
+	// 1. Buscar escalas pré-existentes deste colaborador nesta loja e mês para limpar e não duplicar
+	const startPrefix = `${mesAnoStr}-01`;
+	const endPrefix = `${mesAnoStr}-31`;
+	const q = query(
+		collection(db, ESCALAS_COLLECTION),
+		where("funcionarioId", "==", funcionarioId),
+		where("lojaId", "==", lojaId),
+		where("data", ">=", startPrefix),
+		where("data", "<=", endPrefix)
+	);
+	const existingSnap = await getDocs(q);
+
+	const batch = writeBatch(db);
+
+	// Remove escalas antigas deste colaborador no mês nesta loja
+	existingSnap.forEach((d) => {
+		batch.delete(d.ref);
+	});
+
+	let countTrabalho = 0;
+	let countFolga = 0;
+
+	// 2. Gerar conforme o regime
+	if (regime === "12x36") {
+		// Dias alternados a partir de startDay
+		for (let day = startDay; day <= totalDiasMes; day++) {
+			const dateStr = `${ano}-${String(mes).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+			const isWorkDay = (day - startDay) % 2 === 0;
+
+			if (isWorkDay) {
+				const newRef = doc(collection(db, ESCALAS_COLLECTION));
+				const dataPayload = sanitizeData({
+					funcionarioId,
+					funcionarioNome,
+					funcionarioCargo,
+					lojaId,
+					data: dateStr,
+					turno: "integral",
+					horarioInicio,
+					horarioFim,
+					observacoes: "Escala 12x36",
+					createdAt: serverTimestamp(),
+					updatedAt: serverTimestamp(),
+				});
+				batch.set(newRef, dataPayload);
+				countTrabalho++;
+			} else if (gerarDiasDeFolga) {
+				const newRef = doc(collection(db, ESCALAS_COLLECTION));
+				const dataPayload = sanitizeData({
+					funcionarioId,
+					funcionarioNome,
+					funcionarioCargo,
+					lojaId,
+					data: dateStr,
+					turno: "folga",
+					horarioInicio: "",
+					horarioFim: "",
+					observacoes: "Folga 12x36",
+					createdAt: serverTimestamp(),
+					updatedAt: serverTimestamp(),
+				});
+				batch.set(newRef, dataPayload);
+				countFolga++;
+			}
+		}
+	} else if (regime === "6x1") {
+		// 6 dias de trabalho por 1 dia de descanso na semana
+		for (let day = startDay; day <= totalDiasMes; day++) {
+			const dateStr = `${ano}-${String(mes).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+			const dateObj = new Date(ano, mes - 1, day);
+			const dayOfWeek = dateObj.getDay(); // 0 a 6
+
+			if (dayOfWeek === diaDescansoSemanal) {
+				if (gerarDiasDeFolga) {
+					const newRef = doc(collection(db, ESCALAS_COLLECTION));
+					const dataPayload = sanitizeData({
+						funcionarioId,
+						funcionarioNome,
+						funcionarioCargo,
+						lojaId,
+						data: dateStr,
+						turno: "folga",
+						horarioInicio: "",
+						horarioFim: "",
+						observacoes: "Descanso Semanal (6x1)",
+						createdAt: serverTimestamp(),
+						updatedAt: serverTimestamp(),
+					});
+					batch.set(newRef, dataPayload);
+					countFolga++;
+				}
+			} else {
+				const newRef = doc(collection(db, ESCALAS_COLLECTION));
+				const dataPayload = sanitizeData({
+					funcionarioId,
+					funcionarioNome,
+					funcionarioCargo,
+					lojaId,
+					data: dateStr,
+					turno: "personalizado",
+					horarioInicio,
+					horarioFim,
+					observacoes: "Escala 6x1 (9h)",
+					createdAt: serverTimestamp(),
+					updatedAt: serverTimestamp(),
+				});
+				batch.set(newRef, dataPayload);
+				countTrabalho++;
+			}
+		}
+	}
+
+	await batch.commit();
+
+	return { countTrabalho, countFolga };
 };
 
 // ==================== FINANCEIRO ====================
@@ -275,3 +433,51 @@ export const gerarFolhaAutomaticaMes = async (
 
 	return generatedCount;
 };
+
+// ==================== HORÁRIOS DAS LOJAS ====================
+
+export const subscribeLojasHorarios = (
+	callback: (configs: Record<StoreId, HorarioSemanaLoja>) => void
+) => {
+	const q = query(collection(db, LOJAS_HORARIOS_COLLECTION));
+	return onSnapshot(
+		q,
+		(snapshot) => {
+			const configs: Record<string, HorarioSemanaLoja> = {
+				conjunto: { ...HORARIO_PADRAO_SEMANA },
+				terraco: { ...HORARIO_PADRAO_SEMANA },
+				lago: { ...HORARIO_PADRAO_SEMANA },
+				noroeste: { ...HORARIO_PADRAO_SEMANA },
+			};
+
+			snapshot.docs.forEach((d) => {
+				const data = d.data();
+				if (data.horarios) {
+					configs[d.id] = {
+						...HORARIO_PADRAO_SEMANA,
+						...data.horarios,
+					};
+				}
+			});
+
+			callback(configs as Record<StoreId, HorarioSemanaLoja>);
+		},
+		(error) => {
+			console.error("Erro ao escutar horários das lojas:", error);
+		}
+	);
+};
+
+export const saveLojaHorarios = async (lojaId: StoreId, horarios: HorarioSemanaLoja) => {
+	const ref = doc(db, LOJAS_HORARIOS_COLLECTION, lojaId);
+	return await setDoc(
+		ref,
+		{
+			lojaId,
+			horarios,
+			updatedAt: serverTimestamp(),
+		},
+		{ merge: true }
+	);
+};
+

@@ -29,6 +29,33 @@ export type TurnoTipo =
 	| "folga"
 	| "personalizado";
 
+export type RegimeEscala = "12x36" | "6x1";
+
+export interface DiaHorarioLoja {
+	ativo: boolean;
+	abertura: string;
+	fechamento: string;
+}
+
+export type HorarioSemanaLoja = Record<number, DiaHorarioLoja>;
+
+export interface LojaHorarioConfig {
+	id?: string;
+	lojaId: StoreId;
+	horarios: HorarioSemanaLoja;
+	updatedAt?: any;
+}
+
+export const HORARIO_PADRAO_SEMANA: HorarioSemanaLoja = {
+	1: { ativo: true, abertura: "10:00", fechamento: "22:00" }, // Segunda
+	2: { ativo: true, abertura: "10:00", fechamento: "22:00" }, // Terça
+	3: { ativo: true, abertura: "10:00", fechamento: "22:00" }, // Quarta
+	4: { ativo: true, abertura: "10:00", fechamento: "22:00" }, // Quinta
+	5: { ativo: true, abertura: "10:00", fechamento: "22:00" }, // Sexta
+	6: { ativo: true, abertura: "10:00", fechamento: "22:00" }, // Sábado
+	0: { ativo: true, abertura: "12:00", fechamento: "20:00" }, // Domingo
+};
+
 export interface EscalaItem {
 	id: string;
 	funcionarioId: string;
@@ -36,7 +63,7 @@ export interface EscalaItem {
 	funcionarioCargo?: string;
 	lojaId: StoreId;
 	data: string; // YYYY-MM-DD
-	turno: TurnoTipo;
+	turno?: TurnoTipo;
 	horarioInicio?: string; // ex: "09:00"
 	horarioFim?: string; // ex: "17:00"
 	observacoes?: string;

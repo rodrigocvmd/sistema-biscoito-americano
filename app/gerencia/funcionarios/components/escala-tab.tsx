@@ -1,12 +1,19 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { EscalaItem, Funcionario, TURNO_CONFIG, TurnoTipo } from "@/types/funcionarios";
+import {
+	EscalaItem,
+	Funcionario,
+	RegimeEscala,
+	HorarioSemanaLoja,
+	HORARIO_PADRAO_SEMANA,
+} from "@/types/funcionarios";
 import { STORE_NAMES, StoreId } from "@/types";
 import {
 	createEscala,
 	updateEscala,
 	deleteEscala,
+	gerarEscalaAutomaticaMes,
 } from "@/lib/funcionarios-service";
 import {
 	ChevronLeft,
@@ -20,6 +27,13 @@ import {
 	Users,
 	Filter,
 	Sparkles,
+	Grid,
+	Columns,
+	AlertTriangle,
+	CalendarDays,
+	CheckCircle2,
+	Info,
+	Check,
 } from "lucide-react";
 
 interface EscalaTabProps {
@@ -29,6 +43,7 @@ interface EscalaTabProps {
 	onSelectLoja: (loja: StoreId) => void;
 	mesAnoStr: string; // YYYY-MM
 	onChangeMesAno: (novoMesAno: string) => void;
+	lojasHorarios: Record<StoreId, HorarioSemanaLoja>;
 }
 
 const STORES: { id: StoreId; name: string }[] = [
@@ -54,6 +69,155 @@ const MESES = [
 	"Dezembro",
 ];
 
+const DIAS_DESCANSO = [
+	{ value: 1, label: "Segunda-feira" },
+	{ value: 2, label: "Terça-feira" },
+	{ value: 3, label: "Quarta-feira" },
+	{ value: 4, label: "Quinta-feira" },
+	{ value: 5, label: "Sexta-feira" },
+	{ value: 6, label: "Sábado" },
+	{ value: 0, label: "Domingo" },
+];
+
+const parseTimeToMinutes = (timeStr?: string, defaultHour: number = 10): number => {
+	if (!timeStr) return defaultHour * 60;
+	const parts = timeStr.split(":").map(Number);
+	const h = isNaN(parts[0]) ? defaultHour : parts[0];
+	const m = isNaN(parts[1]) ? 0 : parts[1];
+	return h * 60 + m;
+};
+
+const calculateEndTime = (startTime: string, hoursToAdd: number): string => {
+	if (!startTime) return "";
+	const [h, m] = startTime.split(":").map(Number);
+	if (isNaN(h)) return "";
+	let newH = (h + hoursToAdd) % 24;
+	return `${String(newH).padStart(2, "0")}:${String(isNaN(m) ? 0 : m).padStart(2, "0")}`;
+};
+
+interface PositionedShift {
+	item: EscalaItem;
+	startMin: number;
+	endMin: number;
+	topPercent: number;
+	heightPercent: number;
+	colIndex: number;
+	totalCols: number;
+	hasOverlap: boolean;
+}
+
+// Algoritmo de posicionamento e sobreposição de horários baseado nos limites de funcionamento da loja naquele dia
+const computeDayLayout = (
+	dayEscalas: EscalaItem[],
+	storeAbertura: string = "10:00",
+	storeFechamento: string = "22:00"
+) => {
+	const storeStartMin = parseTimeToMinutes(storeAbertura, 10);
+	const storeEndMin = parseTimeToMinutes(storeFechamento, 22);
+	const storeTotalMin = Math.max(60, storeEndMin - storeStartMin);
+
+	const folgas: EscalaItem[] = [];
+	const timed: { item: EscalaItem; startMin: number; endMin: number }[] = [];
+
+	dayEscalas.forEach((e) => {
+		if (e.turno === "folga" || (!e.horarioInicio && !e.horarioFim)) {
+			folgas.push(e);
+		} else {
+			const rawStart = parseTimeToMinutes(e.horarioInicio, 10);
+			const rawEnd = parseTimeToMinutes(e.horarioFim, 22);
+
+			// Clampa aos limites da loja
+			const startMin = Math.max(storeStartMin, Math.min(storeEndMin, rawStart));
+			const finalEnd = rawEnd > rawStart ? rawEnd : rawStart + 60;
+			const endMin = Math.max(startMin + 30, Math.min(storeEndMin, finalEnd));
+
+			timed.push({ item: e, startMin, endMin });
+		}
+	});
+
+	// Ordena por horário de início
+	timed.sort((a, b) => a.startMin - b.startMin || b.endMin - a.endMin);
+
+	// Clusters de sobreposição
+	const clusters: { item: EscalaItem; startMin: number; endMin: number }[][] = [];
+	let currentCluster: { item: EscalaItem; startMin: number; endMin: number }[] = [];
+	let clusterEnd = -1;
+
+	timed.forEach((shift) => {
+		if (currentCluster.length === 0) {
+			currentCluster.push(shift);
+			clusterEnd = shift.endMin;
+		} else if (shift.startMin < clusterEnd) {
+			currentCluster.push(shift);
+			clusterEnd = Math.max(clusterEnd, shift.endMin);
+		} else {
+			clusters.push(currentCluster);
+			currentCluster = [shift];
+			clusterEnd = shift.endMin;
+		}
+	});
+	if (currentCluster.length > 0) {
+		clusters.push(currentCluster);
+	}
+
+	const positioned: PositionedShift[] = [];
+
+	clusters.forEach((cluster) => {
+		const columnEnds: number[] = [];
+		const clusterPositions: {
+			shift: { item: EscalaItem; startMin: number; endMin: number };
+			col: number;
+		}[] = [];
+
+		cluster.forEach((shift) => {
+			let col = columnEnds.findIndex((end) => end <= shift.startMin);
+			if (col === -1) {
+				col = columnEnds.length;
+				columnEnds.push(shift.endMin);
+			} else {
+				columnEnds[col] = shift.endMin;
+			}
+			clusterPositions.push({ shift, col });
+		});
+
+		const maxCols = Math.max(1, columnEnds.length);
+
+		clusterPositions.forEach(({ shift, col }) => {
+			const topPercent = Math.max(
+				0,
+				Math.min(100, ((shift.startMin - storeStartMin) / storeTotalMin) * 100)
+			);
+			const heightPercent = Math.max(
+				5,
+				Math.min(100 - topPercent, ((shift.endMin - shift.startMin) / storeTotalMin) * 100)
+			);
+
+			const overlapsWithOther = clusterPositions.some(
+				(other) =>
+					other.shift !== shift &&
+					Math.max(other.shift.startMin, shift.startMin) <
+						Math.min(other.shift.endMin, shift.endMin)
+			);
+
+			const totalCols = overlapsWithOther ? maxCols : 1;
+			const colIndex = overlapsWithOther ? col : 0;
+
+			positioned.push({
+				item: shift.item,
+				startMin: shift.startMin,
+				endMin: shift.endMin,
+				topPercent,
+				heightPercent,
+				colIndex,
+				totalCols,
+				hasOverlap: overlapsWithOther,
+			});
+		});
+	});
+
+	return { folgas, positioned, storeStartMin, storeEndMin, storeTotalMin };
+};
+
 export default function EscalaTab({
 	escalas,
 	funcionarios,
@@ -61,21 +225,73 @@ export default function EscalaTab({
 	onSelectLoja,
 	mesAnoStr,
 	onChangeMesAno,
+	lojasHorarios,
 }: EscalaTabProps) {
+	const [viewType, setViewType] = useState<"mes" | "semana">("mes");
 	const [selectedEmployeeFilter, setSelectedEmployeeFilter] = useState<string>("todos");
+	const [selectedWeekIndex, setSelectedWeekIndex] = useState<number>(0);
+
+	// Horários configurados para a loja atualmente selecionada
+	const lojaHorariosConfig = useMemo(() => {
+		return lojasHorarios[selectedLoja] || HORARIO_PADRAO_SEMANA;
+	}, [lojasHorarios, selectedLoja]);
+
+	// Horário padrão da loja para dias de semana úteis
+	const defaultStoreHours = useMemo(() => {
+		const seg = lojaHorariosConfig[1] || { ativo: true, abertura: "10:00", fechamento: "22:00" };
+		return {
+			abertura: seg.abertura || "10:00",
+			fechamento: seg.fechamento || "22:00",
+		};
+	}, [lojaHorariosConfig]);
+
+	// Extremos da régua semanal para esta loja (ex: 10:00 às 22:00)
+	const storeWeekRange = useMemo(() => {
+		let minH = 24;
+		let maxH = 0;
+
+		Object.values(lojaHorariosConfig).forEach((dia) => {
+			if (dia.ativo) {
+				const h1 = parseInt(dia.abertura.split(":")[0], 10);
+				const h2 = parseInt(dia.fechamento.split(":")[0], 10);
+				if (!isNaN(h1) && h1 < minH) minH = h1;
+				if (!isNaN(h2) && h2 > maxH) maxH = h2;
+			}
+		});
+
+		if (minH >= maxH) {
+			minH = 10;
+			maxH = 22;
+		}
+
+		const hours = Array.from({ length: maxH - minH + 1 }, (_, i) => minH + i);
+		return { minH, maxH, hours, totalMinutes: (maxH - minH) * 60 };
+	}, [lojaHorariosConfig]);
+
+	// Estado do Modal de Edição/Criação Pontual (SEM Turno / Modalidade)
 	const [isModalOpen, setIsModalOpen] = useState(false);
 	const [editingEscala, setEditingEscala] = useState<EscalaItem | null>(null);
-	const [selectedDateForNew, setSelectedDateForNew] = useState<string>("");
 	const [isSaving, setIsSaving] = useState(false);
-
-	// Form de Escala
 	const [formData, setFormData] = useState({
 		funcionarioId: "",
 		data: "",
-		turno: "abertura" as TurnoTipo,
-		horarioInicio: "09:00",
-		horarioFim: "17:00",
+		isFolga: false,
+		horarioInicio: "10:00",
+		horarioFim: "22:00",
 		observacoes: "",
+	});
+
+	// Estado do Modal de Geração Automática Mensal (12x36 ou 6x1)
+	const [isAutoModalOpen, setIsAutoModalOpen] = useState(false);
+	const [isGeneratingAuto, setIsGeneratingAuto] = useState(false);
+	const [autoFormData, setAutoFormData] = useState({
+		funcionarioId: "",
+		regime: "12x36" as RegimeEscala,
+		primeiroDiaTrabalho: `${mesAnoStr}-01`,
+		horarioInicio: defaultStoreHours.abertura,
+		horarioFim: defaultStoreHours.fechamento,
+		diaDescansoSemanal: 1, // Segunda-feira
+		gerarDiasDeFolga: true,
 	});
 
 	// Navegação de Mês
@@ -89,6 +305,7 @@ export default function EscalaTab({
 			novoAno--;
 		}
 		onChangeMesAno(`${novoAno}-${String(novoMes).padStart(2, "0")}`);
+		setSelectedWeekIndex(0);
 	};
 
 	const handleNextMonth = () => {
@@ -99,43 +316,52 @@ export default function EscalaTab({
 			novoAno++;
 		}
 		onChangeMesAno(`${novoAno}-${String(novoMes).padStart(2, "0")}`);
+		setSelectedWeekIndex(0);
 	};
 
 	const handleCurrentMonth = () => {
 		const now = new Date();
 		const currentStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
 		onChangeMesAno(currentStr);
+		setSelectedWeekIndex(0);
 	};
 
-	// Cálculo da grade do calendário
+	// Helper para obter o dia da semana a partir de YYYY-MM-DD
+	const getDayOfWeek = (dateStr: string) => {
+		const [y, m, d] = dateStr.split("-").map(Number);
+		return new Date(y, m - 1, d).getDay(); // 0 = Dom, 1 = Seg, ..., 6 = Sáb
+	};
+
+	// Cálculo dos dias do mês (calendário padrão Seg a Dom)
 	const calendarDays = useMemo(() => {
 		const firstDayOfMonth = new Date(ano, mes - 1, 1);
 		const lastDayOfMonth = new Date(ano, mes, 0);
 		const daysInMonth = lastDayOfMonth.getDate();
 
-		// Dia da semana do 1º dia (0 = Domingo, 1 = Segunda, etc.)
-		// Queremos começar na Segunda-feira (índice 0)
 		let startDayOfWeek = firstDayOfMonth.getDay() - 1;
-		if (startDayOfWeek === -1) startDayOfWeek = 6; // Domingo vira 6
+		if (startDayOfWeek === -1) startDayOfWeek = 6;
 
 		const days: {
 			dayNum: number | null;
 			dateStr: string;
 			isCurrentMonth: boolean;
 			isToday: boolean;
+			dayOfWeek: number;
 		}[] = [];
 
-		// Dias do mês anterior para preencher
+		// Dias do mês anterior
 		const prevMonthLastDay = new Date(ano, mes - 1, 0).getDate();
 		for (let i = startDayOfWeek - 1; i >= 0; i--) {
 			const dayVal = prevMonthLastDay - i;
 			const prevMonth = mes === 1 ? 12 : mes - 1;
 			const prevYear = mes === 1 ? ano - 1 : ano;
+			const dateStr = `${prevYear}-${String(prevMonth).padStart(2, "0")}-${String(dayVal).padStart(2, "0")}`;
 			days.push({
 				dayNum: dayVal,
-				dateStr: `${prevYear}-${String(prevMonth).padStart(2, "0")}-${String(dayVal).padStart(2, "0")}`,
+				dateStr,
 				isCurrentMonth: false,
 				isToday: false,
+				dayOfWeek: new Date(prevYear, prevMonth - 1, dayVal).getDay(),
 			});
 		}
 
@@ -152,6 +378,7 @@ export default function EscalaTab({
 				dateStr,
 				isCurrentMonth: true,
 				isToday: dateStr === todayStr,
+				dayOfWeek: new Date(ano, mes - 1, day).getDay(),
 			});
 		}
 
@@ -161,17 +388,28 @@ export default function EscalaTab({
 			const nextMonth = mes === 12 ? 1 : mes + 1;
 			const nextYear = mes === 12 ? ano + 1 : ano;
 			for (let i = 1; i <= remaining; i++) {
+				const dateStr = `${nextYear}-${String(nextMonth).padStart(2, "0")}-${String(i).padStart(2, "0")}`;
 				days.push({
 					dayNum: i,
-					dateStr: `${nextYear}-${String(nextMonth).padStart(2, "0")}-${String(i).padStart(2, "0")}`,
+					dateStr,
 					isCurrentMonth: false,
 					isToday: false,
+					dayOfWeek: new Date(nextYear, nextMonth - 1, i).getDay(),
 				});
 			}
 		}
 
 		return days;
 	}, [ano, mes]);
+
+	// Divide em semanas para a visualização semanal
+	const weeks = useMemo(() => {
+		const result: (typeof calendarDays)[] = [];
+		for (let i = 0; i < calendarDays.length; i += 7) {
+			result.push(calendarDays.slice(i, i + 7));
+		}
+		return result;
+	}, [calendarDays]);
 
 	// Escalas filtradas da loja atual
 	const lojaEscalas = useMemo(() => {
@@ -193,21 +431,133 @@ export default function EscalaTab({
 		return map;
 	}, [lojaEscalas]);
 
-	// Ações do Modal
-	const openCreateModal = (dateStr?: string) => {
+	// Cálculo da pré-visualização da geração automática
+	const autoPreview = useMemo(() => {
+		if (!autoFormData.funcionarioId || !autoFormData.primeiroDiaTrabalho) return null;
+		const totalDiasMes = new Date(ano, mes, 0).getDate();
+		const startDay = parseInt(autoFormData.primeiroDiaTrabalho.split("-")[2], 10) || 1;
+
+		let workDays = 0;
+		let restDays = 0;
+
+		if (autoFormData.regime === "12x36") {
+			for (let d = startDay; d <= totalDiasMes; d++) {
+				if ((d - startDay) % 2 === 0) workDays++;
+				else restDays++;
+			}
+		} else {
+			for (let d = startDay; d <= totalDiasMes; d++) {
+				const dt = new Date(ano, mes - 1, d);
+				if (dt.getDay() === autoFormData.diaDescansoSemanal) restDays++;
+				else workDays++;
+			}
+		}
+
+		return { workDays, restDays, totalDiasMes, startDay };
+	}, [autoFormData, ano, mes]);
+
+	// Ações do Modal de Geração Automática
+	const openAutoModal = () => {
+		const defaultFunc = funcionarios.find((f) => f.status === "ativo")?.id || "";
+		setAutoFormData({
+			funcionarioId: defaultFunc,
+			regime: "12x36",
+			primeiroDiaTrabalho: `${mesAnoStr}-01`,
+			horarioInicio: defaultStoreHours.abertura,
+			horarioFim: defaultStoreHours.fechamento, // 12h padrão
+			diaDescansoSemanal: 1, // Segunda-feira
+			gerarDiasDeFolga: true,
+		});
+		setIsAutoModalOpen(true);
+	};
+
+	const handleRegimeChange = (regime: RegimeEscala) => {
+		if (regime === "12x36") {
+			setAutoFormData((prev) => ({
+				...prev,
+				regime,
+				horarioInicio: defaultStoreHours.abertura,
+				horarioFim: calculateEndTime(defaultStoreHours.abertura, 12),
+			}));
+		} else {
+			setAutoFormData((prev) => ({
+				...prev,
+				regime,
+				horarioInicio: defaultStoreHours.abertura,
+				horarioFim: calculateEndTime(defaultStoreHours.abertura, 9),
+			}));
+		}
+	};
+
+	const handleStartTimeChange = (newStart: string) => {
+		const duration = autoFormData.regime === "12x36" ? 12 : 9;
+		const newEnd = calculateEndTime(newStart, duration);
+		setAutoFormData((prev) => ({
+			...prev,
+			horarioInicio: newStart,
+			horarioFim: newEnd,
+		}));
+	};
+
+	const handleAutoSubmit = async (e: React.FormEvent) => {
+		e.preventDefault();
+		if (!autoFormData.funcionarioId || !autoFormData.primeiroDiaTrabalho) return;
+
+		const func = funcionarios.find((f) => f.id === autoFormData.funcionarioId);
+		if (!func) return;
+
+		try {
+			setIsGeneratingAuto(true);
+			const { countTrabalho, countFolga } = await gerarEscalaAutomaticaMes({
+				funcionarioId: func.id,
+				funcionarioNome: func.apelido || func.nome,
+				funcionarioCargo: func.cargo,
+				lojaId: selectedLoja,
+				mesAnoStr,
+				regime: autoFormData.regime,
+				primeiroDiaTrabalho: autoFormData.primeiroDiaTrabalho,
+				horarioInicio: autoFormData.horarioInicio,
+				horarioFim: autoFormData.horarioFim,
+				diaDescansoSemanal: autoFormData.diaDescansoSemanal,
+				gerarDiasDeFolga: autoFormData.gerarDiasDeFolga,
+			});
+
+			alert(
+				`Escala do mês gerada com sucesso para ${func.nome}!\n` +
+					`• ${countTrabalho} dias de trabalho agendados (${autoFormData.regime === "12x36" ? "12h/dia" : "9h/dia"})\n` +
+					(countFolga > 0 ? `• ${countFolga} dias de descanso/folga registrados.\n\n` : "\n") +
+					`Você pode clicar em qualquer dia no calendário para fazer ajustes pontuais específicos sem afetar os outros dias.`
+			);
+
+			setIsAutoModalOpen(false);
+		} catch (error) {
+			console.error("Erro ao gerar escala automática:", error);
+			alert("Ocorreu um erro ao gerar a escala automática.");
+		} finally {
+			setIsGeneratingAuto(false);
+		}
+	};
+
+	// Ações do Modal Pontual (Criar / Editar / Remover Dia Específico) - SEM SEÇÃO TURNO/MODALIDADE
+	const openCreateModal = (dateStr?: string, defaultHour?: string) => {
 		setEditingEscala(null);
 		const defaultDate = dateStr || `${mesAnoStr}-01`;
-		setSelectedDateForNew(defaultDate);
 		const defaultFunc = funcionarios.find((f) => f.status === "ativo")?.id || "";
-		const defaultTurno: TurnoTipo = "abertura";
-		const config = TURNO_CONFIG[defaultTurno];
+
+		// Obter o horário da loja para aquele dia específico
+		const dayOfWeek = getDayOfWeek(defaultDate);
+		const diaConfig = lojaHorariosConfig[dayOfWeek] || {
+			ativo: true,
+			abertura: "10:00",
+			fechamento: "22:00",
+		};
 
 		setFormData({
 			funcionarioId: defaultFunc,
 			data: defaultDate,
-			turno: defaultTurno,
-			horarioInicio: config.defaultInicio,
-			horarioFim: config.defaultFim,
+			isFolga: false,
+			horarioInicio: defaultHour || diaConfig.abertura || "10:00",
+			horarioFim: diaConfig.fechamento || "22:00",
 			observacoes: "",
 		});
 		setIsModalOpen(true);
@@ -216,25 +566,17 @@ export default function EscalaTab({
 	const openEditModal = (escala: EscalaItem, e: React.MouseEvent) => {
 		e.stopPropagation();
 		setEditingEscala(escala);
+		const isFolga = escala.turno === "folga" || (!escala.horarioInicio && !escala.horarioFim);
+
 		setFormData({
 			funcionarioId: escala.funcionarioId,
 			data: escala.data,
-			turno: escala.turno,
-			horarioInicio: escala.horarioInicio || "",
-			horarioFim: escala.horarioFim || "",
+			isFolga,
+			horarioInicio: escala.horarioInicio || "10:00",
+			horarioFim: escala.horarioFim || "22:00",
 			observacoes: escala.observacoes || "",
 		});
 		setIsModalOpen(true);
-	};
-
-	const handleTurnoChange = (newTurno: TurnoTipo) => {
-		const config = TURNO_CONFIG[newTurno];
-		setFormData((prev) => ({
-			...prev,
-			turno: newTurno,
-			horarioInicio: config.defaultInicio,
-			horarioFim: config.defaultFim,
-		}));
 	};
 
 	const handleSubmit = async (e: React.FormEvent) => {
@@ -252,9 +594,9 @@ export default function EscalaTab({
 				funcionarioCargo: func.cargo,
 				lojaId: selectedLoja,
 				data: formData.data,
-				turno: formData.turno,
-				horarioInicio: formData.horarioInicio || undefined,
-				horarioFim: formData.horarioFim || undefined,
+				turno: formData.isFolga ? ("folga" as const) : ("personalizado" as const),
+				horarioInicio: formData.isFolga ? undefined : formData.horarioInicio || undefined,
+				horarioFim: formData.isFolga ? undefined : formData.horarioFim || undefined,
 				observacoes: formData.observacoes.trim() || undefined,
 			};
 
@@ -267,7 +609,7 @@ export default function EscalaTab({
 			setIsModalOpen(false);
 		} catch (error) {
 			console.error("Erro ao salvar escala:", error);
-			alert("Ocorreu um erro ao salvar a escala.");
+			alert("Ocorreu um erro ao salvar a escala pontual.");
 		} finally {
 			setIsSaving(false);
 		}
@@ -275,7 +617,8 @@ export default function EscalaTab({
 
 	const handleDelete = async () => {
 		if (!editingEscala) return;
-		if (!confirm("Tem certeza que deseja remover esta escala?")) return;
+		if (!confirm("Deseja remover a escala deste dia específico? Os demais dias do colaborador permanecerão intactos."))
+			return;
 
 		try {
 			setIsSaving(true);
@@ -322,9 +665,9 @@ export default function EscalaTab({
 			</div>
 
 			{/* BARRA DE CONTROLE DO CALENDÁRIO */}
-			<div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col md:flex-row items-center justify-between gap-4">
-				{/* Seletor do Mês/Ano */}
-				<div className="flex items-center gap-2">
+			<div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col xl:flex-row items-start xl:items-center justify-between gap-4">
+				{/* Seletor do Mês/Ano e Navegação */}
+				<div className="flex flex-wrap items-center gap-2">
 					<button
 						onClick={handlePrevMonth}
 						aria-label="Mês anterior"
@@ -332,7 +675,7 @@ export default function EscalaTab({
 						<ChevronLeft size={20} />
 					</button>
 
-					<div className="flex items-center gap-2 px-3 py-1 bg-slate-50 dark:bg-slate-800/80 rounded-xl border border-slate-200 dark:border-slate-700">
+					<div className="flex items-center gap-2 px-3 py-1.5 bg-slate-50 dark:bg-slate-800/80 rounded-xl border border-slate-200 dark:border-slate-700">
 						<CalendarIcon size={18} className="text-blue-600 dark:text-blue-400" />
 						<span className="text-base font-black text-slate-800 dark:text-slate-200">
 							{MESES[mes - 1]} {ano}
@@ -348,30 +691,51 @@ export default function EscalaTab({
 
 					<button
 						onClick={handleCurrentMonth}
-						className="cursor-pointer ml-2 text-xs font-bold text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/50 px-3 py-1.5 rounded-lg transition-colors">
+						className="cursor-pointer text-xs font-bold text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/50 px-3 py-1.5 rounded-lg transition-colors">
 						Mês Atual
 					</button>
-				</div>
 
-				{/* Legenda de Turnos */}
-				<div className="hidden lg:flex items-center gap-2 text-2xs font-semibold text-slate-600 dark:text-slate-400">
-					{Object.entries(TURNO_CONFIG).map(([key, conf]) => (
-						<span
-							key={key}
-							className={`inline-flex items-center gap-1 px-2 py-1 rounded-md border ${conf.badgeBg} ${conf.badgeText}`}>
-							<span
-								className="w-1.5 h-1.5 rounded-full"
-								style={{ backgroundColor: conf.color }}
-							/>
-							{conf.label}
+					{/* Badge Indicativo dos Horários da Loja Selecionada */}
+					<div
+						title="Horários de funcionamento configurados para esta loja na sub-aba Horários"
+						className="hidden sm:flex items-center gap-1.5 text-2xs font-bold px-2.5 py-1 bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 rounded-lg border border-blue-200/60 dark:border-blue-900/60">
+						<Clock size={12} />
+						<span>
+							Horários da Loja: {lojaHorariosConfig[1]?.abertura || "10h"} às{" "}
+							{lojaHorariosConfig[1]?.fechamento || "22h"}
 						</span>
-					))}
+					</div>
 				</div>
 
-				{/* Filtro por Colaborador e Botão Nova Escala */}
-				<div className="flex items-center gap-3 w-full md:w-auto">
-					<div className="flex items-center gap-1.5 bg-slate-50 dark:bg-slate-800 px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 flex-1 md:flex-none">
-						<Filter size={16} className="text-slate-400" />
+				{/* Ações, Filtros e Alternador de Modo */}
+				<div className="flex flex-wrap items-center gap-2.5 w-full xl:w-auto justify-between xl:justify-end">
+					{/* Alternador Mês / Semana */}
+					<div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-xl">
+						<button
+							onClick={() => setViewType("mes")}
+							className={`cursor-pointer px-3 py-1.5 rounded-lg text-xs font-black transition-all flex items-center gap-1.5 ${
+								viewType === "mes"
+									? "bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-sm"
+									: "text-slate-600 dark:text-slate-400"
+							}`}>
+							<Grid size={15} />
+							<span>Mês</span>
+						</button>
+						<button
+							onClick={() => setViewType("semana")}
+							className={`cursor-pointer px-3 py-1.5 rounded-lg text-xs font-black transition-all flex items-center gap-1.5 ${
+								viewType === "semana"
+									? "bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-sm"
+									: "text-slate-600 dark:text-slate-400"
+							}`}>
+							<Columns size={15} />
+							<span>Semana</span>
+						</button>
+					</div>
+
+					{/* Filtro por Colaborador */}
+					<div className="flex items-center gap-1.5 bg-slate-50 dark:bg-slate-800 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700">
+						<Filter size={15} className="text-slate-400" />
 						<select
 							value={selectedEmployeeFilter}
 							onChange={(e) => setSelectedEmployeeFilter(e.target.value)}
@@ -386,119 +750,730 @@ export default function EscalaTab({
 						</select>
 					</div>
 
+					{/* BOTÃO PRINCIPAL: GERAR ESCALA MENSAL (12x36 ou 6x1) */}
+					<button
+						onClick={openAutoModal}
+						className="cursor-pointer px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold rounded-xl shadow-sm hover:shadow transition-all flex items-center gap-2 text-xs shrink-0">
+						<Sparkles size={16} />
+						<span>Gerar Escala Mensal</span>
+					</button>
+
+					{/* Botão Secundário: Adicionar Dia Avulso */}
 					<button
 						onClick={() => openCreateModal()}
-						className="cursor-pointer px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-sm hover:shadow transition-all flex items-center gap-2 text-sm shrink-0">
-						<Plus size={18} />
-						<span>Adicionar Escala</span>
+						title="Inserir um dia pontual avulso"
+						className="cursor-pointer px-3 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold rounded-xl border border-slate-200 dark:border-slate-700 transition-all flex items-center gap-1.5 text-xs shrink-0">
+						<Plus size={15} />
+						<span>Dia Avulso</span>
 					</button>
 				</div>
 			</div>
 
-			{/* GRADE DO CALENDÁRIO */}
-			<div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
-				{/* Cabeçalho dos Dias da Semana */}
-				<div className="grid grid-cols-7 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/60 text-center text-xs font-black text-slate-600 dark:text-slate-400 py-3">
-					{DIAS_SEMANA.map((dia, idx) => (
-						<div
-							key={dia}
-							className={idx === 5 || idx === 6 ? "text-amber-600 dark:text-amber-400" : ""}>
-							{dia}
-						</div>
-					))}
-				</div>
-
-				{/* Células dos Dias */}
-				<div className="grid grid-cols-7 auto-rows-fr divide-x divide-y divide-slate-100 dark:divide-slate-800/80">
-					{calendarDays.map((cell, idx) => {
-						const dayEscalas = escalasByDate[cell.dateStr] || [];
-
-						return (
+			{/* ========================================================= */}
+			{/* VISÃO 1: CALENDÁRIO MENSAL REFLETINDO OS HORÁRIOS DA LOJA  */}
+			{/* ========================================================= */}
+			{viewType === "mes" && (
+				<div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
+					{/* Cabeçalho dos Dias da Semana */}
+					<div className="grid grid-cols-7 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/60 text-center text-xs font-black text-slate-600 dark:text-slate-400 py-3">
+						{DIAS_SEMANA.map((dia, idx) => (
 							<div
-								key={idx}
-								onClick={() => cell.isCurrentMonth && openCreateModal(cell.dateStr)}
-								className={`min-h-[115px] p-2 flex flex-col justify-between transition-colors relative group ${
-									!cell.isCurrentMonth
-										? "bg-slate-50/50 dark:bg-slate-950/40 text-slate-300 dark:text-slate-700 opacity-60"
-										: "hover:bg-blue-50/30 dark:hover:bg-slate-800/40 cursor-pointer"
-								} ${cell.isToday ? "ring-2 ring-blue-500 ring-inset bg-blue-50/10" : ""}`}>
-								{/* Topo do Dia */}
-								<div className="flex items-center justify-between">
-									<span
-										className={`text-xs font-bold rounded-lg w-6 h-6 flex items-center justify-center ${
-											cell.isToday
-												? "bg-blue-600 text-white shadow-sm font-black"
-												: cell.isCurrentMonth
-												? "text-slate-700 dark:text-slate-300"
-												: "text-slate-400 dark:text-slate-600"
-										}`}>
-										{cell.dayNum}
-									</span>
+								key={dia}
+								className={idx === 5 || idx === 6 ? "text-amber-600 dark:text-amber-400" : ""}>
+								{dia}
+							</div>
+						))}
+					</div>
 
-									{cell.isCurrentMonth && (
-										<button
-											onClick={(e) => {
-												e.stopPropagation();
-												openCreateModal(cell.dateStr);
-											}}
-											className="opacity-0 group-hover:opacity-100 p-1 hover:bg-blue-100 dark:hover:bg-slate-700 rounded-md text-blue-600 dark:text-blue-400 transition-opacity">
-											<Plus size={14} />
-										</button>
-									)}
+					{/* Grade dos Dias do Mês */}
+					<div className="grid grid-cols-7 auto-rows-fr divide-x divide-y divide-slate-100 dark:divide-slate-800/80">
+						{calendarDays.map((cell, idx) => {
+							const dayEscalas = escalasByDate[cell.dateStr] || [];
+
+							// Horário configurado para esta loja neste dia específico da semana
+							const diaConfig = lojaHorariosConfig[cell.dayOfWeek] || {
+								ativo: true,
+								abertura: "10:00",
+								fechamento: "22:00",
+							};
+
+							const isLojaAberta = diaConfig.ativo;
+							const { folgas, positioned } = computeDayLayout(
+								dayEscalas,
+								diaConfig.abertura || "10:00",
+								diaConfig.fechamento || "22:00"
+							);
+
+							return (
+								<div
+									key={idx}
+									onClick={() => cell.isCurrentMonth && openCreateModal(cell.dateStr)}
+									className={`min-h-[220px] p-2 flex flex-col justify-between transition-colors relative group ${
+										!cell.isCurrentMonth
+											? "bg-slate-50/40 dark:bg-slate-950/40 text-slate-300 dark:text-slate-700 opacity-60"
+											: "hover:bg-blue-50/20 dark:hover:bg-slate-800/30 cursor-pointer"
+									} ${cell.isToday ? "ring-2 ring-blue-500 ring-inset bg-blue-50/10" : ""}`}>
+									{/* Topo do Dia */}
+									<div className="flex items-center justify-between shrink-0 mb-1">
+										<div className="flex items-center gap-1.5">
+											<span
+												className={`text-xs font-bold rounded-lg w-6 h-6 flex items-center justify-center ${
+													cell.isToday
+														? "bg-blue-600 text-white shadow-sm font-black"
+														: cell.isCurrentMonth
+														? "text-slate-700 dark:text-slate-300 font-black"
+														: "text-slate-400 dark:text-slate-600"
+												}`}>
+												{cell.dayNum}
+											</span>
+
+											{/* Indicador de Horário de Abertura da Loja neste Dia */}
+											{isLojaAberta ? (
+												<span className="text-[9px] font-mono font-bold text-slate-400 dark:text-slate-500 bg-slate-100 dark:bg-slate-800 px-1 rounded">
+													{diaConfig.abertura}-{diaConfig.fechamento}
+												</span>
+											) : (
+												<span className="text-[9px] font-bold text-rose-500 bg-rose-50 dark:bg-rose-950/50 px-1 rounded">
+													Fechada
+												</span>
+											)}
+										</div>
+
+										{/* Badges de Folga no Topo */}
+										{folgas.length > 0 && (
+											<div className="flex items-center gap-1 overflow-x-auto max-w-[100px] no-scrollbar">
+												{folgas.map((f) => (
+													<span
+														key={f.id}
+														onClick={(e) => openEditModal(f, e)}
+														title={`Folga: ${f.funcionarioNome} (Clique para editar/remover este dia)`}
+														className="text-[9px] px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 font-bold truncate hover:bg-slate-200">
+														🌴 {f.funcionarioNome}
+													</span>
+												))}
+											</div>
+										)}
+
+										{cell.isCurrentMonth && (
+											<button
+												onClick={(e) => {
+													e.stopPropagation();
+													openCreateModal(cell.dateStr);
+												}}
+												className="opacity-0 group-hover:opacity-100 p-1 hover:bg-blue-100 dark:hover:bg-slate-700 rounded-md text-blue-600 dark:text-blue-400 transition-opacity">
+												<Plus size={14} />
+											</button>
+										)}
+									</div>
+
+									{/* TIMELINE DO DIA REFLETINDO OS LIMITES DE HORÁRIO DA LOJA */}
+									<div
+										className="relative flex-1 w-full rounded-xl bg-slate-50/70 dark:bg-slate-800/40 border border-slate-200/60 dark:border-slate-800/60 overflow-hidden min-h-[160px]"
+										title={`Clique para agendar escala neste dia (${diaConfig.abertura} às ${diaConfig.fechamento})`}>
+										{/* Linha Central Guia de Fundo */}
+										<div className="absolute top-1/2 left-0 right-0 border-t border-dashed border-slate-200/50 dark:border-slate-700/40 pointer-events-none" />
+
+										{/* Cards de Escala Posicionados Proporcionalmente */}
+										{positioned.map(
+											({ item, topPercent, heightPercent, colIndex, totalCols, hasOverlap }) => {
+												const widthPercent = 100 / totalCols;
+												const leftPercent = colIndex * widthPercent;
+
+												return (
+													<div
+														key={item.id}
+														onClick={(e) => openEditModal(item, e)}
+														style={{
+															top: `${topPercent}%`,
+															height: `${heightPercent}%`,
+															left: `calc(${leftPercent}% + 1px)`,
+															width: `calc(${widthPercent}% - 2px)`,
+														}}
+														title={`${item.funcionarioNome} (${item.horarioInicio || diaConfig.abertura} - ${
+															item.horarioFim || diaConfig.fechamento
+														})${hasOverlap ? " [Sobreposição]" : ""}${
+															item.observacoes ? " - " + item.observacoes : ""
+														}\n(Clique para alterar este dia pontual)`}
+														className="absolute rounded-lg border border-blue-300 dark:border-blue-700/60 bg-blue-50 dark:bg-blue-950/70 text-blue-800 dark:text-blue-200 shadow-xs px-1.5 py-1 flex flex-col justify-start overflow-hidden transition-all hover:z-20 hover:scale-[1.02] hover:shadow-md cursor-pointer select-none">
+														{/* Cabeçalho do Card */}
+														<div className="flex items-center justify-between gap-1 w-full min-w-0">
+															<div className="flex items-center gap-1 min-w-0 truncate">
+																<span className="w-1.5 h-1.5 rounded-full shrink-0 bg-blue-600 dark:bg-blue-400" />
+																<span className="text-[11px] font-black truncate leading-tight">
+																	{item.funcionarioNome}
+																</span>
+															</div>
+															{hasOverlap && (
+																<span
+																	title="Horário com sobreposição"
+																	className="shrink-0 text-amber-500 text-[9px]">
+																	●
+																</span>
+															)}
+														</div>
+
+														{/* Horário Formatado */}
+														<span className="text-[10px] font-bold opacity-90 truncate leading-tight mt-0.5">
+															{item.horarioInicio} - {item.horarioFim}
+														</span>
+
+														{/* Observação / Cargo */}
+														{heightPercent >= 30 && (
+															<span className="text-[9px] font-medium opacity-75 truncate leading-tight mt-auto">
+																{item.observacoes || item.funcionarioCargo}
+															</span>
+														)}
+													</div>
+												);
+											}
+										)}
+									</div>
+
+									{/* Rodapé do Dia: Contagem de Colaboradores */}
+									<div className="text-[10px] text-slate-400 font-bold text-right mt-1">
+										{dayEscalas.length > 0
+											? `${dayEscalas.length} ${dayEscalas.length === 1 ? "escala" : "escalas"}`
+											: ""}
+									</div>
 								</div>
+							);
+						})}
+					</div>
+				</div>
+			)}
 
-								{/* Lista de Escalas do Dia */}
-								<div className="space-y-1 my-1 overflow-y-auto max-h-[85px] no-scrollbar">
-									{dayEscalas.map((esc) => {
-										const turnoConf = TURNO_CONFIG[esc.turno] || TURNO_CONFIG.abertura;
-										const timeLabel =
-											esc.horarioInicio && esc.horarioFim
-												? `${esc.horarioInicio}-${esc.horarioFim}`
-												: turnoConf.label;
+			{/* ========================================================= */}
+			{/* VISÃO 2: VISÃO SEMANAL DETALHADA COM RÉGUA DA LOJA        */}
+			{/* ========================================================= */}
+			{viewType === "semana" && (
+				<div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden space-y-4 p-4">
+					{/* Seletor de Semanas do Mês */}
+					<div className="flex items-center justify-between flex-wrap gap-3 pb-2 border-b border-slate-100 dark:border-slate-800">
+						<span className="text-xs font-bold text-slate-600 dark:text-slate-400">
+							Selecione a semana do mês:
+						</span>
+						<div className="flex gap-1.5 overflow-x-auto">
+							{weeks.map((wk, idx) => {
+								const first = wk[0];
+								const last = wk[6];
+								const isSelected = selectedWeekIndex === idx;
 
+								return (
+									<button
+										key={idx}
+										onClick={() => setSelectedWeekIndex(idx)}
+										className={`cursor-pointer px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+											isSelected
+												? "bg-blue-600 text-white shadow-sm font-black"
+												: "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200"
+										}`}>
+										Semana {idx + 1} ({first.dayNum}/{first.dateStr.split("-")[1]} a {last.dayNum}/
+										{last.dateStr.split("-")[1]})
+									</button>
+								);
+							})}
+						</div>
+					</div>
+
+					{/* Container com Régua Horária e 7 Colunas de Dias */}
+					<div className="overflow-x-auto">
+						<div className="min-w-[850px]">
+							{/* Cabeçalho dos 7 Dias da Semana Selecionada */}
+							<div className="grid grid-cols-[65px_repeat(7,1fr)] border-b border-slate-200 dark:border-slate-800 pb-3 text-center">
+								<div className="text-2xs font-bold text-slate-400 pt-1">HORA</div>
+								{weeks[selectedWeekIndex]?.map((day, idx) => {
+									const diaConfig = lojaHorariosConfig[day.dayOfWeek] || {
+										ativo: true,
+										abertura: "10:00",
+										fechamento: "22:00",
+									};
+
+									return (
+										<div key={idx} className="space-y-1">
+											<span className="text-2xs font-bold text-slate-500 uppercase">
+												{DIAS_SEMANA[idx]}
+											</span>
+											<div className="flex items-center justify-center gap-1">
+												<span
+													className={`text-sm font-black w-7 h-7 rounded-full flex items-center justify-center ${
+														day.isToday
+															? "bg-blue-600 text-white shadow-sm"
+															: "text-slate-800 dark:text-slate-200"
+													}`}>
+													{day.dayNum}
+												</span>
+											</div>
+											<span className="text-[10px] font-mono text-slate-400 block">
+												{diaConfig.ativo
+													? `${diaConfig.abertura}-${diaConfig.fechamento}`
+													: "Fechada"}
+											</span>
+										</div>
+									);
+								})}
+							</div>
+
+							{/* Corpo com Grid Horário Dinâmico da Loja */}
+							<div className="grid grid-cols-[65px_repeat(7,1fr)] relative h-[600px] divide-x divide-slate-100 dark:divide-slate-800">
+								{/* Coluna da Esquerda: Régua com as Horas */}
+								<div className="relative border-r border-slate-200 dark:border-slate-800 select-none">
+									{storeWeekRange.hours.map((hour) => {
+										const topPercent =
+											((hour - storeWeekRange.minH) /
+												(storeWeekRange.maxH - storeWeekRange.minH)) *
+											100;
 										return (
 											<div
-												key={esc.id}
-												onClick={(e) => openEditModal(esc, e)}
-												title={`${esc.funcionarioNome} (${turnoConf.label} ${timeLabel}) ${
-													esc.observacoes ? "- " + esc.observacoes : ""
-												}`}
-												className={`text-2xs p-1 rounded-lg border font-bold flex items-center justify-between gap-1 shadow-xs hover:scale-[1.02] transition-transform ${turnoConf.badgeBg} ${turnoConf.badgeText}`}>
-												<div className="flex items-center gap-1 min-w-0 truncate">
-													<span
-														className="w-1.5 h-1.5 rounded-full shrink-0"
-														style={{ backgroundColor: turnoConf.color }}
-													/>
-													<span className="truncate">{esc.funcionarioNome}</span>
-												</div>
-												<span className="text-[10px] font-semibold shrink-0 opacity-85">
-													{esc.horarioInicio || turnoConf.label.substring(0, 3)}
-												</span>
+												key={hour}
+												style={{ top: `${topPercent}%` }}
+												className="absolute right-2 -translate-y-1/2 text-2xs font-bold font-mono text-slate-400 dark:text-slate-500">
+												{String(hour).padStart(2, "0")}:00
 											</div>
 										);
 									})}
 								</div>
 
-								{/* Rodapé da Célula */}
-								<div className="text-[10px] text-slate-400 font-medium text-right">
-									{dayEscalas.length > 0 && `${dayEscalas.length} esc.`}
+								{/* Colunas dos 7 Dias */}
+								{weeks[selectedWeekIndex]?.map((day, dIdx) => {
+									const dayEscalas = escalasByDate[day.dateStr] || [];
+									const diaConfig = lojaHorariosConfig[day.dayOfWeek] || {
+										ativo: true,
+										abertura: "10:00",
+										fechamento: "22:00",
+									};
+
+									const { folgas, positioned } = computeDayLayout(
+										dayEscalas,
+										diaConfig.abertura || "10:00",
+										diaConfig.fechamento || "22:00"
+									);
+
+									return (
+										<div
+											key={dIdx}
+											onClick={() => openCreateModal(day.dateStr)}
+											className="relative h-full transition-colors hover:bg-blue-50/10 cursor-pointer">
+											{/* Linhas Horárias Horizontais */}
+											{storeWeekRange.hours.map((hour) => {
+												const topPercent =
+													((hour - storeWeekRange.minH) /
+														(storeWeekRange.maxH - storeWeekRange.minH)) *
+													100;
+												return (
+													<div
+														key={hour}
+														style={{ top: `${topPercent}%` }}
+														className="absolute left-0 right-0 border-t border-slate-100 dark:border-slate-800/80 pointer-events-none"
+													/>
+												);
+											})}
+
+											{/* Folgas */}
+											{folgas.length > 0 && (
+												<div className="absolute top-1 left-1 right-1 z-10 flex flex-col gap-1">
+													{folgas.map((f) => (
+														<span
+															key={f.id}
+															onClick={(e) => openEditModal(f, e)}
+															className="text-[10px] px-2 py-0.5 rounded bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold truncate">
+															🌴 {f.funcionarioNome} (Folga)
+														</span>
+													))}
+												</div>
+											)}
+
+											{/* Cards Proporcionais de Escala */}
+											{positioned.map(
+												({ item, topPercent, heightPercent, colIndex, totalCols, hasOverlap }) => {
+													const widthPercent = 100 / totalCols;
+													const leftPercent = colIndex * widthPercent;
+
+													return (
+														<div
+															key={item.id}
+															onClick={(e) => openEditModal(item, e)}
+															style={{
+																top: `${topPercent}%`,
+																height: `${heightPercent}%`,
+																left: `calc(${leftPercent}% + 2px)`,
+																width: `calc(${widthPercent}% - 4px)`,
+															}}
+															className="absolute rounded-xl border border-blue-300 dark:border-blue-700/60 bg-blue-50 dark:bg-blue-950/70 text-blue-900 dark:text-blue-200 p-2 shadow-sm flex flex-col justify-between overflow-hidden transition-all hover:z-30 hover:scale-[1.01] hover:shadow-lg cursor-pointer">
+															<div className="min-w-0">
+																<div className="flex items-center justify-between gap-1">
+																	<span className="font-black text-xs truncate">
+																		{item.funcionarioNome}
+																	</span>
+																	{hasOverlap && (
+																		<span
+																			title="Sobreposição de horário"
+																			className="text-amber-500 shrink-0">
+																			<AlertTriangle size={12} />
+																		</span>
+																	)}
+																</div>
+																<span className="text-[10px] font-semibold opacity-85 block truncate">
+																	{item.funcionarioCargo || "Colaborador"}
+																</span>
+															</div>
+
+															<div className="pt-1 border-t border-current/10 flex items-center justify-between text-2xs font-bold">
+																<span>
+																	{item.horarioInicio} - {item.horarioFim}
+																</span>
+															</div>
+														</div>
+													);
+												}
+											)}
+										</div>
+									);
+								})}
+							</div>
+						</div>
+					</div>
+				</div>
+			)}
+
+			{/* ================================================================= */}
+			{/* MODAL 1: GERADOR AUTOMÁTICO DE ESCALA MENSAL (12x36 ou 6x1)       */}
+			{/* ================================================================= */}
+			{isAutoModalOpen && (
+				<div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+					<div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl w-full max-w-lg overflow-hidden">
+						{/* Cabeçalho */}
+						<div className="p-6 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-white dark:bg-slate-900">
+							<div className="flex items-center gap-2.5">
+								<div className="p-2 bg-gradient-to-br from-blue-500 to-indigo-600 text-white rounded-xl">
+									<Sparkles size={18} />
+								</div>
+								<div>
+									<h3 className="text-lg font-black text-slate-900 dark:text-slate-100">
+										Gerar Escala Mensal
+									</h3>
+									<p className="text-xs text-slate-500 dark:text-slate-400">
+										{STORE_NAMES[selectedLoja]} • {MESES[mes - 1]} {ano}
+									</p>
 								</div>
 							</div>
-						);
-					})}
-				</div>
-			</div>
+							<button
+								onClick={() => setIsAutoModalOpen(false)}
+								className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl text-slate-400 hover:text-slate-600 transition-colors">
+								<X size={18} />
+							</button>
+						</div>
 
-			{/* MODAL DE ADICIONAR / EDITAR ESCALA */}
+						{/* Formulário */}
+						<form onSubmit={handleAutoSubmit} className="p-6 space-y-4 max-h-[80vh] overflow-y-auto">
+							{/* Seleção do Colaborador */}
+							<div>
+								<label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+									Colaborador *
+								</label>
+								<select
+									required
+									value={autoFormData.funcionarioId}
+									onChange={(e) =>
+										setAutoFormData({ ...autoFormData, funcionarioId: e.target.value })
+									}
+									className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500">
+									<option value="">Selecione um funcionário...</option>
+									{funcionarios.map((f) => (
+										<option key={f.id} value={f.id}>
+											{f.nome} {f.apelido ? `(${f.apelido})` : ""} - {f.cargo}
+										</option>
+									))}
+								</select>
+							</div>
+
+							{/* 1. Regime de Escala: 12x36 ou 6x1 */}
+							<div>
+								<label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+									1. Regime de Escala *
+								</label>
+								<div className="grid grid-cols-2 gap-3">
+									<button
+										type="button"
+										onClick={() => handleRegimeChange("12x36")}
+										className={`cursor-pointer p-3 rounded-2xl border text-left transition-all ${
+											autoFormData.regime === "12x36"
+												? "border-blue-600 bg-blue-50/80 dark:bg-blue-950/50 ring-2 ring-blue-500"
+												: "border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800"
+										}`}>
+										<div className="flex items-center justify-between mb-1">
+											<span className="font-black text-sm text-slate-900 dark:text-slate-100">
+												12x36
+											</span>
+											{autoFormData.regime === "12x36" && (
+												<Check size={16} className="text-blue-600" />
+											)}
+										</div>
+										<p className="text-2xs text-slate-500 dark:text-slate-400 leading-snug">
+											Dias alternados (12 horas por dia trabalhado)
+										</p>
+									</button>
+
+									<button
+										type="button"
+										onClick={() => handleRegimeChange("6x1")}
+										className={`cursor-pointer p-3 rounded-2xl border text-left transition-all ${
+											autoFormData.regime === "6x1"
+												? "border-blue-600 bg-blue-50/80 dark:bg-blue-950/50 ring-2 ring-blue-500"
+												: "border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800"
+										}`}>
+										<div className="flex items-center justify-between mb-1">
+											<span className="font-black text-sm text-slate-900 dark:text-slate-100">
+												6x1
+											</span>
+											{autoFormData.regime === "6x1" && (
+												<Check size={16} className="text-blue-600" />
+											)}
+										</div>
+										<p className="text-2xs text-slate-500 dark:text-slate-400 leading-snug">
+											1 descanso semanal (9 horas contínuas por dia)
+										</p>
+									</button>
+								</div>
+							</div>
+
+							{/* 2. Horário / Período Diário */}
+							<div>
+								<div className="flex items-center justify-between mb-1.5">
+									<label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+										2. Horário Diário ({autoFormData.regime === "12x36" ? "12h" : "9h"}) *
+									</label>
+									<span className="text-2xs text-blue-600 dark:text-blue-400 font-semibold">
+										{autoFormData.regime === "12x36"
+											? "12 horas por turno"
+											: "9 horas contínuas (foco em 9h)"}
+									</span>
+								</div>
+
+								{/* Presets Rápidos Baseados no Funcionamento da Loja */}
+								<div className="flex flex-wrap gap-1.5 mb-2.5">
+									{autoFormData.regime === "12x36" ? (
+										<>
+											<button
+												type="button"
+												onClick={() =>
+													setAutoFormData((prev) => ({
+														...prev,
+														horarioInicio: defaultStoreHours.abertura,
+														horarioFim: calculateEndTime(defaultStoreHours.abertura, 12),
+													}))
+												}
+												className="cursor-pointer px-2.5 py-1 rounded-lg text-2xs font-bold border border-blue-200 bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300">
+												Horário da Loja ({defaultStoreHours.abertura} às{" "}
+												{calculateEndTime(defaultStoreHours.abertura, 12)})
+											</button>
+											<button
+												type="button"
+												onClick={() =>
+													setAutoFormData((prev) => ({
+														...prev,
+														horarioInicio: "09:00",
+														horarioFim: "21:00",
+													}))
+												}
+												className="cursor-pointer px-2.5 py-1 rounded-lg text-2xs font-bold border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
+												09:00 às 21:00
+											</button>
+											<button
+												type="button"
+												onClick={() =>
+													setAutoFormData((prev) => ({
+														...prev,
+														horarioInicio: "10:00",
+														horarioFim: "22:00",
+													}))
+												}
+												className="cursor-pointer px-2.5 py-1 rounded-lg text-2xs font-bold border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
+												10:00 às 22:00
+											</button>
+										</>
+									) : (
+										<>
+											<button
+												type="button"
+												onClick={() =>
+													setAutoFormData((prev) => ({
+														...prev,
+														horarioInicio: defaultStoreHours.abertura,
+														horarioFim: calculateEndTime(defaultStoreHours.abertura, 9),
+													}))
+												}
+												className="cursor-pointer px-2.5 py-1 rounded-lg text-2xs font-bold border border-blue-200 bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300">
+												Abertura Loja ({defaultStoreHours.abertura} às{" "}
+												{calculateEndTime(defaultStoreHours.abertura, 9)})
+											</button>
+											<button
+												type="button"
+												onClick={() =>
+													setAutoFormData((prev) => ({
+														...prev,
+														horarioInicio: "13:00",
+														horarioFim: "22:00",
+													}))
+												}
+												className="cursor-pointer px-2.5 py-1 rounded-lg text-2xs font-bold border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
+												13:00 às 22:00 (9h)
+											</button>
+											<button
+												type="button"
+												onClick={() =>
+													setAutoFormData((prev) => ({
+														...prev,
+														horarioInicio: "14:00",
+														horarioFim: "23:00",
+													}))
+												}
+												className="cursor-pointer px-2.5 py-1 rounded-lg text-2xs font-bold border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
+												14:00 às 23:00 (9h)
+											</button>
+										</>
+									)}
+								</div>
+
+								{/* Campos de Início e Fim */}
+								<div className="grid grid-cols-2 gap-3">
+									<div>
+										<label className="block text-2xs font-bold text-slate-500 mb-1">
+											Horário Início
+										</label>
+										<input
+											type="time"
+											required
+											value={autoFormData.horarioInicio}
+											onChange={(e) => handleStartTimeChange(e.target.value)}
+											className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500"
+										/>
+									</div>
+									<div>
+										<label className="block text-2xs font-bold text-slate-500 mb-1">
+											Horário Fim ({autoFormData.regime === "12x36" ? "+12h" : "+9h"})
+										</label>
+										<input
+											type="time"
+											required
+											value={autoFormData.horarioFim}
+											onChange={(e) =>
+												setAutoFormData({ ...autoFormData, horarioFim: e.target.value })
+											}
+											className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500"
+										/>
+									</div>
+								</div>
+							</div>
+
+							{/* 3. Primeiro Dia de Trabalho no Mês */}
+							<div>
+								<label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+									3. Primeiro Dia de Trabalho no Mês *
+								</label>
+								<input
+									type="date"
+									required
+									value={autoFormData.primeiroDiaTrabalho}
+									onChange={(e) =>
+										setAutoFormData({ ...autoFormData, primeiroDiaTrabalho: e.target.value })
+									}
+									className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 font-semibold"
+								/>
+								<span className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 block">
+									{autoFormData.regime === "12x36"
+										? "A app alternará trabalho e folga a partir desta data até o fim do mês."
+										: "A app aplicará a jornada a partir desta data até o fim do mês, respeitando o descanso semanal."}
+								</span>
+							</div>
+
+							{/* 4. Dia de Descanso Semanal (Obrigatório se 6x1) */}
+							{autoFormData.regime === "6x1" && (
+								<div className="p-3 bg-amber-50/70 dark:bg-amber-950/40 rounded-2xl border border-amber-200 dark:border-amber-800/80 space-y-2">
+									<label className="block text-xs font-black text-amber-900 dark:text-amber-200">
+										4. Dia da Semana de Descanso (Folga Semanal) *
+									</label>
+									<div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
+										{DIAS_DESCANSO.map((dia) => (
+											<button
+												key={dia.value}
+												type="button"
+												onClick={() =>
+													setAutoFormData({ ...autoFormData, diaDescansoSemanal: dia.value })
+												}
+												className={`cursor-pointer px-2.5 py-2 rounded-xl text-2xs font-bold border transition-all text-center ${
+													autoFormData.diaDescansoSemanal === dia.value
+														? "bg-amber-600 text-white border-amber-600 shadow-xs font-black"
+														: "bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:bg-slate-50"
+												}`}>
+												{dia.label}
+											</button>
+										))}
+									</div>
+								</div>
+							)}
+
+							{/* Box de Pré-visualização do Resumo */}
+							{autoPreview && (
+								<div className="p-3.5 bg-blue-50 dark:bg-blue-950/50 rounded-2xl border border-blue-200 dark:border-blue-900/60 flex items-start gap-3">
+									<Info size={18} className="text-blue-600 shrink-0 mt-0.5" />
+									<div className="text-xs text-blue-900 dark:text-blue-200 space-y-1">
+										<p className="font-black">Resumo do Preenchimento:</p>
+										<p>
+											Serão gerados <strong>{autoPreview.workDays} dias de trabalho</strong> (
+											{autoFormData.horarioInicio} às {autoFormData.horarioFim}) e{" "}
+											<strong>{autoPreview.restDays} dias de descanso</strong> a partir do dia{" "}
+											{autoPreview.startDay} até o fim de {MESES[mes - 1]}.
+										</p>
+										<p className="text-[11px] text-blue-700 dark:text-blue-300">
+											💡 <em>Dica:</em> Após gerar, você poderá clicar em qualquer dia específico no
+											calendário para editar horários ou excluir pontualmente sem alterar os demais dias.
+										</p>
+									</div>
+								</div>
+							)}
+
+							{/* Botões do Rodapé */}
+							<div className="flex items-center justify-end gap-2.5 pt-4 border-t border-slate-100 dark:border-slate-800">
+								<button
+									type="button"
+									onClick={() => setIsAutoModalOpen(false)}
+									className="cursor-pointer px-4 py-2.5 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-semibold rounded-xl text-xs hover:bg-slate-100 dark:hover:bg-slate-800 transition-all">
+									Cancelar
+								</button>
+								<button
+									type="submit"
+									disabled={isGeneratingAuto || !autoFormData.funcionarioId}
+									className="cursor-pointer px-5 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-bold rounded-xl text-xs shadow-sm hover:shadow transition-all flex items-center gap-2">
+									<Sparkles size={16} />
+									<span>
+										{isGeneratingAuto ? "Preenchendo Mês..." : "Gerar e Preencher Escala"}
+									</span>
+								</button>
+							</div>
+						</form>
+					</div>
+				</div>
+			)}
+
+			{/* ================================================================= */}
+			{/* MODAL 2: AJUSTE PONTUAL DE DIA ESPECÍFICO (SEM SEÇÃO TURNO)       */}
+			{/* ================================================================= */}
 			{isModalOpen && (
 				<div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
 					<div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl w-full max-w-md overflow-hidden">
 						<div className="p-6 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-white dark:bg-slate-900">
 							<div className="flex items-center gap-2">
 								<CalendarIcon className="text-blue-600 dark:text-blue-400" size={20} />
-								<h3 className="text-lg font-black text-slate-900 dark:text-slate-100">
-									{editingEscala ? "Editar Escala" : "Adicionar na Escala"}
-								</h3>
+								<div>
+									<h3 className="text-lg font-black text-slate-900 dark:text-slate-100">
+										{editingEscala ? "Ajuste Pontual de Escala" : "Adicionar Escala Avulsa"}
+									</h3>
+									<p className="text-2xs text-slate-400">
+										{editingEscala
+											? "Altere apenas este dia específico sem afetar o resto do mês"
+											: "Cadastre um dia avulso na escala"}
+									</p>
+								</div>
 							</div>
 							<button
 								onClick={() => setIsModalOpen(false)}
@@ -549,57 +1524,75 @@ export default function EscalaTab({
 								/>
 							</div>
 
-							<div>
-								<label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
-									Turno / Modalidade
+							{/* Opção Simples: Dia de Folga ou Trabalho */}
+							<div className="p-3 bg-slate-50 dark:bg-slate-800/70 rounded-2xl border border-slate-200 dark:border-slate-700 flex items-center justify-between">
+								<label className="flex items-center gap-2 cursor-pointer select-none">
+									<input
+										type="checkbox"
+										checked={formData.isFolga}
+										onChange={(e) => setFormData({ ...formData, isFolga: e.target.checked })}
+										className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500"
+									/>
+									<span className="text-xs font-bold text-slate-700 dark:text-slate-300">
+										🌴 Marcar como Dia de Folga / Descanso
+									</span>
 								</label>
-								<div className="grid grid-cols-3 gap-2">
-									{(
-										["abertura", "intermediario", "fechamento", "integral", "folga", "personalizado"] as TurnoTipo[]
-									).map((t) => {
-										const conf = TURNO_CONFIG[t];
-										const isSelected = formData.turno === t;
-
-										return (
-											<button
-												key={t}
-												type="button"
-												onClick={() => handleTurnoChange(t)}
-												className={`cursor-pointer px-2.5 py-2 rounded-xl text-xs font-bold border transition-all text-center ${
-													isSelected
-														? `${conf.badgeBg} ${conf.badgeText} ring-2 ring-blue-500`
-														: "border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800"
-												}`}>
-												{conf.label}
-											</button>
-										);
-									})}
-								</div>
+								{formData.isFolga && (
+									<span className="text-2xs font-bold px-2 py-0.5 rounded bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300">
+										Sem horário
+									</span>
+								)}
 							</div>
 
-							{formData.turno !== "folga" && (
-								<div className="grid grid-cols-2 gap-3">
-									<div>
-										<label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
-											Horário Início
+							{/* Horários Início e Fim (Somente se não for Folga) */}
+							{!formData.isFolga && (
+								<div className="space-y-2">
+									<div className="flex items-center justify-between">
+										<label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+											Horário de Trabalho
 										</label>
-										<input
-											type="time"
-											value={formData.horarioInicio}
-											onChange={(e) => setFormData({ ...formData, horarioInicio: e.target.value })}
-											className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-										/>
+										<button
+											type="button"
+											onClick={() =>
+												setFormData((prev) => ({
+													...prev,
+													horarioInicio: defaultStoreHours.abertura,
+													horarioFim: defaultStoreHours.fechamento,
+												}))
+											}
+											className="cursor-pointer text-[11px] font-bold text-blue-600 dark:text-blue-400 hover:underline">
+											Puxar horário da loja ({defaultStoreHours.abertura} às{" "}
+											{defaultStoreHours.fechamento})
+										</button>
 									</div>
-									<div>
-										<label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
-											Horário Fim
-										</label>
-										<input
-											type="time"
-											value={formData.horarioFim}
-											onChange={(e) => setFormData({ ...formData, horarioFim: e.target.value })}
-											className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-										/>
+
+									<div className="grid grid-cols-2 gap-3">
+										<div>
+											<label className="block text-2xs font-bold text-slate-500 mb-1">
+												Horário Início
+											</label>
+											<input
+												type="time"
+												required={!formData.isFolga}
+												value={formData.horarioInicio}
+												onChange={(e) =>
+													setFormData({ ...formData, horarioInicio: e.target.value })
+												}
+												className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+											/>
+										</div>
+										<div>
+											<label className="block text-2xs font-bold text-slate-500 mb-1">
+												Horário Fim
+											</label>
+											<input
+												type="time"
+												required={!formData.isFolga}
+												value={formData.horarioFim}
+												onChange={(e) => setFormData({ ...formData, horarioFim: e.target.value })}
+												className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+											/>
+										</div>
 									</div>
 								</div>
 							)}
@@ -612,8 +1605,8 @@ export default function EscalaTab({
 									type="text"
 									value={formData.observacoes}
 									onChange={(e) => setFormData({ ...formData, observacoes: e.target.value })}
-									placeholder="Ex: Troca de horário, atraso autorizado..."
-									className="w-full px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+									placeholder="Ex: Troca pontual, cobertura de plantão..."
+									className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
 								/>
 							</div>
 
@@ -625,7 +1618,7 @@ export default function EscalaTab({
 										disabled={isSaving}
 										className="cursor-pointer px-3 py-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-950/50 rounded-xl font-bold text-xs flex items-center gap-1.5 transition-colors">
 										<Trash2 size={16} />
-										<span>Excluir</span>
+										<span>Excluir Dia</span>
 									</button>
 								) : (
 									<div />
@@ -642,7 +1635,7 @@ export default function EscalaTab({
 										type="submit"
 										disabled={isSaving}
 										className="cursor-pointer px-5 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-bold rounded-xl text-xs shadow-sm transition-all">
-										{isSaving ? "Salvando..." : editingEscala ? "Atualizar" : "Confirmar"}
+										{isSaving ? "Salvando..." : editingEscala ? "Atualizar Dia" : "Confirmar"}
 									</button>
 								</div>
 							</div>
