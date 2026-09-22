@@ -1161,25 +1161,23 @@ export default function EstoquePedidosPage() {
 						const handleCopyOrderSummary = () => {
 							let text = `*RESUMO DO PEDIDO DE ESTOQUE*\n`;
 							text += `Data: ${new Date().toLocaleDateString("pt-BR")} às ${new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}\n\n`;
-							text += `*ITENS A PEDIR:*\n`;
+							text += `*CAIXAS A PEDIR:*\n`;
 
 							let itemsCount = 0;
+							let totalBoxes = 0;
+
 							cookieEntries.forEach(([key, label]) => {
 								const itemKey = key as keyof StockData;
 								const suggested = getSuggestedOrderPackages(itemKey);
 								const qty = customOrderPackages[itemKey] !== undefined ? (customOrderPackages[itemKey] || 0) : suggested;
-								const pricePerPkg = packagePrices[itemKey] ?? DEFAULT_PACKAGE_PRICES[itemKey] ?? 0;
-								const totalItem = qty * pricePerPkg;
 								const boxSize = boxSizes[itemKey] || 1;
 								const boxesCount = Math.ceil(qty / boxSize);
 								const caixasLabel = boxesCount === 1 ? "cx" : "cxs";
-								const storeParts = STORE_ORDER.filter((sId) => (storeOrderPackages[sId]?.[itemKey] || 0) > 0)
-									.map((sId) => `${STORE_NAMES[sId]}: ${storeOrderPackages[sId]?.[itemKey]}`)
-									.join(", ");
 
 								if (qty > 0) {
 									itemsCount++;
-									text += `• ${label}: *${qty} ${qty === 1 ? "pacote" : "pacotes"}* (${boxesCount} ${caixasLabel}) - R$ ${totalItem.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}${storeParts ? `\n   ↳ ${storeParts}` : ""}\n`;
+									totalBoxes += boxesCount;
+									text += `• ${label}: *${boxesCount} ${caixasLabel}* (${qty} pcts)\n`;
 								}
 							});
 
@@ -1188,10 +1186,9 @@ export default function EstoquePedidosPage() {
 							}
 
 							text += `\n━━━━━━━━━━━━━━━━━━━━\n`;
-							text += `*Total de Pacotes:* ${totalPackages} pacotes\n`;
-							text += `*Subtotal:* R$ ${baseTotalValue.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}\n`;
-							text += `*Impostos Estimados (+8%):* R$ ${taxValue.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}\n`;
-							text += `*VALOR TOTAL ESTIMADO:* R$ ${finalTotalValue.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+							text += `*Total de Caixas:* ${totalBoxes} ${totalBoxes === 1 ? "caixa" : "caixas"}\n`;
+							text += `*Valor Final Base:* R$ ${baseTotalValue.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}\n`;
+							text += `*Valor Final com Impostos (8%):* R$ ${finalTotalValue.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
 							navigator.clipboard.writeText(text);
 							setCopiedSummary(true);
@@ -1798,9 +1795,9 @@ export default function EstoquePedidosPage() {
 						const cookieEntries = sortStockEntries(Object.entries(STOCK_LABELS))
 							.filter(([key]) => key !== "sorveteCaixa" && key !== "sorvetePote");
 
-						let totalPackages = 0;
+						let totalBoxes = 0;
 						let baseTotalValue = 0;
-						const activeItems: { label: string; qty: number; boxesCount: number; boxSize: number; totalItem: number; storeParts: string }[] = [];
+						const activeItems: { label: string; qty: number; boxesCount: number; boxSize: number }[] = [];
 
 						cookieEntries.forEach(([key, label]) => {
 							const itemKey = key as keyof StockData;
@@ -1810,26 +1807,19 @@ export default function EstoquePedidosPage() {
 							const totalItem = qty * pricePerPkg;
 							const boxSize = boxSizes[itemKey] || 1;
 							const boxesCount = Math.ceil(qty / boxSize);
-							const storeParts = STORE_ORDER.filter((sId) => (storeOrderPackages[sId]?.[itemKey] || 0) > 0)
-								.map((sId) => `${STORE_NAMES[sId]}: ${storeOrderPackages[sId]?.[itemKey]}`)
-								.join(", ");
 
 							if (qty > 0) {
-								totalPackages += qty;
+								totalBoxes += boxesCount;
 								baseTotalValue += totalItem;
 								activeItems.push({
 									label,
 									qty,
 									boxesCount,
 									boxSize,
-									totalItem,
-									storeParts,
 								});
 							}
 						});
 
-						const taxRate = 0.08;
-						const taxValue = baseTotalValue * taxRate;
 						const finalTotalValue = baseTotalValue * 1.08;
 
 						const handleWhatsApp = async () => {
@@ -1837,18 +1827,17 @@ export default function EstoquePedidosPage() {
 
 							let text = `*RESUMO DO PEDIDO DE ESTOQUE*\n`;
 							text += `Data: ${new Date().toLocaleDateString("pt-BR")} às ${new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}\n\n`;
-							text += `*ITENS A PEDIR:*\n`;
+							text += `*CAIXAS A PEDIR:*\n`;
 
 							activeItems.forEach((item) => {
 								const caixasLabel = item.boxesCount === 1 ? "cx" : "cxs";
-								text += `• ${item.label}: *${item.qty} ${item.qty === 1 ? "pacote" : "pacotes"}* (${item.boxesCount} ${caixasLabel}) - R$ ${item.totalItem.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}${item.storeParts ? `\n   ↳ ${item.storeParts}` : ""}\n`;
+								text += `• ${item.label}: *${item.boxesCount} ${caixasLabel}* (${item.qty} pcts)\n`;
 							});
 
 							text += `\n━━━━━━━━━━━━━━━━━━━━\n`;
-							text += `*Total de Pacotes:* ${totalPackages} pacotes\n`;
-							text += `*Subtotal:* R$ ${baseTotalValue.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}\n`;
-							text += `*Impostos Estimados (+8%):* R$ ${taxValue.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}\n`;
-							text += `*VALOR TOTAL ESTIMADO:* R$ ${finalTotalValue.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+							text += `*Total de Caixas:* ${totalBoxes} ${totalBoxes === 1 ? "caixa" : "caixas"}\n`;
+							text += `*Valor Final Base:* R$ ${baseTotalValue.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}\n`;
+							text += `*Valor Final com Impostos (8%):* R$ ${finalTotalValue.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
 							const userAgent = typeof navigator !== "undefined" ? navigator.userAgent || "" : "";
 							const isMobileUserAgent = /Android|iPhone|iPad|iPod|webOS|BlackBerry|IEMobile|Opera Mini/i.test(userAgent);
@@ -1880,118 +1869,105 @@ export default function EstoquePedidosPage() {
 						};
 
 						return (
-							<div className="bg-white dark:bg-slate-900 rounded-[2rem] w-full max-w-full sm:max-w-2xl md:max-w-4xl lg:max-w-5xl shadow-2xl overflow-hidden flex flex-col max-h-[92vh] border border-slate-200 dark:border-slate-800">
-								<div className="p-3.5 md:p-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-center print:hidden whitespace-nowrap">
+							<div className="bg-white dark:bg-slate-900 rounded-3xl w-full max-w-full sm:max-w-xl md:max-w-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh] border border-slate-200 dark:border-slate-800">
+								<div className="p-4 md:p-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between print:hidden">
 									<div>
-										<h2 className="text-lg md:text-xl font-black text-slate-800 dark:text-slate-200 tracking-tight text-center uppercase">
-											Resumo do Pedido de Estoque - {new Date().toLocaleDateString("pt-BR")}
+										<h2 className="text-base md:text-lg font-black text-slate-800 dark:text-slate-100 uppercase tracking-wide">
+											Resumo do Pedido (Caixas)
 										</h2>
+										<span className="text-xs font-bold text-slate-400">
+											{new Date().toLocaleDateString("pt-BR")}
+										</span>
+									</div>
+									<div className="px-3 py-1 rounded-xl bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 text-xs md:text-sm font-black">
+										{totalBoxes} {totalBoxes === 1 ? "cx" : "cxs"}
 									</div>
 								</div>
 
-								<div className="p-3.5 md:p-6 overflow-y-auto custom-scrollbar flex-1 print:overflow-visible print:p-0">
+								<div className="p-4 md:p-6 overflow-y-auto custom-scrollbar flex-1 print:overflow-visible print:p-0">
 									{activeItems.length > 0 ? (
-										<div className="space-y-4 print:space-y-6 w-full flex flex-col items-stretch">
-											{/* Visualização em tela: Cards com itens do pedido */}
-											<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4 w-full print:hidden">
+										<div className="space-y-4 print:space-y-4 w-full">
+											{/* Lista Minimalista para Conferência na Tela */}
+											<div className="divide-y divide-slate-100 dark:divide-slate-800 print:hidden">
 												{activeItems.map((item, idx) => (
 													<div
 														key={idx}
-														className="p-3.5 md:p-4 bg-slate-50/90 dark:bg-slate-800/80 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col justify-between">
-														<div>
-															<div className="flex items-center justify-between gap-2 mb-2 pb-1.5 border-b border-slate-200 dark:border-slate-700">
-																<span className="text-xs md:text-sm font-black text-slate-800 dark:text-slate-200 uppercase tracking-tight truncate">
-																	{item.label}
-																</span>
-																<span className="text-xs font-black text-blue-600 dark:text-blue-400 shrink-0">
-																	{item.boxesCount} {item.boxesCount === 1 ? "cx" : "cxs"}
-																</span>
-															</div>
-															<div className="flex items-center justify-between text-xs md:text-sm">
-																<span className="text-slate-500 dark:text-slate-400 font-bold">
-																	Quantidade:
-																</span>
-																<strong className="font-black text-slate-900 dark:text-white">
-																	{item.qty} {item.qty === 1 ? "pct" : "pcts"}
-																</strong>
-															</div>
-															<div className="flex items-center justify-between text-xs md:text-sm mt-1">
-																<span className="text-slate-500 dark:text-slate-400 font-bold">
-																	Subtotal:
-																</span>
-																<span className="font-black text-slate-700 dark:text-slate-300">
-																	R$ {item.totalItem.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-																</span>
-															</div>
-															{item.storeParts && (
-																<div className="text-[0.7rem] text-slate-500 dark:text-slate-400 font-bold mt-2 pt-1.5 border-t border-slate-200/60 dark:border-slate-700/60 truncate" title={item.storeParts}>
-																	Lojas: {item.storeParts}
-																</div>
-															)}
+														className="py-3 flex items-center justify-between gap-3 hover:bg-slate-50/50 dark:hover:bg-slate-800/50 px-2 rounded-xl transition-colors">
+														<div className="flex items-center gap-2 min-w-0">
+															<span className="w-2 h-2 rounded-full bg-blue-500 shrink-0" />
+															<span className="text-sm md:text-base font-black text-slate-800 dark:text-slate-100 uppercase truncate">
+																{item.label}
+															</span>
+															<span className="text-xs font-bold text-slate-400 shrink-0">
+																({item.qty} pcts)
+															</span>
+														</div>
+														<div className="shrink-0 text-right">
+															<span className="text-base md:text-xl font-black text-blue-600 dark:text-blue-400">
+																{item.boxesCount} {item.boxesCount === 1 ? "caixa" : "caixas"}
+															</span>
 														</div>
 													</div>
 												))}
 											</div>
 
-											{/* Resumo Financeiro no Modal */}
-											<div className="bg-slate-50 dark:bg-slate-800/70 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 print:hidden">
-												<div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-center sm:text-left">
-													<div>
-														<span className="text-xs font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider block">
-															Total de Pacotes
-														</span>
-														<span className="text-lg md:text-xl font-black text-slate-800 dark:text-slate-100">
-															{totalPackages} pacotes
-														</span>
-													</div>
-													<div>
-														<span className="text-xs font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider block">
-															Subtotal
-														</span>
-														<span className="text-lg md:text-xl font-black text-slate-700 dark:text-slate-300">
-															R$ {baseTotalValue.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-														</span>
-													</div>
-													<div>
-														<span className="text-xs font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-wider block">
-															Total Estimado (+8%)
-														</span>
-														<span className="text-lg md:text-xl font-black text-emerald-600 dark:text-emerald-400">
-															R$ {finalTotalValue.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-														</span>
-													</div>
+											{/* Resumo Financeiro Minimalista */}
+											<div className="bg-slate-50 dark:bg-slate-800/80 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 print:hidden space-y-2 mt-4">
+												<div className="flex items-center justify-between text-xs md:text-sm">
+													<span className="font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wide">
+														Valor Final Base
+													</span>
+													<span className="font-black text-slate-700 dark:text-slate-200">
+														R$ {baseTotalValue.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+													</span>
+												</div>
+												<div className="flex items-center justify-between text-sm md:text-base pt-2 border-t border-slate-200/80 dark:border-slate-700/80">
+													<span className="font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-wide">
+														Valor Final com Impostos (8%)
+													</span>
+													<span className="text-base md:text-xl font-black text-emerald-600 dark:text-emerald-400">
+														R$ {finalTotalValue.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+													</span>
 												</div>
 											</div>
 
-											{/* Visão de Impressão */}
+											{/* Visão de Impressão Minimalista */}
 											<div className="hidden print:block w-full text-black">
+												<h2 className="text-base font-black uppercase text-center mb-3">
+													Resumo do Pedido de Estoque - {new Date().toLocaleDateString("pt-BR")}
+												</h2>
 												<table className="w-full border-collapse">
 													<thead>
 														<tr className="border-b-2 border-black">
-															<th className="p-2 text-left text-sm font-black uppercase">Sabor / Item</th>
+															<th className="p-2 text-left text-sm font-black uppercase">Item / Sabor</th>
+															<th className="p-2 text-center text-sm font-black uppercase">Caixas a Pedir</th>
 															<th className="p-2 text-center text-sm font-black uppercase">Pacotes</th>
-															<th className="p-2 text-center text-sm font-black uppercase">Caixas</th>
-															<th className="p-2 text-right text-sm font-black uppercase">Subtotal (R$)</th>
 														</tr>
 													</thead>
 													<tbody>
 														{activeItems.map((item, i) => (
 															<tr key={i} className="border-b border-slate-300">
-																<td className="p-2 font-bold text-sm">{item.label}</td>
-																<td className="p-2 text-center font-black text-sm">{item.qty}</td>
-																<td className="p-2 text-center font-bold text-sm">{item.boxesCount} ({item.boxSize} p/ cx)</td>
-																<td className="p-2 text-right font-black text-sm">
-																	R$ {item.totalItem.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-																</td>
+																<td className="p-2 font-black text-sm uppercase">{item.label}</td>
+																<td className="p-2 text-center font-black text-sm">{item.boxesCount} {item.boxesCount === 1 ? "cx" : "cxs"}</td>
+																<td className="p-2 text-center font-bold text-sm">{item.qty} pcts</td>
 															</tr>
 														))}
 													</tbody>
 													<tfoot>
 														<tr className="border-t-2 border-black font-black">
-															<td className="p-2 text-left uppercase">TOTAL</td>
-															<td className="p-2 text-center">{totalPackages} pcts</td>
+															<td className="p-2 text-left uppercase font-black">TOTAL DE CAIXAS</td>
+															<td className="p-2 text-center font-black">{totalBoxes} {totalBoxes === 1 ? "cx" : "cxs"}</td>
 															<td className="p-2 text-center">-</td>
-															<td className="p-2 text-right">
+														</tr>
+														<tr className="border-t border-slate-300 font-bold">
+															<td className="p-2 text-left uppercase" colSpan={2}>Valor Final Base</td>
+															<td className="p-2 text-right font-black">
+																R$ {baseTotalValue.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+															</td>
+														</tr>
+														<tr className="border-t border-slate-300 font-black">
+															<td className="p-2 text-left uppercase" colSpan={2}>Valor Final com Impostos (8%)</td>
+															<td className="p-2 text-right font-black text-sm">
 																R$ {finalTotalValue.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
 															</td>
 														</tr>
@@ -2001,31 +1977,31 @@ export default function EstoquePedidosPage() {
 										</div>
 									) : (
 										<div className="text-center py-10">
-											<p className="text-slate-400 dark:text-slate-500 font-bold uppercase tracking-widest">
+											<p className="text-slate-400 dark:text-slate-500 font-bold uppercase tracking-widest text-xs md:text-sm">
 												Nenhum item com quantidade a pedir selecionado.
 											</p>
 										</div>
 									)}
 								</div>
 
-								<div className="p-4 md:p-6 bg-slate-50 dark:bg-slate-800/50 border-t border-slate-100 dark:border-slate-800 flex flex-col items-center gap-3 transition-colors print:hidden">
-									<div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-3 w-full max-w-lg">
+								<div className="p-4 md:p-5 bg-slate-50 dark:bg-slate-800/50 border-t border-slate-100 dark:border-slate-800 flex flex-col items-center gap-2.5 transition-colors print:hidden">
+									<div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-2.5 w-full max-w-md">
 										<button
 											onClick={handleWhatsApp}
 											disabled={activeItems.length === 0}
-											className="flex-1 flex items-center justify-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-white px-5 py-3 rounded-2xl font-black text-xs md:text-[0.75rem] uppercase tracking-widest shadow-md shadow-emerald-100 dark:shadow-none transition-all disabled:opacity-50 cursor-pointer">
+											className="flex-1 flex items-center justify-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-white px-5 py-3 rounded-2xl font-black text-xs uppercase tracking-widest shadow-md shadow-emerald-500/20 dark:shadow-none transition-all disabled:opacity-50 cursor-pointer">
 											Enviar no WhatsApp
 										</button>
 										<button
 											onClick={() => window.print()}
 											disabled={activeItems.length === 0}
-											className="flex-1 flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-5 py-3 rounded-2xl font-black text-xs md:text-[0.75rem] uppercase tracking-widest shadow-md shadow-blue-100 dark:shadow-none transition-all disabled:opacity-50 cursor-pointer">
+											className="flex-1 flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-5 py-3 rounded-2xl font-black text-xs uppercase tracking-widest shadow-md shadow-blue-500/20 dark:shadow-none transition-all disabled:opacity-50 cursor-pointer">
 											Imprimir
 										</button>
 									</div>
 									<button
 										onClick={() => setShowSummary(false)}
-										className="w-full sm:w-auto min-w-[140px] px-6 py-2.5 rounded-2xl font-black text-xs md:text-[0.75rem] uppercase tracking-widest text-slate-500 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-800 hover:shadow-sm transition-all cursor-pointer border border-transparent hover:border-slate-200 dark:hover:border-slate-700">
+										className="w-full sm:w-auto min-w-[120px] px-5 py-2 rounded-xl font-black text-xs uppercase tracking-widest text-slate-500 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-800 hover:shadow-sm transition-all cursor-pointer border border-transparent hover:border-slate-200 dark:hover:border-slate-700">
 										Fechar
 									</button>
 								</div>
