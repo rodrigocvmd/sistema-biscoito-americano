@@ -1192,7 +1192,14 @@ export default function EstoqueReposicionarPage() {
 						/>
 					</div>
 				</div>
-				<div className="flex items-center gap-2 w-full sm:w-auto">
+				<div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto">
+					<button
+						onClick={confirmResetProjectedStocks}
+						disabled={startingRepo}
+						className="flex-1 sm:flex-none justify-center cursor-pointer flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white px-4 md:px-6 py-2.5 md:py-3.5 rounded-2xl font-black text-xs transition-all uppercase tracking-widest shadow-sm">
+						{startingRepo ? <RefreshCw className="animate-spin" size={14} /> : <RefreshCw size={14} />}
+						{startingRepo ? "Iniciando..." : "Iniciar Novo"}
+					</button>
 					<button
 						onClick={() => setHideOpen(!hideOpen)}
 						className="flex-1 sm:flex-none justify-center cursor-pointer flex items-center gap-2 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 px-4 md:px-6 py-2.5 md:py-3.5 rounded-2xl font-black text-xs transition-all border border-slate-200 dark:border-slate-800 uppercase tracking-widest shadow-sm">

@@ -230,6 +230,34 @@ export default function EstoquePedidosPage() {
 		return () => unsubscribeDesired();
 	}, []);
 
+	// Helper para calcular a cor do número no espectro: vermelho (abaixo) -> verde (ideal/meta) -> azul (acima)
+	const getProportionNumberColor = (currentVal: number, targetVal: number, openCount: number) => {
+		if (targetVal === 0 && currentVal === 0) {
+			if (openCount === 0 || hideOpen) {
+				return { color: "hsl(215, 16%, 50%)" };
+			}
+			return { color: "hsl(142, 76%, 42%)" };
+		}
+		if (targetVal === 0) {
+			return { color: "hsl(217, 85%, 45%)" };
+		}
+		const diff = currentVal - targetVal;
+		if (diff === 0) {
+			return { color: "hsl(142, 76%, 40%)" };
+		}
+		const maxRef = Math.max(targetVal, 4);
+		const ratio = Math.min(Math.abs(diff) / maxRef, 1);
+		let hue: number;
+		if (diff > 0) {
+			// Acima da meta: de verde (142) até azul (217)
+			hue = Math.round(142 + (217 - 142) * ratio);
+		} else {
+			// Abaixo da meta: de verde (142) até vermelho (0)
+			hue = Math.round(142 * (1 - ratio));
+		}
+		return { color: `hsl(${hue}, 85%, 42%)` };
+	};
+
 	// 4. Update table data based on selection
 	useEffect(() => {
 		if (selectedSessionId === "atual") {
@@ -753,7 +781,33 @@ export default function EstoquePedidosPage() {
 							</div>
 						</div>
 
-						<div className="flex items-center gap-2 sm:gap-3 w-full lg:w-auto justify-end flex-wrap">
+						<div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3 w-full lg:w-auto justify-end flex-wrap">
+							{/* Legenda de Proporção / Cores */}
+							<div className="flex flex-col items-center sm:items-end gap-0.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 px-3 py-1.5 rounded-2xl shadow-sm">
+								<span className="w-full text-center text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+									Proporção
+								</span>
+								<div className="flex items-center gap-1.5">
+									<span className="text-[8px] font-black text-red-600 dark:text-red-400 tracking-tight uppercase">
+										A MENOS
+									</span>
+									<div
+										className="w-16 sm:w-20 h-1.5 rounded-full shadow-inner"
+										style={{
+											background: "linear-gradient(to right, hsl(0, 85%, 45%), hsl(142, 76%, 45%), hsl(217, 85%, 45%))",
+										}}
+									/>
+									<span className="text-[8px] font-black text-blue-600 dark:text-blue-400 tracking-tight uppercase">
+										A MAIS
+									</span>
+								</div>
+								<div className="w-full flex justify-center -mt-0.5">
+									<span className="text-[8px] font-black text-emerald-600 dark:text-emerald-400 tracking-tight uppercase">
+										IDEAL
+									</span>
+								</div>
+							</div>
+
 							<button
 								onClick={fillStoreOrderWithSuggested}
 								className="flex-1 sm:flex-none justify-center flex items-center gap-1.5 md:gap-2 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-800 px-3 md:px-4 py-2.5 md:py-3 rounded-2xl font-black shadow-sm transition-all cursor-pointer text-xs md:text-sm"
@@ -809,7 +863,7 @@ export default function EstoquePedidosPage() {
 												className="p-2 md:p-3 text-center text-xs md:text-[0.875rem] font-black text-slate-600 dark:text-slate-300 uppercase tracking-wider min-w-[6.5rem] md:min-w-[9.5rem] border-l border-slate-200/60 dark:border-slate-700/60">
 												<div>{STORE_NAMES[storeId]}</div>
 												<div className="text-[0.62rem] md:text-[0.68rem] font-bold text-slate-400 normal-case tracking-normal mt-0.5">
-													Estoque / Meta
+													Após Pedido
 												</div>
 											</th>
 										))}
@@ -867,28 +921,13 @@ export default function EstoquePedidosPage() {
 																key={storeId}
 																className="p-2 md:p-3.5 text-center border-l border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 group-hover:bg-blue-50/30 dark:group-hover:bg-blue-900/20 transition-colors">
 																<div className="flex flex-col items-center justify-center gap-1.5 py-1">
-																	{/* Apenas os dois números: Quantidade Atual (com itens adicionados) / Desejável */}
+																	{/* Apenas o número após pedido com cor no espectro de vermelho -> verde -> azul */}
 																	<div className="flex items-baseline justify-center gap-1 font-black px-0.5">
 																		<span
-																			className={`text-lg md:text-2xl font-black transition-colors ${
-																				orderVal > 0
-																					? currentWithOrder < storeDesiredVal
-																						? "text-rose-600 dark:text-rose-400"
-																						: "text-blue-600 dark:text-blue-400"
-																					: storeDesiredVal > 0 && storeStockVal < storeDesiredVal
-																					? "text-rose-600 dark:text-rose-400"
-																					: storeStockVal === 0 && (storeOpenCount === 0 || hideOpen)
-																					? "text-slate-300 dark:text-slate-600"
-																					: "text-slate-800 dark:text-slate-100"
-																			}`}
-																			title={`Estoque original: ${storeStockVal}${orderVal > 0 ? ` (+${orderVal} adicionados = ${currentWithOrder})` : ""}`}>
+																			className="text-lg md:text-2xl font-black transition-colors"
+																			style={getProportionNumberColor(currentWithOrder, storeDesiredVal, storeOpenCount)}
+																			title={`Após pedido: ${currentWithOrder} | Meta: ${storeDesiredVal || 0} | Estoque original: ${storeStockVal}${orderVal > 0 ? ` (+${orderVal} adicionados)` : ""}`}>
 																			{currentWithOrder}
-																		</span>
-																		<span className="text-slate-400 dark:text-slate-500 text-sm md:text-base font-bold">/</span>
-																		<span
-																			className="text-sm md:text-lg font-bold text-slate-400 dark:text-slate-500"
-																			title={`Meta desejável em ${STORE_NAMES[storeId]}: ${storeDesiredVal}`}>
-																			{storeDesiredVal > 0 ? storeDesiredVal : "-"}
 																		</span>
 																		{!hideOpen && storeOpenCount > 0 && (
 																			<span className="text-xs md:text-sm font-bold text-slate-400 dark:text-slate-500 whitespace-nowrap ml-0.5">
