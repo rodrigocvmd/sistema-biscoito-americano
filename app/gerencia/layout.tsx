@@ -44,7 +44,7 @@ export default function GerenciaLayout({
 	return (
 		<div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col w-full transition-colors">
 			{/* Header */}
-			<header className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 sticky top-0 z-40 shadow-sm w-full print:hidden transition-colors">
+			<header className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 relative md:sticky md:top-0 z-40 shadow-sm w-full print:hidden transition-colors">
 				<div className="w-full mx-auto px-4 py-3 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
 					<div className="flex items-center justify-between w-full lg:w-auto">
 						<div className="flex items-center gap-4">
