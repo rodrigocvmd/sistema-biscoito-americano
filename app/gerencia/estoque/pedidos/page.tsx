@@ -584,27 +584,77 @@ export default function EstoquePedidosPage() {
 			<style
 				dangerouslySetInnerHTML={{
 					__html: `
-				@media print {
+					@media print {
 					@page {
-						size: A4;
-						margin: 10mm;
+						size: A4 portrait;
+						margin: 15mm;
 					}
 					* {
-						-webkit-print-color-adjust: stroke !important;
-						print-color-adjust: stroke !important;
+						-webkit-print-color-adjust: exact !important;
+						print-color-adjust: exact !important;
 						box-shadow: none !important;
 						text-shadow: none !important;
 					}
 					body {
 						background: white !important;
 						color: black !important;
-						font-family: Arial, sans-serif !important;
+						font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif !important;
 						padding: 0 !important;
 						margin: 0 !important;
 					}
+
+					/* Ocultar cabeçalhos, navegação e botões */
 					nav, header, footer, .print\\:hidden, button {
 						display: none !important;
 					}
+
+					/* Quando o modal de resumo estiver aberto, ocultar todo o resto e exibir apenas o container de impressão */
+					body:has(#modal-resumo-print) {
+						visibility: hidden !important;
+					}
+
+					body:has(#modal-resumo-print) #modal-resumo-print,
+					body:has(#modal-resumo-print) #modal-resumo-print * {
+						visibility: visible !important;
+					}
+
+					#modal-resumo-print {
+						position: absolute !important;
+						left: 0 !important;
+						top: 0 !important;
+						width: 100% !important;
+						height: auto !important;
+						min-height: auto !important;
+						margin: 0 !important;
+						padding: 0 !important;
+						background: transparent !important;
+						backdrop-filter: none !important;
+						display: block !important;
+						z-index: 9999 !important;
+					}
+
+					#modal-resumo-print > div {
+						position: static !important;
+						width: 100% !important;
+						max-width: 100% !important;
+						border: none !important;
+						box-shadow: none !important;
+						background: transparent !important;
+						padding: 0 !important;
+						margin: 0 !important;
+						max-height: none !important;
+						overflow: visible !important;
+					}
+
+					.print-summary-card {
+						border: 1px solid #1e293b !important;
+						border-radius: 8px !important;
+						padding: 16px 20px !important;
+						margin: 0 auto !important;
+						max-width: 550px !important;
+						background: #ffffff !important;
+					}
+
 					.bg-white, .dark\\:bg-slate-900, .bg-slate-50, .dark\\:bg-slate-800 {
 						background: transparent !important;
 						border: none !important;
@@ -633,20 +683,6 @@ export default function EstoquePedidosPage() {
 						background-color: #f2f2f2 !important;
 						font-weight: bold !important;
 						text-transform: uppercase !important;
-					}
-					span, div {
-						background: transparent !important;
-						border: none !important;
-						border-radius: 0 !important;
-						padding: 0 !important;
-						margin: 0 !important;
-						color: black !important;
-						box-shadow: none !important;
-						font-size: 10pt !important;
-						font-weight: normal !important;
-					}
-					td span.font-black, td span.font-bold, td .font-black {
-						font-weight: bold !important;
 					}
 					h1 {
 						font-size: 14pt !important;
@@ -1822,9 +1858,8 @@ export default function EstoquePedidosPage() {
 
 						const finalTotalValue = baseTotalValue * 1.08;
 
-						const handleWhatsApp = async () => {
-							if (activeItems.length === 0) return;
-
+						const generateSummaryText = () => {
+							if (activeItems.length === 0) return "";
 							let text = `*RESUMO DO PEDIDO DE ESTOQUE*\n`;
 							text += `Data: ${new Date().toLocaleDateString("pt-BR")} às ${new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}\n\n`;
 							text += `*CAIXAS A PEDIR:*\n`;
@@ -1838,6 +1873,12 @@ export default function EstoquePedidosPage() {
 							text += `*Total de Caixas:* ${totalBoxes} ${totalBoxes === 1 ? "caixa" : "caixas"}\n`;
 							text += `*Valor Final Base:* R$ ${baseTotalValue.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}\n`;
 							text += `*Valor Final com Impostos (8%):* R$ ${finalTotalValue.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+							return text;
+						};
+
+						const handleWhatsApp = async () => {
+							const text = generateSummaryText();
+							if (!text) return;
 
 							const userAgent = typeof navigator !== "undefined" ? navigator.userAgent || "" : "";
 							const isMobileUserAgent = /Android|iPhone|iPad|iPod|webOS|BlackBerry|IEMobile|Opera Mini/i.test(userAgent);
@@ -1865,6 +1906,18 @@ export default function EstoquePedidosPage() {
 								}, 700);
 							} else {
 								window.open(`https://web.whatsapp.com/send?text=${encodedText}`, "_blank");
+							}
+						};
+
+						const handleCopySummary = async () => {
+							const text = generateSummaryText();
+							if (!text) return;
+							try {
+								await navigator.clipboard.writeText(text);
+								setCopiedSummary(true);
+								setTimeout(() => setCopiedSummary(false), 2500);
+							} catch (err) {
+								console.error("Falha ao copiar:", err);
 							}
 						};
 
@@ -1931,48 +1984,57 @@ export default function EstoquePedidosPage() {
 												</div>
 											</div>
 
-											{/* Visão de Impressão Minimalista */}
-											<div className="hidden print:block w-full text-black">
-												<h2 className="text-base font-black uppercase text-center mb-3">
-													Resumo do Pedido de Estoque - {new Date().toLocaleDateString("pt-BR")}
-												</h2>
-												<table className="w-full border-collapse">
-													<thead>
-														<tr className="border-b-2 border-black">
-															<th className="p-2 text-left text-sm font-black uppercase">Item / Sabor</th>
-															<th className="p-2 text-center text-sm font-black uppercase">Caixas a Pedir</th>
-															<th className="p-2 text-center text-sm font-black uppercase">Pacotes</th>
-														</tr>
-													</thead>
-													<tbody>
-														{activeItems.map((item, i) => (
-															<tr key={i} className="border-b border-slate-300">
-																<td className="p-2 font-black text-sm uppercase">{item.label}</td>
-																<td className="p-2 text-center font-black text-sm">{item.boxesCount} {item.boxesCount === 1 ? "cx" : "cxs"}</td>
-																<td className="p-2 text-center font-bold text-sm">{item.qty} pcts</td>
-															</tr>
-														))}
-													</tbody>
-													<tfoot>
-														<tr className="border-t-2 border-black font-black">
-															<td className="p-2 text-left uppercase font-black">TOTAL DE CAIXAS</td>
-															<td className="p-2 text-center font-black">{totalBoxes} {totalBoxes === 1 ? "cx" : "cxs"}</td>
-															<td className="p-2 text-center">-</td>
-														</tr>
-														<tr className="border-t border-slate-300 font-bold">
-															<td className="p-2 text-left uppercase" colSpan={2}>Valor Final Base</td>
-															<td className="p-2 text-right font-black">
-																R$ {baseTotalValue.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-															</td>
-														</tr>
-														<tr className="border-t border-slate-300 font-black">
-															<td className="p-2 text-left uppercase" colSpan={2}>Valor Final com Impostos (8%)</td>
-															<td className="p-2 text-right font-black text-sm">
-																R$ {finalTotalValue.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-															</td>
-														</tr>
-													</tfoot>
-												</table>
+											{/* Visão de Impressão (Molde do WhatsApp: Lista Limpa com Destaques em Negrito) */}
+											<div className="hidden print:block w-full text-black font-sans text-[11pt] leading-relaxed">
+												<div className="border-b-2 border-black pb-2 mb-4 text-center">
+													<h2 className="text-[14pt] font-black uppercase tracking-wider mb-1">
+														RESUMO DO PEDIDO DE ESTOQUE
+													</h2>
+													<p className="text-[10pt] font-bold text-slate-600">
+														Data: {new Date().toLocaleDateString("pt-BR")} às {new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
+													</p>
+												</div>
+
+												<div className="mb-4">
+													<h3 className="text-[11pt] font-black uppercase tracking-wider mb-2 border-b border-slate-300 pb-1">
+														CAIXAS A PEDIR:
+													</h3>
+													<ul className="space-y-1.5 pl-1">
+														{activeItems.map((item, i) => {
+															const caixasLabel = item.boxesCount === 1 ? "cx" : "cxs";
+															return (
+																<li key={i} className="flex items-baseline justify-between border-b border-dotted border-slate-200 py-1">
+																	<span>
+																		• <strong className="font-black uppercase">{item.label}</strong>:{" "}
+																		<strong className="font-black">{item.boxesCount} {caixasLabel}</strong>{" "}
+																		<span className="text-[9.5pt] text-slate-600">({item.qty} pcts)</span>
+																	</span>
+																</li>
+															);
+														})}
+													</ul>
+												</div>
+
+												<div className="border-t-2 border-black pt-3 space-y-1.5 mt-6">
+													<div className="flex justify-between items-baseline">
+														<span className="font-black uppercase">Total de Caixas:</span>
+														<strong className="font-black text-[12pt]">
+															{totalBoxes} {totalBoxes === 1 ? "caixa" : "caixas"}
+														</strong>
+													</div>
+													<div className="flex justify-between items-baseline">
+														<span className="font-bold">Valor Final Base:</span>
+														<strong className="font-bold">
+															R$ {baseTotalValue.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+														</strong>
+													</div>
+													<div className="flex justify-between items-baseline text-[12pt] border-t border-slate-300 pt-1.5">
+														<span className="font-black uppercase">Valor Final com Impostos (8%):</span>
+														<strong className="font-black text-[13pt]">
+															R$ {finalTotalValue.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+														</strong>
+													</div>
+												</div>
 											</div>
 										</div>
 									) : (
@@ -1985,18 +2047,26 @@ export default function EstoquePedidosPage() {
 								</div>
 
 								<div className="p-4 md:p-5 bg-slate-50 dark:bg-slate-800/50 border-t border-slate-100 dark:border-slate-800 flex flex-col items-center gap-2.5 transition-colors print:hidden">
-									<div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-2.5 w-full max-w-md">
+									<div className="grid grid-cols-1 sm:grid-cols-3 items-stretch gap-2.5 w-full max-w-lg">
+										<button
+											onClick={handleCopySummary}
+											disabled={activeItems.length === 0}
+											className="flex items-center justify-center gap-2 bg-slate-700 hover:bg-slate-800 text-white px-3 py-3 rounded-2xl font-black text-xs uppercase tracking-wider shadow-md transition-all disabled:opacity-50 cursor-pointer">
+											{copiedSummary ? <Check size={16} className="text-emerald-400" /> : <Copy size={16} />}
+											<span>{copiedSummary ? "Copiado!" : "Copiar Resumo"}</span>
+										</button>
 										<button
 											onClick={handleWhatsApp}
 											disabled={activeItems.length === 0}
-											className="flex-1 flex items-center justify-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-white px-5 py-3 rounded-2xl font-black text-xs uppercase tracking-widest shadow-md shadow-emerald-500/20 dark:shadow-none transition-all disabled:opacity-50 cursor-pointer">
-											Enviar no WhatsApp
+											className="flex items-center justify-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-white px-3 py-3 rounded-2xl font-black text-xs uppercase tracking-wider shadow-md shadow-emerald-500/20 dark:shadow-none transition-all disabled:opacity-50 cursor-pointer">
+											<span>Enviar WhatsApp</span>
 										</button>
 										<button
 											onClick={() => window.print()}
 											disabled={activeItems.length === 0}
-											className="flex-1 flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-5 py-3 rounded-2xl font-black text-xs uppercase tracking-widest shadow-md shadow-blue-500/20 dark:shadow-none transition-all disabled:opacity-50 cursor-pointer">
-											Imprimir
+											className="flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-3 py-3 rounded-2xl font-black text-xs uppercase tracking-wider shadow-md shadow-blue-500/20 dark:shadow-none transition-all disabled:opacity-50 cursor-pointer">
+											<Printer size={16} />
+											<span>Imprimir</span>
 										</button>
 									</div>
 									<button
