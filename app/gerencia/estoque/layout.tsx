@@ -50,7 +50,32 @@ export default function EstoqueLayout({ children }: { children: React.ReactNode 
 	const pathname = usePathname();
 
 	useEffect(() => {
-		window.scrollTo(0, 0);
+		if (typeof window !== "undefined") {
+			if ("scrollRestoration" in window.history) {
+				window.history.scrollRestoration = "manual";
+			}
+			window.scrollTo(0, 0);
+			document.documentElement.scrollTop = 0;
+			document.body.scrollTop = 0;
+
+			// Timers para contornar restauração de scroll tardia do navegador em mobile
+			const timer1 = setTimeout(() => {
+				window.scrollTo(0, 0);
+				document.documentElement.scrollTop = 0;
+				document.body.scrollTop = 0;
+			}, 50);
+
+			const timer2 = setTimeout(() => {
+				window.scrollTo(0, 0);
+				document.documentElement.scrollTop = 0;
+				document.body.scrollTop = 0;
+			}, 250);
+
+			return () => {
+				clearTimeout(timer1);
+				clearTimeout(timer2);
+			};
+		}
 	}, [pathname]);
 
 	const tabs = [
