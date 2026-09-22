@@ -20,7 +20,7 @@ export default function EstoqueAtualPage() {
 	const [loading, setLoading] = useState(true);
 	const [allData, setAllData] = useState<FullStoreData[]>([]);
 	const [searchTerm, setSearchTerm] = useState("");
-	const [hideOpen, setHideOpen] = useState(false);
+	const [hideOpen, setHideOpen] = useState(true);
 
 	const rotateStores = () => {
 		setAllData((prev) => {

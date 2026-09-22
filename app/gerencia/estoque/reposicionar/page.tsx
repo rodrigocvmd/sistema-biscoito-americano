@@ -44,7 +44,6 @@ import {
 	X,
 	AlertCircle,
 	FileText,
-	PieChart,
 	Check,
 } from "lucide-react";
 
@@ -59,27 +58,17 @@ interface FullStoreData {
 const STORE_ORDER: StoreId[] = ["lago", "terraco", "conjunto", "noroeste"];
 
 export default function EstoqueReposicionarPage() {
-	const [activeSubTab, setActiveSubTab] = useState<"reposicionar" | "proporcao">("reposicionar");
 	const [loading, setLoading] = useState(true);
 	const [allData, setAllData] = useState<FullStoreData[]>([]);
 	const isInitialized = useRef(false);
 
-	// Proporção Desejável States
-	const [desiredTotalData, setDesiredTotalData] = useState<Partial<StockData>>({});
+	// Metas Desejáveis obtidas da rota /gerencia/estoque/pedidos (desiredStocks)
 	const [storeProportions, setStoreProportions] = useState<Record<StoreId, Partial<StockData>>>({
 		lago: {},
 		noroeste: {},
 		terraco: {},
 		conjunto: {},
 	});
-	const [localStoreProportions, setLocalStoreProportions] = useState<Record<StoreId, Partial<StockData>>>({
-		lago: {},
-		noroeste: {},
-		terraco: {},
-		conjunto: {},
-	});
-	const [savingProportions, setSavingProportions] = useState(false);
-	const [proportionSearchTerm, setProportionSearchTerm] = useState("");
 
 	// Estado da seleção ativa para reposicionamento interativo por cliques
 	const [activeSelection, setActiveSelection] = useState<{
@@ -114,7 +103,7 @@ export default function EstoqueReposicionarPage() {
 	const [showResetConfirm, setShowResetConfirm] = useState(true);
 
 	const [searchTerm, setSearchTerm] = useState("");
-	const [hideOpen, setHideOpen] = useState(false);
+	const [hideOpen, setHideOpen] = useState(true);
 
 	const [startingRepo, setStartingRepo] = useState(false);
 	const [isFinalizedSession, setIsFinalizedSession] = useState(false);
@@ -210,105 +199,11 @@ export default function EstoqueReposicionarPage() {
 				}
 			});
 
-			setDesiredTotalData(globalDesired);
 			setStoreProportions(propsByStore);
-			setLocalStoreProportions(JSON.parse(JSON.stringify(propsByStore)));
 		});
 
 		return () => unsubscribeDesired();
 	}, []);
-
-	// Helper para calcular a cor do espectro de vermelho (abaixo) -> verde (adequada) -> azul (acima)
-	const getProportionIndicatorColor = (currentVal: number, targetVal: number) => {
-		const diff = currentVal - targetVal;
-		if (targetVal === 0 && currentVal === 0) {
-			return { bg: "bg-emerald-500", style: { backgroundColor: "hsl(142, 76%, 45%)" }, diffText: "0" };
-		}
-		if (diff === 0) {
-			return {
-				style: {
-					backgroundColor: "hsl(142, 76%, 45%)",
-					boxShadow: "0 0 6px hsla(142, 76%, 45%, 0.4)",
-				},
-				diffText: "0",
-			};
-		}
-
-		const maxRef = Math.max(targetVal, 4);
-		const ratio = Math.min(Math.abs(diff) / maxRef, 1); // 0 = ideal, 1 = máxima divergência
-
-		let hue: number;
-		if (diff > 0) {
-			// Acima da meta: de verde (142) até azul (217)
-			hue = Math.round(142 + (217 - 142) * ratio);
-		} else {
-			// Abaixo da meta: de verde (142) até vermelho (0)
-			hue = Math.round(142 * (1 - ratio));
-		}
-
-		return {
-			style: {
-				backgroundColor: `hsl(${hue}, 85%, 45%)`,
-				boxShadow: `0 0 6px hsla(${hue}, 85%, 45%, 0.4)`,
-			},
-			diffText: diff > 0 ? `+${diff}` : `${diff}`,
-		};
-	};
-
-	const handleLocalProportionChange = (storeId: StoreId, itemKey: keyof StockData, value: string) => {
-		if (value === "") {
-			setLocalStoreProportions((prev) => ({
-				...prev,
-				[storeId]: {
-					...prev[storeId],
-					[itemKey]: undefined,
-				},
-			}));
-			return;
-		}
-
-		let inputNum = Math.max(0, parseInt(value) || 0);
-		const metaGlobal = desiredTotalData[itemKey] || 0;
-
-		if (metaGlobal > 0) {
-			// Soma das outras lojas para este mesmo item
-			const sumOtherStores = STORE_ORDER
-				.filter((sId) => sId !== storeId)
-				.reduce((acc, sId) => acc + (localStoreProportions[sId]?.[itemKey] || 0), 0);
-
-			const maxAllowed = Math.max(0, metaGlobal - sumOtherStores);
-			inputNum = Math.min(inputNum, maxAllowed);
-		}
-
-		setLocalStoreProportions((prev) => ({
-			...prev,
-			[storeId]: {
-				...prev[storeId],
-				[itemKey]: inputNum,
-			},
-		}));
-	};
-
-	const saveProportions = async () => {
-		setSavingProportions(true);
-		try {
-			// Salva no doc global dentro de storeProportions e também individualmente por doc para compatibilidade
-			const globalDocRef = doc(db, "desiredStocks", "global");
-			await setDoc(globalDocRef, { storeProportions: localStoreProportions }, { merge: true });
-
-			for (const sId of STORE_ORDER) {
-				const storeDocRef = doc(db, "desiredStocks", sId);
-				await setDoc(storeDocRef, { stock: localStoreProportions[sId] || {} }, { merge: true });
-			}
-
-			setActiveSubTab("reposicionar");
-		} catch (error) {
-			console.error("Erro ao salvar proporções desejáveis:", error);
-			alert("Erro ao salvar proporções. Verifique o console.");
-		} finally {
-			setSavingProportions(false);
-		}
-	};
 
 	// Inicialização única baseada no allData (apenas se não houver dados no localStorage)
 	useEffect(() => {
@@ -1152,32 +1047,7 @@ export default function EstoqueReposicionarPage() {
 			`,
 				}}
 			/>
-			{/* Sub-tabs Selector */}
-			<div className="flex items-center gap-2 border-b border-slate-200 dark:border-slate-800 pb-3 mb-6 print:hidden max-w-full overflow-x-auto no-scrollbar">
-				<button
-					onClick={() => setActiveSubTab("reposicionar")}
-					className={`flex items-center gap-2 px-3 md:px-4 py-2 rounded-xl text-xs md:text-sm font-black whitespace-nowrap shrink-0 transition-all cursor-pointer ${
-						activeSubTab === "reposicionar"
-							? "bg-slate-105 dark:bg-slate-800 text-blue-600 dark:text-blue-400 border border-slate-200 dark:border-slate-700"
-							: "text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-900"
-					}`}>
-					<FileText size={16} />
-					REPOSICIONAMENTO
-				</button>
-				<button
-					onClick={() => setActiveSubTab("proporcao")}
-					className={`flex items-center gap-2 px-3 md:px-4 py-2 rounded-xl text-xs md:text-sm font-black whitespace-nowrap shrink-0 transition-all cursor-pointer ${
-						activeSubTab === "proporcao"
-							? "bg-slate-105 dark:bg-slate-800 text-blue-600 dark:text-blue-400 border border-slate-200 dark:border-slate-700"
-							: "text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-900"
-					}`}>
-					<PieChart size={16} />
-					PROPORÇÃO DESEJÁVEL
-				</button>
-			</div>
-
-			{activeSubTab === "reposicionar" ? (
-				<div className="space-y-6 print:hidden">
+			<div className="space-y-6 print:hidden">
 			{/* Filter & Controls Bar */}
 			<div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 md:gap-4 print:hidden">
 				<div className="bg-white dark:bg-slate-900 p-2.5 md:p-3 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex items-center gap-4 flex-1 transition-colors">
@@ -1218,32 +1088,6 @@ export default function EstoqueReposicionarPage() {
 					{savingRepos ? <RefreshCw className="animate-spin" size={16} /> : <Save size={16} />}
 					{savingRepos ? "Processando..." : "Finalizar reposicionamento"}
 				</button>
-
-				{/* Legenda de Proporção (ao lado em telas md+, abaixo em telas menores) */}
-				<div className="md:absolute md:right-0 flex flex-col items-center md:items-end gap-1 bg-white dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 px-3.5 py-2 rounded-2xl shadow-sm">
-					<span className="w-full text-center text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider">
-						Proporção
-					</span>
-					<div className="flex items-center gap-2">
-						<span className="text-[9px] font-black text-red-600 dark:text-red-400 tracking-tight uppercase">
-							A MENOS
-						</span>
-						<div
-							className="w-24 md:w-28 h-2 rounded-full shadow-inner"
-							style={{
-								background: "linear-gradient(to right, hsl(0, 85%, 45%), hsl(142, 76%, 45%), hsl(217, 85%, 45%))",
-							}}
-						/>
-						<span className="text-[9px] font-black text-blue-600 dark:text-blue-400 tracking-tight uppercase">
-							A MAIS
-						</span>
-					</div>
-					<div className="w-full flex justify-center -mt-0.5">
-						<span className="text-[9px] font-black text-emerald-600 dark:text-emerald-400 tracking-tight uppercase">
-							IDEAL
-						</span>
-					</div>
-				</div>
 			</div>
 
 			<div className="bg-white dark:bg-slate-900 rounded-2xl md:rounded-[2rem] border border-slate-200 dark:border-slate-800 shadow-sm transition-colors print:hidden">
@@ -1251,13 +1095,13 @@ export default function EstoqueReposicionarPage() {
 					<table className="w-full table-fixed border-separate border-spacing-0 min-w-[34rem] md:min-w-[50rem]">
 						<thead>
 							<tr className="bg-slate-50 dark:bg-slate-800">
-								<th className="w-[26%] md:w-[24%] min-w-[7.5rem] md:min-w-[12rem] p-3 md:p-5 text-xs md:text-[1rem] font-black text-slate-700 dark:text-slate-300 uppercase tracking-widest sticky left-0 bg-slate-50 dark:bg-slate-800 z-20 border-b border-slate-200 dark:border-slate-700 text-center">
+								<th className="w-[26%] md:w-[24%] min-w-[7.5rem] md:min-w-[12rem] p-3 md:p-5 text-sm md:text-lg font-black text-slate-700 dark:text-slate-300 uppercase tracking-widest sticky left-0 bg-slate-50 dark:bg-slate-800 z-20 border-b border-slate-200 dark:border-slate-700 text-center">
 									Item
 								</th>
 								{STORE_ORDER.map((id) => (
 									<th
 										key={id}
-										className="w-[18.5%] md:w-[19%] min-w-[6rem] md:min-w-[9.5rem] p-3 md:p-5 text-center text-xs md:text-[1rem] font-black text-slate-700 dark:text-slate-300 uppercase tracking-widest border-l border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700">
+										className="w-[18.5%] md:w-[19%] min-w-[6rem] md:min-w-[9.5rem] p-3 md:p-5 text-center text-sm md:text-lg font-black text-slate-700 dark:text-slate-300 uppercase tracking-widest border-l border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700">
 										{STORE_NAMES[id]}
 									</th>
 								))}
@@ -1269,29 +1113,17 @@ export default function EstoqueReposicionarPage() {
 								const isExpanded = expandedItem === itemKey;
 								const showRepeatedHeader = index > 0 && index % 8 === 0;
 
-								// Cálculo da proporção para o item
-								const totalProjectedForItem = STORE_ORDER.reduce(
-									(acc, sId) => acc + (projectedStocks[sId][itemKey] || 0),
-									0
-								);
-								const sumDefinedProps = STORE_ORDER.reduce(
-									(acc, sId) => acc + (storeProportions[sId]?.[itemKey] || 0),
-									0
-								);
-								const baseDesired = desiredTotalData[itemKey] || 0;
-								const baseForCalc = sumDefinedProps > 0 ? sumDefinedProps : baseDesired;
-
 								return (
 									<Fragment key={itemKey}>
 										{showRepeatedHeader && (
 											<tr className="bg-slate-100 dark:bg-slate-800/80">
-												<th className="p-2 md:p-3 text-center text-xs md:text-[1rem] font-black text-slate-700 dark:text-slate-300 uppercase tracking-widest sticky left-0 bg-slate-100 dark:bg-slate-800/80 z-20 border-y border-slate-200 dark:border-slate-700">
+												<th className="p-2 md:p-3 text-center text-sm md:text-lg font-black text-slate-700 dark:text-slate-300 uppercase tracking-widest sticky left-0 bg-slate-100 dark:bg-slate-800/80 z-20 border-y border-slate-200 dark:border-slate-700">
 													Item
 												</th>
 												{STORE_ORDER.map((id) => (
 													<th
 														key={`header-${id}-${index}`}
-														className="p-2 md:p-3 text-center text-xs md:text-[1rem] font-black text-slate-700 dark:text-slate-300 uppercase tracking-widest border-l border-slate-200 dark:border-slate-700 border-y">
+														className="p-2 md:p-3 text-center text-sm md:text-lg font-black text-slate-700 dark:text-slate-300 uppercase tracking-widest border-l border-slate-200 dark:border-slate-700 border-y">
 														{STORE_NAMES[id]}
 													</th>
 												))}
@@ -1302,8 +1134,8 @@ export default function EstoqueReposicionarPage() {
 											<td className="p-3 md:p-4 sticky left-0 bg-white dark:bg-slate-900 group-hover:bg-slate-50/50 dark:group-hover:bg-slate-800/50 z-10 border-r border-slate-50 dark:border-slate-800 border-b border-slate-100 dark:border-slate-800">
 												<button
 													onClick={() => setExpandedItem(isExpanded ? null : itemKey)}
-													className="flex items-center gap-1.5 md:gap-2 text-xs md:text-[1.2rem] font-black text-slate-600 dark:text-slate-400 uppercase hover:text-blue-600 dark:hover:text-blue-400 cursor-pointer text-left">
-													{isExpanded ? <ChevronUp size={14} className="md:w-[16px] md:h-[16px]" /> : <ChevronDown size={14} className="md:w-[16px] md:h-[16px]" />}
+													className="flex items-center gap-1.5 md:gap-2 text-sm md:text-xl font-black text-slate-600 dark:text-slate-400 uppercase hover:text-blue-600 dark:hover:text-blue-400 cursor-pointer text-left">
+													{isExpanded ? <ChevronUp size={16} className="md:w-[18px] md:h-[18px]" /> : <ChevronDown size={16} className="md:w-[18px] md:h-[18px]" />}
 													{label}
 												</button>
 											</td>
@@ -1319,13 +1151,7 @@ export default function EstoqueReposicionarPage() {
 												const isSourceCell = activeSelection?.item === itemKey && activeSelection?.fromStore === id;
 												const isTargetCell = activeSelection?.item === itemKey && activeSelection?.fromStore !== id;
 
-												// Cálculo do alvo proporcional para esta loja
 												const storeProp = storeProportions[id]?.[itemKey] || 0;
-												const hasProportionDefined = baseForCalc > 0 && storeProp > 0;
-												const targetQty = hasProportionDefined && totalProjectedForItem > 0
-													? Math.round((storeProp / baseForCalc) * totalProjectedForItem)
-													: null;
-												const isTargetMet = targetQty !== null && v === targetQty;
 
 												let cellStyle = "relative p-2 md:p-3 text-center border-l border-slate-50 dark:border-slate-800 border-b border-slate-100 dark:border-slate-800 cursor-pointer select-none ";
 												if (isSourceCell) {
@@ -1355,45 +1181,38 @@ export default function EstoqueReposicionarPage() {
 														)}
 
 														<div className="flex flex-col items-center justify-center h-full min-h-[4.75rem] md:min-h-[5.25rem] gap-1">
-															{/* Indicativo de Proporção Desejável (Tag vazia com espectro de vermelho a azul) */}
-															{targetQty !== null && !isSourceCell && !isTargetCell && (() => {
-																const indicator = getProportionIndicatorColor(v, targetQty);
-																return (
-																	<div
-																		className="w-7 h-1.5 mb-2 md:w-9 md:h-2 rounded-full cursor-default"
-																		style={indicator.style}
-																		title={`Proporção ideal: ${targetQty} un. (Atual: ${v} un. | Diferença: ${indicator.diffText})`}
-																	/>
-																);
-															})()}
-
-															{/* Quantidade atual em estoque na célula */}
-															<div className="flex items-center justify-center gap-1">
+															{/* Quantidade atual em estoque na célula com a meta entre parênteses centralizada verticalmente */}
+															<div className="flex items-center justify-center gap-1 font-black px-0.5">
 																{(v > 0 || initialOpenCount === 0 || hideOpen) && (
 																	<span
-																		className={`text-base md:text-[1.7rem] font-black leading-none ${(initialOpenCount > 0 && !hideOpen) ? "text-slate-900 dark:text-slate-200" : (v === 0 && (initialOpenCount === 0 || hideOpen)) ? "text-slate-400 dark:text-slate-600" : "text-slate-900 dark:text-slate-200"}`}>
+																		className={`text-lg md:text-3xl font-black leading-none ${(initialOpenCount > 0 && !hideOpen) ? "text-slate-900 dark:text-slate-200" : (v === 0 && (initialOpenCount === 0 || hideOpen)) ? "text-slate-400 dark:text-slate-600" : "text-slate-900 dark:text-slate-200"}`}>
 																		{v}
 																	</span>
 																)}
+																<span
+																	className="text-base md:text-2xl font-bold text-slate-400 dark:text-slate-500 leading-none"
+																	title={`Estoque desejável em ${STORE_NAMES[id]}: ${storeProp}`}>
+																	({storeProp > 0 ? storeProp : 0})
+																</span>
 																{!hideOpen && initialOpenCount > 0 && (
-																	<span className="text-xs md:text-[1.7rem] font-bold text-slate-400 dark:text-slate-500 whitespace-nowrap leading-none">
-																		{v > 0 ? `+ ${initialOpenCount} ab` : `${initialOpenCount} ab`}
+																	<span className="text-sm md:text-lg font-bold text-slate-400 dark:text-slate-500 whitespace-nowrap leading-none ml-0.5">
+																		+{initialOpenCount}ab
 																	</span>
 																)}
 															</div>
 
 															{/* Badges de Estado / Diferença com chaves estáticas separadas para o React reconciliar sem morph de DOM */}
 															{isSourceCell ? (
-																<div key={`badge-source-${id}`} className="text-[9px] md:text-[11px] font-black px-1.5 py-0.5 !mt-2 rounded-md bg-red-600 text-white uppercase tracking-tight inline-flex items-center gap-1 whitespace-nowrap">
+																<div key={`badge-source-${id}`} className="text-[10px] md:text-xs font-black px-1.5 py-0.5 !mt-2 rounded-md bg-red-600 text-white uppercase tracking-tight inline-flex items-center gap-1 whitespace-nowrap">
 																	<span>-{activeSelection.qty} saindo</span>
 																</div>
 															) : isTargetCell ? (
-																<div key={`badge-target-${id}`} className="text-[9px] md:text-[11px] font-black px-1.5 py-0.5 rounded-md bg-emerald-600 text-white uppercase tracking-tight inline-flex items-center gap-1 whitespace-nowrap">
+																<div key={`badge-target-${id}`} className="text-[10px] md:text-xs font-black px-1.5 py-0.5 rounded-md bg-emerald-600 text-white uppercase tracking-tight inline-flex items-center gap-1 whitespace-nowrap">
 																	<span>+{activeSelection.qty} enviar</span>
 																</div>
 															) : (
 																(receiving || sending) && (
-																	<div key={`badge-diff-${id}`} className={`!mt-1 text-xs md:text-[1.2rem] font-black leading-none ${receiving ? "text-green-600 dark:text-green-500" : "text-red-600 dark:text-red-500"}`}>
+																	<div key={`badge-diff-${id}`} className={`!mt-1 text-sm md:text-xl font-black leading-none ${receiving ? "text-green-600 dark:text-green-500" : "text-red-600 dark:text-red-500"}`}>
 																		{receiving ? `+${v - initial}` : `-${initial - v}`}
 																	</div>
 																)
@@ -1494,151 +1313,6 @@ export default function EstoqueReposicionarPage() {
 				</button>
 			</div>
 			</div>
-			) : (
-				// Aba Proporção Desejável
-				<div className="space-y-6 print:hidden">
-					{(() => {
-						const hasProportionChanges = STORE_ORDER.some((sId) => {
-							return Object.keys(STOCK_LABELS).some((k) => {
-								const key = k as keyof StockData;
-								return (localStoreProportions[sId]?.[key] ?? 0) !== (storeProportions[sId]?.[key] ?? 0);
-							});
-						});
-
-						return (
-							<div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 md:gap-4">
-								<div className="relative flex-1 max-w-full sm:max-w-md group">
-									<Search
-										size={18}
-										className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-500 transition-colors"
-									/>
-									<input
-										type="text"
-										placeholder="Filtrar por sabor..."
-										value={proportionSearchTerm}
-										onChange={(e) => setProportionSearchTerm(e.target.value)}
-										className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl py-2.5 md:py-3 pl-12 pr-4 text-xs md:text-sm font-bold text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all shadow-sm"
-									/>
-								</div>
-
-								<div className="relative" title={!hasProportionChanges && !savingProportions ? "Faça alterações para salvar" : ""}>
-									<button
-										onClick={saveProportions}
-										disabled={!hasProportionChanges || savingProportions}
-										className={`flex items-center justify-center gap-2 px-4 md:px-6 py-2.5 md:py-3 rounded-2xl font-black transition-all text-xs md:text-sm ${
-											hasProportionChanges && !savingProportions
-												? "bg-emerald-600 hover:bg-emerald-700 text-white shadow-xl shadow-emerald-500/40 ring-4 ring-emerald-400/40 animate-pulse cursor-pointer scale-105"
-												: "bg-slate-200 dark:bg-slate-800 text-slate-400 dark:text-slate-500 cursor-not-allowed opacity-70"
-										}`}>
-										{savingProportions ? (
-											<RefreshCw className="animate-spin" size={18} />
-										) : (
-											<Save size={18} />
-										)}
-										SALVAR PROPORÇÕES
-									</button>
-								</div>
-							</div>
-						);
-					})()}
-
-					<div className="bg-white dark:bg-slate-900 rounded-2xl md:rounded-[2rem] border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden transition-colors">
-						<div className="overflow-x-auto">
-							<table className="w-full border-collapse">
-								<thead>
-									<tr className="bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700">
-										<th className="p-3 md:p-6 text-left text-xs md:text-[0.9375rem] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest min-w-[7.5rem] md:min-w-[11.25rem]">
-											SABOR
-										</th>
-										<th className="p-3 md:p-6 text-center text-xs md:text-[0.9375rem] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest min-w-[6rem] md:min-w-[8rem]">
-											META GLOBAL (TOTAL)
-										</th>
-										{STORE_ORDER.map((sId) => (
-											<th
-												key={`prop-th-${sId}`}
-												className="p-3 md:p-6 text-center text-xs md:text-[0.9375rem] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest min-w-[6rem] md:min-w-[8.5rem]">
-												{STORE_NAMES[sId]}
-											</th>
-										))}
-										<th className="p-3 md:p-6 text-center text-xs md:text-[0.9375rem] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest min-w-[6rem] md:min-w-[8rem]">
-											PACOTES RESTANTES
-										</th>
-									</tr>
-								</thead>
-								<tbody>
-									{sortStockEntries(Object.entries(STOCK_LABELS))
-										.filter(([_, label]) => label.toLowerCase().includes(proportionSearchTerm.toLowerCase()))
-										.map(([key, label]) => {
-											const itemKey = key as keyof StockData;
-											const metaGlobal = desiredTotalData[itemKey] || 0;
-											
-											const sumDefined = STORE_ORDER.reduce(
-												(sum, sId) => sum + (localStoreProportions[sId]?.[itemKey] || 0),
-												0
-											);
-
-											const remaining = Math.max(0, metaGlobal - sumDefined);
-
-											return (
-												<tr
-													key={`prop-row-${key}`}
-													className="border-b border-slate-100 dark:border-slate-800 hover:bg-blue-50/30 dark:hover:bg-blue-900/20 transition-colors group">
-													<td className="p-3 md:p-6 text-sm md:text-xl font-black text-slate-600 dark:text-slate-400 bg-white dark:bg-slate-900 group-hover:bg-blue-50/30 dark:group-hover:bg-blue-900/20 transition-colors uppercase">
-														{label}
-													</td>
-													<td className="p-3 md:p-6 text-center border-l border-r border-slate-100 dark:border-slate-800">
-														<span className="text-base md:text-xl font-black text-slate-800 dark:text-slate-200">
-															{metaGlobal > 0 ? metaGlobal : "-"}
-														</span>
-													</td>
-													{STORE_ORDER.map((sId) => {
-														const val = localStoreProportions[sId]?.[itemKey] ?? "";
-														const otherStoresSum = STORE_ORDER
-															.filter((id) => id !== sId)
-															.reduce((acc, id) => acc + (localStoreProportions[id]?.[itemKey] || 0), 0);
-														const maxForThisInput = metaGlobal > 0 ? Math.max(0, metaGlobal - otherStoresSum) : undefined;
-
-														return (
-															<td
-																key={`prop-td-${sId}-${key}`}
-																className="p-3 md:p-6 text-center border-r border-slate-100 dark:border-slate-800">
-																<div className="flex justify-center">
-																	<input
-																		type="number"
-																		min="0"
-																		max={maxForThisInput}
-																		value={val}
-																		placeholder="0"
-																		onChange={(e) => handleLocalProportionChange(sId, itemKey, e.target.value)}
-																		onFocus={(e) => e.target.select()}
-																		onClick={(e) => e.currentTarget.select()}
-																		className="w-16 md:w-24 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl py-1.5 md:py-2 px-2 md:px-3 text-center text-sm md:text-lg font-black text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all cursor-pointer"
-																	/>
-																</div>
-															</td>
-														);
-													})}
-													<td className="p-3 md:p-6 text-center">
-														<div className="flex justify-center items-center gap-1">
-															<span
-																className={`text-base md:text-xl font-black ${
-																	remaining > 0
-																		? "text-amber-600 dark:text-amber-400"
-																		: "text-emerald-600 dark:text-emerald-400"
-																}`}>
-																{remaining}
-															</span>
-														</div>
-													</td>
-												</tr>
-											);
-										})}
-								</tbody>
-							</table>
-						</div>
-					</div>
-				</div>
-			)}
 
 			{showSummary && (
 				<div id="modal-resumo-print" className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-3 md:p-6 animate-in fade-in duration-200">

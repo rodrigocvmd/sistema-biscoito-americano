@@ -62,7 +62,7 @@ export default function EstoquePedidosPage() {
 	const [sessions, setSessions] = useState<RepositionSnapshotDoc[]>([]);
 	const [selectedSessionId, setSelectedSessionId] = useState<string>("atual");
 	const [searchTerm, setSearchTerm] = useState("");
-	const [hideOpen, setHideOpen] = useState(false);
+	const [hideOpen, setHideOpen] = useState(true);
 
 	// Desired Stock States
 	const [desiredData, setDesiredData] = useState<Partial<StockData>>({});
@@ -229,34 +229,6 @@ export default function EstoquePedidosPage() {
 
 		return () => unsubscribeDesired();
 	}, []);
-
-	// Helper para calcular a cor do número no espectro: vermelho (abaixo) -> verde (ideal/meta) -> azul (acima)
-	const getProportionNumberColor = (currentVal: number, targetVal: number, openCount: number) => {
-		if (targetVal === 0 && currentVal === 0) {
-			if (openCount === 0 || hideOpen) {
-				return { color: "hsl(215, 16%, 50%)" };
-			}
-			return { color: "hsl(142, 76%, 42%)" };
-		}
-		if (targetVal === 0) {
-			return { color: "hsl(217, 85%, 45%)" };
-		}
-		const diff = currentVal - targetVal;
-		if (diff === 0) {
-			return { color: "hsl(142, 76%, 40%)" };
-		}
-		const maxRef = Math.max(targetVal, 4);
-		const ratio = Math.min(Math.abs(diff) / maxRef, 1);
-		let hue: number;
-		if (diff > 0) {
-			// Acima da meta: de verde (142) até azul (217)
-			hue = Math.round(142 + (217 - 142) * ratio);
-		} else {
-			// Abaixo da meta: de verde (142) até vermelho (0)
-			hue = Math.round(142 * (1 - ratio));
-		}
-		return { color: `hsl(${hue}, 85%, 42%)` };
-	};
 
 	// 4. Update table data based on selection
 	useEffect(() => {
@@ -781,33 +753,7 @@ export default function EstoquePedidosPage() {
 							</div>
 						</div>
 
-						<div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3 w-full lg:w-auto justify-end flex-wrap">
-							{/* Legenda de Proporção / Cores */}
-							<div className="flex flex-col items-center sm:items-end gap-0.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 px-3 py-1.5 rounded-2xl shadow-sm">
-								<span className="w-full text-center text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider">
-									Proporção
-								</span>
-								<div className="flex items-center gap-1.5">
-									<span className="text-[8px] font-black text-red-600 dark:text-red-400 tracking-tight uppercase">
-										A MENOS
-									</span>
-									<div
-										className="w-16 sm:w-20 h-1.5 rounded-full shadow-inner"
-										style={{
-											background: "linear-gradient(to right, hsl(0, 85%, 45%), hsl(142, 76%, 45%), hsl(217, 85%, 45%))",
-										}}
-									/>
-									<span className="text-[8px] font-black text-blue-600 dark:text-blue-400 tracking-tight uppercase">
-										A MAIS
-									</span>
-								</div>
-								<div className="w-full flex justify-center -mt-0.5">
-									<span className="text-[8px] font-black text-emerald-600 dark:text-emerald-400 tracking-tight uppercase">
-										IDEAL
-									</span>
-								</div>
-							</div>
-
+						<div className="flex flex-wrap sm:flex-nowrap items-center gap-2 sm:gap-3 w-full lg:w-auto justify-end">
 							<button
 								onClick={fillStoreOrderWithSuggested}
 								className="flex-1 sm:flex-none justify-center flex items-center gap-1.5 md:gap-2 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-800 px-3 md:px-4 py-2.5 md:py-3 rounded-2xl font-black shadow-sm transition-all cursor-pointer text-xs md:text-sm"
@@ -834,13 +780,6 @@ export default function EstoquePedidosPage() {
 							</button>
 
 							<button
-								onClick={() => window.print()}
-								className="flex-1 sm:flex-none justify-center flex items-center gap-2 md:gap-3 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-800 px-3 md:px-4 py-2.5 md:py-3 rounded-2xl font-black shadow-sm transition-all cursor-pointer text-xs md:text-sm">
-								<Printer size={16} />
-								IMPRIMIR
-							</button>
-
-							<button
 								onClick={handleReviewOrder}
 								className="flex-1 sm:flex-none justify-center flex items-center gap-2 md:gap-2.5 bg-emerald-600 hover:bg-emerald-700 text-white px-4 md:px-6 py-2.5 md:py-3 rounded-2xl font-black shadow-lg shadow-emerald-600/20 dark:shadow-none hover:scale-[1.02] active:scale-95 transition-all cursor-pointer text-xs md:text-sm uppercase tracking-wider">
 								<ShoppingCart size={18} />
@@ -854,26 +793,26 @@ export default function EstoquePedidosPage() {
 							<table className="w-full border-collapse">
 								<thead>
 									<tr className="bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700">
-										<th className="p-3 md:p-5 text-left text-xs md:text-[0.875rem] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest min-w-[7.5rem] md:min-w-[10.5rem] sticky left-0 bg-slate-50 dark:bg-slate-800 z-10">
+										<th className="p-3 md:p-5 text-left text-sm md:text-lg font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest min-w-[7.5rem] md:min-w-[11rem] sticky left-0 bg-slate-50 dark:bg-slate-800 z-10">
 											SABOR
 										</th>
 										{STORE_ORDER.map((storeId) => (
 											<th
 												key={storeId}
-												className="p-2 md:p-3 text-center text-xs md:text-[0.875rem] font-black text-slate-600 dark:text-slate-300 uppercase tracking-wider min-w-[6.5rem] md:min-w-[9.5rem] border-l border-slate-200/60 dark:border-slate-700/60">
+												className="p-2 md:p-3 text-center text-sm md:text-lg font-black text-slate-700 dark:text-slate-200 uppercase tracking-wider min-w-[6.5rem] md:min-w-[10rem] border-l border-slate-200/60 dark:border-slate-700/60">
 												<div>{STORE_NAMES[storeId]}</div>
-												<div className="text-[0.62rem] md:text-[0.68rem] font-bold text-slate-400 normal-case tracking-normal mt-0.5">
-													Após Pedido
+												<div className="text-xs md:text-sm font-bold text-slate-400 dark:text-slate-500 normal-case tracking-normal mt-0.5">
+													Estoque (Meta)
 												</div>
 											</th>
 										))}
-										<th className="p-3 md:p-5 text-center text-xs md:text-[0.875rem] font-black text-slate-800 dark:text-slate-200 uppercase tracking-wider min-w-[6.5rem] md:min-w-[8.5rem] border-l-2 border-slate-200 dark:border-slate-700 bg-slate-100/50 dark:bg-slate-800/80">
+										<th className="p-3 md:p-5 text-center text-sm md:text-lg font-black text-slate-800 dark:text-slate-200 uppercase tracking-wider min-w-[6.5rem] md:min-w-[9rem] border-l-2 border-slate-200 dark:border-slate-700 bg-slate-100/50 dark:bg-slate-800/80">
 											TOTAL
 										</th>
-										<th className="p-3 md:p-5 text-center text-xs md:text-[0.875rem] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest min-w-[6rem] md:min-w-[8rem] border-l border-slate-200/60 dark:border-slate-700/60">
+										<th className="p-3 md:p-5 text-center text-sm md:text-lg font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest min-w-[6rem] md:min-w-[8.5rem] border-l border-slate-200/60 dark:border-slate-700/60">
 											DESEJÁVEL
 										</th>
-										<th className="p-3 md:p-5 text-center text-xs md:text-[0.875rem] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest min-w-[7.5rem] md:min-w-[11.5rem] border-l border-slate-200/60 dark:border-slate-700/60">
+										<th className="p-3 md:p-5 text-center text-sm md:text-lg font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest min-w-[7.5rem] md:min-w-[12rem] border-l border-slate-200/60 dark:border-slate-700/60">
 											PACOTES A PEDIR
 										</th>
 									</tr>
@@ -902,8 +841,13 @@ export default function EstoquePedidosPage() {
 												<tr
 													key={key}
 													className="border-b border-slate-100 dark:border-slate-800 hover:bg-blue-50/30 dark:hover:bg-blue-900/20 transition-colors group">
-													<td className="p-3 md:p-5 text-sm md:text-lg font-black text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-900 group-hover:bg-blue-50/30 dark:group-hover:bg-blue-900/20 transition-colors uppercase sticky left-0 z-10">
-														{label}
+													<td className="p-3 md:p-5 text-base md:text-xl font-black text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-900 group-hover:bg-blue-50/30 dark:group-hover:bg-blue-900/20 transition-colors uppercase sticky left-0 z-10">
+														<span>{label}</span>
+														{boxSize > 0 && (
+															<span className="text-xs md:text-sm font-bold text-slate-400 dark:text-slate-500 ml-1.5 normal-case">
+																({boxSize})
+															</span>
+														)}
 													</td>
 
 													{/* Quantidades por loja individual: apenas estoque atual (com alterações) e desejável */}
@@ -921,16 +865,24 @@ export default function EstoquePedidosPage() {
 																key={storeId}
 																className="p-2 md:p-3.5 text-center border-l border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 group-hover:bg-blue-50/30 dark:group-hover:bg-blue-900/20 transition-colors">
 																<div className="flex flex-col items-center justify-center gap-1.5 py-1">
-																	{/* Apenas o número após pedido com cor no espectro de vermelho -> verde -> azul */}
-																	<div className="flex items-baseline justify-center gap-1 font-black px-0.5">
+																	{/* Número em estoque (após pedido) com meta desejável entre parênteses: n (y) centralizado verticalmente */}
+																	<div className="flex items-center justify-center gap-1 font-black px-0.5">
 																		<span
-																			className="text-lg md:text-2xl font-black transition-colors"
-																			style={getProportionNumberColor(currentWithOrder, storeDesiredVal, storeOpenCount)}
+																			className={`text-lg md:text-3xl font-black leading-none ${
+																				currentWithOrder === 0 && (storeOpenCount === 0 || hideOpen)
+																					? "text-slate-300 dark:text-slate-600"
+																					: "text-slate-900 dark:text-slate-100"
+																			}`}
 																			title={`Após pedido: ${currentWithOrder} | Meta: ${storeDesiredVal || 0} | Estoque original: ${storeStockVal}${orderVal > 0 ? ` (+${orderVal} adicionados)` : ""}`}>
 																			{currentWithOrder}
 																		</span>
+																		<span
+																			className="text-base md:text-2xl font-bold text-slate-400 dark:text-slate-500 leading-none"
+																			title={`Meta desejável em ${STORE_NAMES[storeId]}: ${storeDesiredVal}`}>
+																			({storeDesiredVal > 0 ? storeDesiredVal : 0})
+																		</span>
 																		{!hideOpen && storeOpenCount > 0 && (
-																			<span className="text-xs md:text-sm font-bold text-slate-400 dark:text-slate-500 whitespace-nowrap ml-0.5">
+																			<span className="text-sm md:text-lg font-bold text-slate-400 dark:text-slate-500 whitespace-nowrap leading-none ml-0.5">
 																				+{storeOpenCount}ab
 																			</span>
 																		)}
@@ -977,7 +929,7 @@ export default function EstoquePedidosPage() {
 																<div className="flex flex-col items-center justify-center gap-0.5">
 																	<div className="flex justify-center items-center gap-1">
 																		<span
-																			className={`text-lg md:text-2xl font-black ${
+																			className={`text-lg md:text-3xl font-black ${
 																				totalOrdered > 0
 																					? "text-blue-600 dark:text-blue-400"
 																					: totalQty === 0 && (totalOpen === 0 || hideOpen)
@@ -988,7 +940,7 @@ export default function EstoquePedidosPage() {
 																			{totalQtyWithOrder}
 																		</span>
 																		{!hideOpen && totalOpen > 0 && (
-																			<span className="text-xs md:text-sm font-black text-slate-400 dark:text-slate-500 whitespace-nowrap">
+																			<span className="text-sm md:text-lg font-black text-slate-400 dark:text-slate-500 whitespace-nowrap">
 																				{totalQtyWithOrder > 0 ? `+ ${totalOpen} ab` : `${totalOpen} ab`}
 																			</span>
 																		)}
@@ -1006,11 +958,11 @@ export default function EstoquePedidosPage() {
 													{/* Desejável Total */}
 													<td className="p-3 md:p-5 text-center border-l border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 group-hover:bg-blue-50/30 dark:group-hover:bg-blue-900/20 transition-colors">
 														{hasDesired ? (
-															<span className="text-base md:text-xl font-black text-slate-800 dark:text-slate-200">
+															<span className="text-lg md:text-2xl font-black text-slate-800 dark:text-slate-200">
 																{desiredQty}
 															</span>
 														) : (
-															<span className="text-slate-300 dark:text-slate-600 font-black text-base">-</span>
+															<span className="text-slate-300 dark:text-slate-600 font-black text-lg md:text-2xl">-</span>
 														)}
 													</td>
 
@@ -1026,12 +978,12 @@ export default function EstoquePedidosPage() {
 
 																	return (
 																		<div className="flex flex-col items-center justify-center">
-																			<span className="text-base md:text-2xl font-black text-slate-800 dark:text-slate-200">
+																			<span className="text-lg md:text-3xl font-black text-slate-800 dark:text-slate-200">
 																				<span className="text-rose-600 dark:text-rose-400 font-black">
 																					{totalOrderedPackages}
 																				</span>{" "}
 																				{pacotesLabel}{" "}
-																				<span className="text-slate-600 dark:text-slate-400 font-bold text-sm md:text-lg">
+																				<span className="text-slate-600 dark:text-slate-400 font-bold text-base md:text-xl">
 																					({minBoxes} {caixasLabel})
 																				</span>
 																			</span>
@@ -1040,7 +992,7 @@ export default function EstoquePedidosPage() {
 																} else {
 																	return (
 																		<div className="flex flex-col items-center justify-center">
-																			<span className="text-base md:text-2xl font-black text-slate-800 dark:text-slate-200">
+																			<span className="text-lg md:text-3xl font-black text-slate-800 dark:text-slate-200">
 																				<span className="text-rose-600 dark:text-rose-400 font-black">
 																					{sumStorePackages}
 																				</span>{" "}
@@ -1055,7 +1007,7 @@ export default function EstoquePedidosPage() {
 															}
 
 															return (
-																<span className="text-slate-300 dark:text-slate-600 font-bold text-sm md:text-lg">
+																<span className="text-slate-300 dark:text-slate-600 font-bold text-base md:text-xl">
 																	0 Pacotes
 																</span>
 															);
@@ -1104,7 +1056,7 @@ export default function EstoquePedidosPage() {
 									return (
 										<tfoot>
 											<tr className="bg-slate-100/80 dark:bg-slate-800/90 border-t-2 border-slate-300 dark:border-slate-600 font-black">
-												<td className="p-3 md:p-5 text-sm md:text-xl font-black text-slate-800 dark:text-slate-100 uppercase sticky left-0 bg-slate-100 dark:bg-slate-800 z-10">
+												<td className="p-3 md:p-5 text-base md:text-2xl font-black text-slate-800 dark:text-slate-100 uppercase sticky left-0 bg-slate-100 dark:bg-slate-800 z-10">
 													TOTAL
 												</td>
 												{STORE_ORDER.map((storeId) => {
@@ -1115,31 +1067,31 @@ export default function EstoquePedidosPage() {
 													return (
 														<td key={storeId} className="p-2 md:p-3 border-l border-slate-200 dark:border-slate-700 text-center">
 															{storeSum > 0 ? (
-																<span className="text-sm md:text-base font-black text-blue-600 dark:text-blue-400">
+																<span className="text-base md:text-xl font-black text-blue-600 dark:text-blue-400">
 																	{storeSum} pcts
 																</span>
 															) : (
-																<span className="text-slate-400 dark:text-slate-500 text-sm md:text-base">-</span>
+																<span className="text-slate-400 dark:text-slate-500 text-base md:text-xl">-</span>
 															)}
 														</td>
 													);
 												})}
-												<td className="p-3 md:p-5 border-l-2 border-slate-300 dark:border-slate-600 text-center font-black text-sm md:text-base text-slate-800 dark:text-slate-200">
+												<td className="p-3 md:p-5 border-l-2 border-slate-300 dark:border-slate-600 text-center font-black text-base md:text-xl text-slate-800 dark:text-slate-200">
 													{grandTotalStockWithOrder > 0 ? `${grandTotalStockWithOrder} pcts` : "-"}
 												</td>
-												<td className="p-3 md:p-5 border-l border-slate-200 dark:border-slate-700 text-center text-slate-400 dark:text-slate-500 text-sm md:text-base">
+												<td className="p-3 md:p-5 border-l border-slate-200 dark:border-slate-700 text-center text-slate-400 dark:text-slate-500 text-base md:text-xl">
 													-
 												</td>
 												<td className="p-3 md:p-5 border-l border-slate-200 dark:border-slate-700 text-center">
 													{totalPackagesToOrder > 0 ? (
 														<div className="flex flex-col items-center">
-															<span className="text-base md:text-2xl font-black text-slate-800 dark:text-slate-200">
+															<span className="text-lg md:text-3xl font-black text-slate-800 dark:text-slate-200">
 																<span className="text-rose-600 dark:text-rose-400 font-black">
 																	{totalPackagesToOrder}
 																</span>{" "}
 																{totalPacotesLabel}{" "}
 																{totalBoxesToOrder > 0 && (
-																	<span className="text-slate-600 dark:text-slate-400 font-bold text-sm md:text-lg">
+																	<span className="text-slate-600 dark:text-slate-400 font-bold text-base md:text-xl">
 																		({totalBoxesToOrder} {totalCaixasLabel})
 																	</span>
 																)}
@@ -1147,7 +1099,7 @@ export default function EstoquePedidosPage() {
 														</div>
 													) : (
 														<div className="flex flex-col items-center">
-															<span className="text-base md:text-xl font-black text-slate-400 dark:text-slate-500">
+															<span className="text-base md:text-2xl font-black text-slate-400 dark:text-slate-500">
 																0 Pacotes
 															</span>
 														</div>
@@ -1390,12 +1342,19 @@ export default function EstoquePedidosPage() {
 															inputColorClasses = "border-rose-500 dark:border-rose-500 text-rose-600 dark:text-rose-400 focus:ring-rose-500/20";
 														}
 
+														const boxSize = boxSizes[itemKey] || 0;
+
 														return (
 															<tr
 																key={key}
 																className="border-b border-slate-100 dark:border-slate-800 hover:bg-blue-50/30 dark:hover:bg-blue-900/20 transition-colors group">
 																<td className="p-3 md:p-6 text-sm md:text-xl font-black text-slate-600 dark:text-slate-400 bg-white dark:bg-slate-900 group-hover:bg-blue-50/30 dark:group-hover:bg-blue-900/20 transition-colors uppercase">
-																	{label}
+																	<span>{label}</span>
+																	{boxSize > 0 && (
+																		<span className="text-xs md:text-sm font-bold text-slate-400 dark:text-slate-500 ml-1.5 normal-case">
+																			({boxSize})
+																		</span>
+																	)}
 																</td>
 																<td className="p-3 md:p-6 text-center border-l border-slate-100 dark:border-slate-800 text-slate-600 dark:text-slate-400 font-bold text-xs md:text-base">
 																	R$ {pricePerPkg.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
