@@ -1921,28 +1921,8 @@ export default function EstoquePedidosPage() {
 							}
 						};
 
-						const handlePrint = async () => {
+						const handlePrint = () => {
 							if (activeItems.length === 0) return;
-
-							const userAgent = typeof navigator !== "undefined" ? navigator.userAgent || "" : "";
-							const isMobileUserAgent = /Android|iPhone|iPad|iPod|webOS|BlackBerry|IEMobile|Opera Mini/i.test(userAgent);
-							const isSmallScreen = typeof window !== "undefined" ? window.innerWidth <= 768 : false;
-							const isMobile = isMobileUserAgent || isSmallScreen;
-
-							if (isMobile && typeof navigator !== "undefined" && typeof navigator.share === "function") {
-								try {
-									const text = generateSummaryText();
-									await navigator.share({
-										title: `Resumo do Pedido - ${new Date().toLocaleDateString("pt-BR")}`,
-										text: text,
-									});
-									return;
-								} catch (err: any) {
-									if (err.name === "AbortError") return;
-									console.warn("Navigator share falhou no imprimir mobile, fallback para window.print:", err);
-								}
-							}
-
 							window.print();
 						};
 

@@ -991,18 +991,32 @@ export default function EstoqueReposicionarPage() {
 					nav, header, footer, .print\\:hidden, button {
 						display: none !important;
 					}
+					/* Quando o modal de resumo estiver aberto, ocultar todo o resto e exibir apenas o container de impressão */
+					body:has(#modal-resumo-print) {
+						visibility: hidden !important;
+					}
+
+					body:has(#modal-resumo-print) #modal-resumo-print,
+					body:has(#modal-resumo-print) #modal-resumo-print * {
+						visibility: visible !important;
+					}
+
 					/* Summary Modal Printing */
 					#modal-resumo-print {
-						position: static !important;
+						position: absolute !important;
+						left: 0 !important;
+						top: 0 !important;
 						display: block !important;
 						width: 100% !important;
 						max-width: 100% !important;
 						margin: 0 !important;
-						padding: 5mm 8mm !important;
+						padding: 4mm 6mm !important;
 						border: none !important;
 						box-shadow: none !important;
 						background: white !important;
 						text-align: left !important;
+						z-index: 9999 !important;
+						backdrop-filter: none !important;
 					}
 					#modal-resumo-print > div {
 						max-width: 100% !important;
@@ -1038,10 +1052,6 @@ export default function EstoqueReposicionarPage() {
 					}
 					#modal-resumo-print, #modal-resumo-print * {
 						text-align: left !important;
-					}
-					/* Hide other elements that might overlap */
-					.fixed.inset-0:not(#modal-resumo-print) {
-						display: none !important;
 					}
 				}
 			`,
