@@ -152,3 +152,34 @@ export interface SupplyOrder {
 	deliveredAt?: any; // Firestore Timestamp
 	expireAt?: any; // Firestore Timestamp
 }
+
+export interface RepositionMovementItem {
+	id: string;
+	itemId: keyof StockData;
+	itemName: string;
+	from: StoreId;
+	to: StoreId;
+	qty: number;
+	outConfirmed: boolean;
+	outConfirmedAt?: any; // Firestore Timestamp
+	inConfirmed: boolean;
+	inConfirmedAt?: any; // Firestore Timestamp
+	outDiscarded?: boolean;
+	inDiscarded?: boolean;
+}
+
+export interface LatestRepositionState {
+	sessionId: string;
+	type: "fim" | "inicio";
+	timestamp: any;
+	formattedDate: string;
+	stores: Record<
+		StoreId,
+		{
+			stock: Partial<StockData>;
+			isUnits: Partial<Record<keyof StockData, number>>;
+		}
+	>;
+	movements?: RepositionMovementItem[];
+}
+

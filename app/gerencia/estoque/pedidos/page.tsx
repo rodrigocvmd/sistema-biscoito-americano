@@ -1396,7 +1396,7 @@ export default function EstoquePedidosPage() {
 																	<div className="flex items-center gap-1.5">
 																		<span>{label}</span>
 																		{boxSize > 0 && (
-																			<span className="text-sm md:text-base font-black text-slate-400 dark:text-slate-500 normal-case">
+																			<span className="text-sm sm:text-xs md:text-base font-black text-slate-400 dark:text-slate-500 normal-case">
 																				({boxSize})
 																			</span>
 																		)}

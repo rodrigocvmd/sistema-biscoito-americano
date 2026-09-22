@@ -26,6 +26,7 @@ import {
 	StoreId,
 	formatDate,
 	RepositionHistory,
+	RepositionMovementItem,
 } from "@/types";
 import {
 	RefreshCw,
@@ -514,7 +515,22 @@ export default function EstoqueReposicionarPage() {
 
 			// Salva a versão final do estoque de todas as lojas ajustada à realidade física
 			const currentSessionId = localStorage.getItem("repos_session_id") || doc(collection(db, "unused")).id;
+			const movementsList: RepositionMovementItem[] = optimizedMovements.map((move) => ({
+				id: `${move.from}_${move.to}_${move.item}`,
+				itemId: move.item,
+				itemName: STOCK_LABELS[move.item],
+				from: move.from,
+				to: move.to,
+				qty: move.qty,
+				outConfirmed: false,
+				outConfirmedAt: null,
+				inConfirmed: false,
+				inConfirmedAt: null,
+				outDiscarded: false,
+				inDiscarded: false,
+			}));
 			const formattedNow = formatDate(new Date());
+
 			const endState = {
 				sessionId: currentSessionId,
 				type: "fim",
@@ -538,6 +554,7 @@ export default function EstoqueReposicionarPage() {
 						isUnits: allData.find((d) => d.id === "noroeste")?.isUnits || {},
 					},
 				},
+				movements: movementsList,
 			};
 			await addDoc(collection(db, "repositionSnapshots"), endState);
 			await setDoc(doc(db, "repositionState", "latest"), endState);
