@@ -1923,6 +1923,66 @@ export default function EstoquePedidosPage() {
 
 						const handlePrint = () => {
 							if (activeItems.length === 0) return;
+
+							const userAgent = typeof navigator !== "undefined" ? navigator.userAgent || "" : "";
+							const isMobileUserAgent = /Android|iPhone|iPad|iPod|webOS|BlackBerry|IEMobile|Opera Mini/i.test(userAgent);
+							const isSmallScreen = typeof window !== "undefined" ? window.innerWidth <= 768 : false;
+							const isMobile = isMobileUserAgent || isSmallScreen;
+
+							if (isMobile) {
+								const printWindow = window.open("", "_blank");
+								if (printWindow) {
+									const dateStr = `${new Date().toLocaleDateString("pt-BR")} às ${new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}`;
+									const itemsHtml = activeItems
+										.map((item) => {
+											const caixasLabel = item.boxesCount === 1 ? "cx" : "cxs";
+											return `<li style="display:flex; justify-content:space-between; padding:3px 0; font-size:14px;">
+												<span>• <strong>${item.label}</strong>: <strong>${item.boxesCount} ${caixasLabel}</strong> <span style="color:#666; font-size:12px;">(${item.qty} pcts)</span></span>
+											</li>`;
+										})
+										.join("");
+
+									printWindow.document.write(`<!DOCTYPE html>
+									<html>
+										<head>
+											<meta charset="utf-8">
+											<meta name="viewport" content="width=device-width, initial-scale=1.0">
+											<title>Resumo do Pedido</title>
+											<style>
+												body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; padding: 20px; color: #111; margin: 0; }
+												h2 { font-size: 18px; margin: 0 0 4px 0; text-transform: uppercase; }
+												p.date { font-size: 12px; color: #666; margin: 0 0 16px 0; }
+												h3 { font-size: 14px; margin: 0 0 8px 0; text-transform: uppercase; }
+												ul { list-style: none; padding: 0; margin: 0 0 20px 0; }
+												.totals { border-top: 1px solid #ddd; padding-top: 12px; font-size: 14px; }
+												.totals div { display: flex; justify-content: space-between; margin-bottom: 6px; }
+												.totals .final { font-weight: bold; font-size: 16px; border-top: 1px solid #ddd; padding-top: 6px; margin-top: 6px; }
+											</style>
+										</head>
+										<body>
+											<h2>Resumo do Pedido de Estoque</h2>
+											<p class="date">${dateStr}</p>
+											<h3>Caixas a Pedir:</h3>
+											<ul>${itemsHtml}</ul>
+											<div class="totals">
+												<div><span>Total de Caixas:</span><strong>${totalBoxes} ${totalBoxes === 1 ? "caixa" : "caixas"}</strong></div>
+												<div><span>Valor Final Base:</span><span>R$ ${baseTotalValue.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></div>
+												<div class="final"><span>Valor Final com Impostos (8%):</span><strong>R$ ${finalTotalValue.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong></div>
+											</div>
+											<script>
+												window.onload = function() {
+													setTimeout(function() {
+														window.print();
+													}, 300);
+												};
+											</script>
+										</body>
+									</html>`);
+									printWindow.document.close();
+									return;
+								}
+							}
+
 							window.print();
 						};
 

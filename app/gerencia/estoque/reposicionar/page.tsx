@@ -730,6 +730,85 @@ export default function EstoqueReposicionarPage() {
 	};
 
 	const handlePrint = () => {
+		const movements = calculateOptimizedSummary();
+		if (movements.length === 0) return;
+
+		const userAgent = typeof navigator !== "undefined" ? navigator.userAgent || "" : "";
+		const isMobileUserAgent = /Android|iPhone|iPad|iPod|webOS|BlackBerry|IEMobile|Opera Mini/i.test(userAgent);
+		const isSmallScreen = typeof window !== "undefined" ? window.innerWidth <= 768 : false;
+		const isMobile = isMobileUserAgent || isSmallScreen;
+
+		if (isMobile) {
+			const grouped = new Map<
+				string,
+				{ from: StoreId; to: StoreId; items: { label: string; qty: number }[] }
+			>();
+			movements.forEach((move) => {
+				const key = `${move.from}-${move.to}`;
+				if (!grouped.has(key)) {
+					grouped.set(key, { from: move.from, to: move.to, items: [] });
+				}
+				grouped.get(key)!.items.push({
+					label: STOCK_LABELS[move.item],
+					qty: move.qty,
+				});
+			});
+
+			const sortedGroups = Array.from(grouped.values()).sort((a, b) => {
+				return TARGET_STORES_ORDER.indexOf(a.to) - TARGET_STORES_ORDER.indexOf(b.to);
+			});
+
+			const printWindow = window.open("", "_blank");
+			if (printWindow) {
+				const dateStr = `${new Date().toLocaleDateString("pt-BR")} às ${new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}`;
+				const groupsHtml = sortedGroups
+					.map((group) => {
+						const totalGroupQty = group.items.reduce((acc, item) => acc + item.qty, 0);
+						const itemsList = group.items
+							.map((item) => `<li style="padding:2px 0; font-size:13px; font-weight:bold;">• <strong>${item.qty}</strong> ${item.label}</li>`)
+							.join("");
+						return `<div style="border:1px solid #999; border-radius:8px; padding:12px; margin-bottom:12px; page-break-inside:avoid;">
+							<div style="font-weight:900; font-size:14px; text-transform:uppercase; border-bottom:1px solid #ccc; padding-bottom:4px; margin-bottom:8px;">
+								${STORE_NAMES[group.from]} → ${STORE_NAMES[group.to]}
+							</div>
+							<ul style="list-style:none; padding:0; margin:0 0 8px 0;">${itemsList}</ul>
+							<div style="font-weight:900; font-size:13px; border-top:1px solid #ccc; padding-top:4px; display:flex; justify-content:space-between;">
+								<span>Total:</span><span>${totalGroupQty} pacotes</span>
+							</div>
+						</div>`;
+					})
+					.join("");
+
+				printWindow.document.write(`<!DOCTYPE html>
+				<html>
+					<head>
+						<meta charset="utf-8">
+						<meta name="viewport" content="width=device-width, initial-scale=1.0">
+						<title>Resumo de Reposicionamento</title>
+						<style>
+							body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; padding: 16px; color: #111; margin: 0; }
+							h2 { font-size: 16px; margin: 0 0 4px 0; text-transform: uppercase; }
+							p.date { font-size: 11px; color: #666; margin: 0 0 16px 0; }
+						</style>
+					</head>
+					<body>
+						<h2>Resumo de Reposicionamento</h2>
+						<p class="date">${dateStr}</p>
+						${groupsHtml}
+						<script>
+							window.onload = function() {
+								setTimeout(function() {
+									window.print();
+								}, 300);
+							};
+						</script>
+					</body>
+				</html>`);
+				printWindow.document.close();
+				return;
+			}
+		}
+
 		window.print();
 	};
 
