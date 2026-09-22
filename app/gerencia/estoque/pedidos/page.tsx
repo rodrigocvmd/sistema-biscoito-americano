@@ -881,7 +881,7 @@ export default function EstoquePedidosPage() {
 														<div className="flex items-center gap-1.5">
 															<span>{label}</span>
 															{boxSize > 0 && (
-																<span className="text-sm md:text-base font-black text-slate-400 dark:text-slate-500 normal-case">
+																<span className="!text-xl md:text-base font-black text-slate-400 dark:text-slate-500 normal-case">
 																	({boxSize})
 																</span>
 															)}
@@ -1921,6 +1921,31 @@ export default function EstoquePedidosPage() {
 							}
 						};
 
+						const handlePrint = async () => {
+							if (activeItems.length === 0) return;
+
+							const userAgent = typeof navigator !== "undefined" ? navigator.userAgent || "" : "";
+							const isMobileUserAgent = /Android|iPhone|iPad|iPod|webOS|BlackBerry|IEMobile|Opera Mini/i.test(userAgent);
+							const isSmallScreen = typeof window !== "undefined" ? window.innerWidth <= 768 : false;
+							const isMobile = isMobileUserAgent || isSmallScreen;
+
+							if (isMobile && typeof navigator !== "undefined" && typeof navigator.share === "function") {
+								try {
+									const text = generateSummaryText();
+									await navigator.share({
+										title: `Resumo do Pedido - ${new Date().toLocaleDateString("pt-BR")}`,
+										text: text,
+									});
+									return;
+								} catch (err: any) {
+									if (err.name === "AbortError") return;
+									console.warn("Navigator share falhou no imprimir mobile, fallback para window.print:", err);
+								}
+							}
+
+							window.print();
+						};
+
 						return (
 							<div className="bg-white dark:bg-slate-900 rounded-3xl w-full max-w-full sm:max-w-xl md:max-w-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh] border border-slate-200 dark:border-slate-800">
 								<div className="p-4 md:p-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between print:hidden">
@@ -2062,7 +2087,7 @@ export default function EstoquePedidosPage() {
 											<span>Enviar WhatsApp</span>
 										</button>
 										<button
-											onClick={() => window.print()}
+											onClick={handlePrint}
 											disabled={activeItems.length === 0}
 											className="flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-3 py-3 rounded-2xl font-black text-xs uppercase tracking-wider shadow-md shadow-blue-500/20 dark:shadow-none transition-all disabled:opacity-50 cursor-pointer">
 											<Printer size={16} />
