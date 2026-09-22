@@ -587,7 +587,7 @@ export default function EstoquePedidosPage() {
 					@media print {
 					@page {
 						size: A4 portrait;
-						margin: 15mm;
+						margin: 20mm;
 					}
 					* {
 						-webkit-print-color-adjust: exact !important;
@@ -597,7 +597,7 @@ export default function EstoquePedidosPage() {
 					}
 					body {
 						background: white !important;
-						color: black !important;
+						color: #111827 !important;
 						font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif !important;
 						padding: 0 !important;
 						margin: 0 !important;
@@ -626,15 +626,15 @@ export default function EstoquePedidosPage() {
 						height: auto !important;
 						min-height: auto !important;
 						margin: 0 !important;
-						padding: 0 !important;
+						padding: 4mm 6mm !important;
 						background: transparent !important;
 						backdrop-filter: none !important;
 						display: block !important;
 						z-index: 9999 !important;
+						box-sizing: border-box !important;
 					}
 
 					#modal-resumo-print > div {
-						position: static !important;
 						width: 100% !important;
 						max-width: 100% !important;
 						border: none !important;
@@ -1984,30 +1984,30 @@ export default function EstoquePedidosPage() {
 												</div>
 											</div>
 
-											{/* Visão de Impressão (Molde do WhatsApp: Lista Limpa com Destaques em Negrito) */}
-											<div className="hidden print:block w-full text-black font-sans text-[11pt] leading-relaxed">
-												<div className="border-b-2 border-black pb-2 mb-4 text-center">
-													<h2 className="text-[14pt] font-black uppercase tracking-wider mb-1">
-														RESUMO DO PEDIDO DE ESTOQUE
+											{/* Visão de Impressão (Minimalista, Econômica de Tinta, Sem Divisões Excessivas) */}
+											<div className="hidden print:block w-full text-black font-sans text-[9.5pt] leading-tight max-w-[180mm] mx-auto">
+												<div className="mb-3 text-left">
+													<h2 className="text-[11pt] font-black uppercase tracking-wide text-black">
+														Resumo do Pedido de Estoque
 													</h2>
-													<p className="text-[10pt] font-bold text-slate-600">
-														Data: {new Date().toLocaleDateString("pt-BR")} às {new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
+													<p className="text-[8pt] text-neutral-600 mt-0.5">
+														{new Date().toLocaleDateString("pt-BR")} às {new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
 													</p>
 												</div>
 
-												<div className="mb-4">
-													<h3 className="text-[11pt] font-black uppercase tracking-wider mb-2 border-b border-slate-300 pb-1">
-														CAIXAS A PEDIR:
-													</h3>
-													<ul className="space-y-1.5 pl-1">
+												<div className="mb-3">
+													<p className="text-[9pt] font-black uppercase tracking-wider mb-1.5 text-black">
+														Caixas a Pedir:
+													</p>
+													<ul className="space-y-1">
 														{activeItems.map((item, i) => {
 															const caixasLabel = item.boxesCount === 1 ? "cx" : "cxs";
 															return (
-																<li key={i} className="flex items-baseline justify-between border-b border-dotted border-slate-200 py-1">
+																<li key={i} className="flex items-baseline justify-between py-0.5">
 																	<span>
 																		• <strong className="font-black uppercase">{item.label}</strong>:{" "}
 																		<strong className="font-black">{item.boxesCount} {caixasLabel}</strong>{" "}
-																		<span className="text-[9.5pt] text-slate-600">({item.qty} pcts)</span>
+																		<span className="text-[8.5pt] text-neutral-600">({item.qty} pcts)</span>
 																	</span>
 																</li>
 															);
@@ -2015,22 +2015,22 @@ export default function EstoquePedidosPage() {
 													</ul>
 												</div>
 
-												<div className="border-t-2 border-black pt-3 space-y-1.5 mt-6">
+												<div className="pt-2 space-y-1 mt-3">
 													<div className="flex justify-between items-baseline">
-														<span className="font-black uppercase">Total de Caixas:</span>
-														<strong className="font-black text-[12pt]">
+														<span className="font-bold">Total de Caixas:</span>
+														<strong className="font-black text-[10pt]">
 															{totalBoxes} {totalBoxes === 1 ? "caixa" : "caixas"}
 														</strong>
 													</div>
 													<div className="flex justify-between items-baseline">
-														<span className="font-bold">Valor Final Base:</span>
-														<strong className="font-bold">
+														<span>Valor Final Base:</span>
+														<span>
 															R$ {baseTotalValue.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-														</strong>
+														</span>
 													</div>
-													<div className="flex justify-between items-baseline text-[12pt] border-t border-slate-300 pt-1.5">
+													<div className="flex justify-between items-baseline pt-1">
 														<span className="font-black uppercase">Valor Final com Impostos (8%):</span>
-														<strong className="font-black text-[13pt]">
+														<strong className="font-black text-[10.5pt]">
 															R$ {finalTotalValue.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
 														</strong>
 													</div>
