@@ -6,13 +6,13 @@ import {
 	LancamentoFinanceiro,
 	TipoLancamentoFinanceiro,
 	TIPO_LANCAMENTO_CONFIG,
+	EscalaItem,
 } from "@/types/funcionarios";
 import { STORE_NAMES, StoreId } from "@/types";
 import {
 	createLancamentoFinanceiro,
 	updateLancamentoFinanceiro,
 	deleteLancamentoFinanceiro,
-	gerarFolhaAutomaticaMes,
 } from "@/lib/funcionarios-service";
 import {
 	DollarSign,
@@ -37,11 +37,15 @@ import {
 	FileText,
 	ChevronDown,
 	ChevronUp,
+	Building2,
+	CalendarDays,
+	User,
 } from "lucide-react";
 
 interface FinanceiroTabProps {
 	funcionarios: Funcionario[];
 	lancamentos: LancamentoFinanceiro[];
+	escalas?: EscalaItem[];
 	mesAnoStr: string; // YYYY-MM
 	onChangeMesAno: (novoMesAno: string) => void;
 }
@@ -64,12 +68,14 @@ const MESES = [
 export default function FinanceiroTab({
 	funcionarios,
 	lancamentos,
+	escalas = [],
 	mesAnoStr,
 	onChangeMesAno,
 }: FinanceiroTabProps) {
 	const [viewMode, setViewMode] = useState<"colaboradores" | "extrato">("colaboradores");
 	const [searchTerm, setSearchTerm] = useState("");
 	const [filterLoja, setFilterLoja] = useState<string>("todas");
+	const [filterFuncionario, setFilterFuncionario] = useState<string>("todos");
 	const [filterTipo, setFilterTipo] = useState<string>("todos");
 	const [filterStatus, setFilterStatus] = useState<string>("todos");
 	const [expandedFuncId, setExpandedFuncId] = useState<string | null>(null);
@@ -78,7 +84,6 @@ export default function FinanceiroTab({
 	const [isModalOpen, setIsModalOpen] = useState(false);
 	const [editingLancamento, setEditingLancamento] = useState<LancamentoFinanceiro | null>(null);
 	const [isSaving, setIsSaving] = useState(false);
-	const [isGenerating, setIsGenerating] = useState(false);
 	const [copiedPixId, setCopiedPixId] = useState<string | null>(null);
 
 	// Form State
@@ -124,25 +129,120 @@ export default function FinanceiroTab({
 		onChangeMesAno(`${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`);
 	};
 
-	// Geração Automática da Folha
-	const handleGerarFolha = async () => {
-		try {
-			setIsGenerating(true);
-			const count = await gerarFolhaAutomaticaMes(mesAnoStr, funcionarios, lancamentos);
-			if (count > 0) {
-				alert(`${count} lançamentos de Salário/VT foram gerados com sucesso para o mês de ${MESES[mes - 1]}!`);
-			} else {
-				alert("Todos os colaboradores ativos já possuem lançamentos de Salário e VT cadastrados para este mês.");
+	// Contagem de dias trabalhados escalados no mês por funcionário (exclui folgas)
+	const diasEscaladosPorFunc = useMemo(() => {
+		const map: Record<string, number> = {};
+		escalas.forEach((e) => {
+			if (
+				e.data.startsWith(mesAnoStr) &&
+				e.turno !== "folga" &&
+				(Boolean(e.horarioInicio) || Boolean(e.horarioFim))
+			) {
+				map[e.funcionarioId] = (map[e.funcionarioId] || 0) + 1;
 			}
-		} catch (error) {
-			console.error("Erro ao gerar folha automática:", error);
-			alert("Ocorreu um erro ao gerar a folha automática.");
-		} finally {
-			setIsGenerating(false);
-		}
-	};
+		});
+		return map;
+	}, [escalas, mesAnoStr]);
 
-	// Cálculos dos Somatórios Gerais
+	// Mapa auxiliar para obter loja de qualquer funcionário
+	const funcLojaMap = useMemo(() => {
+		const map: Record<string, StoreId | "todas"> = {};
+		funcionarios.forEach((f) => {
+			map[f.id] = f.lojaId;
+		});
+		return map;
+	}, [funcionarios]);
+
+	// Colaborador selecionado no filtro (se houver)
+	const selectedFuncionario = useMemo(() => {
+		if (filterFuncionario === "todos") return null;
+		return funcionarios.find((f) => f.id === filterFuncionario) || null;
+	}, [funcionarios, filterFuncionario]);
+
+	// Colaboradores disponíveis para seleção considerando a loja selecionada
+	const funcionariosDisponiveis = useMemo(() => {
+		if (filterLoja === "todas") return funcionarios;
+		return funcionarios.filter((f) => f.lojaId === "todas" || f.lojaId === filterLoja);
+	}, [funcionarios, filterLoja]);
+
+	// Consolidação por Colaborador com Cálculo Automático e Constante de Salário e Vale-Transporte
+	const colaboradoresFinanceiro = useMemo(() => {
+		return funcionarios.map((func) => {
+			const funcLancamentos = lancamentos.filter(
+				(l) => l.funcionarioId === func.id && l.status !== "cancelado"
+			);
+
+			const diasTrabalhados = diasEscaladosPorFunc[func.id] || 0;
+
+			// Salário e Vale-Transporte calculados de forma automática e constante:
+			// Colaboradores não-inativos recebem o salário base e o VT diário multiplicado pelos dias trabalhados/escalados
+			const isAtivoOuFerias = func.status !== "inativo";
+			const salarioBaseAutomatico = isAtivoOuFerias ? Number(func.salarioBase || 0) : 0;
+			const vtAutomatico = isAtivoOuFerias
+				? Number(((func.valeTransporte || 0) * diasTrabalhados).toFixed(2))
+				: 0;
+
+			let salariosManuais = 0;
+			let vtManuais = 0;
+			let retiradas = 0;
+			let bonus = 0;
+			let descontos = 0;
+			let gastosPontuais = 0;
+			let pagamentos = 0;
+
+			funcLancamentos.forEach((l) => {
+				// Ignora lançamentos gerados antigamente pelo botão automático para não duplicar com os automáticos constantes
+				const isOldAuto =
+					l.observacoes?.includes("Gerado automaticamente") ||
+					l.observacoes?.includes("Calculado automaticamente");
+
+				if (l.tipo === "salario") {
+					if (!isOldAuto) salariosManuais += l.valor;
+				} else if (l.tipo === "vale_transporte") {
+					if (!isOldAuto) vtManuais += l.valor;
+				} else if (l.tipo === "retirada") {
+					retiradas += l.valor;
+				} else if (l.tipo === "bonus") {
+					bonus += l.valor;
+				} else if (l.tipo === "desconto") {
+					descontos += l.valor;
+				} else if (l.tipo === "gasto_pontual") {
+					gastosPontuais += l.valor;
+				} else if (l.tipo === "pagamento_realizado") {
+					pagamentos += l.valor;
+				}
+			});
+
+			const salarios = salarioBaseAutomatico + salariosManuais;
+			const vt = vtAutomatico + vtManuais;
+
+			// Total Líquido a Pagar do Colaborador: Proventos (Salário + VT + Bônus + Reembolsos) - Deduções (Retiradas + Descontos)
+			const liquido = salarios + vt + bonus + gastosPontuais - retiradas - descontos;
+			const saldoPendente = Math.max(0, liquido - pagamentos);
+
+			return {
+				funcionario: func,
+				lancamentos: funcLancamentos,
+				salarios,
+				salarioBaseAutomatico,
+				salariosManuais,
+				vt,
+				vtAutomatico,
+				vtManuais,
+				retiradas,
+				bonus,
+				descontos,
+				gastosPontuais,
+				pagamentos,
+				liquido,
+				saldoPendente,
+				diasTrabalhados,
+				isQuitado: liquido > 0 && pagamentos >= liquido,
+			};
+		});
+	}, [funcionarios, lancamentos, diasEscaladosPorFunc]);
+
+	// Cálculos dos Somatórios Gerais e Filtrados por Loja e por Funcionário
 	const totals = useMemo(() => {
 		let totalSalarios = 0;
 		let totalVT = 0;
@@ -152,23 +252,33 @@ export default function FinanceiroTab({
 		let totalGastosPontuais = 0;
 		let totalPago = 0;
 
-		lancamentos.forEach((l) => {
-			if (l.status === "cancelado") return;
+		colaboradoresFinanceiro.forEach((item) => {
+			const { funcionario: func } = item;
 
-			if (l.tipo === "salario") totalSalarios += l.valor;
-			else if (l.tipo === "vale_transporte") totalVT += l.valor;
-			else if (l.tipo === "retirada") totalRetiradas += l.valor;
-			else if (l.tipo === "bonus") totalBonus += l.valor;
-			else if (l.tipo === "desconto") totalDescontos += l.valor;
-			else if (l.tipo === "gasto_pontual") totalGastosPontuais += l.valor;
-			else if (l.tipo === "pagamento_realizado") totalPago += l.valor;
-
-			if (l.status === "pago" && l.tipo !== "pagamento_realizado") {
-				// Também pode considerar como quitado se marcado como pago
+			// Filtra pela loja selecionada
+			if (filterLoja !== "todas") {
+				if (func.lojaId !== "todas" && func.lojaId !== filterLoja) {
+					return;
+				}
 			}
+
+			// Filtra por colaborador selecionado
+			if (filterFuncionario !== "todos") {
+				if (func.id !== filterFuncionario) {
+					return;
+				}
+			}
+
+			totalSalarios += item.salarios;
+			totalVT += item.vt;
+			totalRetiradas += item.retiradas;
+			totalBonus += item.bonus;
+			totalDescontos += item.descontos;
+			totalGastosPontuais += item.gastosPontuais;
+			totalPago += item.pagamentos;
 		});
 
-		// Total Líquido a Pagar: Proventos (Salário + VT + Bônus + Gastos/Reembolsos) - Deduções (Retiradas + Descontos)
+		// Total Líquido a Pagar: Proventos - Deduções
 		const totalLiquido =
 			totalSalarios + totalVT + totalBonus + totalGastosPontuais - totalRetiradas - totalDescontos;
 		const totalPendente = Math.max(0, totalLiquido - totalPago);
@@ -184,85 +294,76 @@ export default function FinanceiroTab({
 			totalPago,
 			totalPendente,
 		};
-	}, [lancamentos]);
-
-	// Consolidação por Colaborador
-	const colaboradoresFinanceiro = useMemo(() => {
-		return funcionarios.map((func) => {
-			const funcLancamentos = lancamentos.filter(
-				(l) => l.funcionarioId === func.id && l.status !== "cancelado"
-			);
-
-			let salarios = 0;
-			let vt = 0;
-			let retiradas = 0;
-			let bonus = 0;
-			let descontos = 0;
-			let gastosPontuais = 0;
-			let pagamentos = 0;
-
-			funcLancamentos.forEach((l) => {
-				if (l.tipo === "salario") salarios += l.valor;
-				else if (l.tipo === "vale_transporte") vt += l.valor;
-				else if (l.tipo === "retirada") retiradas += l.valor;
-				else if (l.tipo === "bonus") bonus += l.valor;
-				else if (l.tipo === "desconto") descontos += l.valor;
-				else if (l.tipo === "gasto_pontual") gastosPontuais += l.valor;
-				else if (l.tipo === "pagamento_realizado") pagamentos += l.valor;
-			});
-
-			const liquido = salarios + vt + bonus + gastosPontuais - retiradas - descontos;
-			const saldoPendente = Math.max(0, liquido - pagamentos);
-
-			return {
-				funcionario: func,
-				lancamentos: funcLancamentos,
-				salarios,
-				vt,
-				retiradas,
-				bonus,
-				descontos,
-				gastosPontuais,
-				pagamentos,
-				liquido,
-				saldoPendente,
-				isQuitado: liquido > 0 && pagamentos >= liquido,
-			};
-		});
-	}, [funcionarios, lancamentos]);
+	}, [colaboradoresFinanceiro, filterLoja, filterFuncionario]);
 
 	// Filtros da Visão Colaboradores
 	const filteredColaboradores = useMemo(() => {
 		return colaboradoresFinanceiro.filter((item) => {
+			const searchLower = searchTerm.toLowerCase();
 			const matchesSearch =
-				item.funcionario.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
+				item.funcionario.nome.toLowerCase().includes(searchLower) ||
 				(item.funcionario.apelido &&
-					item.funcionario.apelido.toLowerCase().includes(searchTerm.toLowerCase())) ||
-				item.funcionario.cargo.toLowerCase().includes(searchTerm.toLowerCase());
+					item.funcionario.apelido.toLowerCase().includes(searchLower)) ||
+				item.funcionario.cargo.toLowerCase().includes(searchLower);
 
 			const matchesLoja =
 				filterLoja === "todas" ||
 				item.funcionario.lojaId === "todas" ||
 				item.funcionario.lojaId === filterLoja;
 
-			return matchesSearch && matchesLoja;
+			const matchesFuncionario =
+				filterFuncionario === "todos" || item.funcionario.id === filterFuncionario;
+
+			// Filtro por tipo de custo específico quando na visão colaboradores
+			let matchesTipoCusto = true;
+			if (filterTipo === "salario") matchesTipoCusto = item.salarios > 0;
+			else if (filterTipo === "vale_transporte") matchesTipoCusto = item.vt > 0;
+			else if (filterTipo === "retirada") matchesTipoCusto = item.retiradas > 0;
+			else if (filterTipo === "bonus") matchesTipoCusto = item.bonus > 0;
+			else if (filterTipo === "desconto") matchesTipoCusto = item.descontos > 0;
+			else if (filterTipo === "gasto_pontual") matchesTipoCusto = item.gastosPontuais > 0;
+			else if (filterTipo === "pagamento_realizado") matchesTipoCusto = item.pagamentos > 0;
+
+			// Filtro de status de pagamento
+			let matchesStatusFilter = true;
+			if (filterStatus === "pago") matchesStatusFilter = item.isQuitado;
+			else if (filterStatus === "pendente") matchesStatusFilter = !item.isQuitado;
+
+			return (
+				matchesSearch &&
+				matchesLoja &&
+				matchesFuncionario &&
+				matchesTipoCusto &&
+				matchesStatusFilter
+			);
 		});
-	}, [colaboradoresFinanceiro, searchTerm, filterLoja]);
+	}, [colaboradoresFinanceiro, searchTerm, filterLoja, filterFuncionario, filterTipo, filterStatus]);
 
 	// Filtros da Visão Extrato Geral
 	const filteredLancamentos = useMemo(() => {
 		return lancamentos.filter((l) => {
+			const searchLower = searchTerm.toLowerCase();
 			const matchesSearch =
-				l.funcionarioNome.toLowerCase().includes(searchTerm.toLowerCase()) ||
-				l.descricao.toLowerCase().includes(searchTerm.toLowerCase());
+				l.funcionarioNome.toLowerCase().includes(searchLower) ||
+				l.descricao.toLowerCase().includes(searchLower) ||
+				(l.observacoes && l.observacoes.toLowerCase().includes(searchLower));
 
-			const matchesLoja = filterLoja === "todas" || !l.lojaId || l.lojaId === filterLoja;
+			const itemLoja = l.lojaId || funcLojaMap[l.funcionarioId];
+			const matchesLoja =
+				filterLoja === "todas" ||
+				!itemLoja ||
+				itemLoja === "todas" ||
+				itemLoja === filterLoja;
+
+			const matchesFuncionario =
+				filterFuncionario === "todos" || l.funcionarioId === filterFuncionario;
+
 			const matchesTipo = filterTipo === "todos" || l.tipo === filterTipo;
 			const matchesStatus = filterStatus === "todos" || l.status === filterStatus;
 
-			return matchesSearch && matchesLoja && matchesTipo && matchesStatus;
+			return matchesSearch && matchesLoja && matchesFuncionario && matchesTipo && matchesStatus;
 		});
-	}, [lancamentos, searchTerm, filterLoja, filterTipo, filterStatus]);
+	}, [lancamentos, searchTerm, filterLoja, filterFuncionario, filterTipo, filterStatus, funcLojaMap]);
 
 	// Ações do Modal de Lançamento
 	const openCreateModal = (prefillFuncId?: string, defaultTipo?: TipoLancamentoFinanceiro) => {
@@ -273,11 +374,26 @@ export default function FinanceiroTab({
 
 		const today = new Date().toISOString().split("T")[0];
 
+		// Sugestão de valor inteligente baseado no tipo e escala
+		let valorSugerido = "";
+		if (func) {
+			if (tipo === "salario") {
+				valorSugerido = func.salarioBase ? String(func.salarioBase) : "";
+			} else if (tipo === "vale_transporte") {
+				const dias = diasEscaladosPorFunc[func.id] || 0;
+				if (dias > 0 && func.valeTransporte > 0) {
+					valorSugerido = (func.valeTransporte * dias).toFixed(2);
+				} else if (func.valeTransporte > 0) {
+					valorSugerido = String(func.valeTransporte);
+				}
+			}
+		}
+
 		setFormData({
 			funcionarioId: func ? func.id : "",
 			tipo,
 			descricao: config.label,
-			valor: "",
+			valor: valorSugerido,
 			data: today,
 			mesReferencia: mesAnoStr,
 			status: tipo === "pagamento_realizado" ? "pago" : "pendente",
@@ -305,10 +421,27 @@ export default function FinanceiroTab({
 
 	const handleTipoChange = (newTipo: TipoLancamentoFinanceiro) => {
 		const config = TIPO_LANCAMENTO_CONFIG[newTipo];
+		const func = funcionarios.find((f) => f.id === formData.funcionarioId);
+		let valorSugerido = formData.valor;
+
+		if (func) {
+			if (newTipo === "salario") {
+				valorSugerido = func.salarioBase ? String(func.salarioBase) : formData.valor;
+			} else if (newTipo === "vale_transporte") {
+				const dias = diasEscaladosPorFunc[func.id] || 0;
+				if (dias > 0 && func.valeTransporte > 0) {
+					valorSugerido = (func.valeTransporte * dias).toFixed(2);
+				} else if (func.valeTransporte > 0) {
+					valorSugerido = String(func.valeTransporte);
+				}
+			}
+		}
+
 		setFormData((prev) => ({
 			...prev,
 			tipo: newTipo,
 			descricao: config.label,
+			valor: valorSugerido,
 			status: newTipo === "pagamento_realizado" ? "pago" : prev.status,
 		}));
 	};
@@ -370,8 +503,51 @@ export default function FinanceiroTab({
 		setTimeout(() => setCopiedPixId(null), 2000);
 	};
 
+	const lojaLabelAtual =
+		filterLoja === "todas" ? "Todas as Lojas" : STORE_NAMES[filterLoja as StoreId] || filterLoja;
+
 	return (
 		<div className="space-y-6">
+			{/* SUB-ABAS DE SELEÇÃO DE CUSTOS (GERAL OU POR LOJA) - ACIMA DA SELEÇÃO DO MÊS */}
+			<div className="flex bg-slate-100 dark:bg-slate-800 p-1.5 rounded-2xl gap-1 overflow-x-auto border border-slate-200/80 dark:border-slate-800">
+				<button
+					onClick={() => {
+						setFilterLoja("todas");
+					}}
+					className={`cursor-pointer px-4 py-2.5 rounded-xl font-black text-xs sm:text-sm flex items-center gap-2 transition-all shrink-0 ${
+						filterLoja === "todas"
+							? "bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-sm"
+							: "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200"
+					}`}>
+					<Building2 size={16} />
+					<span>Geral (Todas as Lojas)</span>
+				</button>
+				{Object.entries(STORE_NAMES).map(([id, name]) => {
+					const isActive = filterLoja === id;
+					return (
+						<button
+							key={id}
+							onClick={() => {
+								setFilterLoja(id);
+								// Se o colaborador selecionado não pertencer à nova loja, reseta o filtro de colaborador
+								if (filterFuncionario !== "todos") {
+									const func = funcionarios.find((f) => f.id === filterFuncionario);
+									if (func && func.lojaId !== "todas" && func.lojaId !== id) {
+										setFilterFuncionario("todos");
+									}
+								}
+							}}
+							className={`cursor-pointer px-4 py-2.5 rounded-xl font-black text-xs sm:text-sm flex items-center gap-2 transition-all shrink-0 ${
+								isActive
+									? "bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-sm"
+									: "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200"
+							}`}>
+							<span>{name}</span>
+						</button>
+					);
+				})}
+			</div>
+
 			{/* BARRA SUPERIOR DE NAVEGAÇÃO DE MÊS E AÇÕES RÁPIDAS */}
 			<div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col md:flex-row items-center justify-between gap-4">
 				{/* Seletor do Mês/Ano */}
@@ -407,15 +583,6 @@ export default function FinanceiroTab({
 				{/* Botões de Ação */}
 				<div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
 					<button
-						onClick={handleGerarFolha}
-						disabled={isGenerating}
-						title="Alimenta automaticamente salários base e vales-transporte dos colaboradores ativos"
-						className="cursor-pointer px-4 py-2.5 bg-emerald-50 dark:bg-emerald-950/60 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 font-bold rounded-xl text-xs flex items-center gap-2 transition-all">
-						<Sparkles size={16} />
-						<span>{isGenerating ? "Gerando..." : "Gerar Folha Automática"}</span>
-					</button>
-
-					<button
 						onClick={() => openCreateModal()}
 						className="cursor-pointer px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-sm hover:shadow transition-all flex items-center gap-2 text-xs">
 						<Plus size={16} />
@@ -424,64 +591,129 @@ export default function FinanceiroTab({
 				</div>
 			</div>
 
-			{/* CARDS DE RESUMOS E SOMATÓRIOS DO MÊS */}
-			<div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-				{/* Salários Previstos */}
-				<div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-1">
-					<div className="flex items-center justify-between text-slate-500 dark:text-slate-400 text-xs font-medium">
-						<span>Salários Base</span>
-						<span className="p-1.5 bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 rounded-lg">
-							<DollarSign size={16} />
-						</span>
-					</div>
-					<p className="text-xl font-black text-slate-900 dark:text-slate-100">
-						R$ {totals.totalSalarios.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
-					</p>
-					<span className="text-[11px] text-slate-400 block">+ R$ {totals.totalVT.toFixed(2)} em VT</span>
-				</div>
-
-				{/* Retiradas / Adiantamentos */}
-				<div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-1">
-					<div className="flex items-center justify-between text-slate-500 dark:text-slate-400 text-xs font-medium">
-						<span>Retiradas / Vales</span>
-						<span className="p-1.5 bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 rounded-lg">
-							<TrendingDown size={16} />
-						</span>
-					</div>
-					<p className="text-xl font-black text-amber-600 dark:text-amber-400">
-						R$ {totals.totalRetiradas.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
-					</p>
-					<span className="text-[11px] text-slate-400 block">Adiantamentos descontados</span>
-				</div>
-
-				{/* Total Líquido a Pagar */}
-				<div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-1">
-					<div className="flex items-center justify-between text-slate-500 dark:text-slate-400 text-xs font-medium">
-						<span>Total Líquido da Folha</span>
-						<span className="p-1.5 bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 rounded-lg">
-							<Wallet size={16} />
-						</span>
-					</div>
-					<p className="text-xl font-black text-emerald-600 dark:text-emerald-400">
-						R$ {totals.totalLiquido.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
-					</p>
-					<span className="text-[11px] text-slate-400 block">Após vales e deduções</span>
-				</div>
-
-				{/* Total Já Quitado vs Pendente */}
-				<div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-1">
-					<div className="flex items-center justify-between text-slate-500 dark:text-slate-400 text-xs font-medium">
-						<span>Status Pagamentos</span>
-						<span className="p-1.5 bg-purple-50 dark:bg-purple-950/60 text-purple-600 dark:text-purple-400 rounded-lg">
-							<CheckCircle2 size={16} />
-						</span>
-					</div>
-					<p className="text-xl font-black text-purple-600 dark:text-purple-400">
-						R$ {totals.totalPago.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
-					</p>
-					<span className="text-[11px] text-rose-500 font-semibold block">
-						R$ {totals.totalPendente.toLocaleString("pt-BR", { minimumFractionDigits: 2 })} restante
+			{/* CARDS DE RESUMOS E SOMATÓRIOS DO MÊS (Geral ou por Loja) */}
+			<div className="space-y-2">
+				<div className="flex items-center justify-between text-xs text-slate-500 font-semibold px-1 flex-wrap gap-2">
+					<span className="flex items-center gap-1.5">
+						<Building2 size={14} className="text-blue-600 dark:text-blue-400" />
+						Custos para: <strong className="text-slate-800 dark:text-slate-200">{lojaLabelAtual}</strong>
+						{selectedFuncionario && (
+							<>
+								<span className="text-slate-400">•</span>
+								<span className="text-blue-600 dark:text-blue-400 font-bold">
+									Colaborador: {selectedFuncionario.nome}
+								</span>
+							</>
+						)}
 					</span>
+					<div className="flex items-center gap-2">
+						{filterFuncionario !== "todos" && (
+							<button
+								onClick={() => setFilterFuncionario("todos")}
+								className="cursor-pointer text-2xs text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1 font-bold">
+								<span>Colaborador: {selectedFuncionario?.nome || "Filtro ativo"} (Limpar)</span>
+								<X size={12} />
+							</button>
+						)}
+						{filterTipo !== "todos" && (
+							<button
+								onClick={() => setFilterTipo("todos")}
+								className="cursor-pointer text-2xs text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1 font-bold">
+								<span>Filtro tipo: {TIPO_LANCAMENTO_CONFIG[filterTipo as TipoLancamentoFinanceiro]?.label} (Limpar)</span>
+								<X size={12} />
+							</button>
+						)}
+					</div>
+				</div>
+
+				<div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+					{/* Salários Previstos */}
+					<div
+						onClick={() => setFilterTipo(filterTipo === "salario" ? "todos" : "salario")}
+						title="Clique para filtrar apenas custos com Salário Base"
+						className={`bg-white dark:bg-slate-900 p-4 rounded-2xl border transition-all cursor-pointer shadow-sm hover:shadow-md ${
+							filterTipo === "salario"
+								? "ring-2 ring-blue-500 border-blue-400 bg-blue-50/20"
+								: "border-slate-200 dark:border-slate-800 hover:border-slate-300"
+						}`}>
+						<div className="flex items-center justify-between text-slate-500 dark:text-slate-400 text-xs font-medium">
+							<span>Salários Base</span>
+							<span className="p-1.5 bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 rounded-lg">
+								<DollarSign size={16} />
+							</span>
+						</div>
+						<p className="text-xl font-black text-slate-900 dark:text-slate-100 mt-1">
+							R$ {totals.totalSalarios.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+						</p>
+						<span className="text-[11px] text-slate-400 block mt-0.5">
+							{filterTipo === "salario" ? "● Filtro ativo" : "Clique p/ filtrar"}
+						</span>
+					</div>
+
+					{/* Vale-Transporte */}
+					<div
+						onClick={() => setFilterTipo(filterTipo === "vale_transporte" ? "todos" : "vale_transporte")}
+						title="Clique para filtrar apenas custos com Vale-Transporte"
+						className={`bg-white dark:bg-slate-900 p-4 rounded-2xl border transition-all cursor-pointer shadow-sm hover:shadow-md ${
+							filterTipo === "vale_transporte"
+								? "ring-2 ring-teal-500 border-teal-400 bg-teal-50/20"
+								: "border-slate-200 dark:border-slate-800 hover:border-slate-300"
+						}`}>
+						<div className="flex items-center justify-between text-slate-500 dark:text-slate-400 text-xs font-medium">
+							<span>Vale-Transporte</span>
+							<span className="p-1.5 bg-teal-50 dark:bg-teal-950/60 text-teal-600 dark:text-teal-400 rounded-lg">
+								<TrendingUp size={16} />
+							</span>
+						</div>
+						<p className="text-xl font-black text-teal-600 dark:text-teal-400 mt-1">
+							R$ {totals.totalVT.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+						</p>
+						<span className="text-[11px] text-slate-400 block mt-0.5">
+							{filterTipo === "vale_transporte" ? "● Filtro ativo" : "Por diárias escaladas"}
+						</span>
+					</div>
+
+					{/* Retiradas / Adiantamentos */}
+					<div
+						onClick={() => setFilterTipo(filterTipo === "retirada" ? "todos" : "retirada")}
+						title="Clique para filtrar apenas Adiantamentos / Retiradas"
+						className={`bg-white dark:bg-slate-900 p-4 rounded-2xl border transition-all cursor-pointer shadow-sm hover:shadow-md ${
+							filterTipo === "retirada"
+								? "ring-2 ring-amber-500 border-amber-400 bg-amber-50/20"
+								: "border-slate-200 dark:border-slate-800 hover:border-slate-300"
+						}`}>
+						<div className="flex items-center justify-between text-slate-500 dark:text-slate-400 text-xs font-medium">
+							<span>Adiantamentos / Retiradas</span>
+							<span className="p-1.5 bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 rounded-lg">
+								<TrendingDown size={16} />
+							</span>
+						</div>
+						<p className="text-xl font-black text-amber-600 dark:text-amber-400 mt-1">
+							R$ {totals.totalRetiradas.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+						</p>
+						<span className="text-[11px] text-slate-400 block mt-0.5">
+							{filterTipo === "retirada" ? "● Filtro ativo" : "Deduções efetuadas"}
+						</span>
+					</div>
+
+					{/* Total Líquido a Pagar */}
+					<div
+						onClick={() => setFilterTipo("todos")}
+						title="Exibe o custo líquido consolidado (salários + VT + extras - retiradas - descontos)"
+						className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-1">
+						<div className="flex items-center justify-between text-slate-500 dark:text-slate-400 text-xs font-medium">
+							<span>Custo Líquido da Folha</span>
+							<span className="p-1.5 bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 rounded-lg">
+								<Wallet size={16} />
+							</span>
+						</div>
+						<p className="text-xl font-black text-emerald-600 dark:text-emerald-400 mt-1">
+							R$ {totals.totalLiquido.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+						</p>
+						<span className="text-[11px] text-slate-400 block">
+							R$ {totals.totalPago.toFixed(2)} pago • R$ {totals.totalPendente.toFixed(2)} pendente
+						</span>
+					</div>
 				</div>
 			</div>
 
@@ -510,7 +742,7 @@ export default function FinanceiroTab({
 					</button>
 				</div>
 
-				{/* Filtro por Loja e Busca */}
+				{/* Filtros por Loja, Tipo de Custo e Busca */}
 				<div className="flex flex-wrap items-center gap-3">
 					<div className="relative">
 						<Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
@@ -524,32 +756,31 @@ export default function FinanceiroTab({
 					</div>
 
 					<select
-						value={filterLoja}
-						onChange={(e) => setFilterLoja(e.target.value)}
-						aria-label="Filtrar lançamentos por loja"
+						value={filterFuncionario}
+						onChange={(e) => setFilterFuncionario(e.target.value)}
+						aria-label="Filtrar custos por colaborador"
 						className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 text-xs font-bold focus:outline-none focus:ring-2 focus:ring-blue-500">
-						<option value="todas">Todas as Lojas</option>
-						{Object.entries(STORE_NAMES).map(([id, name]) => (
-							<option key={id} value={id}>
-								{name}
+						<option value="todos">Todos os Funcionários</option>
+						{funcionariosDisponiveis.map((f) => (
+							<option key={f.id} value={f.id}>
+								{f.nome} {f.apelido ? `(${f.apelido})` : ""}
 							</option>
 						))}
 					</select>
 
-					{viewMode === "extrato" && (
-						<select
-							value={filterTipo}
-							onChange={(e) => setFilterTipo(e.target.value)}
-							aria-label="Filtrar por tipo de lançamento financeiro"
-							className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 text-xs font-bold focus:outline-none focus:ring-2 focus:ring-blue-500">
-							<option value="todos">Todos os Tipos</option>
-							{Object.entries(TIPO_LANCAMENTO_CONFIG).map(([key, conf]) => (
-								<option key={key} value={key}>
-									{conf.label}
-								</option>
-							))}
-						</select>
-					)}
+					<select
+						value={filterTipo}
+						onChange={(e) => setFilterTipo(e.target.value)}
+						aria-label="Filtrar por custo específico"
+						className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 text-xs font-bold focus:outline-none focus:ring-2 focus:ring-blue-500">
+						<option value="todos">Todos os Custos</option>
+						<option value="salario">Salário Base</option>
+						<option value="vale_transporte">Vale-Transporte</option>
+						<option value="bonus">Bonificação / Extra</option>
+						<option value="retirada">Adiantamentos / Vales</option>
+						<option value="desconto">Descontos</option>
+						<option value="pagamento_realizado">Pagamentos Efetuados</option>
+					</select>
 				</div>
 			</div>
 
@@ -612,20 +843,56 @@ export default function FinanceiroTab({
 											</div>
 										</div>
 
-										{/* Valores Consolidados */}
-										<div className="flex flex-wrap items-center gap-4 text-xs">
+										{/* Valores Consolidados com breakdown específico */}
+										<div className="flex flex-wrap items-center gap-3 text-xs">
+											{item.diasTrabalhados > 0 && (
+												<div className="text-right px-2 py-1 bg-slate-50 dark:bg-slate-800 rounded-lg border border-slate-200/60 dark:border-slate-700/60" title={`${item.diasTrabalhados} dias com turno escalado no mês de ${MESES[mes - 1]}`}>
+													<span className="text-slate-400 block text-2xs">Escala do Mês</span>
+													<span className="font-bold text-blue-600 dark:text-blue-400">
+														{item.diasTrabalhados} {item.diasTrabalhados === 1 ? "dia" : "dias"}
+													</span>
+												</div>
+											)}
+
 											<div className="text-right">
-												<span className="text-slate-400 block text-2xs">Salário + VT</span>
+												<span className="text-slate-400 block text-2xs">Salário Base</span>
 												<span className="font-bold text-slate-700 dark:text-slate-300">
-													R$ {(item.salarios + item.vt).toFixed(2)}
+													R$ {item.salarios.toFixed(2)}
 												</span>
 											</div>
 
+											{item.vt > 0 && (
+												<div className="text-right">
+													<span className="text-teal-600 dark:text-teal-400 block text-2xs">Vale-Transporte</span>
+													<span className="font-bold text-teal-700 dark:text-teal-300">
+														R$ {item.vt.toFixed(2)}
+													</span>
+												</div>
+											)}
+
+											{item.bonus > 0 && (
+												<div className="text-right">
+													<span className="text-emerald-500 block text-2xs">Extra/Bônus</span>
+													<span className="font-bold text-emerald-600 dark:text-emerald-400">
+														+ R$ {item.bonus.toFixed(2)}
+													</span>
+												</div>
+											)}
+
 											{item.retiradas > 0 && (
 												<div className="text-right">
-													<span className="text-amber-500 block text-2xs">Retiradas</span>
+													<span className="text-amber-500 block text-2xs">Adiantamento</span>
 													<span className="font-bold text-amber-600 dark:text-amber-400">
 														- R$ {item.retiradas.toFixed(2)}
+													</span>
+												</div>
+											)}
+
+											{item.descontos > 0 && (
+												<div className="text-right">
+													<span className="text-rose-500 block text-2xs">Descontos</span>
+													<span className="font-bold text-rose-600 dark:text-rose-400">
+														- R$ {item.descontos.toFixed(2)}
 													</span>
 												</div>
 											)}
@@ -653,20 +920,20 @@ export default function FinanceiroTab({
 													: "Pendente"}
 											</span>
 
-											{/* Ações */}
-											<div className="flex items-center gap-2">
+											{/* Ações Rápidas de Cadastro de Custos */}
+											<div className="flex items-center gap-1.5">
 												<button
-													onClick={() => openCreateModal(func.id, "retirada")}
-													className="cursor-pointer px-2.5 py-1.5 bg-amber-50 dark:bg-amber-950/50 hover:bg-amber-100 text-amber-700 dark:text-amber-300 font-bold rounded-lg text-2xs transition-colors"
-													title="Adicionar Retirada / Adiantamento">
-													+ Retirada
+													onClick={() => openCreateModal(func.id)}
+													className="cursor-pointer px-2.5 py-1.5 bg-blue-50 dark:bg-blue-950/50 hover:bg-blue-100 text-blue-700 dark:text-blue-300 font-bold rounded-lg text-2xs transition-colors"
+													title="Adicionar Custo para este Colaborador (Salário, VT, Bônus, Adiantamento, Desconto)">
+													+ Custo
 												</button>
 
 												<button
 													onClick={() => openCreateModal(func.id, "pagamento_realizado")}
 													className="cursor-pointer px-2.5 py-1.5 bg-purple-50 dark:bg-purple-950/50 hover:bg-purple-100 text-purple-700 dark:text-purple-300 font-bold rounded-lg text-2xs transition-colors"
-													title="Registrar Pagamento Realizado">
-													+ Pagar
+													title="Registrar Pagamento Efetuado / Baixa">
+													Pagar
 												</button>
 
 												<button
@@ -905,17 +1172,16 @@ export default function FinanceiroTab({
 
 							<div>
 								<label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
-									Tipo de Lançamento *
+									Tipo de Custo / Lançamento *
 								</label>
 								<div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
 									{(
 										[
 											"salario",
 											"vale_transporte",
-											"retirada",
 											"bonus",
+											"retirada",
 											"desconto",
-											"gasto_pontual",
 											"pagamento_realizado",
 										] as TipoLancamentoFinanceiro[]
 									).map((t) => {
@@ -927,9 +1193,9 @@ export default function FinanceiroTab({
 												key={t}
 												type="button"
 												onClick={() => handleTipoChange(t)}
-												className={`cursor-pointer px-2 py-2 rounded-xl text-xs font-bold border transition-all text-center ${
+												className={`cursor-pointer px-2.5 py-2 rounded-xl text-xs font-bold border transition-all text-center ${
 													isSelected
-														? `${conf.badgeBg} ${conf.badgeText} ring-2 ring-blue-500`
+														? `${conf.badgeBg} ${conf.badgeText} ring-2 ring-blue-500 font-black`
 														: "border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800"
 												}`}>
 												{conf.label}

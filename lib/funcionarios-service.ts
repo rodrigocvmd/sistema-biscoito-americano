@@ -362,77 +362,7 @@ export const deleteLancamentoFinanceiro = async (id: string) => {
 	return await deleteDoc(ref);
 };
 
-// Gera lançamentos automáticos de salário e VT para os funcionários ativos no mês selecionado
-export const gerarFolhaAutomaticaMes = async (
-	mesReferencia: string,
-	funcionarios: Funcionario[],
-	lancamentosExistentes: LancamentoFinanceiro[]
-) => {
-	const batch = writeBatch(db);
-	let generatedCount = 0;
-	const [ano, mes] = mesReferencia.split("-");
-	const dataPadrao = `${mesReferencia}-05`; // Data de referência padrão 5º dia útil
 
-	for (const func of funcionarios) {
-		if (func.status !== "ativo") continue;
-
-		// Verificar se já tem salário base no mês
-		const hasSalario = lancamentosExistentes.some(
-			(l) => l.funcionarioId === func.id && l.tipo === "salario" && l.mesReferencia === mesReferencia
-		);
-
-		if (!hasSalario && (func.salarioBase || 0) > 0) {
-			const newRef = doc(collection(db, FINANCEIRO_COLLECTION));
-			batch.set(newRef, {
-				funcionarioId: func.id,
-				funcionarioNome: func.nome,
-				lojaId: func.lojaId,
-				tipo: "salario",
-				descricao: `Salário Base - ${mes}/${ano}`,
-				valor: Number(func.salarioBase),
-				data: dataPadrao,
-				mesReferencia,
-				status: "pendente",
-				metodoPagamento: "pix",
-				observacoes: "Gerado automaticamente",
-				createdAt: serverTimestamp(),
-				updatedAt: serverTimestamp(),
-			});
-			generatedCount++;
-		}
-
-		// Verificar se já tem VT no mês
-		const hasVt = lancamentosExistentes.some(
-			(l) => l.funcionarioId === func.id && l.tipo === "vale_transporte" && l.mesReferencia === mesReferencia
-		);
-
-		if (!hasVt && (func.valeTransporte || 0) > 0) {
-			const newRef = doc(collection(db, FINANCEIRO_COLLECTION));
-			batch.set(newRef, {
-				funcionarioId: func.id,
-				funcionarioNome: func.nome,
-				lojaId: func.lojaId,
-				tipo: "vale_transporte",
-				descricao: `Vale-Transporte - ${mes}/${ano}`,
-				valor: Number(func.valeTransporte),
-				data: `${mesReferencia}-01`,
-				mesReferencia,
-				status: "pendente",
-				metodoPagamento: "pix",
-				observacoes: "Gerado automaticamente",
-				createdAt: serverTimestamp(),
-				updatedAt: serverTimestamp(),
-			});
-			generatedCount++;
-		}
-	}
-
-	if (generatedCount > 0) {
-		await batch.commit();
-	}
-
-	return generatedCount;
-};
 
 // ==================== HORÁRIOS DAS LOJAS ====================
 

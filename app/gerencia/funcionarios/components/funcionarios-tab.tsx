@@ -1,12 +1,18 @@
 "use client";
 
 import { useState } from "react";
-import { Funcionario, StatusFuncionario } from "@/types/funcionarios";
+import {
+	Funcionario,
+	StatusFuncionario,
+	TipoLancamentoFinanceiro,
+	TIPO_LANCAMENTO_CONFIG,
+} from "@/types/funcionarios";
 import { STORE_NAMES, StoreId } from "@/types";
 import {
 	createFuncionario,
 	updateFuncionario,
 	deleteFuncionario,
+	createLancamentoFinanceiro,
 } from "@/lib/funcionarios-service";
 import {
 	Plus,
@@ -27,6 +33,7 @@ import {
 
 interface FuncionariosTabProps {
 	funcionarios: Funcionario[];
+	mesAnoStr?: string;
 }
 
 const STATUS_BADGES: Record<
@@ -59,7 +66,10 @@ const STATUS_BADGES: Record<
 	},
 };
 
-export default function FuncionariosTab({ funcionarios }: FuncionariosTabProps) {
+export default function FuncionariosTab({
+	funcionarios,
+	mesAnoStr = new Date().toISOString().slice(0, 7),
+}: FuncionariosTabProps) {
 	const [searchTerm, setSearchTerm] = useState("");
 	const [filterLoja, setFilterLoja] = useState<string>("todas");
 	const [filterStatus, setFilterStatus] = useState<string>("todos");
@@ -68,6 +78,21 @@ export default function FuncionariosTab({ funcionarios }: FuncionariosTabProps) 
 	const [deletingFunc, setDeletingFunc] = useState<Funcionario | null>(null);
 	const [copiedPixId, setCopiedPixId] = useState<string | null>(null);
 	const [isSaving, setIsSaving] = useState(false);
+
+	// Estado do Modal de Adicionar Custos para o Funcionário
+	const [isCostModalOpen, setIsCostModalOpen] = useState(false);
+	const [selectedFuncForCost, setSelectedFuncForCost] = useState<Funcionario | null>(null);
+	const [isSavingCost, setIsSavingCost] = useState(false);
+	const [costFormData, setCostFormData] = useState({
+		tipo: "retirada" as TipoLancamentoFinanceiro,
+		descricao: "",
+		valor: "",
+		data: new Date().toISOString().split("T")[0],
+		mesReferencia: mesAnoStr,
+		status: "pendente" as "pendente" | "pago" | "cancelado",
+		metodoPagamento: "pix" as "pix" | "dinheiro" | "transferencia" | "outro",
+		observacoes: "",
+	});
 
 	// Form State
 	const [formData, setFormData] = useState({
@@ -156,6 +181,76 @@ export default function FuncionariosTab({ funcionarios }: FuncionariosTabProps) 
 		} catch (error) {
 			console.error("Erro ao excluir funcionário:", error);
 			alert("Erro ao excluir funcionário.");
+		}
+	};
+
+	// Ações do Modal de Custos do Colaborador
+	const openAddCostModal = (func: Funcionario) => {
+		setSelectedFuncForCost(func);
+		const defaultTipo: TipoLancamentoFinanceiro = "retirada";
+		const config = TIPO_LANCAMENTO_CONFIG[defaultTipo];
+		setCostFormData({
+			tipo: defaultTipo,
+			descricao: config.label,
+			valor: "",
+			data: new Date().toISOString().split("T")[0],
+			mesReferencia: mesAnoStr,
+			status: "pendente",
+			metodoPagamento: "pix",
+			observacoes: "",
+		});
+		setIsCostModalOpen(true);
+	};
+
+	const handleCostTipoChange = (newTipo: TipoLancamentoFinanceiro) => {
+		const config = TIPO_LANCAMENTO_CONFIG[newTipo];
+		let valorSugerido = costFormData.valor;
+		if (selectedFuncForCost) {
+			if (newTipo === "salario" && selectedFuncForCost.salarioBase) {
+				valorSugerido = String(selectedFuncForCost.salarioBase);
+			} else if (newTipo === "vale_transporte" && selectedFuncForCost.valeTransporte) {
+				valorSugerido = String(selectedFuncForCost.valeTransporte);
+			}
+		}
+		setCostFormData((prev) => ({
+			...prev,
+			tipo: newTipo,
+			descricao: config.label,
+			valor: valorSugerido,
+			status: newTipo === "pagamento_realizado" ? "pago" : prev.status,
+		}));
+	};
+
+	const handleCostSubmit = async (e: React.FormEvent) => {
+		e.preventDefault();
+		if (!selectedFuncForCost || !costFormData.valor) return;
+
+		try {
+			setIsSavingCost(true);
+			await createLancamentoFinanceiro({
+				funcionarioId: selectedFuncForCost.id,
+				funcionarioNome: selectedFuncForCost.apelido || selectedFuncForCost.nome,
+				lojaId: selectedFuncForCost.lojaId,
+				tipo: costFormData.tipo,
+				descricao: costFormData.descricao.trim() || TIPO_LANCAMENTO_CONFIG[costFormData.tipo].label,
+				valor: parseFloat(costFormData.valor) || 0,
+				data: costFormData.data || new Date().toISOString().split("T")[0],
+				mesReferencia: costFormData.mesReferencia || mesAnoStr,
+				status: costFormData.status,
+				metodoPagamento: costFormData.metodoPagamento,
+				observacoes: costFormData.observacoes.trim() || undefined,
+			});
+			setIsCostModalOpen(false);
+			alert(
+				`Lançamento de ${TIPO_LANCAMENTO_CONFIG[costFormData.tipo].label} (R$ ${parseFloat(
+					costFormData.valor
+				).toFixed(2)}) adicionado com sucesso para ${selectedFuncForCost.nome}!`
+			);
+		} catch (error) {
+			console.error("Erro ao registrar custo para colaborador:", error);
+			alert("Erro ao registrar custo. Tente novamente.");
+		} finally {
+			setIsSavingCost(false);
 		}
 	};
 
@@ -429,6 +524,13 @@ export default function FuncionariosTab({ funcionarios }: FuncionariosTabProps) 
 								{/* Ações do Card */}
 								<div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-800/80">
 									<button
+										onClick={() => openAddCostModal(func)}
+										className="cursor-pointer px-2.5 py-1.5 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/50 rounded-xl transition-all flex items-center gap-1.5 text-xs font-bold border border-emerald-200 dark:border-emerald-800"
+										title="Lançar custo (adiantamento, bônus, desconto, etc.) para este funcionário">
+										<DollarSign size={14} />
+										<span>Adicionar Custos</span>
+									</button>
+									<button
 										onClick={() => openEditModal(func)}
 										className="cursor-pointer p-2 text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/50 rounded-xl transition-all flex items-center gap-1.5 text-xs font-bold">
 										<Edit2 size={15} />
@@ -643,6 +745,181 @@ export default function FuncionariosTab({ funcionarios }: FuncionariosTabProps) 
 								Confirmar Exclusão
 							</button>
 						</div>
+					</div>
+				</div>
+			)}
+
+			{/* MODAL DE ADICIONAR CUSTOS AO FUNCIONÁRIO */}
+			{isCostModalOpen && selectedFuncForCost && (
+				<div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+					<div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl w-full max-w-lg overflow-hidden">
+						<div className="p-6 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+							<div className="flex items-center gap-2">
+								<DollarSign className="text-emerald-600 dark:text-emerald-400" size={20} />
+								<div>
+									<h3 className="text-lg font-black text-slate-900 dark:text-slate-100">
+										Lançar Custo
+									</h3>
+									<p className="text-xs text-slate-500 font-semibold">
+										{selectedFuncForCost.nome} {selectedFuncForCost.apelido ? `(${selectedFuncForCost.apelido})` : ""}
+									</p>
+								</div>
+							</div>
+							<button
+								onClick={() => setIsCostModalOpen(false)}
+								className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl text-slate-400 hover:text-slate-600 transition-colors">
+								<X size={18} />
+							</button>
+						</div>
+
+						<form onSubmit={handleCostSubmit} className="p-6 space-y-4">
+							<div>
+								<label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+									Tipo de Custo / Lançamento *
+								</label>
+								<div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+									{(
+										[
+											"salario",
+											"vale_transporte",
+											"bonus",
+											"retirada",
+											"desconto",
+											"pagamento_realizado",
+										] as TipoLancamentoFinanceiro[]
+									).map((t) => {
+										const conf = TIPO_LANCAMENTO_CONFIG[t];
+										const isSelected = costFormData.tipo === t;
+
+										return (
+											<button
+												key={t}
+												type="button"
+												onClick={() => handleCostTipoChange(t)}
+												className={`cursor-pointer px-2.5 py-2 rounded-xl text-xs font-bold border transition-all text-center ${
+													isSelected
+														? `${conf.badgeBg} ${conf.badgeText} ring-2 ring-blue-500 font-black`
+														: "border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800"
+												}`}>
+												{conf.label}
+											</button>
+										);
+									})}
+								</div>
+							</div>
+
+							<div className="grid grid-cols-2 gap-3">
+								<div>
+									<label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+										Valor (R$) *
+									</label>
+									<input
+										type="number"
+										step="0.01"
+										required
+										value={costFormData.valor}
+										onChange={(e) => setCostFormData({ ...costFormData, valor: e.target.value })}
+										placeholder="0.00"
+										className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-blue-500"
+									/>
+								</div>
+
+								<div>
+									<label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+										Data do Fato *
+									</label>
+									<input
+										type="date"
+										required
+										value={costFormData.data}
+										onChange={(e) => setCostFormData({ ...costFormData, data: e.target.value })}
+										className="w-full px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+									/>
+								</div>
+							</div>
+
+							<div>
+								<label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+									Descrição
+								</label>
+								<input
+									type="text"
+									value={costFormData.descricao}
+									onChange={(e) => setCostFormData({ ...costFormData, descricao: e.target.value })}
+									placeholder="Ex: Adiantamento da quinzena, bônus de metas..."
+									className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+								/>
+							</div>
+
+							<div className="grid grid-cols-2 gap-3">
+								<div>
+									<label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+										Status
+									</label>
+									<select
+										value={costFormData.status}
+										onChange={(e) =>
+											setCostFormData({ ...costFormData, status: e.target.value as any })
+										}
+										className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-xs font-bold focus:outline-none focus:ring-2 focus:ring-blue-500">
+										<option value="pendente">Pendente</option>
+										<option value="pago">Pago / Baixado</option>
+										<option value="cancelado">Cancelado</option>
+									</select>
+								</div>
+
+								<div>
+									<label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+										Forma de Pagamento
+									</label>
+									<select
+										value={costFormData.metodoPagamento}
+										onChange={(e) =>
+											setCostFormData({
+												...costFormData,
+												metodoPagamento: e.target.value as any,
+											})
+										}
+										className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-xs font-bold focus:outline-none focus:ring-2 focus:ring-blue-500">
+										<option value="pix">PIX</option>
+										<option value="dinheiro">Dinheiro</option>
+										<option value="transferencia">Transferência</option>
+										<option value="outro">Outro</option>
+									</select>
+								</div>
+							</div>
+
+							<div>
+								<label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+									Observações adicionais (opcional)
+								</label>
+								<input
+									type="text"
+									value={costFormData.observacoes}
+									onChange={(e) =>
+										setCostFormData({ ...costFormData, observacoes: e.target.value })
+									}
+									placeholder="Ex: Pago em dinheiro no caixa da loja..."
+									className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
+								/>
+							</div>
+
+							<div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100 dark:border-slate-800">
+								<button
+									type="button"
+									onClick={() => setIsCostModalOpen(false)}
+									className="cursor-pointer px-4 py-2 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-semibold rounded-xl text-xs hover:bg-slate-100 dark:hover:bg-slate-800 transition-all">
+									Cancelar
+								</button>
+								<button
+									type="submit"
+									disabled={isSavingCost}
+									className="cursor-pointer px-5 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-bold rounded-xl text-xs shadow-sm transition-all flex items-center gap-1.5">
+									<DollarSign size={14} />
+									<span>{isSavingCost ? "Salvando..." : "Salvar Lançamento"}</span>
+								</button>
+							</div>
+						</form>
 					</div>
 				</div>
 			)}

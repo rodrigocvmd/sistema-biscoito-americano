@@ -83,10 +83,10 @@ export default function FuncionariosPage() {
 		return () => unsubscribe();
 	}, [mesAnoStr]);
 
-	const subTabs: { id: MainSubTab; label: string; icon: typeof Calendar; count?: number }[] = [
-		{ id: "escala", label: "Escala", icon: Calendar, count: escalas.length },
+	const subTabs: { id: MainSubTab; label: string; icon: typeof Calendar }[] = [
+		{ id: "escala", label: "Escala", icon: Calendar },
 		{ id: "financeiro", label: "Financeiro", icon: DollarSign },
-		{ id: "funcionarios", label: "Funcionários", icon: Users, count: funcionarios.length },
+		{ id: "funcionarios", label: "Funcionários", icon: Users },
 		{ id: "horarios", label: "Horários", icon: Clock },
 	];
 
@@ -121,16 +121,6 @@ export default function FuncionariosPage() {
 								}`}>
 								<Icon size={18} />
 								<span>{tab.label}</span>
-								{tab.count !== undefined && (
-									<span
-										className={`text-[11px] px-2 py-0.5 rounded-full font-bold ${
-											isActive
-												? "bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300"
-												: "bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-400"
-										}`}>
-										{tab.count}
-									</span>
-								)}
 							</button>
 						);
 					})}
@@ -169,13 +159,14 @@ export default function FuncionariosPage() {
 						<FinanceiroTab
 							funcionarios={funcionarios}
 							lancamentos={lancamentos}
+							escalas={escalas}
 							mesAnoStr={mesAnoStr}
 							onChangeMesAno={setMesAnoStr}
 						/>
 					)}
 
 					{activeTab === "funcionarios" && (
-						<FuncionariosTab funcionarios={funcionarios} />
+						<FuncionariosTab funcionarios={funcionarios} mesAnoStr={mesAnoStr} />
 					)}
 				</>
 			)}

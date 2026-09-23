@@ -1023,7 +1023,7 @@ export default function EscalaTab({
 											{/* Feedback visual quando o dia não tem escalas */}
 											{dayEscalas.length === 0 && (
 												<div className="h-full flex items-center justify-center text-2xs font-medium text-slate-400/70 select-none pointer-events-none py-2">
-													Sem colaboradores escalados
+													Sem colaboradores escalados!
 												</div>
 											)}
 										</div>
