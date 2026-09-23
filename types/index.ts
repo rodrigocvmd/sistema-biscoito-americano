@@ -1,9 +1,9 @@
-export type StoreId = "conjunto" | "terraco" | "lago" | "noroeste";
+export type StoreId = "lago" | "terraco" | "conjunto" | "noroeste";
 
 export const STORE_NAMES: Record<StoreId, string> = {
-	conjunto: "Conjunto",
-	terraco: "Terraço",
 	lago: "Lago",
+	terraco: "Terraço",
+	conjunto: "Conjunto",
 	noroeste: "Noroeste",
 };
 

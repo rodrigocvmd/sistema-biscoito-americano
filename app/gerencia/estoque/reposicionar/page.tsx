@@ -66,9 +66,9 @@ export default function EstoqueReposicionarPage() {
 	// Metas Desejáveis obtidas da rota /gerencia/estoque/pedidos (desiredStocks)
 	const [storeProportions, setStoreProportions] = useState<Record<StoreId, Partial<StockData>>>({
 		lago: {},
-		noroeste: {},
 		terraco: {},
 		conjunto: {},
+		noroeste: {},
 	});
 
 	// Estado da seleção ativa para reposicionamento interativo por cliques
@@ -87,9 +87,9 @@ export default function EstoqueReposicionarPage() {
 	} | null>(null);
 
 	const [projectedStocks, setProjectedStocks] = useState<Record<StoreId, Partial<StockData>>>({
-		conjunto: {},
-		terraco: {},
 		lago: {},
+		terraco: {},
+		conjunto: {},
 		noroeste: {},
 	});
 	const [savingRepos, setSavingRepos] = useState(false);
@@ -173,9 +173,9 @@ export default function EstoqueReposicionarPage() {
 			let globalDesired: Partial<StockData> = {};
 			const propsByStore: Record<StoreId, Partial<StockData>> = {
 				lago: {},
-				noroeste: {},
 				terraco: {},
 				conjunto: {},
+				noroeste: {},
 			};
 
 			const globalDoc = snapshot.docs.find((d) => d.id === "global");

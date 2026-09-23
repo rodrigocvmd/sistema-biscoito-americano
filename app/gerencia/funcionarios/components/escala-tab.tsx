@@ -49,9 +49,9 @@ interface EscalaTabProps {
 }
 
 const STORES: { id: StoreId; name: string }[] = [
-	{ id: "conjunto", name: STORE_NAMES.conjunto },
-	{ id: "terraco", name: STORE_NAMES.terraco },
 	{ id: "lago", name: STORE_NAMES.lago },
+	{ id: "terraco", name: STORE_NAMES.terraco },
+	{ id: "conjunto", name: STORE_NAMES.conjunto },
 	{ id: "noroeste", name: STORE_NAMES.noroeste },
 ];
 

@@ -374,9 +374,9 @@ export const subscribeLojasHorarios = (
 		q,
 		(snapshot) => {
 			const configs: Record<string, HorarioSemanaLoja> = {
-				conjunto: { ...HORARIO_PADRAO_SEMANA },
-				terraco: { ...HORARIO_PADRAO_SEMANA },
 				lago: { ...HORARIO_PADRAO_SEMANA },
+				terraco: { ...HORARIO_PADRAO_SEMANA },
+				conjunto: { ...HORARIO_PADRAO_SEMANA },
 				noroeste: { ...HORARIO_PADRAO_SEMANA },
 			};
 

@@ -32,9 +32,9 @@ export default function FuncionariosPage() {
 	const [escalas, setEscalas] = useState<EscalaItem[]>([]);
 	const [lancamentos, setLancamentos] = useState<LancamentoFinanceiro[]>([]);
 	const [lojasHorarios, setLojasHorarios] = useState<Record<StoreId, HorarioSemanaLoja>>({
-		conjunto: HORARIO_PADRAO_SEMANA,
-		terraco: HORARIO_PADRAO_SEMANA,
 		lago: HORARIO_PADRAO_SEMANA,
+		terraco: HORARIO_PADRAO_SEMANA,
+		conjunto: HORARIO_PADRAO_SEMANA,
 		noroeste: HORARIO_PADRAO_SEMANA,
 	});
 	const [loading, setLoading] = useState(true);
