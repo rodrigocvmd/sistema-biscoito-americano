@@ -396,7 +396,7 @@ export default function FinanceiroTab({
 			valor: valorSugerido,
 			data: today,
 			mesReferencia: mesAnoStr,
-			status: tipo === "pagamento_realizado" ? "pago" : "pendente",
+			status: "pendente",
 			metodoPagamento: "pix",
 			observacoes: "",
 		});
@@ -442,7 +442,6 @@ export default function FinanceiroTab({
 			tipo: newTipo,
 			descricao: config.label,
 			valor: valorSugerido,
-			status: newTipo === "pagamento_realizado" ? "pago" : prev.status,
 		}));
 	};
 
@@ -929,12 +928,6 @@ export default function FinanceiroTab({
 													+ Custo
 												</button>
 
-												<button
-													onClick={() => openCreateModal(func.id, "pagamento_realizado")}
-													className="cursor-pointer px-2.5 py-1.5 bg-purple-50 dark:bg-purple-950/50 hover:bg-purple-100 text-purple-700 dark:text-purple-300 font-bold rounded-lg text-2xs transition-colors"
-													title="Registrar Pagamento Efetuado / Baixa">
-													Pagar
-												</button>
 
 												<button
 													onClick={() =>
@@ -1182,7 +1175,6 @@ export default function FinanceiroTab({
 											"bonus",
 											"retirada",
 											"desconto",
-											"pagamento_realizado",
 										] as TipoLancamentoFinanceiro[]
 									).map((t) => {
 										const conf = TIPO_LANCAMENTO_CONFIG[t];

@@ -277,7 +277,6 @@ export default function EscalaTab({
 	const [formData, setFormData] = useState({
 		funcionarioId: "",
 		data: "",
-		isFolga: false,
 		horarioInicio: "10:00",
 		horarioFim: "22:00",
 		observacoes: "",
@@ -568,7 +567,6 @@ export default function EscalaTab({
 		setFormData({
 			funcionarioId: defaultFunc,
 			data: defaultDate,
-			isFolga: false,
 			horarioInicio: defaultHour || diaConfig.abertura || "10:00",
 			horarioFim: diaConfig.fechamento || "22:00",
 			observacoes: "",
@@ -579,12 +577,10 @@ export default function EscalaTab({
 	const openEditModal = (escala: EscalaItem, e: React.MouseEvent) => {
 		e.stopPropagation();
 		setEditingEscala(escala);
-		const isFolga = escala.turno === "folga" || (!escala.horarioInicio && !escala.horarioFim);
 
 		setFormData({
 			funcionarioId: escala.funcionarioId,
 			data: escala.data,
-			isFolga,
 			horarioInicio: escala.horarioInicio || "10:00",
 			horarioFim: escala.horarioFim || "22:00",
 			observacoes: escala.observacoes || "",
@@ -607,9 +603,9 @@ export default function EscalaTab({
 				funcionarioCargo: func.cargo,
 				lojaId: selectedLoja,
 				data: formData.data,
-				turno: formData.isFolga ? ("folga" as const) : ("personalizado" as const),
-				horarioInicio: formData.isFolga ? undefined : formData.horarioInicio || undefined,
-				horarioFim: formData.isFolga ? undefined : formData.horarioFim || undefined,
+				turno: "personalizado" as const,
+				horarioInicio: formData.horarioInicio || undefined,
+				horarioFim: formData.horarioFim || undefined,
 				observacoes: formData.observacoes.trim() || undefined,
 			};
 
@@ -651,7 +647,6 @@ export default function EscalaTab({
 			<div className="flex bg-slate-100 dark:bg-slate-800 p-1.5 rounded-2xl gap-2 overflow-x-auto shadow-inner">
 				{STORES.map((store) => {
 					const isSelected = selectedLoja === store.id;
-					const count = escalas.filter((e) => e.lojaId === store.id).length;
 
 					return (
 						<button
@@ -664,14 +659,6 @@ export default function EscalaTab({
 							}`}>
 							<Store size={18} />
 							<span>{store.name}</span>
-							<span
-								className={`text-xs px-2 py-0.5 rounded-full font-bold ${
-									isSelected
-										? "bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300"
-										: "bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-400"
-								}`}>
-								{count}
-							</span>
 						</button>
 					);
 				})}
@@ -1807,76 +1794,54 @@ export default function EscalaTab({
 								/>
 							</div>
 
-							{/* Opção Simples: Dia de Folga ou Trabalho */}
-							<div className="p-3 bg-slate-50 dark:bg-slate-800/70 rounded-2xl border border-slate-200 dark:border-slate-700 flex items-center justify-between">
-								<label className="flex items-center gap-2 cursor-pointer select-none">
-									<input
-										type="checkbox"
-										checked={formData.isFolga}
-										onChange={(e) => setFormData({ ...formData, isFolga: e.target.checked })}
-										className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500"
-									/>
-									<span className="text-xs font-bold text-slate-700 dark:text-slate-300">
-										🌴 Marcar como Dia de Folga / Descanso
-									</span>
-								</label>
-								{formData.isFolga && (
-									<span className="text-2xs font-bold px-2 py-0.5 rounded bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300">
-										Sem horário
-									</span>
-								)}
-							</div>
+							{/* Horários Início e Fim */}
+							<div className="space-y-2">
+								<div className="flex items-center justify-between">
+									<label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+										Horário de Trabalho
+									</label>
+									<button
+										type="button"
+										onClick={() =>
+											setFormData((prev) => ({
+												...prev,
+												horarioInicio: defaultStoreHours.abertura,
+												horarioFim: defaultStoreHours.fechamento,
+											}))
+										}
+										className="cursor-pointer text-[11px] font-bold text-blue-600 dark:text-blue-400 hover:underline">
+										Puxar horário da loja ({defaultStoreHours.abertura} às{" "}
+										{defaultStoreHours.fechamento})
+									</button>
+								</div>
 
-							{/* Horários Início e Fim (Somente se não for Folga) */}
-							{!formData.isFolga && (
-								<div className="space-y-2">
-									<div className="flex items-center justify-between">
-										<label className="text-xs font-bold text-slate-700 dark:text-slate-300">
-											Horário de Trabalho
+								<div className="grid grid-cols-2 gap-3">
+									<div>
+										<label className="block text-2xs font-bold text-slate-500 mb-1">
+											Horário Início
 										</label>
-										<button
-											type="button"
-											onClick={() =>
-												setFormData((prev) => ({
-													...prev,
-													horarioInicio: defaultStoreHours.abertura,
-													horarioFim: defaultStoreHours.fechamento,
-												}))
+										<TimeInput24h
+											required
+											value={formData.horarioInicio}
+											onChange={(val) =>
+												setFormData({ ...formData, horarioInicio: val })
 											}
-											className="cursor-pointer text-[11px] font-bold text-blue-600 dark:text-blue-400 hover:underline">
-											Puxar horário da loja ({defaultStoreHours.abertura} às{" "}
-											{defaultStoreHours.fechamento})
-										</button>
+											className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+										/>
 									</div>
-
-									<div className="grid grid-cols-2 gap-3">
-										<div>
-											<label className="block text-2xs font-bold text-slate-500 mb-1">
-												Horário Início
-											</label>
-											<TimeInput24h
-												required={!formData.isFolga}
-												value={formData.horarioInicio}
-												onChange={(val) =>
-													setFormData({ ...formData, horarioInicio: val })
-												}
-												className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-											/>
-										</div>
-										<div>
-											<label className="block text-2xs font-bold text-slate-500 mb-1">
-												Horário Fim
-											</label>
-											<TimeInput24h
-												required={!formData.isFolga}
-												value={formData.horarioFim}
-												onChange={(val) => setFormData({ ...formData, horarioFim: val })}
-												className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-											/>
-										</div>
+									<div>
+										<label className="block text-2xs font-bold text-slate-500 mb-1">
+											Horário Fim
+										</label>
+										<TimeInput24h
+											required
+											value={formData.horarioFim}
+											onChange={(val) => setFormData({ ...formData, horarioFim: val })}
+											className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+										/>
 									</div>
 								</div>
-							)}
+							</div>
 
 							<div>
 								<label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">

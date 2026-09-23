@@ -217,7 +217,6 @@ export default function FuncionariosTab({
 			tipo: newTipo,
 			descricao: config.label,
 			valor: valorSugerido,
-			status: newTipo === "pagamento_realizado" ? "pago" : prev.status,
 		}));
 	};
 
@@ -785,7 +784,6 @@ export default function FuncionariosTab({
 											"bonus",
 											"retirada",
 											"desconto",
-											"pagamento_realizado",
 										] as TipoLancamentoFinanceiro[]
 									).map((t) => {
 										const conf = TIPO_LANCAMENTO_CONFIG[t];
