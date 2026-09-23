@@ -409,14 +409,20 @@ export default function EscalaTab({
 		return calendarDays.filter((d) => d.isCurrentMonth);
 	}, [calendarDays]);
 
-	// Divide em semanas para a visualização semanal
+	// Divide em semanas para a visualização semanal - apenas semanas que contêm dias do mês selecionado
 	const weeks = useMemo(() => {
 		const result: (typeof calendarDays)[] = [];
 		for (let i = 0; i < calendarDays.length; i += 7) {
-			result.push(calendarDays.slice(i, i + 7));
+			const weekChunk = calendarDays.slice(i, i + 7);
+			if (weekChunk.some((d) => d.isCurrentMonth)) {
+				result.push(weekChunk);
+			}
 		}
 		return result;
 	}, [calendarDays]);
+
+	// Garante que o índice da semana selecionada seja sempre válido ao trocar de mês
+	const safeWeekIndex = Math.min(selectedWeekIndex, Math.max(0, weeks.length - 1));
 
 	// Escalas filtradas da loja atual
 	const lojaEscalas = useMemo(() => {
@@ -792,12 +798,12 @@ export default function EscalaTab({
 			{viewType === "lista" && (
 				<div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
 					{/* Cabeçalho da Régua Temporal */}
-					<div className="overflow-x-auto border-b border-slate-200 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-800/60">
-						<div className="min-w-[850px] flex items-center">
-							<div className="w-44 shrink-0 px-4 py-3 text-xs font-black text-slate-500 uppercase tracking-wider border-r border-slate-200 dark:border-slate-700/60">
+					<div className="overflow-x-auto border-b-2 border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/80">
+						<div className="min-w-[700px] lg:min-w-0 w-full flex items-center">
+							<div className="w-36 sm:w-44 shrink-0 px-4 py-3 text-xs font-black text-slate-600 dark:text-slate-300 uppercase tracking-wider border-r border-slate-200 dark:border-slate-700">
 								Dia do Mês
 							</div>
-							<div className="flex-1 relative h-10 flex items-center">
+							<div className="flex-1 relative h-10 flex items-center pr-2">
 								{storeWeekRange.hours.map((hour, idx) => {
 									const leftPercent =
 										((hour - storeWeekRange.minH) /
@@ -811,7 +817,7 @@ export default function EscalaTab({
 											<span className="text-[10px] font-mono font-bold text-slate-500 dark:text-slate-400">
 												{String(hour).padStart(2, "0")}:00
 											</span>
-											<span className="w-px h-1.5 bg-slate-300 dark:bg-slate-600 mt-0.5" />
+											<span className="w-px h-2 bg-slate-300 dark:bg-slate-600 mt-0.5" />
 										</div>
 									);
 								})}
@@ -819,9 +825,9 @@ export default function EscalaTab({
 						</div>
 					</div>
 
-					{/* Linhas dos Dias do Mês */}
-					<div className="overflow-x-auto divide-y divide-slate-100 dark:divide-slate-800/80">
-						<div className="min-w-[850px]">
+					{/* Linhas dos Dias do Mês com bordas e divisões bem definidas */}
+					<div className="overflow-x-auto divide-y divide-slate-200 dark:divide-slate-800">
+						<div className="min-w-[700px] lg:min-w-0 w-full">
 							{monthDays.map((cell) => {
 								const dayEscalas = escalasByDate[cell.dateStr] || [];
 								const diaConfig = lojaHorariosConfig[cell.dayOfWeek] || {
@@ -848,15 +854,15 @@ export default function EscalaTab({
 									<div
 										key={cell.dateStr}
 										onClick={() => openCreateModal(cell.dateStr)}
-										className={`flex items-stretch transition-colors group cursor-pointer ${
+										className={`flex items-stretch transition-colors group cursor-pointer border-b border-slate-200/90 dark:border-slate-800 last:border-b-0 ${
 											cell.isToday
-												? "bg-blue-50/25 dark:bg-blue-950/20"
+												? "bg-blue-50/30 dark:bg-blue-950/25"
 												: isWeekend
-												? "bg-slate-50/30 dark:bg-slate-900/40 hover:bg-blue-50/20 dark:hover:bg-slate-800/40"
-												: "hover:bg-blue-50/15 dark:hover:bg-slate-800/30"
+												? "bg-slate-50/50 dark:bg-slate-900/50 hover:bg-blue-50/20 dark:hover:bg-slate-800/40"
+												: "hover:bg-blue-50/20 dark:hover:bg-slate-800/30"
 										}`}>
 										{/* Coluna Fixa do Dia (Eixo Y) */}
-										<div className="w-44 shrink-0 px-3 py-2.5 flex items-center justify-between border-r border-slate-200 dark:border-slate-800/80 bg-inherit select-none">
+										<div className="w-36 sm:w-44 shrink-0 px-3 py-2.5 flex items-center justify-between border-r border-slate-200 dark:border-slate-800 bg-inherit select-none">
 											<div className="flex items-center gap-2">
 												<span
 													className={`text-xs font-black rounded-lg w-7 h-7 flex items-center justify-center shrink-0 ${
@@ -926,7 +932,7 @@ export default function EscalaTab({
 													<div
 														key={hour}
 														style={{ left: `${leftPercent}%` }}
-														className="absolute top-0 bottom-0 border-l border-slate-100 dark:border-slate-800 pointer-events-none"
+														className="absolute top-0 bottom-0 border-l border-slate-200/80 dark:border-slate-800 pointer-events-none"
 													/>
 												);
 											})}
@@ -1207,16 +1213,17 @@ export default function EscalaTab({
 			{/* ========================================================= */}
 			{viewType === "semana" && (
 				<div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden space-y-4 p-4">
-					{/* Seletor de Semanas do Mês */}
+					{/* Seletor de Semanas do Mês (Apenas Semanas do Mês Selecionado) */}
 					<div className="flex items-center justify-between flex-wrap gap-3 pb-2 border-b border-slate-100 dark:border-slate-800">
 						<span className="text-xs font-bold text-slate-600 dark:text-slate-400">
-							Selecione a semana do mês:
+							Selecione a semana de {MESES[mes - 1]}:
 						</span>
 						<div className="flex gap-1.5 overflow-x-auto">
 							{weeks.map((wk, idx) => {
-								const first = wk[0];
-								const last = wk[6];
-								const isSelected = selectedWeekIndex === idx;
+								const currentMonthDaysInWeek = wk.filter((d) => d.isCurrentMonth);
+								const first = currentMonthDaysInWeek[0] || wk[0];
+								const last = currentMonthDaysInWeek[currentMonthDaysInWeek.length - 1] || wk[6];
+								const isSelected = safeWeekIndex === idx;
 
 								return (
 									<button
@@ -1241,7 +1248,7 @@ export default function EscalaTab({
 							{/* Cabeçalho dos 7 Dias da Semana Selecionada */}
 							<div className="grid grid-cols-[65px_repeat(7,1fr)] border-b border-slate-200 dark:border-slate-800 pb-3 text-center">
 								<div className="text-2xs font-bold text-slate-400 pt-1">HORA</div>
-								{weeks[selectedWeekIndex]?.map((day, idx) => {
+								{weeks[safeWeekIndex]?.map((day, idx) => {
 									const diaConfig = lojaHorariosConfig[day.dayOfWeek] || {
 										ativo: true,
 										abertura: "10:00",
@@ -1249,7 +1256,11 @@ export default function EscalaTab({
 									};
 
 									return (
-										<div key={idx} className="space-y-1">
+										<div
+											key={idx}
+											className={`space-y-1 ${
+												!day.isCurrentMonth ? "opacity-35 select-none" : ""
+											}`}>
 											<span className="text-2xs font-bold text-slate-500 uppercase">
 												{DIAS_SEMANA[idx]}
 											</span>
@@ -1258,7 +1269,9 @@ export default function EscalaTab({
 													className={`text-sm font-black w-7 h-7 rounded-full flex items-center justify-center ${
 														day.isToday
 															? "bg-blue-600 text-white shadow-sm"
-															: "text-slate-800 dark:text-slate-200"
+															: day.isCurrentMonth
+															? "text-slate-800 dark:text-slate-200"
+															: "text-slate-400 dark:text-slate-600"
 													}`}>
 													{day.dayNum}
 												</span>
@@ -1294,7 +1307,7 @@ export default function EscalaTab({
 								</div>
 
 								{/* Colunas dos 7 Dias */}
-								{weeks[selectedWeekIndex]?.map((day, dIdx) => {
+								{weeks[safeWeekIndex]?.map((day, dIdx) => {
 									const dayEscalas = escalasByDate[day.dateStr] || [];
 									const diaConfig = lojaHorariosConfig[day.dayOfWeek] || {
 										ativo: true,
@@ -1311,8 +1324,12 @@ export default function EscalaTab({
 									return (
 										<div
 											key={dIdx}
-											onClick={() => openCreateModal(day.dateStr)}
-											className="relative h-full transition-colors hover:bg-blue-50/10 cursor-pointer">
+											onClick={() => day.isCurrentMonth && openCreateModal(day.dateStr)}
+											className={`relative h-full transition-colors ${
+												!day.isCurrentMonth
+													? "bg-slate-100/50 dark:bg-slate-950/60 opacity-35 cursor-not-allowed select-none"
+													: "hover:bg-blue-50/10 cursor-pointer"
+											}`}>
 											{/* Linhas Horárias Horizontais */}
 											{storeWeekRange.hours.map((hour) => {
 												const topPercent =
@@ -1334,7 +1351,10 @@ export default function EscalaTab({
 													{folgas.map((f) => (
 														<span
 															key={f.id}
-															onClick={(e) => openEditModal(f, e)}
+															onClick={(e) => {
+																if (!day.isCurrentMonth) return;
+																openEditModal(f, e);
+															}}
 															className="text-[10px] px-2 py-0.5 rounded bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold truncate">
 															🌴 {f.funcionarioNome} (Folga)
 														</span>
@@ -1351,14 +1371,19 @@ export default function EscalaTab({
 													return (
 														<div
 															key={item.id}
-															onClick={(e) => openEditModal(item, e)}
+															onClick={(e) => {
+																if (!day.isCurrentMonth) return;
+																openEditModal(item, e);
+															}}
 															style={{
 																top: `${topPercent}%`,
 																height: `${heightPercent}%`,
 																left: `calc(${leftPercent}% + 2px)`,
 																width: `calc(${widthPercent}% - 4px)`,
 															}}
-															className="absolute rounded-xl border border-blue-300 dark:border-blue-700/60 bg-blue-50 dark:bg-blue-950/70 text-blue-900 dark:text-blue-200 p-2 shadow-sm flex flex-col justify-between overflow-hidden transition-all hover:z-30 hover:scale-[1.01] hover:shadow-lg cursor-pointer">
+															className={`absolute rounded-xl border border-blue-300 dark:border-blue-700/60 bg-blue-50 dark:bg-blue-950/70 text-blue-900 dark:text-blue-200 p-2 shadow-sm flex flex-col justify-between overflow-hidden transition-all hover:z-30 hover:scale-[1.01] hover:shadow-lg ${
+																day.isCurrentMonth ? "cursor-pointer" : "cursor-not-allowed"
+															}`}>
 															<div className="min-w-0">
 																<div className="flex items-center justify-between gap-1">
 																	<span className="font-black text-xs truncate">

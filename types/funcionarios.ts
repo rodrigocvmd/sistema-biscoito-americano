@@ -1,6 +1,6 @@
 import { StoreId } from "./index";
 
-export type StatusFuncionario = "ativo" | "ferias" | "afastado" | "inativo";
+export type StatusFuncionario = "ativo" | "ferias" | "inativo" | "afastado";
 
 export interface Funcionario {
 	id: string;

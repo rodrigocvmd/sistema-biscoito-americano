@@ -19,6 +19,7 @@ import {
 	UserCheck,
 	Building2,
 	DollarSign,
+	CreditCard,
 	X,
 	AlertCircle,
 	Users,
@@ -71,17 +72,13 @@ export default function FuncionariosTab({ funcionarios }: FuncionariosTabProps) 
 	// Form State
 	const [formData, setFormData] = useState({
 		nome: "",
-		apelido: "",
 		cpf: "",
-		telefone: "",
 		lojaId: "todas" as StoreId | "todas",
-		cargo: "Atendente",
-		status: "ativo" as StatusFuncionario,
-		dataAdmissao: "",
+		status: "ativo" as "ativo" | "ferias" | "inativo",
 		salarioBase: "",
 		valeTransporte: "",
 		chavePix: "",
-		banco: "",
+		telefone: "",
 		observacoes: "",
 	});
 
@@ -89,17 +86,13 @@ export default function FuncionariosTab({ funcionarios }: FuncionariosTabProps) 
 		setEditingFunc(null);
 		setFormData({
 			nome: "",
-			apelido: "",
 			cpf: "",
-			telefone: "",
 			lojaId: "todas",
-			cargo: "Atendente",
 			status: "ativo",
-			dataAdmissao: new Date().toISOString().split("T")[0],
 			salarioBase: "",
 			valeTransporte: "",
 			chavePix: "",
-			banco: "",
+			telefone: "",
 			observacoes: "",
 		});
 		setIsModalOpen(true);
@@ -109,17 +102,13 @@ export default function FuncionariosTab({ funcionarios }: FuncionariosTabProps) 
 		setEditingFunc(func);
 		setFormData({
 			nome: func.nome,
-			apelido: func.apelido || "",
 			cpf: func.cpf || "",
-			telefone: func.telefone || "",
 			lojaId: func.lojaId,
-			cargo: func.cargo,
-			status: func.status,
-			dataAdmissao: func.dataAdmissao || "",
+			status: (func.status === "afastado" ? "inativo" : func.status) as "ativo" | "ferias" | "inativo",
 			salarioBase: func.salarioBase ? String(func.salarioBase) : "",
 			valeTransporte: func.valeTransporte ? String(func.valeTransporte) : "",
 			chavePix: func.chavePix || "",
-			banco: func.banco || "",
+			telefone: func.telefone || "",
 			observacoes: func.observacoes || "",
 		});
 		setIsModalOpen(true);
@@ -133,17 +122,14 @@ export default function FuncionariosTab({ funcionarios }: FuncionariosTabProps) 
 			setIsSaving(true);
 			const payload = {
 				nome: formData.nome.trim(),
-				apelido: formData.apelido.trim() || undefined,
 				cpf: formData.cpf.trim() || undefined,
-				telefone: formData.telefone.trim() || undefined,
 				lojaId: formData.lojaId,
-				cargo: formData.cargo.trim() || "Atendente",
+				cargo: editingFunc?.cargo || "Colaborador",
 				status: formData.status,
-				dataAdmissao: formData.dataAdmissao || undefined,
 				salarioBase: parseFloat(formData.salarioBase) || 0,
 				valeTransporte: parseFloat(formData.valeTransporte) || 0,
 				chavePix: formData.chavePix.trim() || undefined,
-				banco: formData.banco.trim() || undefined,
+				telefone: formData.telefone.trim() || undefined,
 				observacoes: formData.observacoes.trim() || undefined,
 			};
 
@@ -181,11 +167,12 @@ export default function FuncionariosTab({ funcionarios }: FuncionariosTabProps) 
 
 	// Filtragem
 	const filtered = funcionarios.filter((func) => {
+		const searchLower = searchTerm.toLowerCase();
 		const matchesSearch =
-			func.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
-			(func.apelido && func.apelido.toLowerCase().includes(searchTerm.toLowerCase())) ||
-			func.cargo.toLowerCase().includes(searchTerm.toLowerCase()) ||
-			(func.chavePix && func.chavePix.toLowerCase().includes(searchTerm.toLowerCase()));
+			func.nome.toLowerCase().includes(searchLower) ||
+			(func.cpf && func.cpf.toLowerCase().includes(searchLower)) ||
+			(func.telefone && func.telefone.toLowerCase().includes(searchLower)) ||
+			(func.chavePix && func.chavePix.toLowerCase().includes(searchLower));
 
 		const matchesLoja =
 			filterLoja === "todas" || func.lojaId === "todas" || func.lojaId === filterLoja;
@@ -255,7 +242,7 @@ export default function FuncionariosTab({ funcionarios }: FuncionariosTabProps) 
 						type="text"
 						value={searchTerm}
 						onChange={(e) => setSearchTerm(e.target.value)}
-						placeholder="Buscar por nome, cargo ou PIX..."
+						placeholder="Buscar por nome, CPF, telefone ou PIX..."
 						className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
 					/>
 					{searchTerm && (
@@ -289,7 +276,6 @@ export default function FuncionariosTab({ funcionarios }: FuncionariosTabProps) 
 						<option value="todos">Todos os Status</option>
 						<option value="ativo">Ativos</option>
 						<option value="ferias">Férias</option>
-						<option value="afastado">Afastados</option>
 						<option value="inativo">Inativos</option>
 					</select>
 
@@ -342,19 +328,18 @@ export default function FuncionariosTab({ funcionarios }: FuncionariosTabProps) 
 												{func.nome.substring(0, 2)}
 											</div>
 											<div className="min-w-0">
-												<div className="flex items-center gap-2">
-													<h4 className="text-base font-black text-slate-900 dark:text-slate-100 truncate">
-														{func.nome}
-													</h4>
-													{func.apelido && (
-														<span className="text-xs text-slate-400 font-medium shrink-0">
-															({func.apelido})
-														</span>
-													)}
-												</div>
-												<p className="text-xs text-blue-600 dark:text-blue-400 font-semibold truncate">
-													{func.cargo}
-												</p>
+												<h4 className="text-base font-black text-slate-900 dark:text-slate-100 truncate">
+													{func.nome}
+												</h4>
+												{func.cpf ? (
+													<p className="text-xs text-slate-500 dark:text-slate-400 font-mono font-medium truncate">
+														CPF: {func.cpf}
+													</p>
+												) : (
+													<p className="text-xs text-slate-400 italic">
+														CPF não informado
+													</p>
+												)}
 											</div>
 										</div>
 
@@ -479,7 +464,8 @@ export default function FuncionariosTab({ funcionarios }: FuncionariosTabProps) 
 
 						<form onSubmit={handleSubmit} className="p-6 space-y-4">
 							<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-								<div>
+								{/* 1. Nome Completo */}
+								<div className="md:col-span-2">
 									<label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
 										Nome Completo *
 									</label>
@@ -493,33 +479,21 @@ export default function FuncionariosTab({ funcionarios }: FuncionariosTabProps) 
 									/>
 								</div>
 
+								{/* 2. CPF */}
 								<div>
 									<label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
-										Nome de Exibição / Apelido
+										CPF
 									</label>
 									<input
 										type="text"
-										value={formData.apelido}
-										onChange={(e) => setFormData({ ...formData, apelido: e.target.value })}
-										placeholder="Ex: Joãozinho"
+										value={formData.cpf}
+										onChange={(e) => setFormData({ ...formData, cpf: e.target.value })}
+										placeholder="000.000.000-00"
 										className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
 									/>
 								</div>
 
-								<div>
-									<label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
-										Cargo / Função *
-									</label>
-									<input
-										type="text"
-										required
-										value={formData.cargo}
-										onChange={(e) => setFormData({ ...formData, cargo: e.target.value })}
-										placeholder="Ex: Atendente, Caixa, Padeiro, Gerente"
-										className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-									/>
-								</div>
-
+								{/* 3. Loja Principal */}
 								<div>
 									<label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
 										Loja Principal *
@@ -537,6 +511,7 @@ export default function FuncionariosTab({ funcionarios }: FuncionariosTabProps) 
 									</select>
 								</div>
 
+								{/* 4. Status (Ativo, Férias, Inativo) */}
 								<div>
 									<label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
 										Status *
@@ -544,16 +519,16 @@ export default function FuncionariosTab({ funcionarios }: FuncionariosTabProps) 
 									<select
 										value={formData.status}
 										onChange={(e) =>
-											setFormData({ ...formData, status: e.target.value as StatusFuncionario })
+											setFormData({ ...formData, status: e.target.value as any })
 										}
 										className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
 										<option value="ativo">Ativo</option>
 										<option value="ferias">Férias</option>
-										<option value="afastado">Afastado</option>
 										<option value="inativo">Inativo</option>
 									</select>
 								</div>
 
+								{/* 5. Telefone / WhatsApp */}
 								<div>
 									<label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
 										Telefone / WhatsApp
@@ -567,34 +542,10 @@ export default function FuncionariosTab({ funcionarios }: FuncionariosTabProps) 
 									/>
 								</div>
 
+								{/* 6. Salário Base (R$) */}
 								<div>
 									<label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
-										CPF
-									</label>
-									<input
-										type="text"
-										value={formData.cpf}
-										onChange={(e) => setFormData({ ...formData, cpf: e.target.value })}
-										placeholder="000.000.000-00"
-										className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-									/>
-								</div>
-
-								<div>
-									<label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
-										Data de Admissão
-									</label>
-									<input
-										type="date"
-										value={formData.dataAdmissao}
-										onChange={(e) => setFormData({ ...formData, dataAdmissao: e.target.value })}
-										className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-									/>
-								</div>
-
-								<div>
-									<label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
-										Salário Base Padrão (R$)
+										Salário Base (R$)
 									</label>
 									<input
 										type="number"
@@ -606,9 +557,10 @@ export default function FuncionariosTab({ funcionarios }: FuncionariosTabProps) 
 									/>
 								</div>
 
+								{/* 7. Vale-Transporte (R$) */}
 								<div>
 									<label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
-										Vale-Transporte Padrão (R$)
+										Vale-Transporte (R$)
 									</label>
 									<input
 										type="number"
@@ -620,7 +572,8 @@ export default function FuncionariosTab({ funcionarios }: FuncionariosTabProps) 
 									/>
 								</div>
 
-								<div>
+								{/* 8. Chave PIX */}
+								<div className="md:col-span-2">
 									<label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
 										Chave PIX
 									</label>
@@ -629,19 +582,6 @@ export default function FuncionariosTab({ funcionarios }: FuncionariosTabProps) 
 										value={formData.chavePix}
 										onChange={(e) => setFormData({ ...formData, chavePix: e.target.value })}
 										placeholder="CPF, telefone, e-mail ou aleatória"
-										className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-									/>
-								</div>
-
-								<div>
-									<label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
-										Banco / Agência / Conta
-									</label>
-									<input
-										type="text"
-										value={formData.banco}
-										onChange={(e) => setFormData({ ...formData, banco: e.target.value })}
-										placeholder="Ex: Nubank, Inter, Bradesco..."
 										className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
 									/>
 								</div>

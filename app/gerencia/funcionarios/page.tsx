@@ -85,9 +85,9 @@ export default function FuncionariosPage() {
 
 	const subTabs: { id: MainSubTab; label: string; icon: typeof Calendar; count?: number }[] = [
 		{ id: "escala", label: "Escala", icon: Calendar, count: escalas.length },
-		{ id: "horarios", label: "Horários", icon: Clock },
 		{ id: "financeiro", label: "Financeiro", icon: DollarSign },
 		{ id: "funcionarios", label: "Funcionários", icon: Users, count: funcionarios.length },
+		{ id: "horarios", label: "Horários", icon: Clock },
 	];
 
 	return (
