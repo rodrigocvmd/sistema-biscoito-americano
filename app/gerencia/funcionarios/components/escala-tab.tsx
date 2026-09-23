@@ -34,7 +34,9 @@ import {
 	CheckCircle2,
 	Info,
 	Check,
+	List,
 } from "lucide-react";
+import TimeInput24h from "./time-input-24h";
 
 interface EscalaTabProps {
 	escalas: EscalaItem[];
@@ -227,7 +229,7 @@ export default function EscalaTab({
 	onChangeMesAno,
 	lojasHorarios,
 }: EscalaTabProps) {
-	const [viewType, setViewType] = useState<"mes" | "semana">("mes");
+	const [viewType, setViewType] = useState<"lista" | "mes" | "semana">("lista");
 	const [selectedEmployeeFilter, setSelectedEmployeeFilter] = useState<string>("todos");
 	const [selectedWeekIndex, setSelectedWeekIndex] = useState<number>(0);
 
@@ -401,6 +403,11 @@ export default function EscalaTab({
 
 		return days;
 	}, [ano, mes]);
+
+	// Apenas os dias do mês atual (1 a 28/30/31) para a visualização em lista
+	const monthDays = useMemo(() => {
+		return calendarDays.filter((d) => d.isCurrentMonth);
+	}, [calendarDays]);
 
 	// Divide em semanas para a visualização semanal
 	const weeks = useMemo(() => {
@@ -701,16 +708,26 @@ export default function EscalaTab({
 						className="hidden sm:flex items-center gap-1.5 text-2xs font-bold px-2.5 py-1 bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 rounded-lg border border-blue-200/60 dark:border-blue-900/60">
 						<Clock size={12} />
 						<span>
-							Horários da Loja: {lojaHorariosConfig[1]?.abertura || "10h"} às{" "}
-							{lojaHorariosConfig[1]?.fechamento || "22h"}
+							Horários da Loja (24h): {lojaHorariosConfig[1]?.abertura || "10:00"} às{" "}
+							{lojaHorariosConfig[1]?.fechamento || "22:00"}
 						</span>
 					</div>
 				</div>
 
 				{/* Ações, Filtros e Alternador de Modo */}
 				<div className="flex flex-wrap items-center gap-2.5 w-full xl:w-auto justify-between xl:justify-end">
-					{/* Alternador Mês / Semana */}
+					{/* Alternador Lista / Grade Mês / Semana */}
 					<div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-xl">
+						<button
+							onClick={() => setViewType("lista")}
+							className={`cursor-pointer px-3 py-1.5 rounded-lg text-xs font-black transition-all flex items-center gap-1.5 ${
+								viewType === "lista"
+									? "bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-sm"
+									: "text-slate-600 dark:text-slate-400"
+							}`}>
+							<List size={15} />
+							<span>Lista</span>
+						</button>
 						<button
 							onClick={() => setViewType("mes")}
 							className={`cursor-pointer px-3 py-1.5 rounded-lg text-xs font-black transition-all flex items-center gap-1.5 ${
@@ -719,7 +736,7 @@ export default function EscalaTab({
 									: "text-slate-600 dark:text-slate-400"
 							}`}>
 							<Grid size={15} />
-							<span>Mês</span>
+							<span>Grade</span>
 						</button>
 						<button
 							onClick={() => setViewType("semana")}
@@ -770,7 +787,250 @@ export default function EscalaTab({
 			</div>
 
 			{/* ========================================================= */}
-			{/* VISÃO 1: CALENDÁRIO MENSAL REFLETINDO OS HORÁRIOS DA LOJA  */}
+			{/* VISÃO 1: LISTA DOS DIAS DO MÊS COM LINHA DO TEMPO NO EIXO X */}
+			{/* ========================================================= */}
+			{viewType === "lista" && (
+				<div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
+					{/* Cabeçalho da Régua Temporal */}
+					<div className="overflow-x-auto border-b border-slate-200 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-800/60">
+						<div className="min-w-[850px] flex items-center">
+							<div className="w-44 shrink-0 px-4 py-3 text-xs font-black text-slate-500 uppercase tracking-wider border-r border-slate-200 dark:border-slate-700/60">
+								Dia do Mês
+							</div>
+							<div className="flex-1 relative h-10 flex items-center">
+								{storeWeekRange.hours.map((hour, idx) => {
+									const leftPercent =
+										((hour - storeWeekRange.minH) /
+											(storeWeekRange.maxH - storeWeekRange.minH)) *
+										100;
+									return (
+										<div
+											key={hour}
+											style={{ left: `${leftPercent}%` }}
+											className="absolute -translate-x-1/2 flex flex-col items-center">
+											<span className="text-[10px] font-mono font-bold text-slate-500 dark:text-slate-400">
+												{String(hour).padStart(2, "0")}:00
+											</span>
+											<span className="w-px h-1.5 bg-slate-300 dark:bg-slate-600 mt-0.5" />
+										</div>
+									);
+								})}
+							</div>
+						</div>
+					</div>
+
+					{/* Linhas dos Dias do Mês */}
+					<div className="overflow-x-auto divide-y divide-slate-100 dark:divide-slate-800/80">
+						<div className="min-w-[850px]">
+							{monthDays.map((cell) => {
+								const dayEscalas = escalasByDate[cell.dateStr] || [];
+								const diaConfig = lojaHorariosConfig[cell.dayOfWeek] || {
+									ativo: true,
+									abertura: "10:00",
+									fechamento: "22:00",
+								};
+								const isLojaAberta = diaConfig.ativo;
+								const { folgas, positioned } = computeDayLayout(
+									dayEscalas,
+									diaConfig.abertura || "10:00",
+									diaConfig.fechamento || "22:00"
+								);
+								const isWeekend = cell.dayOfWeek === 0 || cell.dayOfWeek === 6;
+
+								// Calcula a altura da linha baseado na quantidade de faixas sobrepostas
+								const maxConcurrentTracks = positioned.reduce(
+									(acc, p) => Math.max(acc, p.totalCols),
+									1
+								);
+								const rowMinHeight = Math.max(56, maxConcurrentTracks * 38 + 16);
+
+								return (
+									<div
+										key={cell.dateStr}
+										onClick={() => openCreateModal(cell.dateStr)}
+										className={`flex items-stretch transition-colors group cursor-pointer ${
+											cell.isToday
+												? "bg-blue-50/25 dark:bg-blue-950/20"
+												: isWeekend
+												? "bg-slate-50/30 dark:bg-slate-900/40 hover:bg-blue-50/20 dark:hover:bg-slate-800/40"
+												: "hover:bg-blue-50/15 dark:hover:bg-slate-800/30"
+										}`}>
+										{/* Coluna Fixa do Dia (Eixo Y) */}
+										<div className="w-44 shrink-0 px-3 py-2.5 flex items-center justify-between border-r border-slate-200 dark:border-slate-800/80 bg-inherit select-none">
+											<div className="flex items-center gap-2">
+												<span
+													className={`text-xs font-black rounded-lg w-7 h-7 flex items-center justify-center shrink-0 ${
+														cell.isToday
+															? "bg-blue-600 text-white shadow-sm"
+															: isWeekend
+															? "bg-amber-100 dark:bg-amber-950/70 text-amber-700 dark:text-amber-300 font-black"
+															: "bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300"
+													}`}>
+													{cell.dayNum}
+												</span>
+												<div className="min-w-0">
+													<div className="flex items-center gap-1">
+														<span
+															className={`text-xs font-bold leading-tight ${
+																isWeekend
+																	? "text-amber-600 dark:text-amber-400 font-black"
+																	: "text-slate-700 dark:text-slate-300"
+															}`}>
+															{DIAS_SEMANA[cell.dayOfWeek === 0 ? 6 : cell.dayOfWeek - 1]}
+														</span>
+													</div>
+													<div className="text-[10px] font-mono text-slate-400 leading-tight">
+														{isLojaAberta ? (
+															<span>
+																{diaConfig.abertura}-{diaConfig.fechamento}
+															</span>
+														) : (
+															<span className="text-rose-500 font-bold">Fechada</span>
+														)}
+													</div>
+												</div>
+											</div>
+
+											{/* Botão de adicionar e badge de contagem */}
+											<div className="flex items-center gap-1">
+												{dayEscalas.length > 0 && (
+													<span
+														title={`${dayEscalas.length} colaboradores agendados`}
+														className="text-[10px] px-1.5 py-0.5 rounded-full font-bold bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300">
+														{dayEscalas.length}
+													</span>
+												)}
+												<button
+													onClick={(e) => {
+														e.stopPropagation();
+														openCreateModal(cell.dateStr);
+													}}
+													title="Adicionar escala neste dia"
+													className="opacity-0 group-hover:opacity-100 p-1 hover:bg-blue-100 dark:hover:bg-slate-700 rounded-md text-blue-600 dark:text-blue-400 transition-opacity">
+													<Plus size={14} />
+												</button>
+											</div>
+										</div>
+
+										{/* Linha do Tempo no Eixo X */}
+										<div
+											style={{ minHeight: `${rowMinHeight}px` }}
+											className="flex-1 relative py-1.5 px-1 bg-inherit">
+											{/* Marcadores Verticais das Horas (Régua de Fundo) */}
+											{storeWeekRange.hours.map((hour) => {
+												const leftPercent =
+													((hour - storeWeekRange.minH) /
+														(storeWeekRange.maxH - storeWeekRange.minH)) *
+													100;
+												return (
+													<div
+														key={hour}
+														style={{ left: `${leftPercent}%` }}
+														className="absolute top-0 bottom-0 border-l border-slate-100 dark:border-slate-800 pointer-events-none"
+													/>
+												);
+											})}
+
+											{/* Badges de Folga */}
+											{folgas.length > 0 && (
+												<div className="absolute top-1 right-2 z-10 flex items-center gap-1 max-w-[200px] overflow-x-auto no-scrollbar pointer-events-auto">
+													{folgas.map((f) => (
+														<span
+															key={f.id}
+															onClick={(e) => openEditModal(f, e)}
+															title={`Folga: ${f.funcionarioNome} (Clique para alterar)`}
+															className="text-[9px] px-1.5 py-0.5 rounded bg-slate-200 dark:bg-slate-800 border border-slate-300/70 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-bold truncate hover:bg-slate-300 transition-colors">
+															🌴 {f.funcionarioNome}
+														</span>
+													))}
+												</div>
+											)}
+
+											{/* Blocos de Turnos no Eixo X */}
+											{positioned.map(
+												({ item, startMin, endMin, colIndex, totalCols, hasOverlap }) => {
+													// Converte os minutos para percentual horizontal dentro dos limites visíveis da loja
+													const visibleMin = storeWeekRange.minH * 60;
+													const visibleMax = storeWeekRange.maxH * 60;
+													const totalVisibleMin = Math.max(60, visibleMax - visibleMin);
+
+													const clampedStart = Math.max(visibleMin, Math.min(visibleMax, startMin));
+													const clampedEnd = Math.max(clampedStart + 30, Math.min(visibleMax, endMin));
+
+													const leftPercent = Math.max(
+														0,
+														Math.min(100, ((clampedStart - visibleMin) / totalVisibleMin) * 100)
+													);
+													const rightPercent = Math.max(
+														0,
+														Math.min(100, ((clampedEnd - visibleMin) / totalVisibleMin) * 100)
+													);
+													const widthPercent = Math.max(3, rightPercent - leftPercent);
+
+													// Posicionamento vertical para sobreposições (lanes/faixas)
+													const trackHeight = 32;
+													const topOffset = 6 + colIndex * (trackHeight + 4);
+
+													return (
+														<div
+															key={item.id}
+															onClick={(e) => openEditModal(item, e)}
+															style={{
+																left: `${leftPercent}%`,
+																width: `${widthPercent}%`,
+																top: `${topOffset}px`,
+																height: `${trackHeight}px`,
+															}}
+															title={`${item.funcionarioNome} (${item.horarioInicio || diaConfig.abertura} - ${
+																item.horarioFim || diaConfig.fechamento
+															})${hasOverlap ? " [Sobreposição]" : ""}${
+																item.observacoes ? " - " + item.observacoes : ""
+															}\n(Clique para alterar este dia pontual)`}
+															className="absolute rounded-lg border border-blue-300 dark:border-blue-700/60 bg-blue-50/95 dark:bg-blue-950/80 hover:bg-blue-100 dark:hover:bg-blue-900/80 text-blue-900 dark:text-blue-200 shadow-xs px-2 flex items-center justify-between gap-1 overflow-hidden transition-all hover:z-30 hover:shadow-md cursor-pointer select-none">
+															<div className="flex items-center gap-1.5 min-w-0 truncate">
+																<span className="w-1.5 h-1.5 rounded-full shrink-0 bg-blue-600 dark:bg-blue-400" />
+																<span className="text-[11px] font-black truncate leading-none">
+																	{item.funcionarioNome}
+																</span>
+																<span className="text-[10px] font-semibold opacity-75 truncate leading-none hidden sm:inline">
+																	• {item.funcionarioCargo || "Colaborador"}
+																</span>
+															</div>
+
+															<div className="flex items-center gap-1 shrink-0">
+																{hasOverlap && (
+																	<span
+																		title="Turno com sobreposição"
+																		className="text-amber-500 text-[10px]">
+																		●
+																	</span>
+																)}
+																<span className="text-[10px] font-mono font-bold bg-white/70 dark:bg-slate-900/70 px-1 py-0.5 rounded leading-none">
+																	{item.horarioInicio} - {item.horarioFim}
+																</span>
+															</div>
+														</div>
+													);
+												}
+											)}
+
+											{/* Feedback visual quando o dia não tem escalas */}
+											{dayEscalas.length === 0 && (
+												<div className="h-full flex items-center justify-center text-2xs font-medium text-slate-400/70 select-none pointer-events-none py-2">
+													Sem colaboradores escalados
+												</div>
+											)}
+										</div>
+									</div>
+								);
+							})}
+						</div>
+					</div>
+				</div>
+			)}
+
+			{/* ========================================================= */}
+			{/* VISÃO 2: GRADE MENSAL (CALENDÁRIO TRADICIONAL)            */}
 			{/* ========================================================= */}
 			{viewType === "mes" && (
 				<div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
@@ -1334,17 +1594,16 @@ export default function EscalaTab({
 									)}
 								</div>
 
-								{/* Campos de Início e Fim */}
+								{/* Campos de Início e Fim (24h) */}
 								<div className="grid grid-cols-2 gap-3">
 									<div>
 										<label className="block text-2xs font-bold text-slate-500 mb-1">
 											Horário Início
 										</label>
-										<input
-											type="time"
+										<TimeInput24h
 											required
 											value={autoFormData.horarioInicio}
-											onChange={(e) => handleStartTimeChange(e.target.value)}
+											onChange={(val) => handleStartTimeChange(val)}
 											className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500"
 										/>
 									</div>
@@ -1352,12 +1611,11 @@ export default function EscalaTab({
 										<label className="block text-2xs font-bold text-slate-500 mb-1">
 											Horário Fim ({autoFormData.regime === "12x36" ? "+12h" : "+9h"})
 										</label>
-										<input
-											type="time"
+										<TimeInput24h
 											required
 											value={autoFormData.horarioFim}
-											onChange={(e) =>
-												setAutoFormData({ ...autoFormData, horarioFim: e.target.value })
+											onChange={(val) =>
+												setAutoFormData({ ...autoFormData, horarioFim: val })
 											}
 											className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500"
 										/>
@@ -1571,12 +1829,11 @@ export default function EscalaTab({
 											<label className="block text-2xs font-bold text-slate-500 mb-1">
 												Horário Início
 											</label>
-											<input
-												type="time"
+											<TimeInput24h
 												required={!formData.isFolga}
 												value={formData.horarioInicio}
-												onChange={(e) =>
-													setFormData({ ...formData, horarioInicio: e.target.value })
+												onChange={(val) =>
+													setFormData({ ...formData, horarioInicio: val })
 												}
 												className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
 											/>
@@ -1585,11 +1842,10 @@ export default function EscalaTab({
 											<label className="block text-2xs font-bold text-slate-500 mb-1">
 												Horário Fim
 											</label>
-											<input
-												type="time"
+											<TimeInput24h
 												required={!formData.isFolga}
 												value={formData.horarioFim}
-												onChange={(e) => setFormData({ ...formData, horarioFim: e.target.value })}
+												onChange={(val) => setFormData({ ...formData, horarioFim: val })}
 												className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
 											/>
 										</div>

@@ -19,6 +19,7 @@ import {
 	Calendar,
 	CheckCircle2,
 } from "lucide-react";
+import TimeInput24h from "./time-input-24h";
 
 interface HorariosTabProps {
 	lojasHorarios: Record<StoreId, HorarioSemanaLoja>;
@@ -249,21 +250,19 @@ export default function HorariosTab({
 									<div className="flex flex-wrap items-center gap-4">
 										<div className="flex items-center gap-2">
 											<span className="text-xs text-slate-500 font-semibold">Abertura:</span>
-											<input
-												type="time"
+											<TimeInput24h
 												value={diaData.abertura}
-												onChange={(e) => handleDayChange(key, "abertura", e.target.value)}
-												className="px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-xs font-bold focus:outline-none focus:ring-2 focus:ring-blue-500"
+												onChange={(val) => handleDayChange(key, "abertura", val)}
+												className="w-28 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-xs font-bold focus:outline-none focus:ring-2 focus:ring-blue-500"
 											/>
 										</div>
 
 										<div className="flex items-center gap-2">
 											<span className="text-xs text-slate-500 font-semibold">Fechamento:</span>
-											<input
-												type="time"
+											<TimeInput24h
 												value={diaData.fechamento}
-												onChange={(e) => handleDayChange(key, "fechamento", e.target.value)}
-												className="px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-xs font-bold focus:outline-none focus:ring-2 focus:ring-blue-500"
+												onChange={(val) => handleDayChange(key, "fechamento", val)}
+												className="w-28 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-xs font-bold focus:outline-none focus:ring-2 focus:ring-blue-500"
 											/>
 										</div>
 
