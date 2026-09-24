@@ -1563,24 +1563,24 @@ export default function EstoqueReposicionarPage() {
 						</div>
 
 						<div className="p-5 md:p-6 bg-slate-50 dark:bg-slate-800/50 border-t border-slate-100 dark:border-slate-800 flex flex-col gap-3 print:hidden">
-							<div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-3 w-full">
+							<div className="flex flex-col sm:flex-row items-stretch justify-center gap-3 w-full">
 								<button
 									onClick={handleWhatsApp}
-									className="flex-1 flex items-center justify-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-3.5 rounded-2xl font-black text-xs md:text-[0.75rem] uppercase tracking-widest shadow-md shadow-emerald-500/20 transition-all cursor-pointer">
-									<MessageCircle size={16} />
-									Enviar no WhatsApp
+									className="flex-1 flex items-center justify-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-3.5 rounded-2xl font-black text-xs md:text-[0.75rem] uppercase tracking-widest shadow-md shadow-emerald-500/20 transition-all cursor-pointer text-center">
+									<MessageCircle size={16} className="shrink-0" />
+									<span>Enviar no WhatsApp</span>
 								</button>
 								<button
 									onClick={handleCopySummary}
-									className="flex-1 flex items-center justify-center gap-2 bg-slate-200 hover:bg-slate-300 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-800 dark:text-slate-100 px-4 py-3.5 rounded-2xl font-black text-xs md:text-[0.75rem] uppercase tracking-widest shadow-sm transition-all cursor-pointer">
-									{copiedSummary ? <Check size={16} className="text-emerald-600 dark:text-emerald-400 stroke-[3]" /> : <Copy size={16} />}
-									{copiedSummary ? "Copiado!" : "Copiar Resumo"}
+									className="flex-1 flex items-center justify-center gap-2 bg-slate-200 hover:bg-slate-300 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-800 dark:text-slate-100 px-4 py-3.5 rounded-2xl font-black text-xs md:text-[0.75rem] uppercase tracking-widest shadow-sm transition-all cursor-pointer text-center">
+									{copiedSummary ? <Check size={16} className="text-emerald-600 dark:text-emerald-400 stroke-[3] shrink-0" /> : <Copy size={16} className="shrink-0" />}
+									<span>{copiedSummary ? "Copiado!" : "Copiar Resumo"}</span>
 								</button>
 								<button
 									onClick={handlePrint}
-									className="flex-1 flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-3.5 rounded-2xl font-black text-xs md:text-[0.75rem] uppercase tracking-widest shadow-md shadow-blue-500/20 transition-all cursor-pointer">
-									<Printer size={16} />
-									Imprimir
+									className="flex-1 flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-3.5 rounded-2xl font-black text-xs md:text-[0.75rem] uppercase tracking-widest shadow-md shadow-blue-500/20 transition-all cursor-pointer text-center">
+									<Printer size={16} className="shrink-0" />
+									<span>Imprimir</span>
 								</button>
 							</div>
 							<button
