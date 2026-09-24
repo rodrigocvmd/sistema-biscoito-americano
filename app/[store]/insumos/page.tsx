@@ -13,8 +13,18 @@ import {
 	onSnapshot,
 	serverTimestamp,
 	Timestamp,
+	limit,
 } from "firebase/firestore";
-import { SupplyOrder, UrgencyLevel, formatDate, formatOnlyDate } from "@/types";
+import {
+	SupplyOrder,
+	UrgencyLevel,
+	formatDate,
+	formatOnlyDate,
+	STORE_NAMES,
+	StoreId,
+	SupplyOrderSnapshot,
+} from "@/types";
+import { getStoreCycleInfo, formatFullDateBR } from "@/lib/supplies-schedule";
 import {
 	Plus,
 	CheckCircle2,
@@ -31,6 +41,12 @@ import {
 	Search,
 	ChevronDown,
 	Edit2,
+	Check,
+	X,
+	Lock,
+	Unlock,
+	ListChecks,
+	Sparkles,
 } from "lucide-react";
 
 import { use } from "react";
@@ -107,12 +123,12 @@ const INVENTORY_DATA = [
 			"SACHE CHOCOLATE QUENTE",
 			"SACHE AÇÚCAR",
 			"SACHE ADOÇANTE",
-			"MISTURADOR CAFÉ"
 		],
 	},
 	{
 		category: "EMBALAGENS E DESCARTÁVEIS",
 		items: [
+			"AMERICAN BAG",
 			"SAQUINHO UNITÁRIO",
 			"KRAFT P",
 			"KRAFT G",
@@ -124,7 +140,7 @@ const INVENTORY_DATA = [
 			"SACOLA PLÁSTICA",
 			"COPO DE ISOPOR 100ML",
 			"COPO DE ISOPOR 180ML",
-			"COPO DESCARTÁVEL (200ML)",
+			"COPO DESCARTÁVEL (180ML)",
 			"COPO PARA DELIVERY (CALDA)",
 			"COPO TÉRMICO 100 ML",
 			"COPO TÉRMICO 180 ML",
@@ -137,10 +153,11 @@ const INVENTORY_DATA = [
 			"CANUDO NORMAL",
 			"CANUDO BUBBLE",
 			"CANUDO SHAKE",
-			"COLHER DESCARTÁVEL",
 			"GUARDANAPO",
 			"SUPORTE SHAKE",
 			"SUPORTE FLURY",
+			"COLHER DESCARTÁVEL",
+			"MISTURADOR CAFÉ"
 		],
 	},
 	{
@@ -198,6 +215,18 @@ export default function SuppliesPage({ params }: { params: Promise<{ store: stri
 	);
 	const [sortOrder, setSortOrder] = useState<"urgency" | "date" | "alphabetical">("urgency");
 
+	// Cycle and Snapshot State
+	const [cycleInfo, setCycleInfo] = useState(() => getStoreCycleInfo(store));
+	const [latestSnapshot, setLatestSnapshot] = useState<SupplyOrderSnapshot | null>(null);
+	const [isEditingClosedList, setIsEditingClosedList] = useState(false);
+	const [confirmCompleteModalOpen, setConfirmCompleteModalOpen] = useState(false);
+	const [savingSnapshot, setSavingSnapshot] = useState(false);
+
+	// Atualiza ciclo quando a loja mudar
+	useEffect(() => {
+		setCycleInfo(getStoreCycleInfo(store));
+	}, [store]);
+
 	// Persistir ordenação no localStorage da loja
 	useEffect(() => {
 		const savedSort = localStorage.getItem("biscoito_store_insumos_sort");
@@ -230,6 +259,7 @@ export default function SuppliesPage({ params }: { params: Promise<{ store: stri
 			),
 	})).filter((cat) => cat.items.length > 0);
 
+	// Listener de Insumos Pendentes e Entregues
 	useEffect(() => {
 		const ordersRef = collection(db, "stores", store, "supplyOrders");
 
@@ -273,6 +303,98 @@ export default function SuppliesPage({ params }: { params: Promise<{ store: stri
 			unsubscribeDelivered();
 		};
 	}, [store]);
+
+	// Listener dos Snapshots de Listas Consolidadas
+	useEffect(() => {
+		const snapshotsRef = collection(db, "stores", store, "supplyOrderSnapshots");
+		const qSnapshots = query(snapshotsRef, orderBy("closedAt", "desc"), limit(10));
+
+		const unsubscribeSnapshots = onSnapshot(
+			qSnapshots,
+			(snapshot) => {
+				const list = snapshot.docs.map((doc) => ({
+					id: doc.id,
+					...doc.data(),
+				})) as SupplyOrderSnapshot[];
+
+				if (list.length > 0) {
+					// Verifica se existe snapshot salvo para o fechamento deste ciclo
+					const currentCycleSnap = list.find((s) => s.cycleClosingDate === cycleInfo.dateKey);
+					if (currentCycleSnap) {
+						setLatestSnapshot(currentCycleSnap);
+					} else {
+						setLatestSnapshot(null);
+					}
+				} else {
+					setLatestSnapshot(null);
+				}
+			},
+			(error) => {
+				console.error("Erro ao carregar histórico de listas:", error);
+			},
+		);
+
+		return () => {
+			unsubscribeSnapshots();
+		};
+	}, [store, cycleInfo.dateKey]);
+
+	// Ação de Concluir Lista de Insumos (Salvar Snapshot)
+	const handleCompleteOrderList = async () => {
+		setSavingSnapshot(true);
+		try {
+			const snapshotsRef = collection(db, "stores", store, "supplyOrderSnapshots");
+			await addDoc(snapshotsRef, {
+				storeId: store,
+				storeName: STORE_NAMES[store as StoreId] || store,
+				cycleClosingDate: cycleInfo.dateKey,
+				cycleDeliveryDate: formatFullDateBR(cycleInfo.deliveryDate),
+				closedAt: serverTimestamp(),
+				updatedAt: serverTimestamp(),
+				status: "closed",
+				itemsCount: pendingOrders.length,
+				items: pendingOrders.map((o) => ({
+					id: o.id,
+					name: o.name,
+					urgency: o.urgency,
+					createdAt: o.createdAt || null,
+				})),
+			});
+			setConfirmCompleteModalOpen(false);
+			setIsEditingClosedList(false);
+		} catch (error) {
+			console.error("Erro ao concluir lista de insumos:", error);
+			alert("Ocorreu um erro ao salvar o fechamento da lista. Tente novamente.");
+		} finally {
+			setSavingSnapshot(false);
+		}
+	};
+
+	// Ação de Atualizar Snapshot após Edição
+	const handleSaveEditedSnapshot = async () => {
+		if (!latestSnapshot) return;
+		setSavingSnapshot(true);
+		try {
+			const snapRef = doc(db, "stores", store, "supplyOrderSnapshots", latestSnapshot.id);
+			await updateDoc(snapRef, {
+				itemsCount: pendingOrders.length,
+				items: pendingOrders.map((o) => ({
+					id: o.id,
+					name: o.name,
+					urgency: o.urgency,
+					createdAt: o.createdAt || null,
+				})),
+				updatedAt: serverTimestamp(),
+				status: "closed",
+			});
+			setIsEditingClosedList(false);
+		} catch (error) {
+			console.error("Erro ao salvar alterações da lista:", error);
+			alert("Ocorreu um erro ao atualizar a lista salva.");
+		} finally {
+			setSavingSnapshot(false);
+		}
+	};
 
 	const handleAddOrder = async (e: React.FormEvent) => {
 		e.preventDefault();
@@ -380,108 +502,295 @@ export default function SuppliesPage({ params }: { params: Promise<{ store: stri
 
 	return (
 		<div className="space-y-10">
-			{/* Add New Section */}
-			<section className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 transition-colors">
-				<h2 className="text-xl font-bold text-slate-800 dark:text-slate-200 mb-6 flex items-center gap-2">
-					<Plus className="text-green-600 dark:text-green-500" size={24} />
-					Solicitar Novo Insumo
-				</h2>
-				<form onSubmit={handleAddOrder} className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
-					<div className="space-y-1 md:col-span-1 relative">
-						<label className="text-lg font-bold text-slate-400 dark:text-slate-500 ml-1">
-							Insumo
-						</label>
-						<div className="relative">
-							<input
-								id="listaInsumos"
-								type="text"
-								required
-								placeholder="BUSCAR OU DIGITAR..."
-								value={newName}
-								onFocus={() => setIsDropdownOpen(true)}
-								onBlur={() => setTimeout(() => setIsDropdownOpen(false), 200)}
-								onChange={(e) => {
-									setNewName(e.target.value.toUpperCase());
-									setIsDropdownOpen(true);
-								}}
-								autoComplete="off"
-								className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500 transition-all text-slate-800 dark:text-slate-200 font-bold placeholder:font-medium uppercase"
-							/>
-							<div className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-300 dark:text-slate-600 pointer-events-none">
-								<ChevronDown size={18} />
-							</div>
+			{/* Dynamic Cycle Schedule Banner */}
+			<section
+				className={`relative overflow-hidden p-6 rounded-3xl border transition-all ${
+					cycleInfo.alertVariant === "today"
+						? "bg-gradient-to-br from-red-500/10 via-amber-500/10 to-red-500/5 border-red-300 dark:border-red-900/60 shadow-sm"
+						: cycleInfo.alertVariant === "tomorrow"
+						? "bg-gradient-to-br from-amber-500/10 via-orange-500/10 to-amber-500/5 border-amber-300 dark:border-amber-900/60 shadow-sm"
+						: cycleInfo.alertVariant === "two-days"
+						? "bg-gradient-to-br from-blue-500/10 via-indigo-500/10 to-blue-500/5 border-blue-200 dark:border-blue-900/50 shadow-sm"
+						: "bg-slate-50 dark:bg-slate-900/80 border-slate-200 dark:border-slate-800"
+				}`}>
+				<div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+					<div className="space-y-3 flex-1 min-w-0">
+						<div className="flex flex-wrap items-center gap-2">
+							{cycleInfo.alertVariant === "today" && (
+								<span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider bg-red-600 text-white shadow-sm shadow-red-200 dark:shadow-none animate-pulse">
+									<AlertCircle size={14} /> Fechamento Hoje
+								</span>
+							)}
+							{cycleInfo.alertVariant === "tomorrow" && (
+								<span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider bg-amber-500 text-white shadow-sm">
+									<Clock size={14} /> Fechamento Amanhã
+								</span>
+							)}
+							{cycleInfo.alertVariant === "two-days" && (
+								<span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider bg-blue-600 text-white shadow-sm">
+									<Calendar size={14} /> Faltam 2 Dias
+								</span>
+							)}
+							{cycleInfo.alertVariant === "normal" && (
+								<span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
+									<Calendar size={14} /> Ciclo Semanal
+								</span>
+							)}
 
-							{/* Dropdown Results */}
-							{isDropdownOpen && (
-								<div className="absolute z-50 w-full mt-2 max-h-[300px] overflow-y-auto bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl animate-in fade-in zoom-in-95 duration-200">
-									{filteredInventory.length > 0
-										? filteredInventory.map((category) => (
-												<div key={category.category}>
-													<div className="px-4 py-2 bg-slate-50 dark:bg-slate-800 text-[0.625rem] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] border-y border-slate-100 dark:border-slate-800 first:border-t-0">
-														{category.category}
-													</div>
-													{category.items.map((item) => (
-														<div
-															key={item}
-															onMouseDown={(e) => {
-																e.preventDefault();
-																setNewName(item);
-																setIsDropdownOpen(false);
-															}}
-															className="px-4 py-3 hover:bg-red-50 dark:hover:bg-red-900/30 hover:text-red-600 dark:hover:text-red-400 cursor-pointer text-sm font-bold text-slate-700 dark:text-slate-300 transition-colors flex items-center justify-between group">
-															{item}
-															<Plus
-																size={14}
-																className="opacity-0 group-hover:opacity-100 transition-opacity"
-															/>
-														</div>
-													))}
-												</div>
-											))
-										: newName.trim() !== "" && (
-												<div className="px-4 py-4 text-center">
-													<p className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase">
-														Pressione Adicionar para:
-													</p>
-													<p className="text-sm font-black text-red-600 dark:text-red-400 mt-1">
-														"{newName}"
-													</p>
-												</div>
-											)}
-								</div>
+							{latestSnapshot && (
+								<span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800">
+									<CheckCircle2 size={14} /> Lista Concluída ({latestSnapshot.itemsCount} itens)
+								</span>
 							)}
 						</div>
+
+						<div>
+							<h2 className="text-xl md:text-2xl font-black text-slate-800 dark:text-slate-100 tracking-tight">
+								{cycleInfo.headline}
+							</h2>
+							<p className="text-sm md:text-base text-slate-600 dark:text-slate-400 mt-1 font-medium">
+								{cycleInfo.subtext}
+							</p>
+						</div>
+
+						{/* Tags de Data e Entrega */}
+						<div className="flex flex-wrap items-center gap-2 pt-1">
+							<div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/80 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/80 text-xs font-bold text-slate-700 dark:text-slate-300">
+								<Calendar size={14} className="text-red-500" />
+								<span>Último dia para pedidos:</span>
+								<strong className="text-slate-900 dark:text-white uppercase">{cycleInfo.formattedClosingDate}</strong>
+							</div>
+							<div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/80 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/80 text-xs font-bold text-slate-700 dark:text-slate-300">
+								<Clock size={14} className="text-emerald-600" />
+								<span>Entrega:</span>
+								<strong className="text-slate-900 dark:text-white uppercase">{cycleInfo.formattedDeliveryDate}</strong>
+							</div>
+						</div>
 					</div>
-					<div className="space-y-1">
-						<label className="text-lg font-bold text-slate-400 dark:text-slate-500 ml-1">
-							Urgência
-						</label>
-						<select
-							value={newUrgency}
-							onChange={(e) => setNewUrgency(e.target.value as UrgencyLevel)}
-							className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500 transition-all text-slate-800 dark:text-slate-200 font-medium appearance-none cursor-pointer text-md">
-							<option value="Urgente">🚨 Urgente</option>
-							<option value="Acabando">⚠️ Acabando</option>
-							<option value="Adiantando">⏳ Adiantando</option>
-						</select>
-					</div>
-					<button
-						type="submit"
-						disabled={adding}
-						className="cursor-pointer bg-green-600 hover:bg-green-700 text-white font-bold h-[50px] rounded-xl shadow-md shadow-red-100 dark:shadow-none transition-all flex items-center justify-center gap-2 disabled:opacity-50 text-lg">
-						{adding ? <RefreshCw className="animate-spin" size={20} /> : <Plus size={20} />}
-						Adicionar
-					</button>
-				</form>
+
+					{/* Botões contextuais de Ação no Dia de Fechamento */}
+					{cycleInfo.isClosingDay && (
+						<div className="shrink-0 flex flex-col sm:flex-row lg:flex-col gap-2">
+							{!latestSnapshot ? (
+								<button
+									onClick={() => setConfirmCompleteModalOpen(true)}
+									className="cursor-pointer bg-red-600 hover:bg-red-700 active:scale-95 text-white font-black px-6 py-4 rounded-2xl shadow-xl shadow-red-200 dark:shadow-none transition-all flex items-center justify-center gap-2.5 text-base">
+									<ListChecks size={22} />
+									Concluir lista de insumos
+								</button>
+							) : !isEditingClosedList ? (
+								<button
+									onClick={() => setIsEditingClosedList(true)}
+									className="cursor-pointer bg-slate-800 hover:bg-slate-900 dark:bg-slate-700 dark:hover:bg-slate-600 active:scale-95 text-white font-bold px-5 py-3.5 rounded-2xl transition-all flex items-center justify-center gap-2 text-sm shadow-md">
+									<Edit2 size={18} />
+									Editar insumos pedidos (Adicionar ou Remover)
+								</button>
+							) : (
+								<button
+									onClick={handleSaveEditedSnapshot}
+									disabled={savingSnapshot}
+									className="cursor-pointer bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-black px-6 py-3.5 rounded-2xl transition-all flex items-center justify-center gap-2 text-sm shadow-lg shadow-emerald-100 dark:shadow-none">
+									{savingSnapshot ? <RefreshCw className="animate-spin" size={18} /> : <Check size={18} />}
+									Salvar alterações da lista
+								</button>
+							)}
+						</div>
+					)}
+				</div>
 			</section>
+
+			{/* Add New Section */}
+			{latestSnapshot && !isEditingClosedList ? (
+				<section className="bg-emerald-50/70 dark:bg-emerald-950/20 border-2 border-dashed border-emerald-300 dark:border-emerald-800/60 p-6 md:p-8 rounded-3xl transition-all">
+					<div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+						<div className="flex items-start sm:items-center gap-4">
+							<div className="w-14 h-14 rounded-2xl bg-emerald-500 text-white flex items-center justify-center shrink-0 shadow-lg shadow-emerald-200 dark:shadow-none">
+								<Lock size={28} />
+							</div>
+							<div>
+								<div className="flex items-center gap-2">
+									<h3 className="text-xl font-black text-slate-800 dark:text-slate-100">
+										Lista Concluída para a Entrega Desta Semana
+									</h3>
+									<span className="hidden sm:inline-block px-2.5 py-0.5 rounded-md text-[11px] font-black uppercase tracking-wider bg-emerald-200 dark:bg-emerald-900/60 text-emerald-800 dark:text-emerald-300">
+										Finalizada
+									</span>
+								</div>
+								<p className="text-sm text-slate-600 dark:text-slate-400 mt-1 font-medium">
+									A lista foi consolidada com {latestSnapshot.itemsCount} itens e já está disponível para o gerente. Se precisar incluir ou retirar algum insumo de última hora, basta clicar abaixo.
+								</p>
+							</div>
+						</div>
+						<button
+							onClick={() => setIsEditingClosedList(true)}
+							className="cursor-pointer whitespace-nowrap bg-emerald-700 hover:bg-emerald-800 text-white font-black px-6 py-4 rounded-2xl shadow-md transition-all flex items-center justify-center gap-2 text-base active:scale-95">
+							<Edit2 size={20} />
+							Editar insumos pedidos (Adicionar ou Remover)
+						</button>
+					</div>
+				</section>
+			) : (
+				<section className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 transition-colors">
+					{isEditingClosedList && (
+						<div className="mb-6 p-4 rounded-2xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/50 flex flex-col sm:flex-row items-center justify-between gap-4">
+							<div className="flex items-center gap-3">
+								<div className="w-10 h-10 rounded-xl bg-amber-500 text-white flex items-center justify-center shrink-0">
+									<Edit2 size={20} />
+								</div>
+								<div>
+									<h4 className="font-black text-amber-900 dark:text-amber-200 text-sm">
+										Modo de Edição da Lista Concluída Ativado
+									</h4>
+									<p className="text-xs text-amber-700 dark:text-amber-400 font-medium">
+										Adicione ou cancele insumos na lista. Ao terminar, clique em "Salvar alterações da lista".
+									</p>
+								</div>
+							</div>
+							<div className="flex items-center gap-2 w-full sm:w-auto">
+								<button
+									onClick={handleSaveEditedSnapshot}
+									disabled={savingSnapshot}
+									className="cursor-pointer flex-1 sm:flex-none bg-emerald-600 hover:bg-emerald-700 text-white font-black px-4 py-2.5 rounded-xl transition-all flex items-center justify-center gap-2 text-xs shadow-md">
+									{savingSnapshot ? <RefreshCw className="animate-spin" size={14} /> : <Check size={14} />}
+									Salvar alterações da lista
+								</button>
+								<button
+									onClick={() => setIsEditingClosedList(false)}
+									className="cursor-pointer px-3 py-2.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-400 font-bold rounded-xl text-xs transition-all">
+									Fechar edição
+								</button>
+							</div>
+						</div>
+					)}
+					<h2 className="text-xl font-bold text-slate-800 dark:text-slate-200 mb-6 flex items-center gap-2">
+						<Plus className="text-green-600 dark:text-green-500" size={24} />
+						Solicitar Novo Insumo
+					</h2>
+					<form onSubmit={handleAddOrder} className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+						<div className="space-y-1 md:col-span-1 relative">
+							<label className="text-lg font-bold text-slate-400 dark:text-slate-500 ml-1">
+								Insumo
+							</label>
+							<div className="relative">
+								<input
+									id="listaInsumos"
+									type="text"
+									required
+									placeholder="BUSCAR OU DIGITAR..."
+									value={newName}
+									onFocus={() => setIsDropdownOpen(true)}
+									onBlur={() => setTimeout(() => setIsDropdownOpen(false), 200)}
+									onChange={(e) => {
+										setNewName(e.target.value.toUpperCase());
+										setIsDropdownOpen(true);
+									}}
+									autoComplete="off"
+									className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500 transition-all text-slate-800 dark:text-slate-200 font-bold placeholder:font-medium uppercase"
+								/>
+								<div className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-300 dark:text-slate-600 pointer-events-none">
+									<ChevronDown size={18} />
+								</div>
+
+								{/* Dropdown Results */}
+								{isDropdownOpen && (
+									<div className="absolute z-50 w-full mt-2 max-h-[300px] overflow-y-auto bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl animate-in fade-in zoom-in-95 duration-200">
+										{filteredInventory.length > 0
+											? filteredInventory.map((category) => (
+													<div key={category.category}>
+														<div className="px-4 py-2 bg-slate-50 dark:bg-slate-800 text-[0.625rem] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] border-y border-slate-100 dark:border-slate-800 first:border-t-0">
+															{category.category}
+														</div>
+														{category.items.map((item) => (
+															<div
+																key={item}
+																onMouseDown={(e) => {
+																	e.preventDefault();
+																	setNewName(item);
+																	setIsDropdownOpen(false);
+																}}
+																className="px-4 py-3 hover:bg-red-50 dark:hover:bg-red-900/30 hover:text-red-600 dark:hover:text-red-400 cursor-pointer text-sm font-bold text-slate-700 dark:text-slate-300 transition-colors flex items-center justify-between group">
+																{item}
+																<Plus
+																	size={14}
+																	className="opacity-0 group-hover:opacity-100 transition-opacity"
+																/>
+															</div>
+														))}
+													</div>
+												))
+											: newName.trim() !== "" && (
+													<div className="px-4 py-4 text-center">
+														<p className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase">
+															Pressione Adicionar para:
+														</p>
+														<p className="text-sm font-black text-red-600 dark:text-red-400 mt-1">
+															"{newName}"
+														</p>
+													</div>
+												)}
+									</div>
+								)}
+							</div>
+						</div>
+						<div className="space-y-1">
+							<label className="text-lg font-bold text-slate-400 dark:text-slate-500 ml-1">
+								Urgência
+							</label>
+							<select
+								value={newUrgency}
+								onChange={(e) => setNewUrgency(e.target.value as UrgencyLevel)}
+								className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500 transition-all text-slate-800 dark:text-slate-200 font-medium appearance-none cursor-pointer text-md">
+								<option value="Urgente">🚨 Urgente</option>
+								<option value="Acabando">⚠️ Acabando</option>
+								<option value="Adiantando">⏳ Adiantando</option>
+							</select>
+						</div>
+						<button
+							type="submit"
+							disabled={adding}
+							className="cursor-pointer bg-green-600 hover:bg-green-700 text-white font-bold h-[50px] rounded-xl shadow-md shadow-red-100 dark:shadow-none transition-all flex items-center justify-center gap-2 disabled:opacity-50 text-lg">
+							{adding ? <RefreshCw className="animate-spin" size={20} /> : <Plus size={20} />}
+							Adicionar
+						</button>
+					</form>
+				</section>
+			)}
 
 			{/* Pending List */}
 			<section className="space-y-4">
 				<div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-					<h3 className="text-lg font-bold text-slate-700 dark:text-slate-300 flex items-center gap-2 ml-1">
-						<Package className="text-slate-400 dark:text-slate-600" size={20} />
-						Insumos Pendentes ({pendingOrders.length})
-					</h3>
+					<div className="flex items-center gap-2 flex-wrap">
+						<h3 className="text-lg font-bold text-slate-700 dark:text-slate-300 flex items-center gap-2 ml-1">
+							<Package className="text-slate-400 dark:text-slate-600" size={20} />
+							Insumos Pendentes ({pendingOrders.length})
+						</h3>
+
+						{/* Botão de Concluir Lista / Editar junto ao cabeçalho */}
+						{cycleInfo.isClosingDay && (
+							<div className="ml-2">
+								{!latestSnapshot ? (
+									<button
+										onClick={() => setConfirmCompleteModalOpen(true)}
+										className="cursor-pointer inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-black transition-all shadow-sm">
+										<ListChecks size={14} /> Concluir Lista
+									</button>
+								) : !isEditingClosedList ? (
+									<button
+										onClick={() => setIsEditingClosedList(true)}
+										className="cursor-pointer inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-900 dark:bg-slate-700 dark:hover:bg-slate-600 text-white text-xs font-bold transition-all shadow-sm">
+										<Edit2 size={13} /> Editar Insumos
+									</button>
+								) : (
+									<button
+										onClick={handleSaveEditedSnapshot}
+										disabled={savingSnapshot}
+										className="cursor-pointer inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black transition-all shadow-sm">
+										{savingSnapshot ? <RefreshCw className="animate-spin" size={13} /> : <Check size={13} />} Salvar Lista
+									</button>
+								)}
+							</div>
+						)}
+					</div>
 
 					{pendingOrders.length > 0 && (
 						<div className="flex items-center gap-2">
@@ -716,6 +1025,65 @@ export default function SuppliesPage({ params }: { params: Promise<{ store: stri
 								onClick={() => setEditingOrder(null)}
 								className="cursor-pointer w-full bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-400 font-black py-4 rounded-2xl transition-all">
 								Cancelar
+							</button>
+						</div>
+					</div>
+				</div>
+			)}
+
+			{/* Modal de Confirmação para Concluir Lista de Insumos */}
+			{confirmCompleteModalOpen && (
+				<div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
+					<div className="bg-white dark:bg-slate-900 rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl animate-in zoom-in-95 duration-200 border border-slate-200 dark:border-slate-800">
+						<div className="bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 w-16 h-16 rounded-2xl flex items-center justify-center mb-5 mx-auto">
+							<ListChecks size={32} />
+						</div>
+						<h3 className="text-xl font-black text-slate-800 dark:text-slate-200 text-center mb-2">
+							Concluir Lista de Insumos?
+						</h3>
+						<p className="text-slate-500 dark:text-slate-400 text-center font-medium text-sm mb-6">
+							Esta ação consolidará a lista de pedidos para a entrega que será feita em{" "}
+							<strong className="text-slate-800 dark:text-slate-200 uppercase">{cycleInfo.formattedDeliveryDate}</strong>.
+						</p>
+
+						<div className="bg-slate-50 dark:bg-slate-800/60 rounded-2xl p-4 mb-6 border border-slate-100 dark:border-slate-800 space-y-2">
+							<div className="flex items-center justify-between text-sm font-bold">
+								<span className="text-slate-500 dark:text-slate-400">Total de insumos na lista:</span>
+								<span className="text-slate-800 dark:text-slate-200 text-base">{pendingOrders.length}</span>
+							</div>
+							<div className="grid grid-cols-3 gap-2 pt-2 border-t border-slate-200 dark:border-slate-700/60 text-center">
+								<div className="p-2 rounded-xl bg-red-100/50 dark:bg-red-900/20 text-red-700 dark:text-red-300">
+									<p className="text-[10px] font-bold uppercase">Urgente</p>
+									<p className="text-lg font-black">{pendingOrders.filter((o) => o.urgency === "Urgente").length}</p>
+								</div>
+								<div className="p-2 rounded-xl bg-amber-100/50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-300">
+									<p className="text-[10px] font-bold uppercase">Acabando</p>
+									<p className="text-lg font-black">{pendingOrders.filter((o) => o.urgency === "Acabando").length}</p>
+								</div>
+								<div className="p-2 rounded-xl bg-blue-100/50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300">
+									<p className="text-[10px] font-bold uppercase">Adiantando</p>
+									<p className="text-lg font-black">{pendingOrders.filter((o) => o.urgency === "Adiantando").length}</p>
+								</div>
+							</div>
+						</div>
+
+						<p className="text-xs text-slate-400 dark:text-slate-500 text-center mb-6">
+							Após salvar, a lista estará arquivada. Se necessário, você ainda poderá clicar em "Editar insumos pedidos" para alterar qualquer item.
+						</p>
+
+						<div className="flex flex-col gap-3">
+							<button
+								onClick={handleCompleteOrderList}
+								disabled={savingSnapshot}
+								className="cursor-pointer w-full bg-red-600 hover:bg-red-700 active:scale-95 text-white font-black py-4 rounded-2xl transition-all shadow-lg shadow-red-200 dark:shadow-none flex items-center justify-center gap-2">
+								{savingSnapshot ? <RefreshCw className="animate-spin" size={20} /> : <CheckCircle2 size={20} />}
+								Confirmar e Concluir Lista
+							</button>
+							<button
+								onClick={() => setConfirmCompleteModalOpen(false)}
+								disabled={savingSnapshot}
+								className="cursor-pointer w-full bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-400 font-black py-3.5 rounded-2xl transition-all">
+								Voltar e Revisar
 							</button>
 						</div>
 					</div>

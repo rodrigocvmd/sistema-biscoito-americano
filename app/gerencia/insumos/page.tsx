@@ -12,8 +12,9 @@ import {
 	collectionGroup,
 	Timestamp,
 	orderBy,
+	limit,
 } from "firebase/firestore";
-import { STOCK_LABELS, StoreId, STORE_NAMES, SupplyOrder, formatDate } from "@/types";
+import { STOCK_LABELS, StoreId, STORE_NAMES, SupplyOrder, formatDate, SupplyOrderSnapshot } from "@/types";
 import {
 	RefreshCw,
 	Store,
@@ -35,6 +36,10 @@ import {
 	ArrowDownToLine,
 	ArrowUp,
 	ArrowDown,
+	ListChecks,
+	Copy,
+	ExternalLink,
+	Calendar,
 } from "lucide-react";
 
 interface FullStoreData {
@@ -42,6 +47,7 @@ interface FullStoreData {
 	name: string;
 	pendingOrders: SupplyOrder[];
 	historicalOrders: SupplyOrder[];
+	orderSnapshots: SupplyOrderSnapshot[];
 	activeCount: number;
 	deliveringCount: number;
 }
@@ -53,6 +59,9 @@ export default function InsumosPage() {
 	const [allData, setAllData] = useState<FullStoreData[]>([]);
 	const [expandedStores, setExpandedStores] = useState<Record<string, boolean>>({});
 	const [showHistory, setShowHistory] = useState<Record<string, boolean>>({});
+	const [showSnapshotsHistory, setShowSnapshotsHistory] = useState<Record<string, boolean>>({});
+	const [selectedSnapshotModal, setSelectedSnapshotModal] = useState<SupplyOrderSnapshot | null>(null);
+	const [copiedSnapshotId, setCopiedSnapshotId] = useState<string | null>(null);
 	const [insumosSort, setInsumosSort] = useState<"default" | "urgency" | "date" | "alphabetical" | "manual">("urgency");
 	const [manualOrderMap, setManualOrderMap] = useState<Record<string, string[]>>({});
 	const [searchTerm, setSearchTerm] = useState("");
@@ -307,6 +316,58 @@ export default function InsumosPage() {
 		}));
 	};
 
+	const toggleSnapshotsHistory = (storeId: string) => {
+		setShowSnapshotsHistory((prev) => ({
+			...prev,
+			[storeId]: !prev[storeId],
+		}));
+	};
+
+	const handleCopySnapshot = (snapshot: SupplyOrderSnapshot) => {
+		const urgentes = (snapshot.items || []).filter((i) => i.urgency === "Urgente");
+		const acabando = (snapshot.items || []).filter((i) => i.urgency === "Acabando");
+		const adiantando = (snapshot.items || []).filter((i) => i.urgency === "Adiantando");
+
+		const closedDateStr = snapshot.closedAt?.toDate
+			? formatDate(snapshot.closedAt.toDate())
+			: snapshot.closedAt
+			? formatDate(new Date(snapshot.closedAt))
+			: "n/a";
+
+		let text = `📦 *LISTA DE INSUMOS - ${snapshot.storeName.toUpperCase()}*\n`;
+		text += `📅 Fechamento: ${snapshot.cycleClosingDate} | Entrega: ${snapshot.cycleDeliveryDate}\n`;
+		text += `⏰ Salva em: ${closedDateStr}\n`;
+		text += `🔢 Total: ${snapshot.itemsCount} insumos\n\n`;
+
+		if (urgentes.length > 0) {
+			text += `🚨 *URGENTE (${urgentes.length}):*\n`;
+			urgentes.forEach((item) => {
+				text += `• ${item.name}\n`;
+			});
+			text += `\n`;
+		}
+
+		if (acabando.length > 0) {
+			text += `⚠️ *ACABANDO (${acabando.length}):*\n`;
+			acabando.forEach((item) => {
+				text += `• ${item.name}\n`;
+			});
+			text += `\n`;
+		}
+
+		if (adiantando.length > 0) {
+			text += `⏳ *ADIANTANDO (${adiantando.length}):*\n`;
+			adiantando.forEach((item) => {
+				text += `• ${item.name}\n`;
+			});
+			text += `\n`;
+		}
+
+		navigator.clipboard.writeText(text);
+		setCopiedSnapshotId(snapshot.id);
+		setTimeout(() => setCopiedSnapshotId(null), 2500);
+	};
+
 	const handleToggleCheck = async (storeId: string, orderId: string, currentChecked: boolean) => {
 		try {
 			const orderRef = doc(db, "stores", storeId, "supplyOrders", orderId);
@@ -359,12 +420,14 @@ export default function InsumosPage() {
 
 		const storePendingData: Record<string, SupplyOrder[]> = {};
 		const storeHistoryData: Record<string, SupplyOrder[]> = {};
+		const storeSnapshotsData: Record<string, SupplyOrderSnapshot[]> = {};
 
 		const updateAllData = () => {
 			setAllData((currentData) => {
 				const newFullData = storeIds.map((id) => {
 					const sPending = storePendingData[id] || [];
 					const sHistory = storeHistoryData[id] || [];
+					const sSnapshots = storeSnapshotsData[id] || [];
 					const activeCount = sPending.filter((o) => !o.checkedByGerencia).length;
 					const deliveringCount = sPending.filter((o) => o.checkedByGerencia === true).length;
 					return {
@@ -372,6 +435,7 @@ export default function InsumosPage() {
 						name: STORE_NAMES[id],
 						pendingOrders: sPending,
 						historicalOrders: sHistory,
+						orderSnapshots: sSnapshots,
 						activeCount,
 						deliveringCount,
 					};
@@ -423,9 +487,28 @@ export default function InsumosPage() {
 			}, (error) => console.error(`Error fetching history for store ${id}:`, error));
 		});
 
+		// 3. Snapshots Listeners (Per Store)
+		const snapshotUnsubs = storeIds.map((id) => {
+			const snapRef = collection(db, "stores", id, "supplyOrderSnapshots");
+			const qSnap = query(snapRef, orderBy("closedAt", "desc"), limit(20));
+
+			return onSnapshot(
+				qSnap,
+				(snapshot) => {
+					storeSnapshotsData[id] = snapshot.docs.map((doc) => ({
+						id: doc.id,
+						...doc.data(),
+					})) as SupplyOrderSnapshot[];
+					updateAllData();
+				},
+				(error) => console.error(`Error fetching snapshots for store ${id}:`, error),
+			);
+		});
+
 		return () => {
 			pendingUnsubs.forEach(unsub => unsub());
 			historyUnsubs.forEach(unsub => unsub());
+			snapshotUnsubs.forEach(unsub => unsub());
 		};
 	}, []);
 
@@ -857,6 +940,116 @@ export default function InsumosPage() {
 								</div>
 							)}
 
+							{/* Saved Order Lists Snapshots Toggle Section */}
+							<div className="mt-8 pt-6 border-t border-slate-50 dark:border-slate-800">
+								<button
+									onClick={() => toggleSnapshotsHistory(store.id)}
+									className="w-full flex items-center justify-between p-4 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-2xl transition-all cursor-pointer group">
+									<h4 className="text-lg font-bold text-slate-700 dark:text-slate-300 flex items-center gap-2">
+										<ListChecks
+											className={`${showSnapshotsHistory[store.id] ? "text-blue-600 dark:text-blue-400" : "text-slate-300 dark:text-slate-500"}`}
+											size={32}
+										/>
+										({(store.orderSnapshots || []).length}) Histórico de Listas de Pedidos Salvas
+									</h4>
+									<span className="text-slate-400 dark:text-slate-500 font-bold text-xs uppercase tracking-widest group-hover:text-slate-600 dark:group-hover:text-slate-300 transition-colors">
+										{showSnapshotsHistory[store.id] ? "Recolher" : "Visualizar"}
+									</span>
+								</button>
+
+								{showSnapshotsHistory[store.id] && (
+									<div className="mt-4 space-y-3 animate-in fade-in slide-in-from-top-2 duration-300">
+										{(store.orderSnapshots || []).map((snapshot, idx) => {
+											const isLatest = idx === 0;
+											const closedDateStr = snapshot.closedAt?.toDate
+												? formatDate(snapshot.closedAt.toDate())
+												: snapshot.closedAt
+												? formatDate(new Date(snapshot.closedAt))
+												: "n/a";
+
+											return (
+												<div
+													key={snapshot.id || idx}
+													className={`p-5 rounded-2xl border transition-all ${
+														isLatest
+															? "bg-blue-50/40 dark:bg-blue-950/20 border-blue-200 dark:border-blue-900/50 shadow-sm"
+															: "bg-slate-50 dark:bg-slate-800/40 border-slate-100 dark:border-slate-800"
+													}`}>
+													<div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+														<div className="space-y-1.5 flex-1 min-w-0">
+															<div className="flex flex-wrap items-center gap-2">
+																<h5 className="text-base font-black text-slate-800 dark:text-slate-100 flex items-center gap-2">
+																	<ListChecks className="text-blue-600 dark:text-blue-400" size={18} />
+																	Lista de Fechamento: {snapshot.cycleClosingDate}
+																</h5>
+																{isLatest && (
+																	<span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-blue-600 text-white shadow-sm">
+																		Mais Recente
+																	</span>
+																)}
+																{snapshot.updatedAt && (
+																	<span className="px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-300">
+																		Atualizada após fechamento
+																	</span>
+																)}
+															</div>
+
+															<div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-500 dark:text-slate-400 font-medium">
+																<span>
+																	🚚 Entrega prevista: <strong className="text-slate-700 dark:text-slate-300">{snapshot.cycleDeliveryDate}</strong>
+																</span>
+																<span>•</span>
+																<span>
+																	Salva em: <strong className="text-slate-700 dark:text-slate-300">{closedDateStr}</strong>
+																</span>
+																<span>•</span>
+																<span>
+																	Total: <strong className="text-slate-700 dark:text-slate-300">{snapshot.itemsCount} insumos</strong>
+																</span>
+															</div>
+														</div>
+
+														<div className="flex items-center gap-2 shrink-0">
+															<button
+																onClick={() => handleCopySnapshot(snapshot)}
+																className="cursor-pointer flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-700 dark:text-slate-200 transition-all shadow-sm">
+																{copiedSnapshotId === snapshot.id ? (
+																	<>
+																		<Check className="text-emerald-500" size={14} />
+																		<span className="text-emerald-600 dark:text-emerald-400">Copiado!</span>
+																	</>
+																) : (
+																	<>
+																		<Copy size={14} />
+																		<span>Copiar p/ WhatsApp</span>
+																	</>
+																)}
+															</button>
+
+															<button
+																onClick={() => setSelectedSnapshotModal(snapshot)}
+																className="cursor-pointer flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition-all shadow-sm shadow-blue-200 dark:shadow-none">
+																<ExternalLink size={14} />
+																<span>Ver Insumos ({snapshot.itemsCount})</span>
+															</button>
+														</div>
+													</div>
+												</div>
+											);
+										})}
+
+										{(store.orderSnapshots || []).length === 0 && (
+											<div className="py-8 text-center bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-dashed border-slate-200 dark:border-slate-700">
+												<ListChecks className="mx-auto text-slate-300 dark:text-slate-600 mb-2" size={32} />
+												<p className="text-sm text-slate-400 dark:text-slate-500 font-medium">
+													Nenhuma lista consolidada salva até o momento para esta loja.
+												</p>
+											</div>
+										)}
+									</div>
+								)}
+							</div>
+
 							{/* History Toggle Section */}
 							<div className="mt-8 pt-6 border-t border-slate-50 dark:border-slate-800">
 								<button
@@ -928,6 +1121,92 @@ export default function InsumosPage() {
 					<p className="text-slate-400 dark:text-slate-500 font-bold">
 						Nenhum pedido de insumo pendente em nenhuma loja.
 					</p>
+				</div>
+			)}
+
+			{/* Modal para Visualizar Detalhes do Snapshot de Insumos */}
+			{selectedSnapshotModal && (
+				<div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
+					<div className="bg-white dark:bg-slate-900 rounded-3xl p-6 sm:p-8 max-w-2xl w-full max-h-[85vh] flex flex-col shadow-2xl animate-in zoom-in-95 duration-200 border border-slate-200 dark:border-slate-800">
+						<div className="flex items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-800">
+							<div>
+								<h3 className="text-xl font-black text-slate-800 dark:text-slate-100 flex items-center gap-2">
+									<ListChecks className="text-blue-600 dark:text-blue-400" size={24} />
+									Lista de Pedidos • Loja {selectedSnapshotModal.storeName}
+								</h3>
+								<p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+									Fechamento: {selectedSnapshotModal.cycleClosingDate} • Entrega: {selectedSnapshotModal.cycleDeliveryDate} • Salva em:{" "}
+									{selectedSnapshotModal.closedAt?.toDate
+										? formatDate(selectedSnapshotModal.closedAt.toDate())
+										: selectedSnapshotModal.closedAt
+										? formatDate(new Date(selectedSnapshotModal.closedAt))
+										: "n/a"}
+								</p>
+							</div>
+							<button
+								onClick={() => setSelectedSnapshotModal(null)}
+								className="cursor-pointer p-2 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all">
+								<X size={20} />
+							</button>
+						</div>
+
+						<div className="py-4 flex items-center justify-between gap-4">
+							<span className="text-xs font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+								{selectedSnapshotModal.itemsCount} insumos solicitados nesta lista:
+							</span>
+							<button
+								onClick={() => handleCopySnapshot(selectedSnapshotModal)}
+								className="cursor-pointer flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-xs font-bold text-slate-700 dark:text-slate-300 transition-all">
+								{copiedSnapshotId === selectedSnapshotModal.id ? (
+									<>
+										<Check className="text-emerald-500" size={14} />
+										<span className="text-emerald-600 dark:text-emerald-400 font-bold">Copiado!</span>
+									</>
+								) : (
+									<>
+										<Copy size={14} />
+										<span>Copiar lista</span>
+									</>
+								)}
+							</button>
+						</div>
+
+						<div className="flex-1 overflow-y-auto pr-1 space-y-2.5 max-h-[50vh]">
+							{selectedSnapshotModal.items && selectedSnapshotModal.items.length > 0 ? (
+								selectedSnapshotModal.items.map((item, idx) => (
+									<div
+										key={item.id || idx}
+										className="p-3.5 rounded-xl border border-slate-100 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-800/40 flex items-center justify-between gap-3">
+										<span className="text-sm font-bold text-slate-800 dark:text-slate-200">
+											{item.name}
+										</span>
+										<span
+											className={`text-[10px] font-black uppercase px-2.5 py-1 rounded-md shrink-0 ${
+												item.urgency === "Urgente"
+													? "bg-red-100 text-red-700 dark:bg-red-950/60 dark:text-red-300"
+													: item.urgency === "Acabando"
+													? "bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300"
+													: "bg-blue-100 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300"
+											}`}>
+											{item.urgency}
+										</span>
+									</div>
+								))
+							) : (
+								<p className="text-sm text-slate-400 italic text-center py-6">
+									Nenhum insumo registrado nesta lista.
+								</p>
+							)}
+						</div>
+
+						<div className="pt-4 border-t border-slate-100 dark:border-slate-800 mt-2 flex justify-end">
+							<button
+								onClick={() => setSelectedSnapshotModal(null)}
+								className="cursor-pointer px-6 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-900 dark:bg-slate-700 dark:hover:bg-slate-600 text-white font-bold text-sm transition-all">
+								Fechar
+							</button>
+						</div>
+					</div>
 				</div>
 			)}
 		</div>

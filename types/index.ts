@@ -183,3 +183,23 @@ export interface LatestRepositionState {
 	movements?: RepositionMovementItem[];
 }
 
+export interface SupplyOrderSnapshotItem {
+	id: string;
+	name: string;
+	urgency: UrgencyLevel;
+	createdAt?: any;
+}
+
+export interface SupplyOrderSnapshot {
+	id: string;
+	storeId: StoreId;
+	storeName: string;
+	cycleClosingDate: string; // Ex: "28/09/2026"
+	cycleDeliveryDate: string; // Ex: "29/09/2026"
+	closedAt: any; // Firestore Timestamp
+	updatedAt?: any; // Firestore Timestamp
+	status: "closed" | "reopened";
+	itemsCount: number;
+	items: SupplyOrderSnapshotItem[];
+}
+
