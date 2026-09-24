@@ -47,6 +47,7 @@ import {
 	AlertCircle,
 	FileText,
 	Check,
+	Copy,
 } from "lucide-react";
 
 interface FullStoreData {
@@ -102,6 +103,7 @@ export default function EstoqueReposicionarPage() {
 	const [loadingAllHistory, setLoadingAllHistory] = useState(false);
 	const [showSummary, setShowSummary] = useState(false);
 	const [showFinalizedSuccessModal, setShowFinalizedSuccessModal] = useState(false);
+	const [copiedSummary, setCopiedSummary] = useState(false);
 	const [showResetConfirm, setShowResetConfirm] = useState(true);
 
 	const [searchTerm, setSearchTerm] = useState("");
@@ -830,9 +832,9 @@ export default function EstoqueReposicionarPage() {
 		window.print();
 	};
 
-	const handleWhatsApp = async () => {
+	const generateWhatsAppSummaryText = () => {
 		const movements = calculateOptimizedSummary();
-		if (movements.length === 0) return;
+		if (movements.length === 0) return "";
 
 		const grouped = new Map<
 			string,
@@ -856,12 +858,34 @@ export default function EstoqueReposicionarPage() {
 		let text = `*Resumo de Reposicionamento - ${new Date().toLocaleDateString("pt-BR")}*\n\n`;
 
 		sortedGroups.forEach((group) => {
+			const totalGroupQty = group.items.reduce((acc, item) => acc + item.qty, 0);
+			const pacoteLabel = totalGroupQty === 1 ? "pacote" : "pacotes";
 			text += `*${STORE_NAMES[group.from]} → ${STORE_NAMES[group.to]}:*\n`;
+			text += `Total: ${totalGroupQty} ${pacoteLabel}\n`;
 			group.items.forEach((item) => {
 				text += `• ${item.qty} ${item.label}\n`;
 			});
 			text += `\n`;
 		});
+
+		return text;
+	};
+
+	const handleCopySummary = async () => {
+		const text = generateWhatsAppSummaryText();
+		if (!text) return;
+		try {
+			await navigator.clipboard.writeText(text);
+			setCopiedSummary(true);
+			setTimeout(() => setCopiedSummary(false), 2500);
+		} catch (err) {
+			console.error("Falha ao copiar:", err);
+		}
+	};
+
+	const handleWhatsApp = async () => {
+		const text = generateWhatsAppSummaryText();
+		if (!text) return;
 
 		// Identifica se é dispositivo móvel / iOS ou tela pequena
 		const userAgent = typeof navigator !== "undefined" ? navigator.userAgent || "" : "";
@@ -1525,7 +1549,7 @@ export default function EstoqueReposicionarPage() {
 
 			{showFinalizedSuccessModal && (
 				<div id="modal-resumo-print" className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
-					<div className="bg-white dark:bg-slate-900 rounded-[2rem] w-full max-w-lg shadow-2xl overflow-hidden flex flex-col border border-emerald-200 dark:border-emerald-900/30">
+					<div className="bg-white dark:bg-slate-900 rounded-[2rem] w-full max-w-xl shadow-2xl overflow-hidden flex flex-col border border-emerald-200 dark:border-emerald-900/30">
 						<div className="p-6 md:p-8 text-center space-y-4 print:hidden">
 							<div className="mx-auto w-16 h-16 bg-emerald-100 dark:bg-emerald-900/30 rounded-full flex items-center justify-center text-emerald-600 dark:text-emerald-400">
 								<Check size={36} className="stroke-[3]" />
@@ -1542,13 +1566,19 @@ export default function EstoqueReposicionarPage() {
 							<div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-3 w-full">
 								<button
 									onClick={handleWhatsApp}
-									className="flex-1 flex items-center justify-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-white px-5 py-3.5 rounded-2xl font-black text-xs md:text-[0.75rem] uppercase tracking-widest shadow-md shadow-emerald-500/20 transition-all cursor-pointer">
+									className="flex-1 flex items-center justify-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-3.5 rounded-2xl font-black text-xs md:text-[0.75rem] uppercase tracking-widest shadow-md shadow-emerald-500/20 transition-all cursor-pointer">
 									<MessageCircle size={16} />
 									Enviar no WhatsApp
 								</button>
 								<button
+									onClick={handleCopySummary}
+									className="flex-1 flex items-center justify-center gap-2 bg-slate-200 hover:bg-slate-300 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-800 dark:text-slate-100 px-4 py-3.5 rounded-2xl font-black text-xs md:text-[0.75rem] uppercase tracking-widest shadow-sm transition-all cursor-pointer">
+									{copiedSummary ? <Check size={16} className="text-emerald-600 dark:text-emerald-400 stroke-[3]" /> : <Copy size={16} />}
+									{copiedSummary ? "Copiado!" : "Copiar Resumo"}
+								</button>
+								<button
 									onClick={handlePrint}
-									className="flex-1 flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-5 py-3.5 rounded-2xl font-black text-xs md:text-[0.75rem] uppercase tracking-widest shadow-md shadow-blue-500/20 transition-all cursor-pointer">
+									className="flex-1 flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-3.5 rounded-2xl font-black text-xs md:text-[0.75rem] uppercase tracking-widest shadow-md shadow-blue-500/20 transition-all cursor-pointer">
 									<Printer size={16} />
 									Imprimir
 								</button>
