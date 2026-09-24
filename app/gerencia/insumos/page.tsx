@@ -31,6 +31,10 @@ import {
 	X,
 	GripVertical,
 	ArrowUpDown,
+	ArrowUpToLine,
+	ArrowDownToLine,
+	ArrowUp,
+	ArrowDown,
 } from "lucide-react";
 
 interface FullStoreData {
@@ -173,10 +177,15 @@ export default function InsumosPage() {
 		const deliveringFinal = isChecked ? newGroupOrders : currentOrders.filter((o) => !!o.checkedByGerencia);
 		const finalIds = [...pendingFinal.map((o) => o.id), ...deliveringFinal.map((o) => o.id)];
 
-		setManualOrderMap((prev) => ({
-			...prev,
-			[store.id]: finalIds,
-		}));
+		setManualOrderMap((prev) => {
+			const next = { ...prev, [store.id]: finalIds };
+			allData.forEach((s) => {
+				if (s.id !== store.id && !next[s.id]) {
+					next[s.id] = getStoreDisplayOrders(s).map((o) => o.id);
+				}
+			});
+			return next;
+		});
 		setInsumosSort("manual");
 		setDraggingItem(null);
 	};
@@ -186,21 +195,103 @@ export default function InsumosPage() {
 		setDragOverItem(null);
 	};
 
+	// Reordenar item via botões: topo, subir 1, descer 1, fundo
+	const handleReorderOrder = (
+		store: FullStoreData,
+		orderId: string,
+		action: "top" | "up" | "down" | "bottom"
+	) => {
+		const currentOrders = getStoreDisplayOrders(store);
+		const order = currentOrders.find((o) => o.id === orderId);
+		if (!order) return;
+
+		const isChecked = !!order.checkedByGerencia;
+		const groupOrders = currentOrders.filter((o) => !!o.checkedByGerencia === isChecked);
+		const currentIndex = groupOrders.findIndex((o) => o.id === orderId);
+		if (currentIndex === -1) return;
+
+		let targetIndex = currentIndex;
+		if (action === "top") {
+			if (currentIndex === 0) return;
+			targetIndex = 0;
+		} else if (action === "up") {
+			if (currentIndex === 0) return;
+			targetIndex = currentIndex - 1;
+		} else if (action === "down") {
+			if (currentIndex === groupOrders.length - 1) return;
+			targetIndex = currentIndex + 1;
+		} else if (action === "bottom") {
+			if (currentIndex === groupOrders.length - 1) return;
+			targetIndex = groupOrders.length - 1;
+		}
+
+		if (targetIndex === currentIndex) return;
+
+		const newGroupOrders = [...groupOrders];
+		const [movedOrder] = newGroupOrders.splice(currentIndex, 1);
+		newGroupOrders.splice(targetIndex, 0, movedOrder);
+
+		// Reconstroi a lista total mantendo pendentes no topo e a entregar abaixo
+		const pendingFinal = isChecked ? currentOrders.filter((o) => !o.checkedByGerencia) : newGroupOrders;
+		const deliveringFinal = isChecked ? newGroupOrders : currentOrders.filter((o) => !!o.checkedByGerencia);
+		const finalIds = [...pendingFinal.map((o) => o.id), ...deliveringFinal.map((o) => o.id)];
+
+		setManualOrderMap((prev) => {
+			const next = { ...prev, [store.id]: finalIds };
+			allData.forEach((s) => {
+				if (s.id !== store.id && !next[s.id]) {
+					next[s.id] = getStoreDisplayOrders(s).map((o) => o.id);
+				}
+			});
+			return next;
+		});
+		setInsumosSort("manual");
+
+		// No mobile e desktop: focar no card e acompanhar o movimento sempre enquadrado na tela
+		requestAnimationFrame(() => {
+			setTimeout(() => {
+				const cardElement = document.getElementById(`order-${store.id}-${orderId}`);
+				if (cardElement) {
+					cardElement.scrollIntoView({ behavior: "smooth", block: "center", inline: "nearest" });
+					cardElement.classList.add("ring-4", "ring-blue-500", "scale-[1.01]");
+					setTimeout(() => {
+						cardElement.classList.remove("ring-4", "ring-blue-500", "scale-[1.01]");
+					}, 450);
+				}
+			}, 60);
+		});
+	};
+
 	// Ao trocar para uma ordenação específica, reseta a ordenação manual
 	const handleSelectSort = (sort: "default" | "urgency" | "date" | "alphabetical") => {
 		setInsumosSort(sort);
 		setManualOrderMap({});
+		localStorage.removeItem("biscoito_admin_insumos_manual_order");
 	};
 
 	// Persistir ordenação
 	useEffect(() => {
 		const savedSort = localStorage.getItem("biscoito_admin_insumos_sort");
 		if (savedSort) setInsumosSort(savedSort as any);
+		const savedManual = localStorage.getItem("biscoito_admin_insumos_manual_order");
+		if (savedManual) {
+			try {
+				setManualOrderMap(JSON.parse(savedManual));
+			} catch (e) {
+				console.error("Erro ao carregar ordem manual de insumos:", e);
+			}
+		}
 	}, []);
 
 	useEffect(() => {
 		localStorage.setItem("biscoito_admin_insumos_sort", insumosSort);
 	}, [insumosSort]);
+
+	useEffect(() => {
+		if (Object.keys(manualOrderMap).length > 0) {
+			localStorage.setItem("biscoito_admin_insumos_manual_order", JSON.stringify(manualOrderMap));
+		}
+	}, [manualOrderMap]);
 
 	const toggleStore = (storeId: string) => {
 		setExpandedStores((prev) => ({
@@ -587,17 +678,23 @@ export default function InsumosPage() {
 												const isBeingDragged = draggingItem?.orderId === order.id;
 												const isDropTarget = dragOverItem === order.id;
 
+												const groupOrders = displayOrders.filter((o) => !!o.checkedByGerencia === isChecked);
+												const groupIndex = groupOrders.findIndex((o) => o.id === order.id);
+												const isFirst = groupIndex === 0;
+												const isLast = groupIndex === groupOrders.length - 1;
+
 												return (
 													<div
 														key={order.id}
 														id={`order-${store.id}-${order.id}`}
+														tabIndex={-1}
 														draggable={true}
 														onDragStart={(e) => handleDragStart(e, store.id, order.id, isChecked)}
 														onDragOver={(e) => handleDragOver(e, order.id, isChecked, store.id)}
 														onDragLeave={handleDragLeave}
 														onDrop={(e) => handleDrop(e, store, order.id, isChecked)}
 														onDragEnd={handleDragEnd}
-														className={`p-6 rounded-[32px] border flex flex-col justify-between gap-4 transition-all duration-200 cursor-grab active:cursor-grabbing select-none ${
+														className={`p-6 rounded-[32px] border flex flex-col justify-between gap-4 transition-all duration-200 cursor-grab active:cursor-grabbing select-none outline-none ${
 															isBeingDragged
 																? "opacity-30 scale-95 border-dashed border-blue-500 bg-blue-50/50 dark:bg-blue-950/30 shadow-none"
 																: isDropTarget
@@ -661,6 +758,76 @@ export default function InsumosPage() {
 																<p className="text-lg font-bold text-slate-400 dark:text-slate-500 whitespace-nowrap">
 																	{formatDate(order.createdAt?.toDate())}
 																</p>
+															</div>
+
+															{/* Botões de Reordenação: Topo, Subir, Descer, Fundo */}
+															<div
+																className="pt-3 border-t border-slate-200/70 dark:border-slate-700/70"
+																onClick={(e) => e.stopPropagation()}
+																onMouseDown={(e) => e.stopPropagation()}
+																onTouchStart={(e) => e.stopPropagation()}
+																draggable={false}>
+																<div className="grid grid-cols-4 gap-1.5 w-full bg-slate-100/70 dark:bg-slate-900/50 p-1 rounded-2xl border border-slate-200/60 dark:border-slate-800/80">
+																	{/* Topo */}
+																	<button
+																		type="button"
+																		disabled={isFirst}
+																		onClick={() => handleReorderOrder(store, order.id, "top")}
+																		title={isFirst ? "Já está no topo" : "Mandar para o topo"}
+																		className={`flex flex-col sm:flex-row items-center justify-center gap-1 py-2 px-1 rounded-xl text-xs font-black transition-all select-none ${
+																			isFirst
+																				? "opacity-25 text-slate-400 dark:text-slate-600 cursor-not-allowed pointer-events-none"
+																				: "bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-blue-50 dark:hover:bg-blue-950/40 hover:text-blue-600 dark:hover:text-blue-400 border border-slate-200/80 dark:border-slate-700 active:scale-95 shadow-xs cursor-pointer"
+																		}`}>
+																		<ArrowUpToLine size={15} className="shrink-0 text-blue-600 dark:text-blue-400" />
+																		<span className="text-[10px] md:text-[11px] uppercase tracking-tight">Topo</span>
+																	</button>
+
+																	{/* Subir 1 */}
+																	<button
+																		type="button"
+																		disabled={isFirst}
+																		onClick={() => handleReorderOrder(store, order.id, "up")}
+																		title={isFirst ? "Não pode subir mais" : "Subir 1 posição"}
+																		className={`flex flex-col sm:flex-row items-center justify-center gap-1 py-2 px-1 rounded-xl text-xs font-black transition-all select-none ${
+																			isFirst
+																				? "opacity-25 text-slate-400 dark:text-slate-600 cursor-not-allowed pointer-events-none"
+																				: "bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-blue-50 dark:hover:bg-blue-950/40 hover:text-blue-600 dark:hover:text-blue-400 border border-slate-200/80 dark:border-slate-700 active:scale-95 shadow-xs cursor-pointer"
+																		}`}>
+																		<ArrowUp size={15} className="shrink-0 text-blue-600 dark:text-blue-400" />
+																		<span className="text-[10px] md:text-[11px] uppercase tracking-tight">Subir</span>
+																	</button>
+
+																	{/* Descer 1 */}
+																	<button
+																		type="button"
+																		disabled={isLast}
+																		onClick={() => handleReorderOrder(store, order.id, "down")}
+																		title={isLast ? "Não pode descer mais" : "Descer 1 posição"}
+																		className={`flex flex-col sm:flex-row items-center justify-center gap-1 py-2 px-1 rounded-xl text-xs font-black transition-all select-none ${
+																			isLast
+																				? "opacity-25 text-slate-400 dark:text-slate-600 cursor-not-allowed pointer-events-none"
+																				: "bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-blue-50 dark:hover:bg-blue-950/40 hover:text-blue-600 dark:hover:text-blue-400 border border-slate-200/80 dark:border-slate-700 active:scale-95 shadow-xs cursor-pointer"
+																		}`}>
+																		<ArrowDown size={15} className="shrink-0 text-blue-600 dark:text-blue-400" />
+																		<span className="text-[10px] md:text-[11px] uppercase tracking-tight">Descer</span>
+																	</button>
+
+																	{/* Fundo */}
+																	<button
+																		type="button"
+																		disabled={isLast}
+																		onClick={() => handleReorderOrder(store, order.id, "bottom")}
+																		title={isLast ? "Já está no fundo" : "Mandar para o fundo"}
+																		className={`flex flex-col sm:flex-row items-center justify-center gap-1 py-2 px-1 rounded-xl text-xs font-black transition-all select-none ${
+																			isLast
+																				? "opacity-25 text-slate-400 dark:text-slate-600 cursor-not-allowed pointer-events-none"
+																				: "bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-blue-50 dark:hover:bg-blue-950/40 hover:text-blue-600 dark:hover:text-blue-400 border border-slate-200/80 dark:border-slate-700 active:scale-95 shadow-xs cursor-pointer"
+																		}`}>
+																		<ArrowDownToLine size={15} className="shrink-0 text-blue-600 dark:text-blue-400" />
+																		<span className="text-[10px] md:text-[11px] uppercase tracking-tight">Fundo</span>
+																	</button>
+																</div>
 															</div>
 
 															{isChecked && (
