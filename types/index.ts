@@ -28,9 +28,10 @@ export interface StockData {
 	americanCookie: number;
 	oreo: number;
 	cocoDourado: number;
-	sorveteCaixa: number;
-	sorvetePote: number;
-	brookie: number;
+	sorveteCremeCx: number;
+	sorveteCremePt: number;
+	sorveteFlorCx: number;
+	sorveteFlorPt: number;
 }
 
 export const STOCK_LABELS: Record<keyof StockData, string> = {
@@ -54,14 +55,38 @@ export const STOCK_LABELS: Record<keyof StockData, string> = {
 	americanCookie: "AMERICAN COOKIE",
 	oreo: "OREO",
 	cocoDourado: "COCO DOURADO",
-	brookie: "BROOKIE",
-	sorveteCaixa: "SORVETE (CAIXA)",
-	sorvetePote: "SORVETE (POTE)",
+	sorveteCremeCx: "SORVETE CREME CX",
+	sorveteCremePt: "SORVETE CREME PT",
+	sorveteFlorCx: "SORVETE FLOR CX",
+	sorveteFlorPt: "SORVETE FLOR PT",
 };
 
 export const isSorvete = (keyOrLabel: string) => {
 	const str = keyOrLabel.toLowerCase();
-	return str.includes("sorvete") || str === "sorvetecaixa" || str === "sorvetepote";
+	return (
+		str.includes("sorvete") ||
+		str === "sorvetecaixa" ||
+		str === "sorvetepote" ||
+		str === "sorvetecremecx" ||
+		str === "sorvetecremept" ||
+		str === "sorveteflorcx" ||
+		str === "sorveteflorpt"
+	);
+};
+
+export const normalizeStockData = (raw: any): Partial<StockData> => {
+	if (!raw) return {};
+	const stock = { ...raw };
+	if (stock.sorveteCremeCx === undefined && stock.sorveteCaixa !== undefined) {
+		stock.sorveteCremeCx = stock.sorveteCaixa;
+	}
+	if (stock.sorveteCremePt === undefined && stock.sorvetePote !== undefined) {
+		stock.sorveteCremePt = stock.sorvetePote;
+	}
+	delete stock.brookie;
+	delete stock.sorveteCaixa;
+	delete stock.sorvetePote;
+	return stock;
 };
 
 export const sortStockEntries = (entries: [string, string][]): [keyof StockData, string][] => {

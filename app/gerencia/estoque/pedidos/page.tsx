@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { db } from "@/lib/firebase";
 import { collection, onSnapshot, getDocs, query, limit, doc, setDoc } from "firebase/firestore";
-import { STOCK_LABELS, StockData, STORE_NAMES, StoreId, formatDate, sortStockEntries } from "@/types";
+import { STOCK_LABELS, StockData, STORE_NAMES, StoreId, formatDate, sortStockEntries, isSorvete, normalizeStockData } from "@/types";
 import { RefreshCw, ArrowLeftRight, Printer, Search, Eye, EyeOff, ChevronDown, Save, FileText, Settings, Package, DollarSign, Calculator, ShoppingCart, Copy, Check, Plus, Minus, Sparkles, RotateCcw } from "lucide-react";
 
 interface FullStoreData {
@@ -34,7 +34,6 @@ const DEFAULT_PACKAGE_PRICES: Partial<Record<keyof StockData, number>> = {
 	alpino: 184.8,
 	americanCookie: 160.08,
 	brigadeiro: 130.8,
-	brookie: 288.0,
 	brownie: 124.8,
 	classicoAoLeite: 124.8,
 	cocoDourado: 180.0,
@@ -120,8 +119,8 @@ export default function EstoquePedidosPage() {
 					id,
 					name: STORE_NAMES[id],
 					lastStockUpdate: storeDoc.lastStockUpdate?.toDate() || null,
-					stock: storeDoc.stock || {},
-					isUnits: storeDoc.isUnits || {},
+					stock: normalizeStockData(storeDoc.stock),
+					isUnits: normalizeStockData(storeDoc.isUnits),
 				};
 			});
 
@@ -1167,7 +1166,7 @@ export default function EstoquePedidosPage() {
 					{(() => {
 						// Lista de sabores sem sorvetes
 						const cookieEntries = sortStockEntries(Object.entries(STOCK_LABELS))
-							.filter(([key]) => key !== "sorveteCaixa" && key !== "sorvetePote");
+							.filter(([key]) => !isSorvete(key));
 
 						// Cálculos totais
 						let totalPackages = 0;
@@ -1726,7 +1725,7 @@ export default function EstoquePedidosPage() {
 					{/* Verificação de alterações nos valores por pacote */}
 					{(() => {
 						const hasChanges = Object.keys(STOCK_LABELS)
-							.filter((key) => key !== "sorveteCaixa" && key !== "sorvetePote")
+							.filter((key) => !isSorvete(key))
 							.some((k) => {
 								const key = k as keyof StockData;
 								return (localPackagePrices[key] ?? DEFAULT_PACKAGE_PRICES[key] ?? 0) !== (packagePrices[key] ?? DEFAULT_PACKAGE_PRICES[key] ?? 0);
@@ -1784,7 +1783,7 @@ export default function EstoquePedidosPage() {
 								</thead>
 								<tbody>
 									{sortStockEntries(Object.entries(STOCK_LABELS))
-										.filter(([key, label]) => key !== "sorveteCaixa" && key !== "sorvetePote" && label.toLowerCase().includes(searchTerm.toLowerCase()))
+										.filter(([key, label]) => !isSorvete(key) && label.toLowerCase().includes(searchTerm.toLowerCase()))
 										.map(([key, label]) => {
 											const itemKey = key as keyof StockData;
 											const priceVal = localPackagePrices[itemKey] !== undefined ? localPackagePrices[itemKey] : (DEFAULT_PACKAGE_PRICES[itemKey] ?? "");
@@ -1829,7 +1828,7 @@ export default function EstoquePedidosPage() {
 				<div id="modal-resumo-print" className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-3 md:p-6 animate-in fade-in duration-200">
 					{(() => {
 						const cookieEntries = sortStockEntries(Object.entries(STOCK_LABELS))
-							.filter(([key]) => key !== "sorveteCaixa" && key !== "sorvetePote");
+							.filter(([key]) => !isSorvete(key));
 
 						let totalBoxes = 0;
 						let baseTotalValue = 0;

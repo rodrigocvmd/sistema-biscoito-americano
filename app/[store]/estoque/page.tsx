@@ -13,7 +13,7 @@ import {
 	serverTimestamp,
 	limit,
 } from "firebase/firestore";
-import { STOCK_LABELS, StockData, formatDate, StockMovement, sortStockEntries } from "@/types";
+import { STOCK_LABELS, StockData, formatDate, StockMovement, sortStockEntries, normalizeStockData } from "@/types";
 import {
 	Plus,
 	CheckCircle2,
@@ -98,8 +98,8 @@ export default function StockMovementsPage({ params }: { params: Promise<{ store
 		const unsubStock = onSnapshot(storeRef, (docSnap) => {
 			if (docSnap.exists()) {
 				const data = docSnap.data();
-				setStock(data.stock || {});
-				setIsUnits(data.isUnits || {});
+				setStock(normalizeStockData(data.stock));
+				setIsUnits(normalizeStockData(data.isUnits));
 			}
 		});
 

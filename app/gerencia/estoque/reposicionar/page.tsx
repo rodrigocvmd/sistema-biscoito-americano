@@ -27,6 +27,7 @@ import {
 	formatDate,
 	RepositionHistory,
 	RepositionMovementItem,
+	normalizeStockData,
 } from "@/types";
 import {
 	RefreshCw,
@@ -157,8 +158,8 @@ export default function EstoqueReposicionarPage() {
 					id,
 					name: STORE_NAMES[id],
 					lastStockUpdate: storeDoc.lastStockUpdate?.toDate() || null,
-					stock: storeDoc.stock || {},
-					isUnits: storeDoc.isUnits || {},
+					stock: normalizeStockData(storeDoc.stock),
+					isUnits: normalizeStockData(storeDoc.isUnits),
 				};
 			});
 			setAllData(newFullData);

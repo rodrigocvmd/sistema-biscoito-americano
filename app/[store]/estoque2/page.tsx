@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { db } from "@/lib/firebase";
 import { doc, onSnapshot, writeBatch, collection, serverTimestamp } from "firebase/firestore";
-import { STOCK_LABELS, StockData, formatDate, isSorvete } from "@/types";
+import { STOCK_LABELS, StockData, formatDate, isSorvete, normalizeStockData } from "@/types";
 import { RefreshCw, AlertCircle, Package, ClipboardCheck, ClipboardX, Check, X, Save } from "lucide-react";
 import { use } from "react";
 import Link from "next/link";
@@ -43,8 +43,8 @@ export default function StockPage({ params }: { params: Promise<{ store: string 
 		const unsubscribe = onSnapshot(docRef, (docSnap) => {
 			if (docSnap.exists()) {
 				const data = docSnap.data();
-				setStock(data.stock || {});
-				setIsUnits(data.isUnits || {});
+				setStock(normalizeStockData(data.stock));
+				setIsUnits(normalizeStockData(data.isUnits));
 				if (data.lastStockUpdate) {
 					setLastUpdate(data.lastStockUpdate.toDate());
 				}
