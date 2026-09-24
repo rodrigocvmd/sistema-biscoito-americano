@@ -29,6 +29,7 @@ import {
 	X,
 	AlertCircle,
 	Users,
+	Calendar,
 } from "lucide-react";
 
 interface FuncionariosTabProps {
@@ -97,9 +98,11 @@ export default function FuncionariosTab({
 	// Form State
 	const [formData, setFormData] = useState({
 		nome: "",
+		nomeCompleto: "",
 		cpf: "",
 		lojaId: "todas" as StoreId | "todas",
 		status: "ativo" as "ativo" | "ferias" | "inativo",
+		dataAdmissao: "",
 		salarioBase: "",
 		valeTransporte: "",
 		chavePix: "",
@@ -111,9 +114,11 @@ export default function FuncionariosTab({
 		setEditingFunc(null);
 		setFormData({
 			nome: "",
+			nomeCompleto: "",
 			cpf: "",
 			lojaId: "todas",
 			status: "ativo",
+			dataAdmissao: "",
 			salarioBase: "",
 			valeTransporte: "",
 			chavePix: "",
@@ -127,9 +132,11 @@ export default function FuncionariosTab({
 		setEditingFunc(func);
 		setFormData({
 			nome: func.nome,
+			nomeCompleto: func.nomeCompleto || "",
 			cpf: func.cpf || "",
 			lojaId: func.lojaId,
 			status: (func.status === "afastado" ? "inativo" : func.status) as "ativo" | "ferias" | "inativo",
+			dataAdmissao: func.dataAdmissao || "",
 			salarioBase: func.salarioBase ? String(func.salarioBase) : "",
 			valeTransporte: func.valeTransporte ? String(func.valeTransporte) : "",
 			chavePix: func.chavePix || "",
@@ -147,10 +154,12 @@ export default function FuncionariosTab({
 			setIsSaving(true);
 			const payload = {
 				nome: formData.nome.trim(),
+				nomeCompleto: formData.nomeCompleto.trim() || undefined,
 				cpf: formData.cpf.trim() || undefined,
 				lojaId: formData.lojaId,
 				cargo: editingFunc?.cargo || "Colaborador",
 				status: formData.status,
+				dataAdmissao: formData.dataAdmissao.trim() || undefined,
 				salarioBase: parseFloat(formData.salarioBase) || 0,
 				valeTransporte: parseFloat(formData.valeTransporte) || 0,
 				chavePix: formData.chavePix.trim() || undefined,
@@ -264,6 +273,7 @@ export default function FuncionariosTab({
 		const searchLower = searchTerm.toLowerCase();
 		const matchesSearch =
 			func.nome.toLowerCase().includes(searchLower) ||
+			(func.nomeCompleto && func.nomeCompleto.toLowerCase().includes(searchLower)) ||
 			(func.cpf && func.cpf.toLowerCase().includes(searchLower)) ||
 			(func.telefone && func.telefone.toLowerCase().includes(searchLower)) ||
 			(func.chavePix && func.chavePix.toLowerCase().includes(searchLower));
@@ -446,6 +456,18 @@ export default function FuncionariosTab({
 
 									{/* Detalhes do Colaborador */}
 									<div className="space-y-2 pt-2 border-t border-slate-100 dark:border-slate-800/80 text-xs">
+										{func.nomeCompleto && (
+											<div className="flex items-center justify-between text-slate-600 dark:text-slate-400">
+												<span className="flex items-center gap-1.5 font-medium">
+													<UserCheck size={14} className="text-slate-400" />
+													Nome Completo:
+												</span>
+												<span className="font-semibold text-slate-800 dark:text-slate-200 text-right truncate max-w-[200px]" title={func.nomeCompleto}>
+													{func.nomeCompleto}
+												</span>
+											</div>
+										)}
+
 										<div className="flex items-center justify-between text-slate-600 dark:text-slate-400">
 											<span className="flex items-center gap-1.5 font-medium">
 												<Building2 size={14} className="text-slate-400" />
@@ -455,6 +477,18 @@ export default function FuncionariosTab({
 												{lojaLabel}
 											</span>
 										</div>
+
+										{func.dataAdmissao && (
+											<div className="flex items-center justify-between text-slate-600 dark:text-slate-400">
+												<span className="flex items-center gap-1.5 font-medium">
+													<Calendar size={14} className="text-slate-400" />
+													Admissão:
+												</span>
+												<span className="font-semibold text-slate-800 dark:text-slate-200">
+													{func.dataAdmissao.split("-").reverse().join("/")}
+												</span>
+											</div>
+										)}
 
 										{func.telefone && (
 											<div className="flex items-center justify-between text-slate-600 dark:text-slate-400">
@@ -565,19 +599,39 @@ export default function FuncionariosTab({
 
 						<form onSubmit={handleSubmit} className="p-6 space-y-4">
 							<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-								{/* 1. Nome Completo */}
-								<div className="md:col-span-2">
+								{/* 1. Apelido / Nome Curto (utilizado nas escalas, cards, etc.) */}
+								<div>
 									<label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
-										Nome Completo *
+										Apelido *
 									</label>
 									<input
 										type="text"
 										required
 										value={formData.nome}
 										onChange={(e) => setFormData({ ...formData, nome: e.target.value })}
-										placeholder="Ex: João da Silva"
+										placeholder="Ex: João Silva"
 										className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
 									/>
+									<span className="text-[10px] text-slate-400 mt-1 block">
+										Nome/apelido exibido nos cards, escalas e lançamentos.
+									</span>
+								</div>
+
+								{/* 2. Nome Completo (meramente consultivo) */}
+								<div>
+									<label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+										Nome Completo <span className="text-[11px] font-normal text-slate-400">(Consultivo)</span>
+									</label>
+									<input
+										type="text"
+										value={formData.nomeCompleto}
+										onChange={(e) => setFormData({ ...formData, nomeCompleto: e.target.value })}
+										placeholder="Ex: João da Silva Sauro"
+										className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+									/>
+									<span className="text-[10px] text-slate-400 mt-1 block">
+										Apenas para consulta cadastral.
+									</span>
 								</div>
 
 								{/* 2. CPF */}
@@ -627,6 +681,19 @@ export default function FuncionariosTab({
 										<option value="ferias">Férias</option>
 										<option value="inativo">Inativo</option>
 									</select>
+								</div>
+
+								{/* 5. Data de Admissão */}
+								<div>
+									<label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+										Data de Admissão
+									</label>
+									<input
+										type="date"
+										value={formData.dataAdmissao}
+										onChange={(e) => setFormData({ ...formData, dataAdmissao: e.target.value })}
+										className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+									/>
 								</div>
 
 								{/* 5. Telefone / WhatsApp */}

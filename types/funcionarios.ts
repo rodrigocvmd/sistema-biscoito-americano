@@ -5,6 +5,7 @@ export type StatusFuncionario = "ativo" | "ferias" | "inativo" | "afastado";
 export interface Funcionario {
 	id: string;
 	nome: string;
+	nomeCompleto?: string;
 	apelido?: string;
 	cpf?: string;
 	telefone?: string;
