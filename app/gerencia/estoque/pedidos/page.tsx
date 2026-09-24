@@ -854,7 +854,7 @@ export default function EstoquePedidosPage() {
 								</thead>
 								<tbody>
 									{sortStockEntries(Object.entries(STOCK_LABELS))
-										.filter(([_, label]) => label.toLowerCase().includes(searchTerm.toLowerCase()))
+										.filter(([key, label]) => !isSorvete(key) && label.toLowerCase().includes(searchTerm.toLowerCase()))
 										.map(([key, label]) => {
 											const itemKey = key as keyof StockData;
 											const totalQty = allData.reduce((sum, store) => sum + (store.stock[itemKey] || 0), 0);
@@ -1056,7 +1056,7 @@ export default function EstoquePedidosPage() {
 								</tbody>
 								{(() => {
 									const filteredEntries = sortStockEntries(Object.entries(STOCK_LABELS))
-										.filter(([_, label]) => label.toLowerCase().includes(searchTerm.toLowerCase()));
+										.filter(([key, label]) => !isSorvete(key) && label.toLowerCase().includes(searchTerm.toLowerCase()));
 
 									let totalBoxesToOrder = 0;
 									let totalPackagesToOrder = 0;
@@ -1576,15 +1576,19 @@ export default function EstoquePedidosPage() {
 					{/* Verificação de alterações nas metas ou caixas */}
 					{(() => {
 						const hasStockChanges = STORE_ORDER.some((sId) => {
-							return Object.keys(STOCK_LABELS).some((k) => {
+							return Object.keys(STOCK_LABELS)
+								.filter((k) => !isSorvete(k))
+								.some((k) => {
+									const key = k as keyof StockData;
+									return (localStoreDesired[sId]?.[key] ?? 0) !== (storeDesired[sId]?.[key] ?? 0);
+								});
+						});
+						const hasBoxChanges = Object.keys(STOCK_LABELS)
+							.filter((k) => !isSorvete(k))
+							.some((k) => {
 								const key = k as keyof StockData;
-								return (localStoreDesired[sId]?.[key] ?? 0) !== (storeDesired[sId]?.[key] ?? 0);
+								return (localBoxSizes[key] ?? 0) !== (boxSizes[key] ?? 0);
 							});
-						});
-						const hasBoxChanges = Object.keys(STOCK_LABELS).some((k) => {
-							const key = k as keyof StockData;
-							return (localBoxSizes[key] ?? 0) !== (boxSizes[key] ?? 0);
-						});
 						const hasChanges = hasStockChanges || hasBoxChanges;
 
 						return (
@@ -1649,7 +1653,7 @@ export default function EstoquePedidosPage() {
 								</thead>
 								<tbody>
 									{sortStockEntries(Object.entries(STOCK_LABELS))
-										.filter(([_, label]) => label.toLowerCase().includes(searchTerm.toLowerCase()))
+										.filter(([key, label]) => !isSorvete(key) && label.toLowerCase().includes(searchTerm.toLowerCase()))
 										.map(([key, label]) => {
 											const itemKey = key as keyof StockData;
 											const totalVal = STORE_ORDER.reduce(

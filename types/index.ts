@@ -55,10 +55,10 @@ export const STOCK_LABELS: Record<keyof StockData, string> = {
 	americanCookie: "AMERICAN COOKIE",
 	oreo: "OREO",
 	cocoDourado: "COCO DOURADO",
-	sorveteCremeCx: "SORVETE CREME CX",
-	sorveteCremePt: "SORVETE CREME PT",
-	sorveteFlorCx: "SORVETE FLOR CX",
-	sorveteFlorPt: "SORVETE FLOR PT",
+	sorveteCremeCx: "SORVETE CREME (CAIXA)",
+	sorveteCremePt: "SORVETE CREME (POTE)",
+	sorveteFlorCx: "SORVETE FLOR (CAIXA)",
+	sorveteFlorPt: "SORVETE FLOR (POTE)",
 };
 
 export const isSorvete = (keyOrLabel: string) => {

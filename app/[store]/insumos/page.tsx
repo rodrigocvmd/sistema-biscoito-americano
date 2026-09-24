@@ -89,10 +89,6 @@ const INVENTORY_DATA = [
 	{
 		category: "INSUMOS E CONFEITARIA",
 		items: [
-			"SORVETE CREME CX",
-			"SORVETE CREME PT",
-			"SORVETE FLOR CX",
-			"SORVETE FLOR PT",
 			"NUTELLA",
 			"LEITE NINHO",
 			"LEITE LÍQUIDO",
