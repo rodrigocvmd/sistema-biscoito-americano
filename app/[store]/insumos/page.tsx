@@ -616,7 +616,7 @@ export default function SuppliesPage({ params }: { params: Promise<{ store: stri
 									</span>
 								</div>
 								<p className="text-sm text-slate-600 dark:text-slate-400 mt-1 font-medium">
-									A lista foi consolidada com {latestSnapshot.itemsCount} itens e já está disponível para o gerente. Se precisar incluir ou retirar algum insumo de última hora, basta clicar abaixo.
+									A lista foi consolidada com {latestSnapshot.itemsCount} itens. Se precisar incluir ou retirar algum insumo de última hora, basta clicar ao lado.
 								</p>
 							</div>
 						</div>

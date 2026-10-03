@@ -532,6 +532,7 @@ export default function EscalaTab({
 				horarioFim: autoFormData.horarioFim,
 				diaDescansoSemanal: autoFormData.diaDescansoSemanal,
 				gerarDiasDeFolga: autoFormData.gerarDiasDeFolga,
+				existingEscalas: escalas,
 			});
 
 			alert(

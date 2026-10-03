@@ -115,7 +115,7 @@ export function getStoreCycleInfo(storeId: string, referenceDate: Date = new Dat
 
 	if (isClosingDay) {
 		alertVariant = "today";
-		headline = "Hoje é o último dia para fechar a lista de insumos!";
+		headline = "Último dia para fechar a lista de insumos.";
 		subtext = `Revise os insumos pedidos da sua loja e clique em "Concluir lista de insumos" até o final do expediente. A entrega será amanhã cedo (${formattedDeliveryDate}).`;
 	} else if (isOneDayBefore) {
 		alertVariant = "tomorrow";

@@ -166,6 +166,7 @@ export interface GerarEscalaMensalParams {
 	horarioFim: string; // ex: "22:00" (12h) ou "19:00" (9h)
 	diaDescansoSemanal?: number; // 0 = Domingo, 1 = Segunda, ..., 6 = Sábado
 	gerarDiasDeFolga?: boolean;
+	existingEscalas?: EscalaItem[];
 }
 
 export const gerarEscalaAutomaticaMes = async (params: GerarEscalaMensalParams) => {
@@ -181,30 +182,45 @@ export const gerarEscalaAutomaticaMes = async (params: GerarEscalaMensalParams) 
 		horarioFim,
 		diaDescansoSemanal = 0,
 		gerarDiasDeFolga = true,
+		existingEscalas,
 	} = params;
 
 	const [ano, mes] = mesAnoStr.split("-").map(Number);
 	const totalDiasMes = new Date(ano, mes, 0).getDate();
 	const startDay = parseInt(primeiroDiaTrabalho.split("-")[2], 10);
 
-	// 1. Buscar escalas pré-existentes deste colaborador nesta loja e mês para limpar e não duplicar
-	const startPrefix = `${mesAnoStr}-01`;
-	const endPrefix = `${mesAnoStr}-31`;
-	const q = query(
-		collection(db, ESCALAS_COLLECTION),
-		where("funcionarioId", "==", funcionarioId),
-		where("lojaId", "==", lojaId),
-		where("data", ">=", startPrefix),
-		where("data", "<=", endPrefix)
-	);
-	const existingSnap = await getDocs(q);
-
 	const batch = writeBatch(db);
 
-	// Remove escalas antigas deste colaborador no mês nesta loja
-	existingSnap.forEach((d) => {
-		batch.delete(d.ref);
-	});
+	// 1. Limpar escalas existentes para este colaborador nesta loja e mês.
+	// Se já recebemos a lista em memória (do componente), usamos diretamente para evitar queries com índices complexos no Firestore.
+	if (existingEscalas && existingEscalas.length > 0) {
+		existingEscalas.forEach((item) => {
+			if (
+				item.funcionarioId === funcionarioId &&
+				item.lojaId === lojaId &&
+				item.data.startsWith(mesAnoStr)
+			) {
+				batch.delete(doc(db, ESCALAS_COLLECTION, item.id));
+			}
+		});
+	} else {
+		// Caso contrário, busca filtrando apenas por funcionarioId (query simples que não requer índice composto) e filtra o resto em memória
+		try {
+			const q = query(
+				collection(db, ESCALAS_COLLECTION),
+				where("funcionarioId", "==", funcionarioId)
+			);
+			const existingSnap = await getDocs(q);
+			existingSnap.forEach((d) => {
+				const data = d.data();
+				if (data.lojaId === lojaId && typeof data.data === "string" && data.data.startsWith(mesAnoStr)) {
+					batch.delete(d.ref);
+				}
+			});
+		} catch (err) {
+			console.warn("Aviso ao limpar escalas anteriores:", err);
+		}
+	}
 
 	let countTrabalho = 0;
 	let countFolga = 0;
