@@ -749,7 +749,7 @@ export default function EstoquePedidosPage() {
 												className="p-2 md:p-3 text-center text-sm md:text-lg font-black text-slate-700 dark:text-slate-200 uppercase tracking-wider min-w-[6.5rem] md:min-w-[10rem] border-l border-slate-200/60 dark:border-slate-700/60">
 												<div>{STORE_NAMES[storeId]}</div>
 												<div className="text-xs md:text-sm font-bold text-slate-400 dark:text-slate-500 normal-case tracking-normal mt-0.5">
-													Estoque (Meta)
+													Estoque
 												</div>
 											</th>
 										))}
@@ -799,13 +799,14 @@ export default function EstoquePedidosPage() {
 														</div>
 													</td>
 
-													{/* Quantidades por loja individual: apenas estoque referente e meta */}
+													{/* Quantidades por loja individual: estoque referente e faltante abaixo */}
 													{STORE_ORDER.map((storeId) => {
 														const store = allData.find((s) => s.id === storeId);
 														const storeStockVal = store?.stock[itemKey] || 0;
 														const storeOpenVal = store?.isUnits?.[itemKey];
 														const storeOpenCount = typeof storeOpenVal === "boolean" ? (storeOpenVal ? 1 : 0) : storeOpenVal || 0;
 														const storeDesiredVal = storeDesired[storeId]?.[itemKey] || 0;
+														const storeDiff = storeStockVal - storeDesiredVal;
 
 														return (
 															<td
@@ -822,17 +823,27 @@ export default function EstoquePedidosPage() {
 																			title={`Estoque referente: ${storeStockVal} | Meta: ${storeDesiredVal || 0}`}>
 																			{storeStockVal}
 																		</span>
-																		<span
-																			className="text-lg md:text-2xl font-bold text-slate-400 dark:text-slate-500 leading-none"
-																			title={`Meta desejável em ${STORE_NAMES[storeId]}: ${storeDesiredVal}`}>
-																			({storeDesiredVal > 0 ? storeDesiredVal : 0})
-																		</span>
 																		{!hideOpen && storeOpenCount > 0 && (
 																			<span className="text-sm md:text-lg font-bold text-slate-400 dark:text-slate-500 whitespace-nowrap leading-none ml-0.5">
 																				+{storeOpenCount}ab
 																			</span>
 																		)}
 																	</div>
+																	{storeDesiredVal > 0 ? (
+																		<span
+																			className={`text-sm md:text-base font-black mt-1 leading-none ${
+																				storeDiff < 0
+																					? "text-rose-600 dark:text-rose-400"
+																					: "text-blue-600 dark:text-blue-400"
+																			}`}
+																			title={`Meta em ${STORE_NAMES[storeId]}: ${storeDesiredVal} (${storeDiff < 0 ? `faltam ${Math.abs(storeDiff)}` : storeDiff > 0 ? `sobram ${storeDiff}` : "na meta"})`}>
+																			{storeDiff < 0 ? `(${storeDiff})` : storeDiff > 0 ? `(+${storeDiff})` : "(0)"}
+																		</span>
+																	) : (
+																		<span className="text-sm md:text-base font-black mt-1 leading-none text-slate-300 dark:text-slate-600">
+																			-
+																		</span>
+																	)}
 																</div>
 															</td>
 														);
@@ -843,7 +854,7 @@ export default function EstoquePedidosPage() {
 														<div className="flex flex-col items-center justify-center gap-0.5">
 															<div className="flex justify-center items-center gap-1">
 																<span
-																	className={`text-lg md:text-3xl font-black ${
+																	className={`text-2xl md:text-3xl font-black leading-none ${
 																		totalQty === 0 && (totalOpen === 0 || hideOpen)
 																			? "text-slate-300 dark:text-slate-400"
 																			: "text-slate-900 dark:text-slate-100"
@@ -860,93 +871,67 @@ export default function EstoquePedidosPage() {
 														</div>
 													</td>
 
-													{/* Desejável Total e Pacotes Faltantes */}
+													{/* Desejável Total e Faltantes */}
 													{(() => {
-														const missingPackages = Math.max(0, desiredQty - totalQty);
+														const diff = totalQty - desiredQty;
 														return (
 															<td className="p-3 md:p-5 text-center border-l border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 group-hover:bg-blue-50/30 dark:group-hover:bg-blue-900/20 transition-colors">
-																<div className="flex flex-col items-center justify-center">
+																<div className="flex flex-col items-center justify-center py-1">
 																	{hasDesired ? (
 																		<>
-																			<span className="text-lg md:text-2xl font-black text-slate-800 dark:text-slate-200 leading-tight">
+																			<span className="text-2xl md:text-3xl font-black leading-none text-slate-800 dark:text-slate-200">
 																				{desiredQty}
 																			</span>
 																			<span
-																				className={`text-xs md:text-sm font-bold mt-0.5 ${
-																					missingPackages > 0
-																						? "text-rose-500 dark:text-rose-400"
-																						: "text-slate-400 dark:text-slate-500"
+																				className={`text-sm md:text-base font-black mt-1 leading-none ${
+																					diff < 0
+																						? "text-rose-600 dark:text-rose-400"
+																						: "text-blue-600 dark:text-blue-400"
 																				}`}>
-																				{missingPackages > 0
-																					? `(${missingPackages} ${missingPackages === 1 ? "faltante" : "faltantes"})`
-																					: "(0 faltantes)"}
+																				{diff < 0 ? `(${diff})` : diff > 0 ? `(+${diff})` : "(0)"}
 																			</span>
 																		</>
 																	) : (
-																		<span className="text-slate-300 dark:text-slate-600 font-black text-lg md:text-2xl">-</span>
+																		<span className="text-slate-300 dark:text-slate-600 font-black text-2xl md:text-3xl leading-none">-</span>
 																	)}
 																</div>
 															</td>
 														);
 													})()}
 
-													{/* Pacotes a Pedir (editável com controles + e - por tamanho de caixa) */}
+													{/* Pacotes a Pedir (alterado apenas com botões + e -, número solto sem input de digitação e sem informação de caixas) */}
 													<td className="p-3 md:p-5 text-center border-l border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 group-hover:bg-blue-50/30 dark:group-hover:bg-blue-900/20 transition-colors">
 														{(() => {
 															const currentOrderQty = customOrderPackages[itemKey] ?? 0;
 															const stepSize = boxSize > 0 ? boxSize : 1;
-															const boxesCount = boxSize > 0 ? Math.ceil(currentOrderQty / boxSize) : 0;
-															const caixasLabel = boxesCount === 1 ? "Caixa" : "Caixas";
 
 															return (
-																<div className="flex flex-col items-center justify-center gap-1.5">
-																	<div className="flex items-center justify-center gap-1.5 print:hidden">
-																		<button
-																			type="button"
-																			onClick={() => stepCustomPackage(itemKey, -1)}
-																			disabled={currentOrderQty <= 0}
-																			className="w-8 h-8 md:w-9 md:h-9 flex items-center justify-center rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 disabled:opacity-30 disabled:cursor-not-allowed transition-all cursor-pointer shadow-sm active:scale-95 shrink-0"
-																			title={`Diminuir ${stepSize} pacotes (-1 caixa)`}>
-																			<Minus size={14} className="stroke-[2.5]" />
-																		</button>
+																<div className="flex items-center justify-center gap-2 md:gap-3 py-1">
+																	<button
+																		type="button"
+																		onClick={() => stepCustomPackage(itemKey, -1)}
+																		disabled={currentOrderQty <= 0}
+																		className="w-7 h-7 md:w-8 md:h-8 flex items-center justify-center rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 disabled:opacity-20 disabled:cursor-not-allowed transition-all cursor-pointer shadow-sm active:scale-95 shrink-0 print:hidden"
+																		title={`Diminuir ${stepSize} pacotes (-1 caixa)`}>
+																		<Minus size={14} className="stroke-[2.5]" />
+																	</button>
 
-																		<input
-																			type="number"
-																			min="0"
-																			step={stepSize}
-																			value={currentOrderQty === 0 ? "" : currentOrderQty}
-																			placeholder="0"
-																			onChange={(e) => handleCustomPackageChange(itemKey, e.target.value)}
-																			onFocus={(e) => e.target.select()}
-																			onClick={(e) => e.currentTarget.select()}
-																			className="w-16 md:w-20 bg-white dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 focus:border-blue-500 rounded-xl py-1 md:py-1.5 px-1.5 md:px-2 text-center text-sm md:text-lg font-black text-slate-800 dark:text-slate-100 transition-all focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-																		/>
+																	<span
+																		className={`text-2xl md:text-3xl font-black leading-none min-w-[2.5rem] text-center ${
+																			currentOrderQty > 0
+																				? "text-rose-600 dark:text-rose-400"
+																				: "text-slate-300 dark:text-slate-600"
+																		}`}>
+																		{currentOrderQty}
+																	</span>
 
-																		<button
-																			type="button"
-																			onClick={() => stepCustomPackage(itemKey, 1)}
-																			className="w-8 h-8 md:w-9 md:h-9 flex items-center justify-center rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 transition-all cursor-pointer shadow-sm active:scale-95 shrink-0"
-																			title={`Aumentar ${stepSize} pacotes (+1 caixa)`}>
-																			<Plus size={14} className="stroke-[2.5]" />
-																		</button>
-																	</div>
-
-																	<div className="flex items-center justify-center gap-1">
-																		{currentOrderQty > 0 ? (
-																			<span className="text-xs md:text-sm font-black text-rose-600 dark:text-rose-400">
-																				{currentOrderQty} {currentOrderQty === 1 ? "pct" : "pcts"}
-																				{boxSize > 0 && (
-																					<span className="text-slate-500 dark:text-slate-400 font-bold ml-1">
-																						({boxesCount} {caixasLabel})
-																					</span>
-																				)}
-																			</span>
-																		) : (
-																			<span className="text-slate-400 dark:text-slate-500 font-bold text-xs md:text-sm">
-																				0 pacotes
-																			</span>
-																		)}
-																	</div>
+																	<button
+																		type="button"
+																		onClick={() => stepCustomPackage(itemKey, 1)}
+																		className="w-7 h-7 md:w-8 md:h-8 flex items-center justify-center rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 transition-all cursor-pointer shadow-sm active:scale-95 shrink-0 print:hidden"
+																		title={`Aumentar ${stepSize} pacotes (+1 caixa)`}>
+																		<Plus size={14} className="stroke-[2.5]" />
+																	</button>
 																</div>
 															);
 														})()}
