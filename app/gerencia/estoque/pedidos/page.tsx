@@ -98,6 +98,9 @@ export default function EstoquePedidosPage() {
 	});
 	const [copiedSummary, setCopiedSummary] = useState(false);
 	const [showSummary, setShowSummary] = useState(false);
+	const [showPartialPreview, setShowPartialPreview] = useState(false);
+	const [partialOnlyWithOrder, setPartialOnlyWithOrder] = useState(true);
+	const [copiedPartialSummary, setCopiedPartialSummary] = useState(false);
 
 	const [savingDesired, setSavingDesired] = useState(false);
 
@@ -530,17 +533,21 @@ export default function EstoquePedidosPage() {
 						display: none !important;
 					}
 
-					/* Quando o modal de resumo estiver aberto, ocultar todo o resto e exibir apenas o container de impressão */
-					body:has(#modal-resumo-print) {
+					/* Quando o modal de resumo ou o modal de pedido parcial estiver aberto, ocultar todo o resto e exibir apenas o container de impressão */
+					body:has(#modal-resumo-print),
+					body:has(#modal-pedido-parcial-print) {
 						visibility: hidden !important;
 					}
 
 					body:has(#modal-resumo-print) #modal-resumo-print,
-					body:has(#modal-resumo-print) #modal-resumo-print * {
+					body:has(#modal-resumo-print) #modal-resumo-print *,
+					body:has(#modal-pedido-parcial-print) #modal-pedido-parcial-print,
+					body:has(#modal-pedido-parcial-print) #modal-pedido-parcial-print * {
 						visibility: visible !important;
 					}
 
-					#modal-resumo-print {
+					#modal-resumo-print,
+					#modal-pedido-parcial-print {
 						position: absolute !important;
 						left: 0 !important;
 						top: 0 !important;
@@ -556,7 +563,8 @@ export default function EstoquePedidosPage() {
 						box-sizing: border-box !important;
 					}
 
-					#modal-resumo-print > div {
+					#modal-resumo-print > div,
+					#modal-pedido-parcial-print > div {
 						width: 100% !important;
 						max-width: 100% !important;
 						border: none !important;
@@ -1010,12 +1018,7 @@ export default function EstoquePedidosPage() {
 																<span className="text-rose-600 dark:text-rose-400 font-black">
 																	{totalPackagesToOrder}
 																</span>{" "}
-																{totalPacotesLabel}{" "}
-																{totalBoxesToOrder > 0 && (
-																	<span className="text-slate-600 dark:text-slate-400 font-bold text-base md:text-xl">
-																		({totalBoxesToOrder} {totalCaixasLabel})
-																	</span>
-																)}
+																{totalPacotesLabel}
 															</span>
 														</div>
 													) : (
@@ -1095,11 +1098,20 @@ export default function EstoquePedidosPage() {
 							</div>
 						</div>
 
-						{/* Botão Gerar Resumo Centralizado */}
-						<div className="flex justify-center items-center py-3">
+						{/* Botões Inferiores: Revisar Pedido Parcial & Gerar Resumo do Pedido */}
+						<div className="flex flex-col sm:flex-row justify-center items-center gap-3 md:gap-4 py-3">
 							<button
+								type="button"
+								onClick={() => setShowPartialPreview(true)}
+								className="w-full sm:w-auto flex items-center justify-center gap-2.5 bg-slate-800 hover:bg-slate-900 text-white dark:bg-slate-700 dark:hover:bg-slate-600 px-6 md:px-10 py-3.5 md:py-4 rounded-2xl font-black text-xs md:text-sm shadow-xl hover:scale-[1.02] active:scale-95 transition-all cursor-pointer uppercase tracking-widest">
+								<Eye size={18} />
+								REVISAR PEDIDO PARCIAL
+							</button>
+
+							<button
+								type="button"
 								onClick={() => setShowSummary(true)}
-								className="flex items-center justify-center gap-2.5 bg-emerald-600 hover:bg-emerald-700 text-white px-8 md:px-12 py-3.5 md:py-4 rounded-2xl font-black text-xs md:text-sm shadow-xl shadow-emerald-500/20 dark:shadow-none hover:shadow-emerald-500/30 hover:scale-[1.02] active:scale-95 transition-all cursor-pointer uppercase tracking-widest">
+								className="w-full sm:w-auto flex items-center justify-center gap-2.5 bg-emerald-600 hover:bg-emerald-700 text-white px-8 md:px-12 py-3.5 md:py-4 rounded-2xl font-black text-xs md:text-sm shadow-xl shadow-emerald-500/20 dark:shadow-none hover:shadow-emerald-500/30 hover:scale-[1.02] active:scale-95 transition-all cursor-pointer uppercase tracking-widest">
 								<FileText size={18} />
 								GERAR RESUMO DO PEDIDO
 							</button>
@@ -1577,7 +1589,17 @@ export default function EstoquePedidosPage() {
 								</div>
 
 								<div className="p-4 md:p-5 bg-slate-50 dark:bg-slate-800/50 border-t border-slate-100 dark:border-slate-800 flex flex-col items-center gap-2.5 transition-colors print:hidden">
-									<div className="grid grid-cols-1 sm:grid-cols-3 items-stretch gap-2.5 w-full max-w-lg">
+									<div className="grid grid-cols-1 sm:grid-cols-4 items-stretch gap-2.5 w-full max-w-2xl">
+										<button
+											onClick={() => {
+												setShowSummary(false);
+												setShowPartialPreview(true);
+											}}
+											className="flex items-center justify-center gap-2 bg-slate-800 hover:bg-slate-900 text-white px-3 py-3 rounded-2xl font-black text-xs uppercase tracking-wider shadow-md transition-all cursor-pointer"
+											title="Abrir tabela de conferência do pedido parcial">
+											<Eye size={16} />
+											<span>Revisar Parcial</span>
+										</button>
 										<button
 											onClick={handleCopySummary}
 											disabled={activeItems.length === 0}
@@ -1601,6 +1623,508 @@ export default function EstoquePedidosPage() {
 									</div>
 									<button
 										onClick={() => setShowSummary(false)}
+										className="w-full sm:w-auto min-w-[120px] px-5 py-2 rounded-xl font-black text-xs uppercase tracking-widest text-slate-500 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-800 hover:shadow-sm transition-all cursor-pointer border border-transparent hover:border-slate-200 dark:hover:border-slate-700">
+										Fechar
+									</button>
+								</div>
+							</div>
+						);
+					})()}
+				</div>
+			)}
+
+			{/* Modal de Revisão do Pedido Parcial (Tabela Simplificada para Impressão) */}
+			{showPartialPreview && (
+				<div id="modal-pedido-parcial-print" className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-2 sm:p-4 md:p-6 animate-in fade-in duration-200">
+					{(() => {
+						const allFlavors = sortStockEntries(Object.entries(STOCK_LABELS)).filter(([key]) => !isSorvete(key));
+						const itemsWithOrder = allFlavors.filter(([key]) => (customOrderPackages[key as keyof StockData] || 0) > 0);
+						const displayedFlavors = partialOnlyWithOrder && itemsWithOrder.length > 0 ? itemsWithOrder : allFlavors;
+
+						let totalBoxes = 0;
+						let totalPackages = 0;
+						let baseTotalVal = 0;
+
+						allFlavors.forEach(([key]) => {
+							const itemKey = key as keyof StockData;
+							const qty = customOrderPackages[itemKey] || 0;
+							const pricePerPkg = packagePrices[itemKey] ?? DEFAULT_PACKAGE_PRICES[itemKey] ?? 0;
+							const boxSize = boxSizes[itemKey] || 1;
+							const boxesCount = Math.ceil(qty / boxSize);
+
+							if (qty > 0) {
+								totalPackages += qty;
+								totalBoxes += boxesCount;
+								baseTotalVal += qty * pricePerPkg;
+							}
+						});
+
+						const finalTotalVal = baseTotalVal * 1.08;
+
+						const generatePartialText = () => {
+							if (itemsWithOrder.length === 0) return "";
+							let text = `*RESUMO DO PEDIDO PARCIAL*\n`;
+							text += `Data: ${new Date().toLocaleDateString("pt-BR")} às ${new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}\n\n`;
+							text += `*ITENS A PEDIR:*\n`;
+
+							itemsWithOrder.forEach(([key, label]) => {
+								const itemKey = key as keyof StockData;
+								const qty = customOrderPackages[itemKey] || 0;
+								const boxSize = boxSizes[itemKey] || 1;
+								const boxesCount = Math.ceil(qty / boxSize);
+								const caixasLabel = boxesCount === 1 ? "cx" : "cxs";
+								text += `• ${label}: *${boxesCount} ${caixasLabel}* (${qty} pcts)\n`;
+							});
+
+							text += `\n━━━━━━━━━━━━━━━━━━━━\n`;
+							text += `*Total de Caixas:* ${totalBoxes} ${totalBoxes === 1 ? "caixa" : "caixas"}\n`;
+							text += `*Total de Pacotes:* ${totalPackages} pacotes\n`;
+							text += `*Valor Final Base:* R$ ${baseTotalVal.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}\n`;
+							text += `*Valor Final com Impostos (8%):* R$ ${finalTotalVal.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+							return text;
+						};
+
+						const handlePartialWhatsApp = async () => {
+							const text = generatePartialText();
+							if (!text) return;
+
+							const userAgent = typeof navigator !== "undefined" ? navigator.userAgent || "" : "";
+							const isMobileUserAgent = /Android|iPhone|iPad|iPod|webOS|BlackBerry|IEMobile|Opera Mini/i.test(userAgent);
+							const isSmallScreen = typeof window !== "undefined" ? window.innerWidth <= 768 : false;
+							const isMobile = isMobileUserAgent || isSmallScreen;
+
+							if (isMobile && typeof navigator !== "undefined" && typeof navigator.share === "function") {
+								try {
+									await navigator.share({
+										title: `Pedido Parcial de Estoque - ${new Date().toLocaleDateString("pt-BR")}`,
+										text: text,
+									});
+									return;
+								} catch (err: any) {
+									if (err.name === "AbortError") return;
+									console.warn("Navigator share falhou, tentando fallback:", err);
+								}
+							}
+
+							const encodedText = encodeURIComponent(text);
+							if (isMobile) {
+								window.location.href = `whatsapp://send?text=${encodedText}`;
+								setTimeout(() => {
+									window.location.href = `https://api.whatsapp.com/send?text=${encodedText}`;
+								}, 700);
+							} else {
+								window.open(`https://web.whatsapp.com/send?text=${encodedText}`, "_blank");
+							}
+						};
+
+						const handlePartialCopy = async () => {
+							const text = generatePartialText();
+							if (!text) return;
+							try {
+								await navigator.clipboard.writeText(text);
+								setCopiedPartialSummary(true);
+								setTimeout(() => setCopiedPartialSummary(false), 2500);
+							} catch (err) {
+								console.error("Falha ao copiar resumo parcial:", err);
+							}
+						};
+
+						const handlePartialPrint = () => {
+							const userAgent = typeof navigator !== "undefined" ? navigator.userAgent || "" : "";
+							const isMobileUserAgent = /Android|iPhone|iPad|iPod|webOS|BlackBerry|IEMobile|Opera Mini/i.test(userAgent);
+							const isSmallScreen = typeof window !== "undefined" ? window.innerWidth <= 768 : false;
+							const isMobile = isMobileUserAgent || isSmallScreen;
+
+							if (isMobile) {
+								const printWindow = window.open("", "_blank");
+								if (printWindow) {
+									const dateStr = `${new Date().toLocaleDateString("pt-BR")} às ${new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}`;
+									const storeHeadersHtml = STORE_ORDER.map((sId) => `<th style="border: 1px solid #333; padding: 4px; font-size: 8.5pt;">${STORE_NAMES[sId] || sId}</th>`).join("");
+									
+									const rowsHtml = displayedFlavors.map(([key, label]) => {
+										const itemKey = key as keyof StockData;
+										const boxSize = boxSizes[itemKey] || 1;
+										const currentQty = customOrderPackages[itemKey] || 0;
+										const boxes = currentQty > 0 ? Math.ceil(currentQty / boxSize) : 0;
+										const totalStock = allData.reduce((sum, s) => sum + (s.stock[itemKey] || 0), 0);
+										const desired = desiredData[itemKey] || 0;
+
+										const storeCellsHtml = STORE_ORDER.map((sId) => {
+											const store = allData.find((s) => s.id === sId);
+											return `<td style="border: 1px solid #ccc; padding: 4px; text-align: center; font-size: 8.5pt;">${store?.stock[itemKey] || 0}</td>`;
+										}).join("");
+
+										return `<tr>
+											<td style="border: 1px solid #ccc; padding: 4px; font-size: 8.5pt; text-align: left; font-weight: bold;">${label} <span style="font-size: 7.5pt; color: #666; font-weight: normal;">(${boxSize})</span></td>
+											${storeCellsHtml}
+											<td style="border: 1px solid #ccc; padding: 4px; text-align: center; font-size: 8.5pt; font-weight: bold;">${totalStock}</td>
+											<td style="border: 1px solid #ccc; padding: 4px; text-align: center; font-size: 8.5pt;">${desired}</td>
+											<td style="border: 1px solid #333; padding: 4px; text-align: center; font-size: 9pt; font-weight: bold;">${currentQty > 0 ? `${currentQty} pcts` : "-"}</td>
+											<td style="border: 1px solid #333; padding: 4px; text-align: center; font-size: 9pt; font-weight: bold; color: #1e40af;">${boxes > 0 ? `${boxes} cx` : "-"}</td>
+										</tr>`;
+									}).join("");
+
+									printWindow.document.write(`<!DOCTYPE html>
+									<html>
+										<head>
+											<meta charset="utf-8">
+											<meta name="viewport" content="width=device-width, initial-scale=1.0">
+											<title>Pedido Parcial de Estoque</title>
+											<style>
+												body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; padding: 15px; color: #111; margin: 0; }
+												h2 { font-size: 16px; margin: 0 0 4px 0; text-transform: uppercase; text-align: center; }
+												p.date { font-size: 11px; color: #666; margin: 0 0 12px 0; text-align: center; }
+												table { width: 100%; border-collapse: collapse; margin-bottom: 12px; }
+												th { background: #f2f2f2; text-transform: uppercase; }
+												.totals { border-top: 2px solid #333; padding-top: 8px; font-size: 12px; }
+												.totals div { display: flex; justify-content: space-between; margin-bottom: 4px; }
+												.totals .final { font-weight: bold; font-size: 14px; border-top: 1px solid #ddd; padding-top: 4px; }
+											</style>
+										</head>
+										<body>
+											<h2>Relatório de Pedido Parcial de Estoque</h2>
+											<p class="date">${dateStr}</p>
+											<table>
+												<thead>
+													<tr>
+														<th style="border: 1px solid #333; padding: 4px; text-align: left; font-size: 8.5pt;">Sabor (cx)</th>
+														${storeHeadersHtml}
+														<th style="border: 1px solid #333; padding: 4px; font-size: 8.5pt;">Total</th>
+														<th style="border: 1px solid #333; padding: 4px; font-size: 8.5pt;">Meta</th>
+														<th style="border: 1px solid #333; padding: 4px; font-size: 8.5pt;">A Pedir</th>
+														<th style="border: 1px solid #333; padding: 4px; font-size: 8.5pt;">Caixas</th>
+													</tr>
+												</thead>
+												<tbody>${rowsHtml}</tbody>
+											</table>
+											<div class="totals">
+												<div><span>Total de Caixas a Pedir:</span><strong>${totalBoxes} ${totalBoxes === 1 ? "caixa" : "caixas"}</strong></div>
+												<div><span>Total de Pacotes a Pedir:</span><strong>${totalPackages} pacotes</strong></div>
+												<div><span>Valor Estimado Base:</span><span>R$ ${baseTotalVal.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></div>
+												<div class="final"><span>Valor Final com Impostos (8%):</span><strong>R$ ${finalTotalVal.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong></div>
+											</div>
+											<script>
+												window.onload = function() {
+													setTimeout(function() { window.print(); }, 300);
+												};
+											</script>
+										</body>
+									</html>`);
+									printWindow.document.close();
+									return;
+								}
+							}
+
+							window.print();
+						};
+
+						return (
+							<div className="bg-white dark:bg-slate-900 rounded-3xl w-full max-w-full sm:max-w-4xl md:max-w-5xl shadow-2xl overflow-hidden flex flex-col max-h-[92vh] border border-slate-200 dark:border-slate-800">
+								{/* Modal Header */}
+								<div className="p-4 md:p-5 border-b border-slate-100 dark:border-slate-800 flex flex-wrap items-center justify-between gap-3 print:hidden">
+									<div>
+										<div className="flex items-center gap-2">
+											<Eye size={18} className="text-blue-600 dark:text-blue-400" />
+											<h2 className="text-base md:text-lg font-black text-slate-800 dark:text-slate-100 uppercase tracking-wide">
+												Revisão do Pedido Parcial
+											</h2>
+										</div>
+										<span className="text-xs font-bold text-slate-400 block mt-0.5">
+											{new Date().toLocaleDateString("pt-BR")} às {new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
+										</span>
+									</div>
+
+									<div className="flex items-center gap-3">
+										<label className="flex items-center gap-2 cursor-pointer bg-slate-100 dark:bg-slate-800 px-3 py-1.5 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">
+											<input
+												type="checkbox"
+												checked={partialOnlyWithOrder}
+												onChange={(e) => setPartialOnlyWithOrder(e.target.checked)}
+												className="w-3.5 h-3.5 rounded text-blue-600 focus:ring-0 cursor-pointer"
+											/>
+											<span>Apenas com pedido ({itemsWithOrder.length})</span>
+										</label>
+
+										<div className="px-3 py-1.5 rounded-xl bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 text-xs md:text-sm font-black whitespace-nowrap">
+											{totalPackages} pcts ({totalBoxes} {totalBoxes === 1 ? "cx" : "cxs"})
+										</div>
+									</div>
+								</div>
+
+								{/* Modal Content - Table Preview */}
+								<div className="p-3 md:p-5 overflow-y-auto custom-scrollbar flex-1 print:overflow-visible print:p-0">
+									{displayedFlavors.length > 0 ? (
+										<div className="space-y-4">
+											{/* Preview Table on Screen (sem botões, apenas informações) */}
+											<div className="overflow-x-auto rounded-2xl border border-slate-200 dark:border-slate-800 print:hidden">
+												<table className="w-full border-collapse text-left">
+													<thead>
+														<tr className="bg-slate-50 dark:bg-slate-800/80 border-b border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 text-xs uppercase font-black">
+															<th className="p-3">SABOR (CX)</th>
+															{STORE_ORDER.map((sId) => (
+																<th key={sId} className="p-3 text-center border-l border-slate-200 dark:border-slate-700">
+																	{STORE_NAMES[sId] || sId}
+																</th>
+															))}
+															<th className="p-3 text-center border-l border-slate-200 dark:border-slate-700">TOTAL ESTOQUE</th>
+															<th className="p-3 text-center border-l border-slate-200 dark:border-slate-700">DESEJÁVEL</th>
+															<th className="p-3 text-center border-l-2 border-slate-300 dark:border-slate-600 bg-rose-50/40 dark:bg-rose-950/20 text-rose-700 dark:text-rose-300">
+																PACOTES A PEDIR
+															</th>
+															<th className="p-3 text-center border-l border-slate-200 dark:border-slate-700 bg-blue-50/40 dark:bg-blue-950/20 text-blue-700 dark:text-blue-300">
+																CAIXAS
+															</th>
+														</tr>
+													</thead>
+													<tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+														{displayedFlavors.map(([key, label]) => {
+															const itemKey = key as keyof StockData;
+															const boxSize = boxSizes[itemKey] || 1;
+															const currentQty = customOrderPackages[itemKey] || 0;
+															const boxes = currentQty > 0 ? Math.ceil(currentQty / boxSize) : 0;
+															const totalStock = allData.reduce((sum, s) => sum + (s.stock[itemKey] || 0), 0);
+															const desired = desiredData[itemKey] || 0;
+															const isOrdered = currentQty > 0;
+
+															return (
+																<tr
+																	key={key}
+																	className={`hover:bg-slate-50/60 dark:hover:bg-slate-800/50 transition-colors ${
+																		isOrdered ? "bg-white dark:bg-slate-900" : "opacity-60 bg-slate-50/30 dark:bg-slate-900/30"
+																	}`}>
+																	<td className="p-3 text-xs md:text-sm font-black text-slate-800 dark:text-slate-100 uppercase">
+																		<div className="flex items-center gap-1.5">
+																			<span>{label}</span>
+																			<span className="text-[0.68rem] text-slate-400 dark:text-slate-500 font-normal">
+																				({boxSize})
+																			</span>
+																		</div>
+																	</td>
+																	{STORE_ORDER.map((sId) => {
+																		const store = allData.find((s) => s.id === sId);
+																		const storeStock = store?.stock[itemKey] || 0;
+																		return (
+																			<td key={sId} className="p-3 text-center border-l border-slate-100 dark:border-slate-800 text-xs md:text-sm font-bold text-slate-600 dark:text-slate-300">
+																				{storeStock}
+																			</td>
+																		);
+																	})}
+																	<td className="p-3 text-center border-l border-slate-100 dark:border-slate-800 text-xs md:text-sm font-black text-slate-700 dark:text-slate-200">
+																		{totalStock}
+																	</td>
+																	<td className="p-3 text-center border-l border-slate-100 dark:border-slate-800 text-xs md:text-sm font-bold text-slate-500 dark:text-slate-400">
+																		{desired > 0 ? desired : "-"}
+																	</td>
+																	<td className="p-3 text-center border-l-2 border-slate-200 dark:border-slate-700 bg-rose-50/20 dark:bg-rose-950/10">
+																		{currentQty > 0 ? (
+																			<span className="text-sm md:text-base font-black text-rose-600 dark:text-rose-400">
+																				{currentQty} pcts
+																			</span>
+																		) : (
+																			<span className="text-slate-300 dark:text-slate-600 text-xs font-bold">-</span>
+																		)}
+																	</td>
+																	<td className="p-3 text-center border-l border-slate-100 dark:border-slate-800 bg-blue-50/20 dark:bg-blue-950/10">
+																		{boxes > 0 ? (
+																			<span className="text-sm md:text-base font-black text-blue-600 dark:text-blue-400">
+																				{boxes} {boxes === 1 ? "cx" : "cxs"}
+																			</span>
+																		) : (
+																			<span className="text-slate-300 dark:text-slate-600 text-xs font-bold">-</span>
+																		)}
+																	</td>
+																</tr>
+															);
+														})}
+													</tbody>
+													<tfoot>
+														<tr className="bg-slate-100/90 dark:bg-slate-800/90 border-t-2 border-slate-300 dark:border-slate-600 font-black text-xs md:text-sm">
+															<td className="p-3 uppercase text-slate-800 dark:text-slate-100">
+																TOTAL
+															</td>
+															{STORE_ORDER.map((sId) => {
+																const storeTotal = displayedFlavors.reduce((sum, [key]) => {
+																	const store = allData.find((s) => s.id === sId);
+																	return sum + (store?.stock[key as keyof StockData] || 0);
+																}, 0);
+																return (
+																	<td key={sId} className="p-3 text-center border-l border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300">
+																		{storeTotal}
+																	</td>
+																);
+															})}
+															<td className="p-3 text-center border-l border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200">
+																{displayedFlavors.reduce((sum, [key]) => sum + allData.reduce((acc, s) => acc + (s.stock[key as keyof StockData] || 0), 0), 0)}
+															</td>
+															<td className="p-3 text-center border-l border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400">
+																{displayedFlavors.reduce((sum, [key]) => sum + (desiredData[key as keyof StockData] || 0), 0)}
+															</td>
+															<td className="p-3 text-center border-l-2 border-slate-300 dark:border-slate-600 text-rose-600 dark:text-rose-400 font-black">
+																{totalPackages > 0 ? `${totalPackages} pcts` : "0 Pacotes"}
+															</td>
+															<td className="p-3 text-center border-l border-slate-200 dark:border-slate-700 text-blue-600 dark:text-blue-400 font-black">
+																{totalBoxes > 0 ? `${totalBoxes} ${totalBoxes === 1 ? "cx" : "cxs"}` : "0 Caixas"}
+															</td>
+														</tr>
+													</tfoot>
+												</table>
+											</div>
+
+											{/* Mini Totais de Conferência */}
+											<div className="grid grid-cols-2 sm:grid-cols-4 gap-2 md:gap-3 print:hidden">
+												<div className="bg-slate-50 dark:bg-slate-800/80 p-3 rounded-2xl border border-slate-200 dark:border-slate-700">
+													<span className="text-[0.68rem] font-bold text-slate-400 uppercase block">Total de Pacotes</span>
+													<span className="text-base md:text-lg font-black text-rose-600 dark:text-rose-400 mt-0.5 block">{totalPackages} pcts</span>
+												</div>
+												<div className="bg-slate-50 dark:bg-slate-800/80 p-3 rounded-2xl border border-slate-200 dark:border-slate-700">
+													<span className="text-[0.68rem] font-bold text-slate-400 uppercase block">Total de Caixas</span>
+													<span className="text-base md:text-lg font-black text-blue-600 dark:text-blue-400 mt-0.5 block">{totalBoxes} cxs</span>
+												</div>
+												<div className="bg-slate-50 dark:bg-slate-800/80 p-3 rounded-2xl border border-slate-200 dark:border-slate-700">
+													<span className="text-[0.68rem] font-bold text-slate-400 uppercase block">Subtotal (Base)</span>
+													<span className="text-base md:text-lg font-black text-slate-800 dark:text-slate-100 mt-0.5 block">R$ {baseTotalVal.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+												</div>
+												<div className="bg-emerald-50 dark:bg-emerald-950/40 p-3 rounded-2xl border border-emerald-200 dark:border-emerald-800/60">
+													<span className="text-[0.68rem] font-bold text-emerald-700 dark:text-emerald-400 uppercase block">Final (+8% imp.)</span>
+													<span className="text-base md:text-lg font-black text-emerald-700 dark:text-emerald-300 mt-0.5 block">R$ {finalTotalVal.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+												</div>
+											</div>
+
+											{/* Visão de Impressão da Tabela Simplificada */}
+											<div className="hidden print:block w-full text-black font-sans text-[8pt] leading-tight max-w-[190mm] mx-auto">
+												<div className="mb-2 text-center">
+													<h2 className="text-[11pt] font-black uppercase tracking-wider text-black">
+														Relatório de Pedido Parcial de Estoque
+													</h2>
+													<p className="text-[7.5pt] text-neutral-600 mt-0.5">
+														{new Date().toLocaleDateString("pt-BR")} às {new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
+													</p>
+												</div>
+
+												<table className="w-full border-collapse border border-slate-600 text-[8pt]">
+													<thead>
+														<tr className="bg-slate-200 text-black font-black uppercase text-[7.5pt]">
+															<th className="border border-slate-600 p-1 text-left">Sabor (cx)</th>
+															{STORE_ORDER.map((sId) => (
+																<th key={sId} className="border border-slate-600 p-1 text-center">
+																	{STORE_NAMES[sId] || sId}
+																</th>
+															))}
+															<th className="border border-slate-600 p-1 text-center">Estoque</th>
+															<th className="border border-slate-600 p-1 text-center">Meta</th>
+															<th className="border border-slate-600 p-1 text-center bg-slate-300 font-black">A Pedir</th>
+															<th className="border border-slate-600 p-1 text-center bg-slate-300 font-black">Caixas</th>
+														</tr>
+													</thead>
+													<tbody>
+														{displayedFlavors.map(([key, label]) => {
+															const itemKey = key as keyof StockData;
+															const boxSize = boxSizes[itemKey] || 1;
+															const currentQty = customOrderPackages[itemKey] || 0;
+															const boxes = currentQty > 0 ? Math.ceil(currentQty / boxSize) : 0;
+															const totalStock = allData.reduce((sum, s) => sum + (s.stock[itemKey] || 0), 0);
+															const desired = desiredData[itemKey] || 0;
+
+															return (
+																<tr key={key} className="border-b border-slate-400">
+																	<td className="border border-slate-400 p-1 font-bold text-left">
+																		{label} <span className="font-normal text-[7pt] text-slate-600">({boxSize})</span>
+																	</td>
+																	{STORE_ORDER.map((sId) => {
+																		const store = allData.find((s) => s.id === sId);
+																		return (
+																			<td key={sId} className="border border-slate-400 p-1 text-center">
+																				{store?.stock[itemKey] || 0}
+																			</td>
+																		);
+																	})}
+																	<td className="border border-slate-400 p-1 text-center font-bold">
+																		{totalStock}
+																	</td>
+																	<td className="border border-slate-400 p-1 text-center">
+																		{desired > 0 ? desired : "-"}
+																	</td>
+																	<td className="border border-slate-600 p-1 text-center font-black">
+																		{currentQty > 0 ? `${currentQty} pcts` : "-"}
+																	</td>
+																	<td className="border border-slate-600 p-1 text-center font-black">
+																		{boxes > 0 ? `${boxes} cx` : "-"}
+																	</td>
+																</tr>
+															);
+														})}
+													</tbody>
+													<tfoot>
+														<tr className="bg-slate-200 border-t-2 border-slate-800 font-black text-[8pt]">
+															<td className="border border-slate-800 p-1 uppercase text-left">TOTAL</td>
+															{STORE_ORDER.map((sId) => {
+																const storeTotal = displayedFlavors.reduce((sum, [key]) => {
+																	const store = allData.find((s) => s.id === sId);
+																	return sum + (store?.stock[key as keyof StockData] || 0);
+																}, 0);
+																return (
+																	<td key={sId} className="border border-slate-800 p-1 text-center">
+																		{storeTotal}
+																	</td>
+																);
+															})}
+															<td className="border border-slate-800 p-1 text-center">
+																{displayedFlavors.reduce((sum, [key]) => sum + allData.reduce((acc, s) => acc + (s.stock[key as keyof StockData] || 0), 0), 0)}
+															</td>
+															<td className="border border-slate-800 p-1 text-center">
+																{displayedFlavors.reduce((sum, [key]) => sum + (desiredData[key as keyof StockData] || 0), 0)}
+															</td>
+															<td className="border border-slate-800 p-1 text-center font-black">
+																{totalPackages} pcts
+															</td>
+															<td className="border border-slate-800 p-1 text-center font-black">
+																{totalBoxes} cxs
+															</td>
+														</tr>
+													</tfoot>
+												</table>
+
+												<div className="pt-2 text-[8pt] flex justify-between items-center border-t border-slate-400 mt-2">
+													<div><strong>Total de Caixas:</strong> {totalBoxes} {totalBoxes === 1 ? "caixa" : "caixas"} ({totalPackages} pacotes)</div>
+													<div><strong>Subtotal:</strong> R$ {baseTotalVal.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+													<div><strong>Total com Impostos (8%):</strong> R$ {finalTotalVal.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+												</div>
+											</div>
+										</div>
+									) : (
+										<div className="text-center py-12">
+											<p className="text-slate-400 dark:text-slate-500 font-bold uppercase tracking-widest text-xs md:text-sm">
+												Nenhum item adicionado ao pedido parcial até o momento.
+											</p>
+										</div>
+									)}
+								</div>
+
+								{/* Modal Footer with Required Action Buttons */}
+								<div className="p-4 md:p-5 bg-slate-50 dark:bg-slate-800/50 border-t border-slate-100 dark:border-slate-800 flex flex-col items-center gap-2.5 transition-colors print:hidden">
+									<div className="grid grid-cols-1 sm:grid-cols-3 items-stretch gap-2.5 w-full max-w-xl">
+										<button
+											onClick={handlePartialPrint}
+											className="flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-3 rounded-2xl font-black text-xs uppercase tracking-wider shadow-md shadow-blue-500/20 dark:shadow-none transition-all cursor-pointer">
+											<Printer size={16} />
+											<span>Imprimir pedido parcial</span>
+										</button>
+										<button
+											onClick={handlePartialWhatsApp}
+											disabled={itemsWithOrder.length === 0}
+											className="flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-3 rounded-2xl font-black text-xs uppercase tracking-wider shadow-md shadow-emerald-500/20 dark:shadow-none transition-all disabled:opacity-50 cursor-pointer">
+											<span>Enviar no WhatsApp</span>
+										</button>
+										<button
+											onClick={handlePartialCopy}
+											disabled={itemsWithOrder.length === 0}
+											className="flex items-center justify-center gap-2 bg-slate-700 hover:bg-slate-800 text-white px-4 py-3 rounded-2xl font-black text-xs uppercase tracking-wider shadow-md transition-all disabled:opacity-50 cursor-pointer">
+											{copiedPartialSummary ? <Check size={16} className="text-emerald-400" /> : <Copy size={16} />}
+											<span>{copiedPartialSummary ? "Copiado!" : "Copiar Resumo"}</span>
+										</button>
+									</div>
+									<button
+										onClick={() => setShowPartialPreview(false)}
 										className="w-full sm:w-auto min-w-[120px] px-5 py-2 rounded-xl font-black text-xs uppercase tracking-widest text-slate-500 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-800 hover:shadow-sm transition-all cursor-pointer border border-transparent hover:border-slate-200 dark:hover:border-slate-700">
 										Fechar
 									</button>
