@@ -741,7 +741,12 @@ export default function EstoquePedidosPage() {
 								<thead>
 									<tr className="bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700">
 										<th className="p-3 md:p-5 text-left text-sm md:text-lg font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest min-w-[7.5rem] md:min-w-[11rem] sticky left-0 bg-slate-50 dark:bg-slate-800 z-10">
-											SABOR
+											<div className="flex items-center gap-1.5 flex-wrap">
+												<span>SABOR</span>
+												<span className="text-[0.65rem] md:text-xs font-semibold normal-case tracking-normal opacity-75">
+													(pacotes/caixa)
+												</span>
+											</div>
 										</th>
 										{STORE_ORDER.map((storeId) => (
 											<th
@@ -751,13 +756,19 @@ export default function EstoquePedidosPage() {
 												<div className="text-xs md:text-sm font-bold text-slate-400 dark:text-slate-500 normal-case tracking-normal mt-0.5">
 													Estoque
 												</div>
+												<div className="text-[0.65rem] md:text-xs font-semibold text-slate-400 dark:text-slate-500 normal-case tracking-normal">
+													(Faltantes)
+												</div>
 											</th>
 										))}
 										<th className="p-3 md:p-5 text-center text-sm md:text-lg font-black text-slate-800 dark:text-slate-200 uppercase tracking-wider min-w-[6.5rem] md:min-w-[9rem] border-l-2 border-slate-200 dark:border-slate-700 bg-slate-100/50 dark:bg-slate-800/80">
 											TOTAL
 										</th>
 										<th className="p-3 md:p-5 text-center text-sm md:text-lg font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest min-w-[6rem] md:min-w-[8.5rem] border-l border-slate-200/60 dark:border-slate-700/60">
-											DESEJÁVEL
+											<div>DESEJÁVEL</div>
+											<div className="text-[0.65rem] md:text-xs font-semibold text-slate-400 dark:text-slate-500 normal-case tracking-normal mt-0.5">
+												(Faltantes)
+											</div>
 										</th>
 										<th className="p-3 md:p-5 text-center text-sm md:text-lg font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest min-w-[7.5rem] md:min-w-[12rem] border-l border-slate-200/60 dark:border-slate-700/60">
 											PACOTES A PEDIR
@@ -831,16 +842,21 @@ export default function EstoquePedidosPage() {
 																	</div>
 																	{storeDesiredVal > 0 ? (
 																		<span
-																			className={`text-sm md:text-base font-black mt-1 leading-none ${
-																				storeDiff < 0
-																					? "text-rose-600 dark:text-rose-400"
-																					: "text-blue-600 dark:text-blue-400"
-																			}`}
+																			className="text-lg md:text-xl font-bold mt-1 leading-none text-slate-700 dark:text-slate-200 opacity-80"
 																			title={`Meta em ${STORE_NAMES[storeId]}: ${storeDesiredVal} (${storeDiff < 0 ? `faltam ${Math.abs(storeDiff)}` : storeDiff > 0 ? `sobram ${storeDiff}` : "na meta"})`}>
-																			{storeDiff < 0 ? `(${storeDiff})` : storeDiff > 0 ? `(+${storeDiff})` : "(0)"}
+																			(
+																			<span
+																				className={
+																					storeDiff < 0
+																						? "text-rose-600 dark:text-rose-400"
+																						: "text-blue-600 dark:text-blue-400"
+																				}>
+																				{storeDiff < 0 ? storeDiff : storeDiff > 0 ? `+${storeDiff}` : "0"}
+																			</span>
+																			)
 																		</span>
 																	) : (
-																		<span className="text-sm md:text-base font-black mt-1 leading-none text-slate-300 dark:text-slate-600">
+																		<span className="text-lg md:text-xl font-bold mt-1 leading-none text-slate-300 dark:text-slate-600 opacity-80">
 																			-
 																		</span>
 																	)}
@@ -882,13 +898,17 @@ export default function EstoquePedidosPage() {
 																			<span className="text-2xl md:text-3xl font-black leading-none text-slate-800 dark:text-slate-200">
 																				{desiredQty}
 																			</span>
-																			<span
-																				className={`text-sm md:text-base font-black mt-1 leading-none ${
-																					diff < 0
-																						? "text-rose-600 dark:text-rose-400"
-																						: "text-blue-600 dark:text-blue-400"
-																				}`}>
-																				{diff < 0 ? `(${diff})` : diff > 0 ? `(+${diff})` : "(0)"}
+																			<span className="text-lg md:text-xl font-bold mt-1 leading-none text-slate-700 dark:text-slate-200 opacity-80">
+																				(
+																				<span
+																					className={
+																						diff < 0
+																							? "text-rose-600 dark:text-rose-400"
+																							: "text-blue-600 dark:text-blue-400"
+																					}>
+																					{diff < 0 ? diff : diff > 0 ? `+${diff}` : "0"}
+																				</span>
+																				)
 																			</span>
 																		</>
 																	) : (
@@ -919,7 +939,7 @@ export default function EstoquePedidosPage() {
 																	<span
 																		className={`text-2xl md:text-3xl font-black leading-none min-w-[2.5rem] text-center ${
 																			currentOrderQty > 0
-																				? "text-rose-600 dark:text-rose-400"
+																				? "text-slate-900 dark:text-slate-100"
 																				: "text-slate-300 dark:text-slate-600"
 																		}`}>
 																		{currentOrderQty}
