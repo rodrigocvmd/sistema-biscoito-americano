@@ -154,8 +154,12 @@ export default function EstoqueAtualPage() {
 					.text-blue-700, .text-blue-600, .text-slate-600, .text-slate-400, .text-slate-300, .text-slate-900, .text-slate-100 {
 						color: black !important;
 					}
-					.bg-blue-50, .dark\\:bg-blue-900\\/30, .bg-slate-50, .dark\\:bg-slate-800, .bg-white {
+					.bg-blue-50, .dark\\:bg-blue-900\\/30, .bg-slate-50, .dark\\:bg-slate-800, .bg-white, .bg-slate-100\\/80, .dark\\:bg-slate-800\\/80, .bg-slate-100\\/90, .dark\\:bg-slate-800\\/90, .bg-blue-50\\/50 {
 						background: transparent !important;
+					}
+					tr[class*="bg-slate-100"], tr[class*="bg-slate-100"] td, tr[class*="bg-slate-100"] th {
+						background: transparent !important;
+						background-color: transparent !important;
 					}
 					/* Layout adjustments to save space */
 					.p-6 { padding: 2px 6px !important; }

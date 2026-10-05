@@ -631,7 +631,7 @@ export default function EstoquePedidosPage() {
 							: "text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-900"
 					}`}>
 					<FileText size={16} />
-					COMPARATIVO DE ESTOQUE
+					PEDIDO
 				</button>
 				<button
 					onClick={() => setActiveSubTab("configuracoes")}
@@ -715,13 +715,6 @@ export default function EstoquePedidosPage() {
 								className="flex-1 sm:flex-none justify-center flex items-center gap-2 md:gap-3 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-800 px-3 md:px-4 py-2.5 md:py-3 rounded-2xl font-black shadow-sm transition-all cursor-pointer text-xs md:text-sm">
 								{hideOpen ? <Eye size={16} /> : <EyeOff size={16} />}
 								{hideOpen ? "MOSTRAR ABERTOS" : "OCULTAR ABERTOS"}
-							</button>
-
-							<button
-								onClick={handleReviewOrder}
-								className="flex-1 sm:flex-none justify-center flex items-center gap-2 md:gap-2.5 bg-emerald-600 hover:bg-emerald-700 text-white px-4 md:px-6 py-2.5 md:py-3 rounded-2xl font-black shadow-lg shadow-emerald-600/20 dark:shadow-none hover:scale-[1.02] active:scale-95 transition-all cursor-pointer text-xs md:text-sm uppercase tracking-wider">
-								<ShoppingCart size={18} />
-								REVISAR PEDIDO
 							</button>
 						</div>
 					</div>
@@ -1106,9 +1099,9 @@ export default function EstoquePedidosPage() {
 						<div className="flex justify-center items-center py-3">
 							<button
 								onClick={() => setShowSummary(true)}
-								className="flex items-center justify-center gap-2.5 bg-blue-600 hover:bg-blue-700 text-white px-8 md:px-12 py-3.5 md:py-4 rounded-2xl font-black text-xs md:text-sm shadow-xl shadow-blue-500/20 dark:shadow-none hover:shadow-blue-500/30 hover:scale-[1.02] active:scale-95 transition-all cursor-pointer uppercase tracking-widest">
+								className="flex items-center justify-center gap-2.5 bg-emerald-600 hover:bg-emerald-700 text-white px-8 md:px-12 py-3.5 md:py-4 rounded-2xl font-black text-xs md:text-sm shadow-xl shadow-emerald-500/20 dark:shadow-none hover:shadow-emerald-500/30 hover:scale-[1.02] active:scale-95 transition-all cursor-pointer uppercase tracking-widest">
 								<FileText size={18} />
-								GERAR RESUMO
+								GERAR RESUMO DO PEDIDO
 							</button>
 						</div>
 					</div>
