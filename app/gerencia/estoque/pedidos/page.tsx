@@ -54,7 +54,7 @@ const DEFAULT_PACKAGE_PRICES: Partial<Record<keyof StockData, number>> = {
 };
 
 export default function EstoquePedidosPage() {
-	const [activeSubTab, setActiveSubTab] = useState<"comparativo" | "valorPedido" | "desejavel" | "valoresPacote">("comparativo");
+	const [activeSubTab, setActiveSubTab] = useState<"comparativo" | "desejavel" | "valoresPacote">("comparativo");
 	const [loading, setLoading] = useState(true);
 	const [allData, setAllData] = useState<FullStoreData[]>([]);
 	const [realCurrentData, setRealCurrentData] = useState<FullStoreData[]>([]);
@@ -101,6 +101,22 @@ export default function EstoquePedidosPage() {
 
 	const [savingDesired, setSavingDesired] = useState(false);
 	const [savingPackagePrices, setSavingPackagePrices] = useState(false);
+
+	// Order Calculations across all non-ice-cream cookie flavors
+	const cookieOrderEntries = sortStockEntries(Object.entries(STOCK_LABELS)).filter(([key]) => !isSorvete(key));
+	let orderTotalPackages = 0;
+	let orderBaseTotalValue = 0;
+
+	cookieOrderEntries.forEach(([key]) => {
+		const itemKey = key as keyof StockData;
+		const qty = customOrderPackages[itemKey] || 0;
+		const pricePerPkg = packagePrices[itemKey] ?? DEFAULT_PACKAGE_PRICES[itemKey] ?? 0;
+		orderTotalPackages += qty;
+		orderBaseTotalValue += qty * pricePerPkg;
+	});
+
+	const orderTaxValue = orderBaseTotalValue * 0.08;
+	const orderFinalTotalValue = orderBaseTotalValue * 1.08;
 
 
 	// 1. Fetch current real stock data
@@ -478,7 +494,12 @@ export default function EstoquePedidosPage() {
 	};
 
 	const handleReviewOrder = () => {
-		setActiveSubTab("valorPedido");
+		const el = document.getElementById("secao-resumo-pedido");
+		if (el) {
+			el.scrollIntoView({ behavior: "smooth" });
+		} else {
+			setShowSummary(true);
+		}
 	};
 
 	if (loading) {
@@ -621,16 +642,6 @@ export default function EstoquePedidosPage() {
 					}`}>
 					<FileText size={16} />
 					COMPARATIVO DE ESTOQUE
-				</button>
-				<button
-					onClick={handleReviewOrder}
-					className={`flex items-center gap-2 px-3 md:px-4 py-2 rounded-xl text-xs md:text-sm font-black whitespace-nowrap shrink-0 transition-all cursor-pointer ${
-						activeSubTab === "valorPedido"
-							? "bg-slate-105 dark:bg-slate-800 text-blue-600 dark:text-blue-400 border border-slate-200 dark:border-slate-700"
-							: "text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-900"
-					}`}>
-					<Calculator size={16} />
-					VALOR DO PEDIDO
 				</button>
 				<button
 					onClick={() => setActiveSubTab("desejavel")}
@@ -1050,426 +1061,78 @@ export default function EstoquePedidosPage() {
 						</div>
 					</div>
 
-					{/* Botão Inferior: Revisar Pedido */}
-					<div className="flex justify-center items-center py-5 print:hidden">
-						<button
-							onClick={handleReviewOrder}
-							className="flex items-center justify-center gap-2.5 bg-emerald-600 hover:bg-emerald-700 text-white px-8 md:px-12 py-3.5 md:py-4 rounded-2xl font-black text-xs md:text-sm shadow-xl shadow-emerald-500/20 dark:shadow-none hover:shadow-emerald-500/30 hover:scale-[1.02] active:scale-95 transition-all cursor-pointer uppercase tracking-widest">
-							<ShoppingCart size={18} />
-							REVISAR PEDIDO
-						</button>
+					{/* Seção de Totais e Gerar Resumo */}
+					<div id="secao-resumo-pedido" className="mt-8 space-y-6 print:hidden">
+						{/* Summary Cards */}
+						<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
+							<div className="bg-white dark:bg-slate-900 p-4 md:p-5 rounded-2xl md:rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm flex items-center justify-between">
+								<div>
+									<span className="text-[0.7rem] md:text-xs font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider block">
+										Total de Pacotes
+									</span>
+									<span className="text-xl md:text-2xl font-black text-slate-800 dark:text-slate-100 mt-0.5 block">
+										{orderTotalPackages} <span className="text-xs font-bold text-slate-400">pacotes</span>
+									</span>
+								</div>
+								<div className="p-3 rounded-2xl bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400">
+									<Package size={22} />
+								</div>
+							</div>
+
+							<div className="bg-white dark:bg-slate-900 p-4 md:p-5 rounded-2xl md:rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm flex items-center justify-between">
+								<div>
+									<span className="text-[0.7rem] md:text-xs font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider block">
+										Subtotal (Base)
+									</span>
+									<span className="text-xl md:text-2xl font-black text-slate-800 dark:text-slate-100 mt-0.5 block">
+										R$ {orderBaseTotalValue.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+									</span>
+								</div>
+								<div className="p-3 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
+									<DollarSign size={22} />
+								</div>
+							</div>
+
+							<div className="bg-white dark:bg-slate-900 p-4 md:p-5 rounded-2xl md:rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm flex items-center justify-between">
+								<div>
+									<span className="text-[0.7rem] md:text-xs font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider block">
+										Impostos (+8%)
+									</span>
+									<span className="text-xl md:text-2xl font-black text-amber-600 dark:text-amber-400 mt-0.5 block">
+										+ R$ {orderTaxValue.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+									</span>
+								</div>
+								<div className="p-3 rounded-2xl bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400">
+									<Calculator size={22} />
+								</div>
+							</div>
+
+							<div className="bg-gradient-to-br from-emerald-600 to-teal-700 p-4 md:p-5 rounded-2xl md:rounded-3xl text-white shadow-lg shadow-emerald-600/20 flex items-center justify-between">
+								<div>
+									<span className="text-[0.7rem] md:text-xs font-black text-emerald-100 uppercase tracking-wider block">
+										Valor Final com Impostos (8%)
+									</span>
+									<span className="text-xl md:text-2xl font-black text-white mt-0.5 block">
+										R$ {orderFinalTotalValue.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+									</span>
+								</div>
+								<div className="p-3 rounded-2xl bg-white/20 text-white">
+									<ShoppingCart size={22} />
+								</div>
+							</div>
+						</div>
+
+						{/* Botão Gerar Resumo Centralizado */}
+						<div className="flex justify-center items-center py-3">
+							<button
+								onClick={() => setShowSummary(true)}
+								className="flex items-center justify-center gap-2.5 bg-blue-600 hover:bg-blue-700 text-white px-8 md:px-12 py-3.5 md:py-4 rounded-2xl font-black text-xs md:text-sm shadow-xl shadow-blue-500/20 dark:shadow-none hover:shadow-blue-500/30 hover:scale-[1.02] active:scale-95 transition-all cursor-pointer uppercase tracking-widest">
+								<FileText size={18} />
+								GERAR RESUMO
+							</button>
+						</div>
 					</div>
 				</>
-			) : activeSubTab === "valorPedido" ? (
-				// Order Value Calculation View
-				<div className="space-y-6">
-					{(() => {
-						// Lista de sabores sem sorvetes
-						const cookieEntries = sortStockEntries(Object.entries(STOCK_LABELS))
-							.filter(([key]) => !isSorvete(key));
-
-						// Cálculos totais
-						let totalPackages = 0;
-						let baseTotalValue = 0;
-
-						cookieEntries.forEach(([key]) => {
-							const itemKey = key as keyof StockData;
-							const suggested = getSuggestedOrderPackages(itemKey);
-							const qty = customOrderPackages[itemKey] !== undefined ? (customOrderPackages[itemKey] || 0) : suggested;
-							const pricePerPkg = packagePrices[itemKey] ?? DEFAULT_PACKAGE_PRICES[itemKey] ?? 0;
-							
-							totalPackages += qty;
-							baseTotalValue += qty * pricePerPkg;
-						});
-
-						const taxRate = 0.08;
-						const taxValue = baseTotalValue * taxRate;
-						const finalTotalValue = baseTotalValue * 1.08; // Multiplicado por 1.08 conforme solicitado
-
-						const hasCustomModifications = cookieEntries.some(([key]) => {
-							const itemKey = key as keyof StockData;
-							const suggested = getSuggestedOrderPackages(itemKey);
-							const current = customOrderPackages[itemKey] !== undefined ? (customOrderPackages[itemKey] || 0) : suggested;
-							return current !== suggested;
-						});
-
-						const handleCopyOrderSummary = () => {
-							let text = `*RESUMO DO PEDIDO DE ESTOQUE*\n`;
-							text += `Data: ${new Date().toLocaleDateString("pt-BR")} às ${new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}\n\n`;
-							text += `*CAIXAS A PEDIR:*\n`;
-
-							let itemsCount = 0;
-							let totalBoxes = 0;
-
-							cookieEntries.forEach(([key, label]) => {
-								const itemKey = key as keyof StockData;
-								const suggested = getSuggestedOrderPackages(itemKey);
-								const qty = customOrderPackages[itemKey] !== undefined ? (customOrderPackages[itemKey] || 0) : suggested;
-								const boxSize = boxSizes[itemKey] || 1;
-								const boxesCount = Math.ceil(qty / boxSize);
-								const caixasLabel = boxesCount === 1 ? "cx" : "cxs";
-
-								if (qty > 0) {
-									itemsCount++;
-									totalBoxes += boxesCount;
-									text += `• ${label}: *${boxesCount} ${caixasLabel}* (${qty} pcts)\n`;
-								}
-							});
-
-							if (itemsCount === 0) {
-								text += `_Nenhum item adicionado ao pedido._\n`;
-							}
-
-							text += `\n━━━━━━━━━━━━━━━━━━━━\n`;
-							text += `*Total de Caixas:* ${totalBoxes} ${totalBoxes === 1 ? "caixa" : "caixas"}\n`;
-							text += `*Valor Final Base:* R$ ${baseTotalValue.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}\n`;
-							text += `*Valor Final com Impostos (8%):* R$ ${finalTotalValue.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-
-							navigator.clipboard.writeText(text);
-							setCopiedSummary(true);
-							setTimeout(() => setCopiedSummary(false), 2500);
-						};
-
-						return (
-							<>
-								{/* Summary Cards */}
-								<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
-									<div className="bg-white dark:bg-slate-900 p-4 md:p-5 rounded-2xl md:rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm flex items-center justify-between">
-										<div>
-											<span className="text-[0.7rem] md:text-xs font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider block">
-												Total de Pacotes
-											</span>
-											<span className="text-xl md:text-2xl font-black text-slate-800 dark:text-slate-100 mt-0.5 block">
-												{totalPackages} <span className="text-xs font-bold text-slate-400">pacotes</span>
-											</span>
-										</div>
-										<div className="p-3 rounded-2xl bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400">
-											<Package size={22} />
-										</div>
-									</div>
-
-									<div className="bg-white dark:bg-slate-900 p-4 md:p-5 rounded-2xl md:rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm flex items-center justify-between">
-										<div>
-											<span className="text-[0.7rem] md:text-xs font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider block">
-												Subtotal (Base)
-											</span>
-											<span className="text-xl md:text-2xl font-black text-slate-800 dark:text-slate-100 mt-0.5 block">
-												R$ {baseTotalValue.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-											</span>
-										</div>
-										<div className="p-3 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
-											<DollarSign size={22} />
-										</div>
-									</div>
-
-									<div className="bg-white dark:bg-slate-900 p-4 md:p-5 rounded-2xl md:rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm flex items-center justify-between">
-										<div>
-											<span className="text-[0.7rem] md:text-xs font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider block">
-												Impostos (+8%)
-											</span>
-											<span className="text-xl md:text-2xl font-black text-amber-600 dark:text-amber-400 mt-0.5 block">
-												+ R$ {taxValue.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-											</span>
-										</div>
-										<div className="p-3 rounded-2xl bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400">
-											<Calculator size={22} />
-										</div>
-									</div>
-
-									<div className="bg-gradient-to-br from-emerald-600 to-teal-700 p-4 md:p-5 rounded-2xl md:rounded-3xl text-white shadow-lg shadow-emerald-600/20 flex items-center justify-between">
-										<div>
-											<span className="text-[0.7rem] md:text-xs font-black text-emerald-100 uppercase tracking-wider block">
-												Valor Final com Impostos (8%)
-											</span>
-											<span className="text-xl md:text-2xl font-black text-white mt-0.5 block">
-												R$ {finalTotalValue.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-											</span>
-										</div>
-										<div className="p-3 rounded-2xl bg-white/20 text-white">
-											<ShoppingCart size={22} />
-										</div>
-									</div>
-								</div>
-
-								{/* Actions Bar & Botão Topo: Gerar Resumo */}
-								<div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 md:gap-4">
-									<div className="relative flex-1 max-w-full sm:max-w-md group">
-										<Search
-											size={18}
-											className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-500 transition-colors"
-										/>
-										<input
-											type="text"
-											placeholder="Filtrar por sabor..."
-											value={searchTerm}
-											onChange={(e) => setSearchTerm(e.target.value)}
-											className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl py-2.5 md:py-3 pl-12 pr-4 text-xs md:text-sm font-bold text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all shadow-sm"
-										/>
-									</div>
-
-									{hasCustomModifications && (
-										<div className="flex items-center gap-2 sm:gap-3 justify-end flex-wrap sm:flex-nowrap">
-											<button
-												onClick={resetCustomOrderToSuggested}
-												className="flex-1 sm:flex-none justify-center flex items-center gap-2 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-800 px-3 md:px-4 py-2.5 md:py-3 rounded-2xl font-black shadow-sm transition-all cursor-pointer text-xs md:text-sm"
-												title="Redefinir todas as quantidades para o sugerido pelo comparativo do app">
-												<RefreshCw size={16} />
-												RESTAURAR SUGERIDO
-											</button>
-										</div>
-									)}
-										{/* Botão Topo: Gerar Resumo Centralizado */}
-									<div className="flex justify-center items-center py-1">
-									<button
-										onClick={() => setShowSummary(true)}
-										className="flex items-center justify-center gap-2.5 bg-blue-600 hover:bg-blue-700 text-white px-8 md:px-12 py-3 md:py-3.5 rounded-2xl font-black text-xs md:text-sm shadow-lg shadow-blue-500/20 dark:shadow-none hover:shadow-blue-500/30 hover:scale-[1.02] transition-all cursor-pointer uppercase tracking-widest">
-										<FileText size={16} />
-										Gerar Resumo
-									</button>
-								</div>
-								</div>
-
-								
-								{/* Table */}
-								<div className="bg-white dark:bg-slate-900 rounded-2xl md:rounded-[2rem] border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden transition-colors">
-									<div className="overflow-x-auto">
-										<table className="w-full border-collapse">
-											<thead>
-												<tr className="bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700">
-													<th className="p-3 md:p-6 text-left text-xs md:text-[0.9375rem] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest min-w-[7.5rem] md:min-w-[11.25rem]">
-														SABOR / ITEM
-													</th>
-													<th className="p-3 md:p-6 text-center text-xs md:text-[0.9375rem] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest min-w-[7.5rem] md:min-w-[11.25rem]">
-														EDITAR QUANTIDADES
-													</th>
-													<th className="p-3 md:p-6 text-center text-xs md:text-[0.9375rem] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest min-w-[6.5rem] md:min-w-[9.5rem]">
-														PACOTES A PEDIR
-													</th>
-													<th className="p-3 md:p-6 text-center text-xs md:text-[0.9375rem] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest min-w-[6.5rem] md:min-w-[9.5rem]">
-														CAIXAS A PEDIR
-													</th>
-													<th className="p-3 md:p-6 text-center text-xs md:text-[0.9375rem] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest min-w-[6.5rem] md:min-w-[9.5rem]">
-														VALOR / PCT
-													</th>
-													<th className="p-3 md:p-6 text-center text-xs md:text-[0.9375rem] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest min-w-[7.5rem] md:min-w-[11.25rem]">
-														SUBTOTAL (R$)
-													</th>
-													<th className="p-3 md:p-6 text-center text-xs md:text-[0.9375rem] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest min-w-[7.5rem] md:min-w-[11.25rem]">
-														COM IMPOSTOS (1.08x)
-													</th>
-												</tr>
-											</thead>
-											<tbody>
-												{cookieEntries
-													.filter(([_, label]) => label.toLowerCase().includes(searchTerm.toLowerCase()))
-													.map(([key, label]) => {
-														const itemKey = key as keyof StockData;
-														const suggested = getSuggestedOrderPackages(itemKey);
-														const qty = customOrderPackages[itemKey] !== undefined ? customOrderPackages[itemKey] : suggested;
-														const currentQty = qty || 0;
-														const pricePerPkg = packagePrices[itemKey] ?? DEFAULT_PACKAGE_PRICES[itemKey] ?? 0;
-														const subtotalItem = currentQty * pricePerPkg;
-														const finalItem = subtotalItem * 1.08;
-														const isModified = customOrderPackages[itemKey] !== undefined && customOrderPackages[itemKey] !== suggested;
-
-														// Determina a estilização do input conforme sugerido / a mais / a menos
-														let inputColorClasses = "border-emerald-500 dark:border-emerald-500 text-emerald-600 dark:text-emerald-400 focus:ring-emerald-500/20";
-														if (currentQty > suggested) {
-															// A mais: azul
-															inputColorClasses = "border-blue-500 dark:border-blue-500 text-blue-600 dark:text-blue-400 focus:ring-blue-500/20";
-														} else if (currentQty < suggested) {
-															// A menos: vermelho
-															inputColorClasses = "border-rose-500 dark:border-rose-500 text-rose-600 dark:text-rose-400 focus:ring-rose-500/20";
-														}
-
-														const boxSize = boxSizes[itemKey] || 0;
-														const itemBoxes = boxSize > 0 ? Math.ceil(currentQty / boxSize) : 0;
-														const caixasLabel = itemBoxes === 1 ? "Caixa" : "Caixas";
-														const pacotesLabel = currentQty === 1 ? "Pacote" : "Pacotes";
-
-														return (
-															<tr
-																key={key}
-																className="border-b border-slate-100 dark:border-slate-800 hover:bg-blue-50/30 dark:hover:bg-blue-900/20 transition-colors group">
-																<td className="p-3 md:p-6 text-sm md:text-xl font-black text-slate-600 dark:text-slate-400 bg-white dark:bg-slate-900 group-hover:bg-blue-50/30 dark:group-hover:bg-blue-900/20 transition-colors uppercase">
-																	<div className="flex items-center gap-1.5">
-																		<span>{label}</span>
-																		{boxSize > 0 && (
-																			<span className="text-sm sm:text-xs md:text-base font-black text-slate-400 dark:text-slate-500 normal-case">
-																				({boxSize})
-																			</span>
-																		)}
-																	</div>
-																</td>
-																<td className="p-3 md:p-6 text-center border-l border-slate-100 dark:border-slate-800">
-																	<div className="flex flex-col items-center justify-center gap-1">
-																		<div className="flex items-center justify-center gap-1.5">
-																			<button
-																				type="button"
-																				onClick={() => stepCustomPackage(itemKey, -1)}
-																				disabled={currentQty <= 0}
-																				className="w-8 h-8 md:w-9 md:h-9 flex items-center justify-center rounded-xl bg-slate-105 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 disabled:opacity-40 disabled:cursor-not-allowed transition-all cursor-pointer shadow-sm active:scale-95"
-																				title={`Diminuir 1 caixa (-${boxSizes[itemKey] || 1} pcts)`}>
-																				<Minus size={14} />
-																			</button>
-
-																			<input
-																				type="number"
-																				min="0"
-																				step={boxSizes[itemKey] || 1}
-																				value={currentQty === 0 ? "" : currentQty}
-																				placeholder="0"
-																				onChange={(e) => handleCustomPackageChange(itemKey, e.target.value)}
-																				onFocus={(e) => e.target.select()}
-																				onClick={(e) => e.currentTarget.select()}
-																				className={`w-18 md:w-24 bg-white dark:bg-slate-800 border-2 rounded-xl py-1.5 md:py-2 px-2 md:px-3 text-center text-sm md:text-lg font-black transition-all cursor-pointer focus:outline-none focus:ring-2 ${inputColorClasses}`}
-																			/>
-
-																			<button
-																				type="button"
-																				onClick={() => stepCustomPackage(itemKey, 1)}
-																				className="w-8 h-8 md:w-9 md:h-9 flex items-center justify-center rounded-xl bg-slate-105 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 transition-all cursor-pointer shadow-sm active:scale-95"
-																				title={`Aumentar 1 caixa (+${boxSizes[itemKey] || 1} pcts)`}>
-																				<Plus size={14} />
-																			</button>
-																		</div>
-																		<div className="flex items-center gap-1.5 text-[0.68rem] md:text-sm">
-																			<span className="font-bold text-slate-400 dark:text-slate-500">
-																				{boxSizes[itemKey] ? `${boxSizes[itemKey]} pacotes` : "pacote"}
-																			</span>
-																			{isModified && (
-																				<span className={`font-bold ${currentQty > suggested ? "text-blue-500" : "text-rose-500"}`}>
-																					• Sugerido: {suggested}
-																				</span>
-																			)}
-																		</div>
-																	</div>
-																</td>
-																<td className="p-3 md:p-6 text-center border-l border-slate-100 dark:border-slate-800">
-																	{currentQty > 0 ? (
-																		<span className="text-base md:text-xl font-black text-slate-800 dark:text-slate-200">
-																			<span className="text-rose-600 dark:text-rose-400 font-black">
-																				{currentQty}
-																			</span>{" "}
-																			{pacotesLabel}
-																		</span>
-																	) : (
-																		<span className="text-slate-300 dark:text-slate-600 font-bold text-sm md:text-base">
-																			0 Pacotes
-																		</span>
-																	)}
-																</td>
-																<td className="p-3 md:p-6 text-center border-l border-slate-100 dark:border-slate-800">
-																	{currentQty > 0 ? (
-																		boxSize > 0 ? (
-																			<span className="text-base md:text-xl font-black text-slate-800 dark:text-slate-200">
-																				<span className="text-blue-600 dark:text-blue-400 font-black">
-																					{itemBoxes}
-																				</span>{" "}
-																				{caixasLabel}
-																			</span>
-																		) : (
-																			<span className="text-xs font-bold text-amber-500">
-																				(cx não def.)
-																			</span>
-																		)
-																	) : (
-																		<span className="text-slate-300 dark:text-slate-600 font-bold text-sm md:text-base">
-																			0 Caixas
-																		</span>
-																	)}
-																</td>
-																<td className="p-3 md:p-6 text-center border-l border-slate-100 dark:border-slate-800 text-slate-600 dark:text-slate-400 font-bold text-xs md:text-base">
-																	R$ {pricePerPkg.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-																</td>
-																<td className="p-3 md:p-6 text-center border-l border-r border-slate-100 dark:border-slate-800">
-																	<span className="text-sm md:text-lg font-black text-slate-700 dark:text-slate-300">
-																		R$ {subtotalItem.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-																	</span>
-																</td>
-																<td className="p-3 md:p-6 text-center">
-																	<span className={`text-base md:text-xl font-black ${
-																		finalItem > 0 ? "text-emerald-600 dark:text-emerald-400" : "text-slate-400 dark:text-slate-600"
-																	}`}>
-																		R$ {finalItem.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-																	</span>
-																</td>
-															</tr>
-														);
-													})}
-											</tbody>
-											<tfoot>
-												<tr className="bg-slate-100/90 dark:bg-slate-800/90 border-t-2 border-slate-300 dark:border-slate-600 font-black">
-													<td className="p-3 md:p-6 text-sm md:text-xl font-black text-slate-800 dark:text-slate-100 uppercase">
-														TOTAL DO PEDIDO
-													</td>
-													<td className="p-3 md:p-6 border-l border-slate-200 dark:border-slate-700 text-center text-slate-400 dark:text-slate-500 text-xs md:text-sm">
-														-
-													</td>
-													<td className="p-3 md:p-6 border-l border-slate-200 dark:border-slate-700 text-center">
-														<span className="text-base md:text-2xl font-black text-rose-600 dark:text-rose-400">
-															{totalPackages}
-														</span>{" "}
-														<span className="text-xs md:text-sm font-bold text-slate-600 dark:text-slate-300">
-															pacotes
-														</span>
-													</td>
-													<td className="p-3 md:p-6 border-l border-slate-200 dark:border-slate-700 text-center">
-														{(() => {
-															let totalBoxes = 0;
-															cookieEntries.forEach(([key]) => {
-																const itemKey = key as keyof StockData;
-																const suggested = getSuggestedOrderPackages(itemKey);
-																const qty = customOrderPackages[itemKey] !== undefined ? (customOrderPackages[itemKey] || 0) : suggested;
-																const boxSize = boxSizes[itemKey] || 0;
-																if (qty > 0 && boxSize > 0) {
-																	totalBoxes += Math.ceil(qty / boxSize);
-																}
-															});
-															const caixasTotalLabel = totalBoxes === 1 ? "Caixa" : "Caixas";
-
-															return (
-																<span className="text-base md:text-2xl font-black text-blue-600 dark:text-blue-400">
-																	{totalBoxes}{" "}
-																	<span className="text-xs md:text-sm font-bold text-slate-600 dark:text-slate-300">
-																		{caixasTotalLabel}
-																	</span>
-																</span>
-															);
-														})()}
-													</td>
-													<td className="p-3 md:p-6 border-l border-slate-200 dark:border-slate-700 text-center text-slate-400 dark:text-slate-500 text-xs md:text-sm">
-														-
-													</td>
-													<td className="p-3 md:p-6 border-l border-r border-slate-200 dark:border-slate-700 text-center">
-														<span className="text-sm md:text-xl font-black text-slate-700 dark:text-slate-200">
-															R$ {baseTotalValue.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-														</span>
-													</td>
-													<td className="p-3 md:p-6 text-center">
-														<span className="text-lg md:text-2xl font-black text-emerald-600 dark:text-emerald-400">
-															R$ {finalTotalValue.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-														</span>
-													</td>
-												</tr>
-											</tfoot>
-										</table>
-									</div>
-								</div>
-
-								{/* Botão Rodapé: Gerar Resumo Centralizado */}
-								<div className="flex justify-center items-center py-3">
-									<button
-										onClick={() => setShowSummary(true)}
-										className="flex items-center justify-center gap-2.5 bg-blue-600 hover:bg-blue-700 text-white px-8 md:px-12 py-3.5 md:py-4 rounded-2xl font-black text-xs md:text-sm shadow-xl shadow-blue-500/20 dark:shadow-none hover:shadow-blue-500/30 hover:scale-[1.02] transition-all cursor-pointer uppercase tracking-widest">
-										<FileText size={16} />
-										Gerar Resumo
-									</button>
-								</div>
-							</>
-						);
-					})()}
-				</div>
 			) : activeSubTab === "desejavel" ? (
 				// Desired Stock Configuration View
 				<div className="space-y-6">
@@ -1740,8 +1403,7 @@ export default function EstoquePedidosPage() {
 
 						cookieEntries.forEach(([key, label]) => {
 							const itemKey = key as keyof StockData;
-							const suggested = getSuggestedOrderPackages(itemKey);
-							const qty = customOrderPackages[itemKey] !== undefined ? (customOrderPackages[itemKey] || 0) : suggested;
+							const qty = customOrderPackages[itemKey] || 0;
 							const pricePerPkg = packagePrices[itemKey] ?? DEFAULT_PACKAGE_PRICES[itemKey] ?? 0;
 							const totalItem = qty * pricePerPkg;
 							const boxSize = boxSizes[itemKey] || 1;
