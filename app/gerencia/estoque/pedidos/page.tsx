@@ -1759,8 +1759,7 @@ export default function EstoquePedidosPage() {
 											${storeCellsHtml}
 											<td style="border: 1px solid #ccc; padding: 4px; text-align: center; font-size: 8.5pt; font-weight: bold;">${totalStock}</td>
 											<td style="border: 1px solid #ccc; padding: 4px; text-align: center; font-size: 8.5pt;">${desired}</td>
-											<td style="border: 1px solid #333; padding: 4px; text-align: center; font-size: 9pt; font-weight: bold;">${currentQty > 0 ? `${currentQty} pcts` : "-"}</td>
-											<td style="border: 1px solid #333; padding: 4px; text-align: center; font-size: 9pt; font-weight: bold; color: #1e40af;">${boxes > 0 ? `${boxes} cx` : "-"}</td>
+											<td style="border: 1px solid #333; padding: 4px; text-align: center; font-size: 9pt; font-weight: bold;">${currentQty > 0 ? `${currentQty}` : "-"}</td>
 										</tr>`;
 									}).join("");
 
@@ -1792,14 +1791,13 @@ export default function EstoquePedidosPage() {
 														<th style="border: 1px solid #333; padding: 4px; font-size: 8.5pt;">Total</th>
 														<th style="border: 1px solid #333; padding: 4px; font-size: 8.5pt;">Meta</th>
 														<th style="border: 1px solid #333; padding: 4px; font-size: 8.5pt;">A Pedir</th>
-														<th style="border: 1px solid #333; padding: 4px; font-size: 8.5pt;">Caixas</th>
 													</tr>
 												</thead>
 												<tbody>${rowsHtml}</tbody>
 											</table>
 											<div class="totals">
 												<div><span>Total de Caixas a Pedir:</span><strong>${totalBoxes} ${totalBoxes === 1 ? "caixa" : "caixas"}</strong></div>
-												<div><span>Total de Pacotes a Pedir:</span><strong>${totalPackages} pacotes</strong></div>
+												<div><span>Total de Pacotes a Pedir:</span><strong>${totalPackages}</strong></div>
 												<div><span>Valor Estimado Base:</span><span>R$ ${baseTotalVal.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></div>
 												<div class="final"><span>Valor Final com Impostos (8%):</span><strong>R$ ${finalTotalVal.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong></div>
 											</div>
@@ -1842,7 +1840,7 @@ export default function EstoquePedidosPage() {
 												onChange={(e) => setPartialOnlyWithOrder(e.target.checked)}
 												className="w-3.5 h-3.5 rounded text-blue-600 focus:ring-0 cursor-pointer"
 											/>
-											<span>Apenas com pedido ({itemsWithOrder.length})</span>
+											<span>Apenas sendo pedidos ({itemsWithOrder.length})</span>
 										</label>
 
 										<div className="px-3 py-1.5 rounded-xl bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 text-xs md:text-sm font-black whitespace-nowrap">
@@ -1868,11 +1866,8 @@ export default function EstoquePedidosPage() {
 															))}
 															<th className="p-3 text-center border-l border-slate-200 dark:border-slate-700">TOTAL ESTOQUE</th>
 															<th className="p-3 text-center border-l border-slate-200 dark:border-slate-700">DESEJÁVEL</th>
-															<th className="p-3 text-center border-l-2 border-slate-300 dark:border-slate-600 bg-rose-50/40 dark:bg-rose-950/20 text-rose-700 dark:text-rose-300">
+															<th className="p-3 text-center border-l-2 border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-800/80 text-slate-800 dark:text-slate-100 font-black">
 																PACOTES A PEDIR
-															</th>
-															<th className="p-3 text-center border-l border-slate-200 dark:border-slate-700 bg-blue-50/40 dark:bg-blue-950/20 text-blue-700 dark:text-blue-300">
-																CAIXAS
 															</th>
 														</tr>
 													</thead>
@@ -1895,7 +1890,7 @@ export default function EstoquePedidosPage() {
 																	<td className="p-3 text-xs md:text-sm font-black text-slate-800 dark:text-slate-100 uppercase">
 																		<div className="flex items-center gap-1.5">
 																			<span>{label}</span>
-																			<span className="text-[0.68rem] text-slate-400 dark:text-slate-500 font-normal">
+																			<span className="text-[0.9rem] text-slate-600 dark:text-slate-300 font-semibold">
 																				({boxSize})
 																			</span>
 																		</div>
@@ -1915,19 +1910,10 @@ export default function EstoquePedidosPage() {
 																	<td className="p-3 text-center border-l border-slate-100 dark:border-slate-800 text-xs md:text-sm font-bold text-slate-500 dark:text-slate-400">
 																		{desired > 0 ? desired : "-"}
 																	</td>
-																	<td className="p-3 text-center border-l-2 border-slate-200 dark:border-slate-700 bg-rose-50/20 dark:bg-rose-950/10">
+																	<td className="p-3 text-center border-l-2 border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/80">
 																		{currentQty > 0 ? (
-																			<span className="text-sm md:text-base font-black text-rose-600 dark:text-rose-400">
-																				{currentQty} pcts
-																			</span>
-																		) : (
-																			<span className="text-slate-300 dark:text-slate-600 text-xs font-bold">-</span>
-																		)}
-																	</td>
-																	<td className="p-3 text-center border-l border-slate-100 dark:border-slate-800 bg-blue-50/20 dark:bg-blue-950/10">
-																		{boxes > 0 ? (
-																			<span className="text-sm md:text-base font-black text-blue-600 dark:text-blue-400">
-																				{boxes} {boxes === 1 ? "cx" : "cxs"}
+																			<span className="text-base md:text-lg font-black text-slate-800 dark:text-slate-100">
+																				{currentQty}
 																			</span>
 																		) : (
 																			<span className="text-slate-300 dark:text-slate-600 text-xs font-bold">-</span>
@@ -1959,11 +1945,8 @@ export default function EstoquePedidosPage() {
 															<td className="p-3 text-center border-l border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400">
 																{displayedFlavors.reduce((sum, [key]) => sum + (desiredData[key as keyof StockData] || 0), 0)}
 															</td>
-															<td className="p-3 text-center border-l-2 border-slate-300 dark:border-slate-600 text-rose-600 dark:text-rose-400 font-black">
-																{totalPackages > 0 ? `${totalPackages} pcts` : "0 Pacotes"}
-															</td>
-															<td className="p-3 text-center border-l border-slate-200 dark:border-slate-700 text-blue-600 dark:text-blue-400 font-black">
-																{totalBoxes > 0 ? `${totalBoxes} ${totalBoxes === 1 ? "cx" : "cxs"}` : "0 Caixas"}
+															<td className="p-3 text-center border-l-2 border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-800/80 text-slate-900 dark:text-slate-50 font-black text-base">
+																{totalPackages > 0 ? `${totalPackages}` : "0"}
 															</td>
 														</tr>
 													</tfoot>
@@ -1982,11 +1965,11 @@ export default function EstoquePedidosPage() {
 												</div>
 												<div className="bg-slate-50 dark:bg-slate-800/80 p-3 rounded-2xl border border-slate-200 dark:border-slate-700">
 													<span className="text-[0.68rem] font-bold text-slate-400 uppercase block">Subtotal (Base)</span>
-													<span className="text-base md:text-lg font-black text-slate-800 dark:text-slate-100 mt-0.5 block">R$ {baseTotalVal.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+													<span className="text-base md:text-lg font-black text-slate-800 dark:text-slate-100 mt-0.5 block">R$ ${baseTotalVal.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
 												</div>
 												<div className="bg-emerald-50 dark:bg-emerald-950/40 p-3 rounded-2xl border border-emerald-200 dark:border-emerald-800/60">
 													<span className="text-[0.68rem] font-bold text-emerald-700 dark:text-emerald-400 uppercase block">Final (+8% imp.)</span>
-													<span className="text-base md:text-lg font-black text-emerald-700 dark:text-emerald-300 mt-0.5 block">R$ {finalTotalVal.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+													<span className="text-base md:text-lg font-black text-emerald-700 dark:text-emerald-300 mt-0.5 block">R$ ${finalTotalVal.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
 												</div>
 											</div>
 
@@ -2013,7 +1996,6 @@ export default function EstoquePedidosPage() {
 															<th className="border border-slate-600 p-1 text-center">Estoque</th>
 															<th className="border border-slate-600 p-1 text-center">Meta</th>
 															<th className="border border-slate-600 p-1 text-center bg-slate-300 font-black">A Pedir</th>
-															<th className="border border-slate-600 p-1 text-center bg-slate-300 font-black">Caixas</th>
 														</tr>
 													</thead>
 													<tbody>
@@ -2045,10 +2027,7 @@ export default function EstoquePedidosPage() {
 																		{desired > 0 ? desired : "-"}
 																	</td>
 																	<td className="border border-slate-600 p-1 text-center font-black">
-																		{currentQty > 0 ? `${currentQty} pcts` : "-"}
-																	</td>
-																	<td className="border border-slate-600 p-1 text-center font-black">
-																		{boxes > 0 ? `${boxes} cx` : "-"}
+																		{currentQty > 0 ? `${currentQty}` : "-"}
 																	</td>
 																</tr>
 															);
@@ -2075,10 +2054,7 @@ export default function EstoquePedidosPage() {
 																{displayedFlavors.reduce((sum, [key]) => sum + (desiredData[key as keyof StockData] || 0), 0)}
 															</td>
 															<td className="border border-slate-800 p-1 text-center font-black">
-																{totalPackages} pcts
-															</td>
-															<td className="border border-slate-800 p-1 text-center font-black">
-																{totalBoxes} cxs
+																{totalPackages}
 															</td>
 														</tr>
 													</tfoot>
