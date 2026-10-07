@@ -98,6 +98,7 @@ export default function EstoquePedidosPage() {
 	});
 	const [copiedSummary, setCopiedSummary] = useState(false);
 	const [showSummary, setShowSummary] = useState(false);
+	const [summaryMode, setSummaryMode] = useState<"pacotes" | "caixas">("pacotes");
 	const [showPartialPreview, setShowPartialPreview] = useState(false);
 	const [partialOnlyWithOrder, setPartialOnlyWithOrder] = useState(true);
 	const [copiedPartialSummary, setCopiedPartialSummary] = useState(false);
@@ -1310,6 +1311,7 @@ export default function EstoquePedidosPage() {
 							.filter(([key]) => !isSorvete(key));
 
 						let totalBoxes = 0;
+						let totalPackages = 0;
 						let baseTotalValue = 0;
 						const activeItems: { label: string; qty: number; boxesCount: number; boxSize: number }[] = [];
 
@@ -1322,6 +1324,7 @@ export default function EstoquePedidosPage() {
 							const boxesCount = Math.ceil(qty / boxSize);
 
 							if (qty > 0) {
+								totalPackages += qty;
 								totalBoxes += boxesCount;
 								baseTotalValue += totalItem;
 								activeItems.push({
@@ -1337,17 +1340,26 @@ export default function EstoquePedidosPage() {
 
 						const generateSummaryText = () => {
 							if (activeItems.length === 0) return "";
-							let text = `*RESUMO DO PEDIDO DE ESTOQUE*\n`;
+							const isPacotes = summaryMode === "pacotes";
+							let text = `*RESUMO DO PEDIDO DE ESTOQUE (${isPacotes ? "PACOTES" : "CAIXAS"})*\n`;
 							text += `Data: ${new Date().toLocaleDateString("pt-BR")} às ${new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}\n\n`;
-							text += `*CAIXAS A PEDIR:*\n`;
+							text += `*ITENS A PEDIR:*\n`;
 
 							activeItems.forEach((item) => {
-								const caixasLabel = item.boxesCount === 1 ? "cx" : "cxs";
-								text += `• ${item.label}: *${item.boxesCount} ${caixasLabel}* (${item.qty} pcts)\n`;
+								if (isPacotes) {
+									text += `• ${item.label}: *${item.qty} pacotes*\n`;
+								} else {
+									const caixasLabel = item.boxesCount === 1 ? "caixa" : "caixas";
+									text += `• ${item.label}: *${item.boxesCount} ${caixasLabel}*\n`;
+								}
 							});
 
 							text += `\n━━━━━━━━━━━━━━━━━━━━\n`;
-							text += `*Total de Caixas:* ${totalBoxes} ${totalBoxes === 1 ? "caixa" : "caixas"}\n`;
+							if (isPacotes) {
+								text += `*Total de Pacotes:* ${totalPackages} pacotes\n`;
+							} else {
+								text += `*Total de Caixas:* ${totalBoxes} ${totalBoxes === 1 ? "caixa" : "caixas"}\n`;
+							}
 							text += `*Valor Final Base:* R$ ${baseTotalValue.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}\n`;
 							text += `*Valor Final com Impostos (8%):* R$ ${finalTotalValue.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 							return text;
@@ -1400,6 +1412,7 @@ export default function EstoquePedidosPage() {
 
 						const handlePrint = () => {
 							if (activeItems.length === 0) return;
+							const isPacotes = summaryMode === "pacotes";
 
 							const userAgent = typeof navigator !== "undefined" ? navigator.userAgent || "" : "";
 							const isMobileUserAgent = /Android|iPhone|iPad|iPod|webOS|BlackBerry|IEMobile|Opera Mini/i.test(userAgent);
@@ -1412,9 +1425,12 @@ export default function EstoquePedidosPage() {
 									const dateStr = `${new Date().toLocaleDateString("pt-BR")} às ${new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}`;
 									const itemsHtml = activeItems
 										.map((item) => {
-											const caixasLabel = item.boxesCount === 1 ? "cx" : "cxs";
-											return `<li style="display:flex; justify-content:space-between; padding:3px 0; font-size:14px;">
-												<span>• <strong>${item.label}</strong>: <strong>${item.boxesCount} ${caixasLabel}</strong> <span style="color:#666; font-size:12px;">(${item.qty} pcts)</span></span>
+											const qtyText = isPacotes
+												? `${item.qty} pacotes`
+												: `${item.boxesCount} ${item.boxesCount === 1 ? "caixa" : "caixas"}`;
+											return `<li style="display:flex; justify-content:space-between; padding:4px 0; font-size:14px; border-bottom:1px solid #f0f0f0;">
+												<span>• <strong>${item.label}</strong></span>
+												<strong>${qtyText}</strong>
 											</li>`;
 										})
 										.join("");
@@ -1437,12 +1453,12 @@ export default function EstoquePedidosPage() {
 											</style>
 										</head>
 										<body>
-											<h2>Resumo do Pedido de Estoque</h2>
+											<h2>Resumo do Pedido de Estoque (${isPacotes ? "Pacotes" : "Caixas"})</h2>
 											<p class="date">${dateStr}</p>
-											<h3>Caixas a Pedir:</h3>
+											<h3>Itens a Pedir:</h3>
 											<ul>${itemsHtml}</ul>
 											<div class="totals">
-												<div><span>Total de Caixas:</span><strong>${totalBoxes} ${totalBoxes === 1 ? "caixa" : "caixas"}</strong></div>
+												<div><span>${isPacotes ? "Total de Pacotes:" : "Total de Caixas:"}</span><strong>${isPacotes ? `${totalPackages} pacotes` : `${totalBoxes} ${totalBoxes === 1 ? "caixa" : "caixas"}`}</strong></div>
 												<div><span>Valor Final Base:</span><span>R$ ${baseTotalValue.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></div>
 												<div class="final"><span>Valor Final com Impostos (8%):</span><strong>R$ ${finalTotalValue.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong></div>
 											</div>
@@ -1463,43 +1479,74 @@ export default function EstoquePedidosPage() {
 							window.print();
 						};
 
+						const isPacotes = summaryMode === "pacotes";
+
 						return (
 							<div className="bg-white dark:bg-slate-900 rounded-3xl w-full max-w-full sm:max-w-xl md:max-w-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh] border border-slate-200 dark:border-slate-800">
-								<div className="p-4 md:p-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between print:hidden">
+								{/* Header do Modal com Toggle Pacotes / Caixas */}
+								<div className="p-4 md:p-5 border-b border-slate-100 dark:border-slate-800 flex flex-wrap items-center justify-between gap-3 print:hidden">
 									<div>
 										<h2 className="text-base md:text-lg font-black text-slate-800 dark:text-slate-100 uppercase tracking-wide">
-											Resumo do Pedido (Caixas)
+											Resumo do Pedido
 										</h2>
 										<span className="text-xs font-bold text-slate-400">
-											{new Date().toLocaleDateString("pt-BR")}
+											{new Date().toLocaleDateString("pt-BR")} às {new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
 										</span>
 									</div>
-									<div className="px-3 py-1 rounded-xl bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 text-xs md:text-sm font-black">
-										{totalBoxes} {totalBoxes === 1 ? "cx" : "cxs"}
+
+									{/* Toggle Pacotes vs Caixas */}
+									<div className="flex items-center gap-2">
+										<div className="inline-flex p-1 bg-slate-100 dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700">
+											<button
+												type="button"
+												onClick={() => setSummaryMode("pacotes")}
+												className={`px-3.5 py-1.5 rounded-xl font-black text-xs uppercase tracking-wider transition-all cursor-pointer ${
+													isPacotes
+														? "bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-sm"
+														: "text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
+												}`}>
+												Pacotes
+											</button>
+											<button
+												type="button"
+												onClick={() => setSummaryMode("caixas")}
+												className={`px-3.5 py-1.5 rounded-xl font-black text-xs uppercase tracking-wider transition-all cursor-pointer ${
+													!isPacotes
+														? "bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-sm"
+														: "text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
+												}`}>
+												Caixas
+											</button>
+										</div>
+
+										<div className="px-3 py-1.5 rounded-xl bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 text-xs md:text-sm font-black whitespace-nowrap">
+											{isPacotes
+												? `${totalPackages} pacotes`
+												: `${totalBoxes} ${totalBoxes === 1 ? "cx" : "cxs"}`}
+										</div>
 									</div>
 								</div>
 
 								<div className="p-4 md:p-6 overflow-y-auto custom-scrollbar flex-1 print:overflow-visible print:p-0">
 									{activeItems.length > 0 ? (
 										<div className="space-y-4 print:space-y-4 w-full">
-											{/* Lista Minimalista para Conferência na Tela */}
+											{/* Lista Simplificada para Visualização Direta */}
 											<div className="divide-y divide-slate-100 dark:divide-slate-800 print:hidden">
 												{activeItems.map((item, idx) => (
 													<div
 														key={idx}
-														className="py-3 flex items-center justify-between gap-3 hover:bg-slate-50/50 dark:hover:bg-slate-800/50 px-2 rounded-xl transition-colors">
-														<div className="flex items-center gap-2 min-w-0">
-															<span className="w-2 h-2 rounded-full bg-blue-500 shrink-0" />
+														className="py-3 flex items-center justify-between gap-3 hover:bg-slate-50/50 dark:hover:bg-slate-800/50 px-2.5 rounded-xl transition-colors">
+														<div className="flex items-center gap-2.5 min-w-0">
+															<span className="w-2.5 h-2.5 rounded-full bg-blue-500 shrink-0" />
 															<span className="text-sm md:text-base font-black text-slate-800 dark:text-slate-100 uppercase truncate">
 																{item.label}
-															</span>
-															<span className="text-md font-bold text-slate-400 shrink-0">
-																({item.qty} pcts)
 															</span>
 														</div>
 														<div className="shrink-0 text-right">
 															<span className="text-base md:text-xl font-black text-blue-600 dark:text-blue-400">
-																{item.boxesCount} {item.boxesCount === 1 ? "caixa" : "caixas"}
+																{isPacotes
+																	? `${item.qty} ${item.qty === 1 ? "pct" : "pcts"}`
+																	: `${item.boxesCount} ${item.boxesCount === 1 ? "cx" : "cxs"}`}
 															</span>
 														</div>
 													</div>
@@ -1526,11 +1573,11 @@ export default function EstoquePedidosPage() {
 												</div>
 											</div>
 
-											{/* Visão de Impressão (Minimalista, Econômica de Tinta, Sem Divisões Excessivas) */}
+											{/* Visão de Impressão (Focada na seleção do toggle) */}
 											<div className="hidden print:block w-full text-black font-sans text-[9.5pt] leading-tight max-w-[180mm] mx-auto">
 												<div className="mb-3 text-left">
 													<h2 className="text-[11pt] font-black uppercase tracking-wide text-black">
-														Resumo do Pedido de Estoque
+														Resumo do Pedido de Estoque ({isPacotes ? "Pacotes" : "Caixas"})
 													</h2>
 													<p className="text-[8pt] text-neutral-600 mt-0.5">
 														{new Date().toLocaleDateString("pt-BR")} às {new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
@@ -1539,18 +1586,19 @@ export default function EstoquePedidosPage() {
 
 												<div className="mb-3">
 													<p className="text-[9pt] font-black uppercase tracking-wider mb-1.5 text-black">
-														Caixas a Pedir:
+														Itens a Pedir:
 													</p>
 													<ul className="space-y-1">
 														{activeItems.map((item, i) => {
-															const caixasLabel = item.boxesCount === 1 ? "cx" : "cxs";
+															const qtyText = isPacotes
+																? `${item.qty} pacotes`
+																: `${item.boxesCount} ${item.boxesCount === 1 ? "caixa" : "caixas"}`;
 															return (
-																<li key={i} className="flex items-baseline justify-between py-0.5">
+																<li key={i} className="flex items-baseline justify-between py-0.5 border-b border-neutral-100">
 																	<span>
-																		• <strong className="font-black uppercase">{item.label}</strong>:{" "}
-																		<strong className="font-black">{item.boxesCount} {caixasLabel}</strong>{" "}
-																		<span className="text-[8.5pt] text-neutral-600">({item.qty} pcts)</span>
+																		• <strong className="font-black uppercase">{item.label}</strong>
 																	</span>
+																	<strong className="font-black">{qtyText}</strong>
 																</li>
 															);
 														})}
@@ -1559,9 +1607,13 @@ export default function EstoquePedidosPage() {
 
 												<div className="pt-2 space-y-1 mt-3">
 													<div className="flex justify-between items-baseline">
-														<span className="font-bold">Total de Caixas:</span>
+														<span className="font-bold">
+															{isPacotes ? "Total de Pacotes:" : "Total de Caixas:"}
+														</span>
 														<strong className="font-black text-[10pt]">
-															{totalBoxes} {totalBoxes === 1 ? "caixa" : "caixas"}
+															{isPacotes
+																? `${totalPackages} pacotes`
+																: `${totalBoxes} ${totalBoxes === 1 ? "caixa" : "caixas"}`}
 														</strong>
 													</div>
 													<div className="flex justify-between items-baseline">
@@ -1588,30 +1640,28 @@ export default function EstoquePedidosPage() {
 									)}
 								</div>
 
+								{/* Footer do Modal com os 4 botões solicitados */}
 								<div className="p-4 md:p-5 bg-slate-50 dark:bg-slate-800/50 border-t border-slate-100 dark:border-slate-800 flex flex-col items-center gap-2.5 transition-colors print:hidden">
 									<div className="grid grid-cols-1 sm:grid-cols-4 items-stretch gap-2.5 w-full max-w-2xl">
 										<button
-											onClick={() => {
-												setShowSummary(false);
-												setShowPartialPreview(true);
-											}}
-											className="flex items-center justify-center gap-2 bg-slate-800 hover:bg-slate-900 text-white px-3 py-3 rounded-2xl font-black text-xs uppercase tracking-wider shadow-md transition-all cursor-pointer"
-											title="Abrir tabela de conferência do pedido parcial">
-											<Eye size={16} />
-											<span>Revisar Parcial</span>
-										</button>
-										<button
-											onClick={handleCopySummary}
-											disabled={activeItems.length === 0}
-											className="flex items-center justify-center gap-2 bg-slate-700 hover:bg-slate-800 text-white px-3 py-3 rounded-2xl font-black text-xs uppercase tracking-wider shadow-md transition-all disabled:opacity-50 cursor-pointer">
-											{copiedSummary ? <Check size={16} className="text-emerald-400" /> : <Copy size={16} />}
-											<span>{copiedSummary ? "Copiado!" : "Copiar Resumo"}</span>
+											onClick={() => setShowSummary(false)}
+											className="flex items-center justify-center gap-2 bg-slate-700 hover:bg-slate-800 text-white px-3 py-3 rounded-2xl font-black text-xs uppercase tracking-wider shadow-md transition-all cursor-pointer"
+											title="Voltar à interface de edição de pedidos">
+											<Edit3 size={16} />
+											<span>Editar Pedido</span>
 										</button>
 										<button
 											onClick={handleWhatsApp}
 											disabled={activeItems.length === 0}
-											className="flex items-center justify-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-white px-3 py-3 rounded-2xl font-black text-xs uppercase tracking-wider shadow-md shadow-emerald-500/20 dark:shadow-none transition-all disabled:opacity-50 cursor-pointer">
-											<span>Enviar WhatsApp</span>
+											className="flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-3 rounded-2xl font-black text-xs uppercase tracking-wider shadow-md shadow-emerald-500/20 dark:shadow-none transition-all disabled:opacity-50 cursor-pointer">
+											<span>Enviar no WhatsApp</span>
+										</button>
+										<button
+											onClick={handleCopySummary}
+											disabled={activeItems.length === 0}
+											className="flex items-center justify-center gap-2 bg-slate-800 hover:bg-slate-900 text-white px-3 py-3 rounded-2xl font-black text-xs uppercase tracking-wider shadow-md transition-all disabled:opacity-50 cursor-pointer">
+											{copiedSummary ? <Check size={16} className="text-emerald-400" /> : <Copy size={16} />}
+											<span>{copiedSummary ? "Copiado!" : "Copiar"}</span>
 										</button>
 										<button
 											onClick={handlePrint}
