@@ -663,9 +663,8 @@ export default function EstoquePedidosPage() {
 					</div>
 
 					{/* Actions Bar: Filter, Select & Print */}
-					{/* Actions Bar: Filter, Select, Actions & Print */}
-					<div className="flex flex-col lg:flex-row flex-wrap items-stretch lg:items-center justify-between gap-3 md:gap-4 print:hidden mb-6">
-						<div className="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-3 md:gap-4 flex-1 min-w-0">
+					<div className="flex flex-col lg:flex-row flex-wrap items-stretch lg:items-end justify-between gap-3 md:gap-4 print:hidden mb-6">
+						<div className="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-end gap-3 md:gap-4 flex-1 min-w-0">
 							{/* Dropdown Select */}
 							<div className="flex flex-col gap-1 w-full sm:w-auto min-w-0 sm:min-w-[260px]">
 								<span className="text-[0.75rem] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest ml-1">Comparativo de Estoque</span>
@@ -702,11 +701,10 @@ export default function EstoquePedidosPage() {
 
 						<div className="flex flex-wrap sm:flex-nowrap items-center gap-2 sm:gap-3 w-full lg:w-auto justify-end">
 							<button
-								onClick={fillStoreOrderWithSuggested}
-								className="flex-1 sm:flex-none justify-center flex items-center gap-1.5 md:gap-2 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-800 px-3 md:px-4 py-2.5 md:py-3 rounded-2xl font-black shadow-sm transition-all cursor-pointer text-xs md:text-sm"
-								title="Preencher automaticamente as quantidades faltantes por loja">
-								<Sparkles size={16} className="text-amber-500" />
-								SUGERIR FALTANTES
+								onClick={() => setHideOpen(!hideOpen)}
+								className="flex-1 sm:flex-none justify-center flex items-center gap-2 md:gap-3 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-800 px-3 md:px-4 py-2.5 md:py-3 rounded-2xl font-black shadow-sm transition-all cursor-pointer text-xs md:text-sm">
+								{hideOpen ? <Eye size={16} /> : <EyeOff size={16} />}
+								{hideOpen ? "MOSTRAR ABERTOS" : "OCULTAR ABERTOS"}
 							</button>
 
 							{Object.values(customOrderPackages).some((v) => (v || 0) > 0) && (
@@ -720,10 +718,13 @@ export default function EstoquePedidosPage() {
 							)}
 
 							<button
-								onClick={() => setHideOpen(!hideOpen)}
-								className="flex-1 sm:flex-none justify-center flex items-center gap-2 md:gap-3 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-800 px-3 md:px-4 py-2.5 md:py-3 rounded-2xl font-black shadow-sm transition-all cursor-pointer text-xs md:text-sm">
-								{hideOpen ? <Eye size={16} /> : <EyeOff size={16} />}
-								{hideOpen ? "MOSTRAR ABERTOS" : "OCULTAR ABERTOS"}
+								onClick={fillStoreOrderWithSuggested}
+								className="relative overflow-hidden group flex-1 sm:flex-none justify-center flex items-center gap-1.5 md:gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 md:px-5 py-2.5 md:py-3 rounded-2xl font-black shadow-md shadow-blue-500/20 dark:shadow-none hover:shadow-blue-500/30 active:scale-95 transition-all cursor-pointer text-xs md:text-sm uppercase tracking-wider"
+								title="Preencher automaticamente as quantidades sugeridas para o pedido">
+								{/* Efeito de brilho / reflexão (shimmer) */}
+								<span className="absolute inset-0 -translate-x-full group-hover:translate-x-full bg-gradient-to-r from-transparent via-white/25 to-transparent transition-transform duration-1000 ease-in-out pointer-events-none" />
+								<Sparkles size={16} className="text-blue-200 shrink-0" />
+								<span>PREENCHER PEDIDO</span>
 							</button>
 						</div>
 					</div>
@@ -1651,17 +1652,17 @@ export default function EstoquePedidosPage() {
 											<span>Editar Pedido</span>
 										</button>
 										<button
-											onClick={handleWhatsApp}
-											disabled={activeItems.length === 0}
-											className="flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-3 rounded-2xl font-black text-xs uppercase tracking-wider shadow-md shadow-emerald-500/20 dark:shadow-none transition-all disabled:opacity-50 cursor-pointer">
-											<span>Enviar no WhatsApp</span>
-										</button>
-										<button
 											onClick={handleCopySummary}
 											disabled={activeItems.length === 0}
 											className="flex items-center justify-center gap-2 bg-slate-800 hover:bg-slate-900 text-white px-3 py-3 rounded-2xl font-black text-xs uppercase tracking-wider shadow-md transition-all disabled:opacity-50 cursor-pointer">
 											{copiedSummary ? <Check size={16} className="text-emerald-400" /> : <Copy size={16} />}
 											<span>{copiedSummary ? "Copiado!" : "Copiar"}</span>
+										</button>
+										<button
+											onClick={handleWhatsApp}
+											disabled={activeItems.length === 0}
+											className="flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-3 rounded-2xl font-black text-xs uppercase tracking-wider shadow-md shadow-emerald-500/20 dark:shadow-none transition-all disabled:opacity-50 cursor-pointer">
+											<span>Enviar no WhatsApp</span>
 										</button>
 										<button
 											onClick={handlePrint}
