@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { db } from "@/lib/firebase";
 import { collection, onSnapshot, getDocs, query, limit, doc, setDoc } from "firebase/firestore";
 import { STOCK_LABELS, StockData, STORE_NAMES, StoreId, formatDate, sortStockEntries, isSorvete, normalizeStockData } from "@/types";
-import { RefreshCw, ArrowLeftRight, Printer, Search, Eye, EyeOff, ChevronDown, Save, FileText, Settings, Package, DollarSign, Calculator, ShoppingCart, Copy, Check, Plus, Minus, Sparkles, RotateCcw } from "lucide-react";
+import { RefreshCw, ArrowLeftRight, Printer, Search, Eye, EyeOff, ChevronDown, Save, FileText, Settings, Package, DollarSign, Calculator, ShoppingCart, Copy, Check, Plus, Minus, Sparkles, RotateCcw, Edit3 } from "lucide-react";
 
 interface FullStoreData {
 	id: StoreId;
@@ -1493,7 +1493,7 @@ export default function EstoquePedidosPage() {
 															<span className="text-sm md:text-base font-black text-slate-800 dark:text-slate-100 uppercase truncate">
 																{item.label}
 															</span>
-															<span className="text-xs font-bold text-slate-400 shrink-0">
+															<span className="text-md font-bold text-slate-400 shrink-0">
 																({item.qty} pcts)
 															</span>
 														</div>
@@ -1508,19 +1508,19 @@ export default function EstoquePedidosPage() {
 
 											{/* Resumo Financeiro Minimalista */}
 											<div className="bg-slate-50 dark:bg-slate-800/80 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 print:hidden space-y-2 mt-4">
-												<div className="flex items-center justify-between text-xs md:text-sm">
-													<span className="font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wide">
+												<div className="flex items-center justify-between text-sm md:text-lg">
+													<span className="font-bold text-slate-700 dark:text-slate-200 uppercase tracking-wide">
 														Valor Final Base
 													</span>
-													<span className="font-black text-slate-700 dark:text-slate-200">
+													<span className="font-black text-slate-700 dark:text-slate-200 !text-lg md:!text-2xl">
 														R$ {baseTotalValue.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
 													</span>
 												</div>
-												<div className="flex items-center justify-between text-sm md:text-base pt-2 border-t border-slate-200/80 dark:border-slate-700/80">
+												<div className="flex items-center justify-between text-sm md:text-lg pt-2 border-t border-slate-200/80 dark:border-slate-700/80">
 													<span className="font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-wide">
-														Valor Final com Impostos (8%)
+														Valor Final com Impostos
 													</span>
-													<span className="text-base md:text-xl font-black text-emerald-600 dark:text-emerald-400">
+													<span className="text-lg md:text-2xl font-black text-emerald-600 dark:text-emerald-400">
 														R$ {finalTotalValue.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
 													</span>
 												</div>
@@ -1774,7 +1774,7 @@ export default function EstoquePedidosPage() {
 												h2 { font-size: 16px; margin: 0 0 4px 0; text-transform: uppercase; text-align: center; }
 												p.date { font-size: 11px; color: #666; margin: 0 0 12px 0; text-align: center; }
 												table { width: 100%; border-collapse: collapse; margin-bottom: 12px; }
-												th { background: #f2f2f2; text-transform: uppercase; }
+												th { background: transparent; text-transform: uppercase; }
 												.totals { border-top: 2px solid #333; padding-top: 8px; font-size: 12px; }
 												.totals div { display: flex; justify-content: space-between; margin-bottom: 4px; }
 												.totals .final { font-weight: bold; font-size: 14px; border-top: 1px solid #ddd; padding-top: 4px; }
@@ -1965,11 +1965,11 @@ export default function EstoquePedidosPage() {
 												</div>
 												<div className="bg-slate-50 dark:bg-slate-800/80 p-3 rounded-2xl border border-slate-200 dark:border-slate-700">
 													<span className="text-[0.68rem] font-bold text-slate-400 uppercase block">Subtotal (Base)</span>
-													<span className="text-base md:text-lg font-black text-slate-800 dark:text-slate-100 mt-0.5 block">R$ ${baseTotalVal.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+													<span className="text-base md:text-lg font-black text-slate-800 dark:text-slate-100 mt-0.5 block">R$ {baseTotalVal.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
 												</div>
 												<div className="bg-emerald-50 dark:bg-emerald-950/40 p-3 rounded-2xl border border-emerald-200 dark:border-emerald-800/60">
 													<span className="text-[0.68rem] font-bold text-emerald-700 dark:text-emerald-400 uppercase block">Final (+8% imp.)</span>
-													<span className="text-base md:text-lg font-black text-emerald-700 dark:text-emerald-300 mt-0.5 block">R$ ${finalTotalVal.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+													<span className="text-base md:text-lg font-black text-emerald-700 dark:text-emerald-300 mt-0.5 block">R$ {finalTotalVal.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
 												</div>
 											</div>
 
@@ -1986,7 +1986,7 @@ export default function EstoquePedidosPage() {
 
 												<table className="w-full border-collapse border border-slate-600 text-[8pt]">
 													<thead>
-														<tr className="bg-slate-200 text-black font-black uppercase text-[7.5pt]">
+														<tr className="bg-transparent text-black font-black uppercase text-[7.5pt]">
 															<th className="border border-slate-600 p-1 text-left">Sabor (cx)</th>
 															{STORE_ORDER.map((sId) => (
 																<th key={sId} className="border border-slate-600 p-1 text-center">
@@ -1995,7 +1995,7 @@ export default function EstoquePedidosPage() {
 															))}
 															<th className="border border-slate-600 p-1 text-center">Estoque</th>
 															<th className="border border-slate-600 p-1 text-center">Meta</th>
-															<th className="border border-slate-600 p-1 text-center bg-slate-300 font-black">A Pedir</th>
+															<th className="border border-slate-600 p-1 text-center font-black">A Pedir</th>
 														</tr>
 													</thead>
 													<tbody>
@@ -2034,7 +2034,7 @@ export default function EstoquePedidosPage() {
 														})}
 													</tbody>
 													<tfoot>
-														<tr className="bg-slate-200 border-t-2 border-slate-800 font-black text-[8pt]">
+														<tr className="bg-transparent border-t-2 border-slate-800 font-black text-[8pt]">
 															<td className="border border-slate-800 p-1 uppercase text-left">TOTAL</td>
 															{STORE_ORDER.map((sId) => {
 																const storeTotal = displayedFlavors.reduce((sum, [key]) => {
@@ -2078,7 +2078,7 @@ export default function EstoquePedidosPage() {
 
 								{/* Modal Footer with Required Action Buttons */}
 								<div className="p-4 md:p-5 bg-slate-50 dark:bg-slate-800/50 border-t border-slate-100 dark:border-slate-800 flex flex-col items-center gap-2.5 transition-colors print:hidden">
-									<div className="grid grid-cols-1 sm:grid-cols-3 items-stretch gap-2.5 w-full max-w-xl">
+									<div className="grid grid-cols-1 sm:grid-cols-3 items-stretch gap-2.5 w-full max-w-2xl">
 										<button
 											onClick={handlePartialPrint}
 											className="flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-3 rounded-2xl font-black text-xs uppercase tracking-wider shadow-md shadow-blue-500/20 dark:shadow-none transition-all cursor-pointer">
@@ -2086,17 +2086,19 @@ export default function EstoquePedidosPage() {
 											<span>Imprimir pedido parcial</span>
 										</button>
 										<button
-											onClick={handlePartialWhatsApp}
-											disabled={itemsWithOrder.length === 0}
-											className="flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-3 rounded-2xl font-black text-xs uppercase tracking-wider shadow-md shadow-emerald-500/20 dark:shadow-none transition-all disabled:opacity-50 cursor-pointer">
-											<span>Enviar no WhatsApp</span>
+											onClick={() => setShowPartialPreview(false)}
+											className="flex items-center justify-center gap-2 bg-slate-700 hover:bg-slate-800 text-white px-4 py-3 rounded-2xl font-black text-xs uppercase tracking-wider shadow-md transition-all cursor-pointer">
+											<Edit3 size={16} />
+											<span>Editar Pedido</span>
 										</button>
 										<button
-											onClick={handlePartialCopy}
-											disabled={itemsWithOrder.length === 0}
-											className="flex items-center justify-center gap-2 bg-slate-700 hover:bg-slate-800 text-white px-4 py-3 rounded-2xl font-black text-xs uppercase tracking-wider shadow-md transition-all disabled:opacity-50 cursor-pointer">
-											{copiedPartialSummary ? <Check size={16} className="text-emerald-400" /> : <Copy size={16} />}
-											<span>{copiedPartialSummary ? "Copiado!" : "Copiar Resumo"}</span>
+											onClick={() => {
+												setShowPartialPreview(false);
+												setShowSummary(true);
+											}}
+											className="flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-3 rounded-2xl font-black text-xs uppercase tracking-wider shadow-md shadow-emerald-500/20 dark:shadow-none transition-all cursor-pointer">
+											<FileText size={16} />
+											<span>Gerar Resumo do Pedido</span>
 										</button>
 									</div>
 									<button
