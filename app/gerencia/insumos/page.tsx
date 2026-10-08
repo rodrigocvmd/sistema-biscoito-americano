@@ -40,6 +40,9 @@ import {
 	Copy,
 	ExternalLink,
 	Calendar,
+	Menu,
+	Snowflake,
+	Warehouse,
 } from "lucide-react";
 
 interface FullStoreData {
@@ -54,6 +57,55 @@ interface FullStoreData {
 
 const STORE_ORDER: StoreId[] = ["lago", "terraco", "conjunto", "noroeste"];
 
+const INSUMO_CATEGORIES = ["Geladeira", "Garagem", "Loja", "Outros"] as const;
+type InsumoCategory = (typeof INSUMO_CATEGORIES)[number];
+const SECTION_ORDER: InsumoCategory[] = ["Outros", "Geladeira", "Garagem", "Loja"];
+
+const CATEGORY_CONFIG: Record<
+	InsumoCategory,
+	{
+		label: string;
+		icon: any;
+		badgeBg: string;
+		headerBorder: string;
+		headerBg: string;
+		textColor: string;
+	}
+> = {
+	Geladeira: {
+		label: "Geladeira",
+		icon: Snowflake,
+		badgeBg: "bg-cyan-100 dark:bg-cyan-900/50 text-cyan-800 dark:text-cyan-300",
+		headerBorder: "border-cyan-200 dark:border-cyan-800/60",
+		headerBg: "bg-cyan-50/70 dark:bg-cyan-950/25",
+		textColor: "text-cyan-800 dark:text-cyan-300",
+	},
+	Garagem: {
+		label: "Garagem",
+		icon: Warehouse,
+		badgeBg: "bg-amber-100 dark:bg-amber-900/50 text-amber-800 dark:text-amber-300",
+		headerBorder: "border-amber-200 dark:border-amber-800/60",
+		headerBg: "bg-amber-50/70 dark:bg-amber-950/25",
+		textColor: "text-amber-800 dark:text-amber-300",
+	},
+	Loja: {
+		label: "Loja",
+		icon: Store,
+		badgeBg: "bg-indigo-100 dark:bg-indigo-900/50 text-indigo-800 dark:text-indigo-300",
+		headerBorder: "border-indigo-200 dark:border-indigo-800/60",
+		headerBg: "bg-indigo-50/70 dark:bg-indigo-950/25",
+		textColor: "text-indigo-800 dark:text-indigo-300",
+	},
+	Outros: {
+		label: "Outros",
+		icon: Package,
+		badgeBg: "bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-200",
+		headerBorder: "border-slate-200 dark:border-slate-700",
+		headerBg: "bg-slate-100/70 dark:bg-slate-800/40",
+		textColor: "text-slate-700 dark:text-slate-300",
+	},
+};
+
 export default function InsumosPage() {
 	const [loading, setLoading] = useState(true);
 	const [allData, setAllData] = useState<FullStoreData[]>([]);
@@ -65,6 +117,7 @@ export default function InsumosPage() {
 	const [insumosSort, setInsumosSort] = useState<"default" | "urgency" | "date" | "alphabetical" | "manual">("urgency");
 	const [manualOrderMap, setManualOrderMap] = useState<Record<string, string[]>>({});
 	const [searchTerm, setSearchTerm] = useState("");
+	const [openMenuOrderId, setOpenMenuOrderId] = useState<string | null>(null);
 
 	const rotateStores = () => {
 		setAllData((prev) => {
@@ -129,19 +182,37 @@ export default function InsumosPage() {
 	};
 
 	// Estado para drag and drop
-	const [draggingItem, setDraggingItem] = useState<{ storeId: StoreId; orderId: string; checked: boolean } | null>(null);
+	const [draggingItem, setDraggingItem] = useState<{ storeId: StoreId; orderId: string; checked: boolean; category?: string | null } | null>(null);
 	const [dragOverItem, setDragOverItem] = useState<string | null>(null);
 
+	// Fechar menu de categoria ao clicar fora
+	useEffect(() => {
+		const handleClickOutside = (e: MouseEvent) => {
+			if (openMenuOrderId) {
+				const target = e.target as HTMLElement;
+				if (!target.closest(`[data-menu-order="${openMenuOrderId}"]`)) {
+					setOpenMenuOrderId(null);
+				}
+			}
+		};
+		document.addEventListener("mousedown", handleClickOutside);
+		return () => document.removeEventListener("mousedown", handleClickOutside);
+	}, [openMenuOrderId]);
+
 	// Handlers de Drag and Drop
-	const handleDragStart = (e: React.DragEvent, storeId: StoreId, orderId: string, isChecked: boolean) => {
-		setDraggingItem({ storeId, orderId, checked: isChecked });
+	const handleDragStart = (e: React.DragEvent, storeId: StoreId, orderId: string, isChecked: boolean, category?: string | null) => {
+		setDraggingItem({ storeId, orderId, checked: isChecked, category: category || null });
 		e.dataTransfer.effectAllowed = "move";
 		e.dataTransfer.setData("text/plain", orderId);
 	};
 
-	const handleDragOver = (e: React.DragEvent, targetOrderId: string, targetChecked: boolean, targetStoreId: StoreId) => {
-		// Permite drop apenas se pertencer à mesma loja e ao mesmo grupo (pendente ou a entregar)
-		if (draggingItem && draggingItem.storeId === targetStoreId && draggingItem.checked === targetChecked) {
+	const handleDragOver = (e: React.DragEvent, targetOrderId: string, targetChecked: boolean, targetStoreId: StoreId, targetCategory?: string | null) => {
+		if (
+			draggingItem &&
+			draggingItem.storeId === targetStoreId &&
+			draggingItem.checked === targetChecked &&
+			(draggingItem.category || null) === (targetCategory || null)
+		) {
 			e.preventDefault();
 			e.dataTransfer.dropEffect = "move";
 			if (dragOverItem !== targetOrderId) {
@@ -154,25 +225,39 @@ export default function InsumosPage() {
 		setDragOverItem(null);
 	};
 
-	const handleDrop = (e: React.DragEvent, store: FullStoreData, targetOrderId: string, targetChecked: boolean) => {
+	const handleDrop = (e: React.DragEvent, store: FullStoreData, targetOrderId: string, isChecked: boolean) => {
 		e.preventDefault();
 		setDragOverItem(null);
 
-		if (!draggingItem || draggingItem.storeId !== store.id || draggingItem.checked !== targetChecked || draggingItem.orderId === targetOrderId) {
+		if (!draggingItem || draggingItem.storeId !== store.id || draggingItem.orderId === targetOrderId) {
 			setDraggingItem(null);
 			return;
 		}
 
 		const currentOrders = getStoreDisplayOrders(store);
-		const sourceOrderId = draggingItem.orderId;
-		const isChecked = draggingItem.checked;
+		const sourceOrder = currentOrders.find((o) => o.id === draggingItem.orderId);
+		const targetOrder = currentOrders.find((o) => o.id === targetOrderId);
+		if (!sourceOrder || !targetOrder) {
+			setDraggingItem(null);
+			return;
+		}
 
-		// Apenas reorganiza no grupo correspondente (pendentes ou a entregar)
-		const groupOrders = currentOrders.filter((o) => !!o.checkedByGerencia === isChecked);
-		const sourceIndex = groupOrders.findIndex((o) => o.id === sourceOrderId);
+		const sourceCat = sourceOrder.category || null;
+		const targetCat = targetOrder.category || null;
+
+		if (sourceCat !== targetCat || isChecked !== !!sourceOrder.checkedByGerencia) {
+			setDraggingItem(null);
+			return;
+		}
+
+		const groupOrders = isChecked
+			? currentOrders.filter((o) => !!o.checkedByGerencia)
+			: currentOrders.filter((o) => !o.checkedByGerencia && (o.category || null) === targetCat);
+
+		const sourceIndex = groupOrders.findIndex((o) => o.id === draggingItem.orderId);
 		const targetIndex = groupOrders.findIndex((o) => o.id === targetOrderId);
 
-		if (sourceIndex === -1 || targetIndex === -1) {
+		if (sourceIndex === -1 || targetIndex === -1 || sourceIndex === targetIndex) {
 			setDraggingItem(null);
 			return;
 		}
@@ -181,9 +266,14 @@ export default function InsumosPage() {
 		const [movedOrder] = newGroupOrders.splice(sourceIndex, 1);
 		newGroupOrders.splice(targetIndex, 0, movedOrder);
 
-		// Reconstroi a lista total mantendo pendentes no topo e a entregar abaixo
-		const pendingFinal = isChecked ? currentOrders.filter((o) => !o.checkedByGerencia) : newGroupOrders;
-		const deliveringFinal = isChecked ? newGroupOrders : currentOrders.filter((o) => !!o.checkedByGerencia);
+		const otherOrders = currentOrders.filter((o) => {
+			if (isChecked) return !o.checkedByGerencia;
+			return !!o.checkedByGerencia || (o.category || null) !== targetCat;
+		});
+
+		const combined = [...otherOrders, ...newGroupOrders];
+		const pendingFinal = combined.filter((o) => !o.checkedByGerencia);
+		const deliveringFinal = combined.filter((o) => !!o.checkedByGerencia);
 		const finalIds = [...pendingFinal.map((o) => o.id), ...deliveringFinal.map((o) => o.id)];
 
 		setManualOrderMap((prev) => {
@@ -215,7 +305,12 @@ export default function InsumosPage() {
 		if (!order) return;
 
 		const isChecked = !!order.checkedByGerencia;
-		const groupOrders = currentOrders.filter((o) => !!o.checkedByGerencia === isChecked);
+		const orderCat = order.category || null;
+
+		const groupOrders = isChecked
+			? currentOrders.filter((o) => !!o.checkedByGerencia)
+			: currentOrders.filter((o) => !o.checkedByGerencia && (o.category || null) === orderCat);
+
 		const currentIndex = groupOrders.findIndex((o) => o.id === orderId);
 		if (currentIndex === -1) return;
 
@@ -240,9 +335,14 @@ export default function InsumosPage() {
 		const [movedOrder] = newGroupOrders.splice(currentIndex, 1);
 		newGroupOrders.splice(targetIndex, 0, movedOrder);
 
-		// Reconstroi a lista total mantendo pendentes no topo e a entregar abaixo
-		const pendingFinal = isChecked ? currentOrders.filter((o) => !o.checkedByGerencia) : newGroupOrders;
-		const deliveringFinal = isChecked ? newGroupOrders : currentOrders.filter((o) => !!o.checkedByGerencia);
+		const otherOrders = currentOrders.filter((o) => {
+			if (isChecked) return !o.checkedByGerencia;
+			return !!o.checkedByGerencia || (o.category || null) !== orderCat;
+		});
+
+		const combined = [...otherOrders, ...newGroupOrders];
+		const pendingFinal = combined.filter((o) => !o.checkedByGerencia);
+		const deliveringFinal = combined.filter((o) => !!o.checkedByGerencia);
 		const finalIds = [...pendingFinal.map((o) => o.id), ...deliveringFinal.map((o) => o.id)];
 
 		setManualOrderMap((prev) => {
@@ -256,19 +356,25 @@ export default function InsumosPage() {
 		});
 		setInsumosSort("manual");
 
-		// No mobile e desktop: focar no card e acompanhar o movimento sempre enquadrado na tela
-		requestAnimationFrame(() => {
-			setTimeout(() => {
-				const cardElement = document.getElementById(`order-${store.id}-${orderId}`);
-				if (cardElement) {
-					cardElement.scrollIntoView({ behavior: "smooth", block: "center", inline: "nearest" });
-					cardElement.classList.add("ring-4", "ring-blue-500", "scale-[1.01]");
-					setTimeout(() => {
-						cardElement.classList.remove("ring-4", "ring-blue-500", "scale-[1.01]");
-					}, 450);
-				}
-			}, 60);
-		});
+		// No mobile e desktop: focar no card e animar APENAS para os botões "Subir" e "Descer"
+		if (action === "up" || action === "down") {
+			requestAnimationFrame(() => {
+				setTimeout(() => {
+					const cardElement = document.getElementById(`order-${store.id}-${orderId}`);
+					if (cardElement) {
+						cardElement.scrollIntoView({ behavior: "smooth", block: "center", inline: "nearest" });
+						cardElement.classList.add("ring-4", "ring-blue-500", "scale-[1.01]");
+						setTimeout(() => {
+							cardElement.classList.remove("ring-4", "ring-blue-500", "scale-[1.01]");
+						}, 450);
+					}
+				}, 60);
+			});
+		} else {
+			if (typeof document !== "undefined" && document.activeElement instanceof HTMLElement) {
+				document.activeElement.blur();
+			}
+		}
 	};
 
 	// Ao trocar para uma ordenação específica, reseta a ordenação manual
@@ -371,11 +477,28 @@ export default function InsumosPage() {
 	const handleToggleCheck = async (storeId: string, orderId: string, currentChecked: boolean) => {
 		try {
 			const orderRef = doc(db, "stores", storeId, "supplyOrders", orderId);
-			await updateDoc(orderRef, {
-				checkedByGerencia: !currentChecked,
-			});
+			const newChecked = !currentChecked;
+			const updateData: any = {
+				checkedByGerencia: newChecked,
+			};
+			if (newChecked) {
+				updateData.category = null;
+			}
+			await updateDoc(orderRef, updateData);
 		} catch (error) {
 			console.error("Erro ao alternar check:", error);
+		}
+	};
+
+	const handleSetCategory = async (storeId: string, orderId: string, category: string | null) => {
+		try {
+			const orderRef = doc(db, "stores", storeId, "supplyOrders", orderId);
+			await updateDoc(orderRef, {
+				category: category,
+			});
+			setOpenMenuOrderId(null);
+		} catch (error) {
+			console.error("Erro ao definir categoria:", error);
 		}
 	};
 
@@ -751,33 +874,45 @@ export default function InsumosPage() {
 										)}
 									</div>
 
-									<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+									<div className="space-y-8">
 										{(() => {
 											const displayOrders = getStoreDisplayOrders(store);
+											const pendingOrders = displayOrders.filter((o) => !o.checkedByGerencia);
+											const deliveringOrders = displayOrders.filter((o) => !!o.checkedByGerencia);
 
-											return displayOrders.map((order) => {
+											const hasCategorized = INSUMO_CATEGORIES.some((cat) =>
+												pendingOrders.some((o) => o.category === cat)
+											);
+
+											const renderCard = (order: SupplyOrder) => {
 												const norm = normalizeUrgency(order.urgency);
 												const isChecked = order.checkedByGerencia || false;
 												const isBeingDragged = draggingItem?.orderId === order.id;
 												const isDropTarget = dragOverItem === order.id;
 
-												const groupOrders = displayOrders.filter((o) => !!o.checkedByGerencia === isChecked);
+												const groupOrders = isChecked
+													? displayOrders.filter((o) => !!o.checkedByGerencia)
+													: displayOrders.filter((o) => !o.checkedByGerencia && (o.category || null) === (order.category || null));
 												const groupIndex = groupOrders.findIndex((o) => o.id === order.id);
 												const isFirst = groupIndex === 0;
 												const isLast = groupIndex === groupOrders.length - 1;
+
+												const isMenuOpen = openMenuOrderId === order.id;
 
 												return (
 													<div
 														key={order.id}
 														id={`order-${store.id}-${order.id}`}
-														tabIndex={-1}
+														data-menu-order={order.id}
 														draggable={true}
-														onDragStart={(e) => handleDragStart(e, store.id, order.id, isChecked)}
-														onDragOver={(e) => handleDragOver(e, order.id, isChecked, store.id)}
+														onDragStart={(e) => handleDragStart(e, store.id, order.id, isChecked, order.category)}
+														onDragOver={(e) => handleDragOver(e, order.id, isChecked, store.id, order.category)}
 														onDragLeave={handleDragLeave}
 														onDrop={(e) => handleDrop(e, store, order.id, isChecked)}
 														onDragEnd={handleDragEnd}
-														className={`p-6 rounded-[32px] border flex flex-col justify-between gap-4 transition-all duration-200 cursor-grab active:cursor-grabbing select-none outline-none ${
+														className={`p-6 rounded-[32px] border flex flex-col justify-between gap-4 transition-all duration-200 cursor-grab active:cursor-grabbing select-none outline-none relative ${
+															isMenuOpen ? "z-30 ring-2 ring-blue-400/50" : ""
+														} ${
 															isBeingDragged
 																? "opacity-30 scale-95 border-dashed border-blue-500 bg-blue-50/50 dark:bg-blue-950/30 shadow-none"
 																: isDropTarget
@@ -787,25 +922,84 @@ export default function InsumosPage() {
 																		: "bg-slate-50 dark:bg-slate-800 border-slate-100 dark:border-slate-700 hover:bg-white dark:hover:bg-slate-700 hover:border-blue-200 dark:hover:border-blue-800 hover:shadow-xl dark:hover:shadow-none"
 														}`}>
 														<div className="space-y-4">
-															<div className="flex items-center justify-between gap-4">
-																<div className="flex items-center gap-2 flex-1">
+															<div className="flex items-center justify-between gap-3">
+																<div className="flex items-center gap-2 flex-1 min-w-0">
 																	<GripVertical size={20} className="text-slate-300 dark:text-slate-600 hover:text-slate-500 shrink-0" />
-																	<p className="text-2xl font-black leading-tight text-slate-800 dark:text-slate-200">
+																	<p className="text-2xl font-black leading-tight text-slate-800 dark:text-slate-200 truncate" title={order.name}>
 																		{order.name}
 																	</p>
 																</div>
-																<button
-																	type="button"
-																	id="checkBtn"
-																	onMouseDown={(e) => e.preventDefault()}
-																	onClick={() => handleToggleCheck(store.id, order.id, isChecked)}
-																	className={`p-3 rounded-2xl border transition-all shrink-0 cursor-pointer ${
-																		isChecked
-																			? "bg-green-600 border-green-600 text-white"
-																			: "bg-white dark:bg-slate-700 border-slate-200 dark:border-slate-600 text-slate-300 dark:text-slate-500 hover:border-blue-400 dark:hover:border-blue-500 hover:text-green-500 dark:hover:text-green-400"
-																	}`}>
-																	<Check size={24} strokeWidth={isChecked ? 5 : 3} />
-																</button>
+
+																<div className="flex items-center gap-2 shrink-0">
+																	{/* Menu Hamburger para Categorias (Geladeira, Garagem, Loja, Outros) */}
+																	{!isChecked && (
+																		<div className="relative">
+																			<button
+																				type="button"
+																				onClick={(e) => {
+																					e.stopPropagation();
+																					setOpenMenuOrderId(isMenuOpen ? null : order.id);
+																				}}
+																				className={`p-3 rounded-2xl border transition-all cursor-pointer ${
+																					order.category
+																						? "bg-blue-50 dark:bg-blue-950/40 border-blue-300 dark:border-blue-700 text-blue-600 dark:text-blue-400 shadow-xs"
+																						: "bg-white dark:bg-slate-700 border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-600 hover:border-slate-300"
+																				}`}
+																				title={order.category ? `Seção: ${order.category}` : "Organizar em seção"}>
+																				<Menu size={20} />
+																			</button>
+
+																			{/* Dropdown Menu */}
+																			{isMenuOpen && (
+																				<div
+																					onClick={(e) => e.stopPropagation()}
+																					className="absolute right-0 top-full mt-2 w-52 bg-white dark:bg-slate-800 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 p-2 z-50 animate-in fade-in zoom-in-95 duration-150">
+																					<div className="px-3 py-2 text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 border-b border-slate-100 dark:border-slate-700/60 mb-1">
+																						Mover para seção
+																					</div>
+																					<div className="space-y-1">
+																						{INSUMO_CATEGORIES.map((cat) => {
+																							const catConf = CATEGORY_CONFIG[cat];
+																							const isSelected = order.category === cat;
+																							const IconComponent = catConf.icon;
+																							return (
+																								<button
+																									key={cat}
+																									type="button"
+																									onClick={() => handleSetCategory(store.id, order.id, isSelected ? null : cat)}
+																									className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-black transition-all cursor-pointer ${
+																										isSelected
+																											? `${catConf.badgeBg} shadow-xs font-black`
+																											: "text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700/70"
+																									}`}>
+																									<div className="flex items-center gap-2.5">
+																										<IconComponent size={16} />
+																										<span>{cat}</span>
+																									</div>
+																									{isSelected && <Check size={14} className="stroke-[3]" />}
+																								</button>
+																							);
+																						})}
+																					</div>
+																				</div>
+																			)}
+																		</div>
+																	)}
+
+																	{/* Botão de Check */}
+																	<button
+																		type="button"
+																		id="checkBtn"
+																		onMouseDown={(e) => e.preventDefault()}
+																		onClick={() => handleToggleCheck(store.id, order.id, isChecked)}
+																		className={`p-3 rounded-2xl border transition-all shrink-0 cursor-pointer ${
+																			isChecked
+																				? "bg-green-600 border-green-600 text-white"
+																				: "bg-white dark:bg-slate-700 border-slate-200 dark:border-slate-600 text-slate-300 dark:text-slate-500 hover:border-blue-400 dark:hover:border-blue-500 hover:text-green-500 dark:hover:text-green-400"
+																		}`}>
+																		<Check size={24} strokeWidth={isChecked ? 5 : 3} />
+																	</button>
+																</div>
 															</div>
 
 															<div className="flex items-center justify-between gap-4 mt-8">
@@ -855,7 +1049,11 @@ export default function InsumosPage() {
 																	<button
 																		type="button"
 																		disabled={isFirst}
-																		onClick={() => handleReorderOrder(store, order.id, "top")}
+																		onMouseDown={(e) => e.preventDefault()}
+																		onClick={(e) => {
+																			(e.currentTarget as HTMLButtonElement)?.blur();
+																			handleReorderOrder(store, order.id, "top");
+																		}}
 																		title={isFirst ? "Já está no topo" : "Mandar para o topo"}
 																		className={`flex flex-col sm:flex-row items-center justify-center gap-1 py-2 px-1 rounded-xl text-xs font-black transition-all select-none ${
 																			isFirst
@@ -900,7 +1098,11 @@ export default function InsumosPage() {
 																	<button
 																		type="button"
 																		disabled={isLast}
-																		onClick={() => handleReorderOrder(store, order.id, "bottom")}
+																		onMouseDown={(e) => e.preventDefault()}
+																		onClick={(e) => {
+																			(e.currentTarget as HTMLButtonElement)?.blur();
+																			handleReorderOrder(store, order.id, "bottom");
+																		}}
 																		title={isLast ? "Já está no fundo" : "Mandar para o fundo"}
 																		className={`flex flex-col sm:flex-row items-center justify-center gap-1 py-2 px-1 rounded-xl text-xs font-black transition-all select-none ${
 																			isLast
@@ -927,7 +1129,105 @@ export default function InsumosPage() {
 														</div>
 													</div>
 												);
-											});
+											};
+
+											return (
+												<>
+													{hasCategorized ? (
+														<div className="space-y-8">
+															{/* 1. Seções de Categorias na ordem: Outros, Geladeira, Garagem, Loja */}
+															{SECTION_ORDER.map((cat) => {
+																const catOrders = pendingOrders.filter((o) => o.category === cat);
+																if (catOrders.length === 0) return null;
+																const catConf = CATEGORY_CONFIG[cat];
+																const IconComp = catConf.icon;
+
+																return (
+																	<div key={cat} className="space-y-4 animate-in fade-in duration-200">
+																		<div className={`flex items-center justify-between p-3.5 px-6 rounded-2xl border ${catConf.headerBorder} ${catConf.headerBg} shadow-xs`}>
+																			<div className="flex items-center gap-3">
+																				<div className={`p-2 rounded-xl ${catConf.badgeBg}`}>
+																					<IconComp size={20} />
+																				</div>
+																				<h4 className={`text-xl font-black uppercase tracking-tight ${catConf.textColor}`}>
+																					{catConf.label}
+																				</h4>
+																			</div>
+																			<span className={`text-xs font-black px-3 py-1 rounded-full ${catConf.badgeBg} uppercase tracking-wider`}>
+																				{catOrders.length} {catOrders.length === 1 ? "insumo" : "insumos"}
+																			</span>
+																		</div>
+
+																		<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+																			{catOrders.map(renderCard)}
+																		</div>
+																	</div>
+																);
+															})}
+
+															{/* 2. Demais Insumos Pendentes (sem categoria definida) */}
+															{(() => {
+																const uncategorized = pendingOrders.filter((o) => !o.category);
+																if (uncategorized.length === 0) return null;
+
+																return (
+																	<div className="space-y-4 pt-2 animate-in fade-in duration-200">
+																		<div className="flex items-center justify-between p-3.5 px-6 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-100/70 dark:bg-slate-800/40 shadow-xs">
+																			<div className="flex items-center gap-3">
+																				<div className="p-2 rounded-xl bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300">
+																					<Package size={20} />
+																				</div>
+																				<h4 className="text-xl font-black uppercase tracking-tight text-slate-700 dark:text-slate-300">
+																					Demais Insumos
+																				</h4>
+																			</div>
+																			<span className="text-xs font-black px-3 py-1 rounded-full bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 uppercase tracking-wider">
+																				{uncategorized.length} {uncategorized.length === 1 ? "insumo" : "insumos"}
+																			</span>
+																		</div>
+
+																		<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+																			{uncategorized.map(renderCard)}
+																		</div>
+																	</div>
+																);
+															})()}
+														</div>
+													) : (
+														/* Sem categorias ativas: lista pendente padrão */
+														pendingOrders.length > 0 && (
+															<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+																{pendingOrders.map(renderCard)}
+															</div>
+														)
+													)}
+
+													{/* 3. Itens Verificados / A Entregar (com Check) no fundo */}
+													{deliveringOrders.length > 0 && (
+														<div className="space-y-4 pt-4 border-t border-slate-200/70 dark:border-slate-800">
+															{hasCategorized && (
+																<div className="flex items-center justify-between p-3.5 px-6 rounded-2xl border border-emerald-200/70 dark:border-emerald-800/50 bg-emerald-50/60 dark:bg-emerald-950/20 shadow-xs">
+																	<div className="flex items-center gap-3">
+																		<div className="p-2 rounded-xl bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-400">
+																			<CheckCircle2 size={20} />
+																		</div>
+																		<h4 className="text-xl font-black uppercase tracking-tight text-emerald-800 dark:text-emerald-300">
+																			Itens a Entregar (Verificados)
+																		</h4>
+																	</div>
+																	<span className="text-xs font-black px-3 py-1 rounded-full bg-emerald-100 dark:bg-emerald-900/40 text-emerald-800 dark:text-emerald-300 uppercase tracking-wider">
+																		{deliveringOrders.length} {deliveringOrders.length === 1 ? "insumo" : "insumos"}
+																	</span>
+																</div>
+															)}
+
+															<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+																{deliveringOrders.map(renderCard)}
+															</div>
+														</div>
+													)}
+												</>
+											);
 										})()}
 									</div>
 								</>
