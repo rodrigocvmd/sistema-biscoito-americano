@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { db } from "@/lib/firebase";
-import { collection, onSnapshot, getDocs, query, limit, doc, setDoc } from "firebase/firestore";
+import { collection, onSnapshot, getDocs, query, limit, doc, setDoc, getDoc, Timestamp } from "firebase/firestore";
 import { STOCK_LABELS, StockData, STORE_NAMES, StoreId, formatDate, sortStockEntries, isSorvete, normalizeStockData } from "@/types";
 import { RefreshCw, ArrowLeftRight, Printer, Search, Eye, EyeOff, ChevronDown, Save, FileText, Settings, Package, DollarSign, Calculator, ShoppingCart, Copy, Check, Plus, Minus, Sparkles, RotateCcw, Edit3 } from "lucide-react";
 
@@ -104,6 +104,9 @@ export default function EstoquePedidosPage() {
 	const [copiedPartialSummary, setCopiedPartialSummary] = useState(false);
 
 	const [savingDesired, setSavingDesired] = useState(false);
+	const [showOrderModal, setShowOrderModal] = useState(true);
+	const [loadingOrderSession, setLoadingOrderSession] = useState(false);
+	const isOrderInitialized = useRef(false);
 
 	// Order Calculations across all non-ice-cream cookie flavors
 	const cookieOrderEntries = sortStockEntries(Object.entries(STOCK_LABELS)).filter(([key]) => !isSorvete(key));
@@ -436,14 +439,137 @@ export default function EstoquePedidosPage() {
 		setCustomOrderPackages(newCustomOrder);
 	};
 
-	const clearStoreOrder = () => {
+	// Salvar automaticamente no localStorage quando os pacotes a pedir forem modificados
+	useEffect(() => {
+		if (isOrderInitialized.current && typeof window !== "undefined") {
+			localStorage.setItem("pedidos_custom_order_packages", JSON.stringify(customOrderPackages));
+			localStorage.setItem("pedidos_updated_at", new Date().toISOString());
+		}
+	}, [customOrderPackages]);
+
+	const saveOrderToDatabase = async () => {
+		try {
+			const now = new Date();
+			const orderData = {
+				customOrderPackages,
+				updatedAt: Timestamp.fromDate(now),
+				updatedAtIso: now.toISOString(),
+				formattedDate: formatDate(now),
+				selectedSessionId,
+			};
+			await setDoc(doc(db, "pedidosState", "latest"), orderData);
+			if (typeof window !== "undefined") {
+				localStorage.setItem("pedidos_custom_order_packages", JSON.stringify(customOrderPackages));
+				localStorage.setItem("pedidos_updated_at", now.toISOString());
+			}
+		} catch (error) {
+			console.error("Erro ao salvar pedido no banco de dados:", error);
+		}
+	};
+
+	const handleOpenPartialPreview = () => {
+		saveOrderToDatabase();
+		setShowPartialPreview(true);
+	};
+
+	const handleOpenSummary = () => {
+		saveOrderToDatabase();
+		setShowSummary(true);
+	};
+
+	const handleAccessLastOrder = async () => {
+		setLoadingOrderSession(true);
+		try {
+			let loadedPackages: Partial<Record<keyof StockData, number>> | null = null;
+			let loadedSessionId: string | null = null;
+			let dbUpdatedAtIso: string | null = null;
+
+			// 1. Tentar ler do Firestore
+			try {
+				const latestDocSnap = await getDoc(doc(db, "pedidosState", "latest"));
+				if (latestDocSnap.exists()) {
+					const data = latestDocSnap.data();
+					if (data.customOrderPackages) {
+						loadedPackages = data.customOrderPackages;
+					}
+					if (data.selectedSessionId) {
+						loadedSessionId = data.selectedSessionId;
+					}
+					if (data.updatedAtIso) {
+						dbUpdatedAtIso = data.updatedAtIso;
+					} else if (data.updatedAt?.toDate) {
+						dbUpdatedAtIso = data.updatedAt.toDate().toISOString();
+					}
+				}
+			} catch (e) {
+				console.error("Erro ao ler doc pedidosState/latest:", e);
+			}
+
+			// 2. Verificar localStorage
+			if (typeof window !== "undefined") {
+				const localSaved = localStorage.getItem("pedidos_custom_order_packages");
+				const localUpdatedAtIso = localStorage.getItem("pedidos_updated_at");
+
+				if (localSaved && localUpdatedAtIso && dbUpdatedAtIso) {
+					try {
+						const localTime = new Date(localUpdatedAtIso).getTime();
+						const dbTime = new Date(dbUpdatedAtIso).getTime();
+						// Se a versão local tiver sido alterada depois do último save na base
+						if (localTime > dbTime) {
+							loadedPackages = JSON.parse(localSaved);
+						}
+					} catch (e) {
+						console.error("Erro ao comparar datas:", e);
+					}
+				} else if (!loadedPackages && localSaved) {
+					try {
+						loadedPackages = JSON.parse(localSaved);
+					} catch (e) {
+						console.error("Erro ao carregar do localStorage:", e);
+					}
+				}
+			}
+
+			if (loadedPackages) {
+				setCustomOrderPackages(loadedPackages);
+				if (typeof window !== "undefined") {
+					localStorage.setItem("pedidos_custom_order_packages", JSON.stringify(loadedPackages));
+				}
+				if (loadedSessionId) {
+					setSelectedSessionId(loadedSessionId);
+				}
+			} else {
+				setCustomOrderPackages({});
+			}
+
+			isOrderInitialized.current = true;
+			setShowOrderModal(false);
+		} catch (err) {
+			console.error("Erro ao acessar último pedido:", err);
+			setShowOrderModal(false);
+		} finally {
+			setLoadingOrderSession(false);
+		}
+	};
+
+	const handleStartNewOrder = () => {
+		setCustomOrderPackages({});
 		setStoreOrderPackages({
 			lago: {},
 			terraco: {},
 			conjunto: {},
 			noroeste: {},
 		});
-		setCustomOrderPackages({});
+		if (typeof window !== "undefined") {
+			localStorage.removeItem("pedidos_custom_order_packages");
+			localStorage.removeItem("pedidos_updated_at");
+		}
+		isOrderInitialized.current = true;
+		setShowOrderModal(false);
+	};
+
+	const clearStoreOrder = () => {
+		handleStartNewOrder();
 	};
 
 	const handleCustomPackageChange = (itemKey: keyof StockData, value: string) => {
@@ -1104,7 +1230,7 @@ export default function EstoquePedidosPage() {
 						<div className="flex flex-col sm:flex-row justify-center items-center gap-3 md:gap-4 py-3">
 							<button
 								type="button"
-								onClick={() => setShowPartialPreview(true)}
+								onClick={handleOpenPartialPreview}
 								className="w-full sm:w-auto flex items-center justify-center gap-2.5 bg-slate-800 hover:bg-slate-900 text-white dark:bg-slate-700 dark:hover:bg-slate-600 px-6 md:px-10 py-3.5 md:py-4 rounded-2xl font-black text-xs md:text-sm shadow-xl hover:scale-[1.02] active:scale-95 transition-all cursor-pointer uppercase tracking-widest">
 								<Eye size={18} />
 								REVISAR PEDIDO PARCIAL
@@ -1112,7 +1238,7 @@ export default function EstoquePedidosPage() {
 
 							<button
 								type="button"
-								onClick={() => setShowSummary(true)}
+								onClick={handleOpenSummary}
 								className="w-full sm:w-auto flex items-center justify-center gap-2.5 bg-emerald-600 hover:bg-emerald-700 text-white px-8 md:px-12 py-3.5 md:py-4 rounded-2xl font-black text-xs md:text-sm shadow-xl shadow-emerald-500/20 dark:shadow-none hover:shadow-emerald-500/30 hover:scale-[1.02] active:scale-95 transition-all cursor-pointer uppercase tracking-widest">
 								<FileText size={18} />
 								GERAR RESUMO DO PEDIDO
@@ -2145,7 +2271,7 @@ export default function EstoquePedidosPage() {
 										<button
 											onClick={() => {
 												setShowPartialPreview(false);
-												setShowSummary(true);
+												handleOpenSummary();
 											}}
 											className="flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-3 rounded-2xl font-black text-xs uppercase tracking-wider shadow-md shadow-emerald-500/20 dark:shadow-none transition-all cursor-pointer">
 											<FileText size={16} />
@@ -2161,6 +2287,39 @@ export default function EstoquePedidosPage() {
 							</div>
 						);
 					})()}
+				</div>
+			)}
+
+			{showOrderModal && (
+				<div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[60] flex items-center justify-center p-4 animate-in fade-in duration-200">
+					<div className="bg-white dark:bg-slate-900 rounded-[2rem] w-full max-w-xl shadow-2xl border border-blue-200 dark:border-blue-900/30 overflow-hidden flex flex-col">
+						<div className="p-8 text-center space-y-5">
+							<div className="mx-auto w-20 h-20 bg-blue-100 dark:bg-blue-900/20 rounded-full flex items-center justify-center">
+								{loadingOrderSession ? (
+									<RefreshCw className="text-blue-600 dark:text-blue-400 animate-spin" size={40} />
+								) : (
+									<ShoppingCart className="text-blue-600 dark:text-blue-400" size={40} />
+								)}
+							</div>
+							<h3 className="text-xl md:text-2xl font-black text-slate-800 dark:text-slate-200 tracking-tight leading-snug">
+								Deseja acessar o último pedido ou iniciar um novo?
+							</h3>
+						</div>
+						<div className="p-6 bg-slate-50 dark:bg-slate-800/50 border-t border-slate-100 dark:border-slate-800 flex gap-4">
+							<button 
+								onClick={handleAccessLastOrder} 
+								disabled={loadingOrderSession}
+								className="flex-1 px-6 py-4 rounded-2xl font-black text-sm md:text-base uppercase tracking-wider bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-300 dark:hover:bg-slate-600 shadow-sm disabled:opacity-50 cursor-pointer text-center transition-all">
+								{loadingOrderSession ? "Carregando..." : "Acessar último"}
+							</button>
+							<button 
+								onClick={handleStartNewOrder} 
+								disabled={loadingOrderSession}
+								className="flex-1 px-6 py-4 rounded-2xl font-black text-sm md:text-base uppercase tracking-wider bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg disabled:opacity-50 cursor-pointer text-center transition-all">
+								{loadingOrderSession ? "Iniciando..." : "Iniciar novo"}
+							</button>
+						</div>
+					</div>
 				</div>
 			)}
 		</>
