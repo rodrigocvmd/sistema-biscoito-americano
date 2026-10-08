@@ -57,6 +57,27 @@ body {
   }
 }
 
+/* Previne zoom automático indesejado no iOS Safari ao focar em inputs, selects e textareas */
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+@supports (-webkit-touch-callout: none) {
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+}
+
+@media screen and (max-width: 768px) {
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+}
+
 /* Custom verification style */
 .tailwind-check {
   @apply bg-red-600 text-white p-4 font-bold;
