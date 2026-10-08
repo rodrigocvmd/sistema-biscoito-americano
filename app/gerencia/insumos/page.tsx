@@ -331,6 +331,9 @@ export default function InsumosPage() {
 
 		if (targetIndex === currentIndex) return;
 
+		// Salvar a posição de rolagem exata da janela antes de qualquer alteração no DOM
+		const scrollYBefore = typeof window !== "undefined" ? window.scrollY : 0;
+
 		const newGroupOrders = [...groupOrders];
 		const [movedOrder] = newGroupOrders.splice(currentIndex, 1);
 		newGroupOrders.splice(targetIndex, 0, movedOrder);
@@ -371,9 +374,16 @@ export default function InsumosPage() {
 				}, 60);
 			});
 		} else {
+			// Para "top" e "bottom": desfocar o elemento ativo e travar o scroll rigorosamente na mesma posição
 			if (typeof document !== "undefined" && document.activeElement instanceof HTMLElement) {
 				document.activeElement.blur();
 			}
+			requestAnimationFrame(() => {
+				window.scrollTo({ top: scrollYBefore, behavior: "instant" as any });
+				setTimeout(() => {
+					window.scrollTo({ top: scrollYBefore, behavior: "instant" as any });
+				}, 50);
+			});
 		}
 	};
 
@@ -841,7 +851,7 @@ export default function InsumosPage() {
 					</button>
 
 					{expandedStores[store.id] && (
-						<div className="p-8 pt-0 border-t border-slate-50 dark:border-slate-800 animate-in slide-in-from-top-2 duration-300">
+						<div className="p-8 pt-0 border-t border-slate-50 dark:border-slate-800 animate-in slide-in-from-top-2 duration-300 [overflow-anchor:none]">
 							{store.pendingOrders.length > 0 ? (
 								<>
 									<div className="flex flex-wrap items-center justify-between gap-4 py-6 border-b border-slate-50 dark:border-slate-800 mb-3">
@@ -1049,9 +1059,13 @@ export default function InsumosPage() {
 																	<button
 																		type="button"
 																		disabled={isFirst}
-																		onMouseDown={(e) => e.preventDefault()}
+																		onMouseDown={(e) => {
+																			e.preventDefault();
+																			(e.currentTarget as HTMLElement)?.blur();
+																		}}
 																		onClick={(e) => {
-																			(e.currentTarget as HTMLButtonElement)?.blur();
+																			e.preventDefault();
+																			(e.currentTarget as HTMLElement)?.blur();
 																			handleReorderOrder(store, order.id, "top");
 																		}}
 																		title={isFirst ? "Já está no topo" : "Mandar para o topo"}
@@ -1098,9 +1112,13 @@ export default function InsumosPage() {
 																	<button
 																		type="button"
 																		disabled={isLast}
-																		onMouseDown={(e) => e.preventDefault()}
+																		onMouseDown={(e) => {
+																			e.preventDefault();
+																			(e.currentTarget as HTMLElement)?.blur();
+																		}}
 																		onClick={(e) => {
-																			(e.currentTarget as HTMLButtonElement)?.blur();
+																			e.preventDefault();
+																			(e.currentTarget as HTMLElement)?.blur();
 																			handleReorderOrder(store, order.id, "bottom");
 																		}}
 																		title={isLast ? "Já está no fundo" : "Mandar para o fundo"}
