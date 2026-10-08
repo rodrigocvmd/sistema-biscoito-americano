@@ -28,6 +28,7 @@ import {
 	RepositionHistory,
 	RepositionMovementItem,
 	normalizeStockData,
+	normalizeSearchText,
 } from "@/types";
 import {
 	RefreshCw,
@@ -365,7 +366,7 @@ export default function EstoqueReposicionarPage() {
 	};
 
 	const sortedItems = sortStockEntries(Object.entries(STOCK_LABELS))
-		.filter(([_, label]) => label.toLowerCase().includes(searchTerm.toLowerCase()));
+		.filter(([_, label]) => normalizeSearchText(label).includes(normalizeSearchText(searchTerm)));
 
 	const TARGET_STORES_ORDER: StoreId[] = ["noroeste", "conjunto", "terraco"];
 

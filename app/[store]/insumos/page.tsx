@@ -127,12 +127,13 @@ const INVENTORY_DATA = [
 	{
 		category: "EMBALAGENS E DESCARTÁVEIS",
 		items: [
-			"AMERICAN BAG",
 			"SAQUINHO UNITÁRIO",
 			"KRAFT P",
 			"KRAFT G",
 			"CAIXA P",
 			"CAIXA G",
+			"AMERICAN BAG G",
+			"AMERICAN BAG P",
 			"HAMBURGUEIRA",
 			"PAPEL INTERFOLHADO",
 			"PAPEL MANTEIGA",

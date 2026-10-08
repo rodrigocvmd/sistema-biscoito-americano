@@ -7,7 +7,7 @@ import {
 	TipoLancamentoFinanceiro,
 	TIPO_LANCAMENTO_CONFIG,
 } from "@/types/funcionarios";
-import { STORE_NAMES, StoreId } from "@/types";
+import { STORE_NAMES, StoreId, normalizeSearchText } from "@/types";
 import {
 	createFuncionario,
 	updateFuncionario,
@@ -270,13 +270,14 @@ export default function FuncionariosTab({
 
 	// Filtragem
 	const filtered = funcionarios.filter((func) => {
-		const searchLower = searchTerm.toLowerCase();
+		const searchNormalized = normalizeSearchText(searchTerm);
 		const matchesSearch =
-			func.nome.toLowerCase().includes(searchLower) ||
-			(func.nomeCompleto && func.nomeCompleto.toLowerCase().includes(searchLower)) ||
-			(func.cpf && func.cpf.toLowerCase().includes(searchLower)) ||
-			(func.telefone && func.telefone.toLowerCase().includes(searchLower)) ||
-			(func.chavePix && func.chavePix.toLowerCase().includes(searchLower));
+			!searchNormalized ||
+			normalizeSearchText(func.nome).includes(searchNormalized) ||
+			(func.nomeCompleto && normalizeSearchText(func.nomeCompleto).includes(searchNormalized)) ||
+			(func.cpf && normalizeSearchText(func.cpf).includes(searchNormalized)) ||
+			(func.telefone && normalizeSearchText(func.telefone).includes(searchNormalized)) ||
+			(func.chavePix && normalizeSearchText(func.chavePix).includes(searchNormalized));
 
 		const matchesLoja =
 			filterLoja === "todas" || func.lojaId === "todas" || func.lojaId === filterLoja;

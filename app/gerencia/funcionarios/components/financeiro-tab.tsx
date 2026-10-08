@@ -8,7 +8,7 @@ import {
 	TIPO_LANCAMENTO_CONFIG,
 	EscalaItem,
 } from "@/types/funcionarios";
-import { STORE_NAMES, StoreId } from "@/types";
+import { STORE_NAMES, StoreId, normalizeSearchText } from "@/types";
 import {
 	createLancamentoFinanceiro,
 	updateLancamentoFinanceiro,
@@ -299,12 +299,13 @@ export default function FinanceiroTab({
 	// Filtros da Visão Colaboradores
 	const filteredColaboradores = useMemo(() => {
 		return colaboradoresFinanceiro.filter((item) => {
-			const searchLower = searchTerm.toLowerCase();
+			const searchNormalized = normalizeSearchText(searchTerm);
 			const matchesSearch =
-				item.funcionario.nome.toLowerCase().includes(searchLower) ||
+				!searchNormalized ||
+				normalizeSearchText(item.funcionario.nome).includes(searchNormalized) ||
 				(item.funcionario.apelido &&
-					item.funcionario.apelido.toLowerCase().includes(searchLower)) ||
-				item.funcionario.cargo.toLowerCase().includes(searchLower);
+					normalizeSearchText(item.funcionario.apelido).includes(searchNormalized)) ||
+				normalizeSearchText(item.funcionario.cargo).includes(searchNormalized);
 
 			const matchesLoja =
 				filterLoja === "todas" ||
@@ -342,11 +343,12 @@ export default function FinanceiroTab({
 	// Filtros da Visão Extrato Geral
 	const filteredLancamentos = useMemo(() => {
 		return lancamentos.filter((l) => {
-			const searchLower = searchTerm.toLowerCase();
+			const searchNormalized = normalizeSearchText(searchTerm);
 			const matchesSearch =
-				l.funcionarioNome.toLowerCase().includes(searchLower) ||
-				l.descricao.toLowerCase().includes(searchLower) ||
-				(l.observacoes && l.observacoes.toLowerCase().includes(searchLower));
+				!searchNormalized ||
+				normalizeSearchText(l.funcionarioNome).includes(searchNormalized) ||
+				normalizeSearchText(l.descricao).includes(searchNormalized) ||
+				(l.observacoes && normalizeSearchText(l.observacoes).includes(searchNormalized));
 
 			const itemLoja = l.lojaId || funcLojaMap[l.funcionarioId];
 			const matchesLoja =

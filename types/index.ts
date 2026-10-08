@@ -74,6 +74,15 @@ export const isSorvete = (keyOrLabel: string) => {
 	);
 };
 
+export const normalizeSearchText = (str: string = "") => {
+	return (str || "")
+		.normalize("NFD")
+		.replace(/[\u0300-\u036f]/g, "")
+		.toLowerCase()
+		.trim();
+};
+
+
 export const normalizeStockData = (raw: any): Partial<StockData> => {
 	if (!raw) return {};
 	const stock = { ...raw };

@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { db } from "@/lib/firebase";
 import { collection, onSnapshot } from "firebase/firestore";
-import { STOCK_LABELS, StockData, STORE_NAMES, StoreId, formatDate, sortStockEntries } from "@/types";
+import { STOCK_LABELS, StockData, STORE_NAMES, StoreId, formatDate, sortStockEntries, normalizeSearchText } from "@/types";
 import { RefreshCw, ArrowLeftRight, Printer, Search, Eye, EyeOff } from "lucide-react";
 
 interface FullStoreData {
@@ -251,7 +251,7 @@ export default function EstoqueAtualPage() {
 						<tbody>
 							{(() => {
 								const filteredEntries = sortStockEntries(Object.entries(STOCK_LABELS)).filter(([_, label]) =>
-									label.toLowerCase().includes(searchTerm.toLowerCase())
+									normalizeSearchText(label).includes(normalizeSearchText(searchTerm))
 								);
 
 								// Helper para extrair número de abertos de forma consistente

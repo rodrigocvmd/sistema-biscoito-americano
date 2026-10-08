@@ -18,6 +18,7 @@ import {
 	formatDate,
 	RepositionMovementItem,
 	LatestRepositionState,
+	normalizeSearchText,
 } from "@/types";
 import {
 	RefreshCw,
@@ -366,13 +367,13 @@ export default function RepositionStorePage({ params }: { params: Promise<{ stor
 					const filteredOutgoings = storeData.outgoings.filter((m) => {
 						if (!searchTerm.trim()) return true;
 						const label = STOCK_LABELS[m.itemId] || m.itemName || "";
-						return label.toLowerCase().includes(searchTerm.toLowerCase());
+						return normalizeSearchText(label).includes(normalizeSearchText(searchTerm));
 					});
 
 					const filteredIncomings = storeData.incomings.filter((m) => {
 						if (!searchTerm.trim()) return true;
 						const label = STOCK_LABELS[m.itemId] || m.itemName || "";
-						return label.toLowerCase().includes(searchTerm.toLowerCase());
+						return normalizeSearchText(label).includes(normalizeSearchText(searchTerm));
 					});
 
 					const totalMovements = filteredOutgoings.length + filteredIncomings.length;

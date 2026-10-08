@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef } from "react";
 import { db } from "@/lib/firebase";
 import { collection, onSnapshot, getDocs, query, limit, doc, setDoc, getDoc, Timestamp } from "firebase/firestore";
-import { STOCK_LABELS, StockData, STORE_NAMES, StoreId, formatDate, sortStockEntries, isSorvete, normalizeStockData } from "@/types";
+import { STOCK_LABELS, StockData, STORE_NAMES, StoreId, formatDate, sortStockEntries, isSorvete, normalizeStockData, normalizeSearchText } from "@/types";
 import { RefreshCw, ArrowLeftRight, Printer, Search, Eye, EyeOff, ChevronDown, Save, FileText, Settings, Package, DollarSign, Calculator, ShoppingCart, Copy, Check, Plus, Minus, Sparkles, RotateCcw, Edit3 } from "lucide-react";
 
 interface FullStoreData {
@@ -897,7 +897,7 @@ export default function EstoquePedidosPage() {
 								</thead>
 								<tbody>
 									{sortStockEntries(Object.entries(STOCK_LABELS))
-										.filter(([key, label]) => !isSorvete(key) && label.toLowerCase().includes(searchTerm.toLowerCase()))
+										.filter(([key, label]) => !isSorvete(key) && normalizeSearchText(label).includes(normalizeSearchText(searchTerm)))
 										.map(([key, label]) => {
 											const itemKey = key as keyof StockData;
 											const totalQty = allData.reduce((sum, store) => sum + (store.stock[itemKey] || 0), 0);
@@ -1082,7 +1082,7 @@ export default function EstoquePedidosPage() {
 								</tbody>
 								{(() => {
 									const filteredEntries = sortStockEntries(Object.entries(STOCK_LABELS))
-										.filter(([key, label]) => !isSorvete(key) && label.toLowerCase().includes(searchTerm.toLowerCase()));
+										.filter(([key, label]) => !isSorvete(key) && normalizeSearchText(label).includes(normalizeSearchText(searchTerm)));
 
 									let totalBoxesToOrder = 0;
 									let totalPackagesToOrder = 0;
@@ -1338,7 +1338,7 @@ export default function EstoquePedidosPage() {
 								</thead>
 								<tbody>
 									{sortStockEntries(Object.entries(STOCK_LABELS))
-										.filter(([key, label]) => !isSorvete(key) && label.toLowerCase().includes(searchTerm.toLowerCase()))
+										.filter(([key, label]) => !isSorvete(key) && normalizeSearchText(label).includes(normalizeSearchText(searchTerm)))
 										.map(([key, label]) => {
 											const itemKey = key as keyof StockData;
 											const totalVal = STORE_ORDER.reduce(

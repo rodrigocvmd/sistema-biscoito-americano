@@ -14,7 +14,7 @@ import {
 	orderBy,
 	limit,
 } from "firebase/firestore";
-import { STOCK_LABELS, StoreId, STORE_NAMES, SupplyOrder, formatDate, SupplyOrderSnapshot } from "@/types";
+import { STOCK_LABELS, StoreId, STORE_NAMES, SupplyOrder, formatDate, SupplyOrderSnapshot, normalizeSearchText } from "@/types";
 import {
 	RefreshCw,
 	Store,
@@ -656,7 +656,7 @@ export default function InsumosPage() {
 
 	// Cálculo dos resultados de busca de insumos em pedidos pendentes e a entregar
 	const searchResults = (() => {
-		const term = searchTerm.trim().toLowerCase();
+		const term = normalizeSearchText(searchTerm);
 		if (!term) return [];
 
 		// Mapeia por nome de insumo quais lojas têm pedidos
@@ -664,7 +664,7 @@ export default function InsumosPage() {
 
 		allData.forEach((store) => {
 			store.pendingOrders.forEach((order) => {
-				if (order.name.toLowerCase().includes(term)) {
+				if (normalizeSearchText(order.name).includes(term)) {
 					const existing = resultsMap.get(order.name) || [];
 					existing.push({
 						storeId: store.id,
