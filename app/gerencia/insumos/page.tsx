@@ -932,20 +932,21 @@ export default function InsumosPage() {
 																		: "bg-slate-50 dark:bg-slate-800 border-slate-100 dark:border-slate-700 hover:bg-white dark:hover:bg-slate-700 hover:border-blue-200 dark:hover:border-blue-800 hover:shadow-xl dark:hover:shadow-none"
 														}`}>
 														<div className="space-y-4">
-															<div className="flex items-center justify-between gap-3">
+															<div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
 																<div className="flex items-center gap-2 flex-1 min-w-0">
 																	<GripVertical size={20} className="text-slate-300 dark:text-slate-600 hover:text-slate-500 shrink-0" />
-																	<p className="text-2xl font-black leading-tight text-slate-800 dark:text-slate-200 truncate" title={order.name}>
+																	<p className="text-2xl font-black leading-tight text-slate-800 dark:text-slate-200 break-words sm:truncate" title={order.name}>
 																		{order.name}
 																	</p>
 																</div>
 
-																<div className="flex items-center gap-2 shrink-0">
+																<div className="flex items-center justify-end gap-2 shrink-0 self-end sm:self-auto">
 																	{/* Menu Hamburger para Categorias (Geladeira, Garagem, Loja, Outros) */}
 																	{!isChecked && (
 																		<div className="relative">
 																			<button
 																				type="button"
+																				id="botaoSecaoInsumo"
 																				onClick={(e) => {
 																					e.stopPropagation();
 																					setOpenMenuOrderId(isMenuOpen ? null : order.id);

@@ -21,6 +21,7 @@ export default function EstoqueAtualPage() {
 	const [allData, setAllData] = useState<FullStoreData[]>([]);
 	const [searchTerm, setSearchTerm] = useState("");
 	const [hideOpen, setHideOpen] = useState(true);
+	const [boxSizes, setBoxSizes] = useState<Partial<StockData>>({});
 
 	const rotateStores = () => {
 		setAllData((prev) => {
@@ -65,6 +66,20 @@ export default function EstoqueAtualPage() {
 		});
 
 		return () => unsubscribeStores();
+	}, []);
+
+	useEffect(() => {
+		const unsubscribeDesired = onSnapshot(collection(db, "desiredStocks"), (snapshot) => {
+			const globalDoc = snapshot.docs.find((d) => d.id === "global");
+			if (globalDoc) {
+				const data = globalDoc.data();
+				if (data.boxSizes) {
+					setBoxSizes(data.boxSizes);
+				}
+			}
+		});
+
+		return () => unsubscribeDesired();
 	}, []);
 
 	if (loading) {
@@ -336,15 +351,24 @@ export default function EstoqueAtualPage() {
 									<>
 										{renderTotalRow(true)}
 										{filteredEntries.map(([key, label]) => {
+											const itemKey = key as keyof StockData;
 											const itemClosedTotal = allData.reduce((sum, store) => sum + (store.stock[key] || 0), 0);
 											const itemOpenTotal = allData.reduce((sum, store) => sum + getOpenCount(store, key), 0);
+											const boxSize = boxSizes[itemKey] || 0;
 
 											return (
 												<tr
 													key={key}
 													className="border-b border-slate-100 dark:border-slate-800 hover:bg-blue-50/30 dark:hover:bg-blue-900/20 transition-colors group">
 													<td className="p-3 md:p-6 text-sm md:text-xl font-black text-slate-600 dark:text-slate-400 sticky left-0 bg-white dark:bg-slate-900 group-hover:bg-blue-50/30 dark:group-hover:bg-blue-900/20 z-10 border-r border-slate-50 dark:border-slate-800 transition-colors uppercase">
-														{label}
+														<div className="flex items-center gap-1.5">
+															<span>{label}</span>
+															{boxSize > 0 && (
+																<span className="!text-xl md:text-base font-black text-slate-400 dark:text-slate-500 normal-case">
+																	({boxSize})
+																</span>
+															)}
+														</div>
 													</td>
 													<td className="p-3 md:p-6 text-center border-l border-slate-100 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-800/40">
 														<div className="flex justify-center items-center">
