@@ -392,11 +392,13 @@ export default function StockMovementsPage({ params }: { params: Promise<{ store
 					className="px-6 py-2.5 text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300 rounded-xl text-sm font-black transition-all">
 					Estoque Atual
 				</Link>
-				<Link
-					href={`/${store}/estoque/reposicionamento`}
-					className="px-6 py-2.5 text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300 rounded-xl text-sm font-black transition-all">
-					Reposicionamento
-				</Link>
+				{store === "lago" && (
+					<Link
+						href={`/${store}/estoque/reposicionamento`}
+						className="px-6 py-2.5 text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300 rounded-xl text-sm font-black transition-all">
+						Reposicionamento
+					</Link>
+				)}
 			</div>
 
 			{/* Opening Section */}

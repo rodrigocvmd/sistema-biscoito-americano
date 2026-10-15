@@ -216,6 +216,18 @@ export interface LatestRepositionState {
 		}
 	>;
 	movements?: RepositionMovementItem[];
+	checklist?: Record<string, { separatedQty: number; done: boolean }>;
+	confirmedStores?: Partial<
+		Record<
+			StoreId,
+			{
+				confirmed: boolean;
+				confirmedAt: any;
+				type: "saida" | "entrada";
+				appliedQuantities: Record<string, number>;
+			}
+		>
+	>;
 }
 
 export interface SupplyOrderSnapshotItem {
