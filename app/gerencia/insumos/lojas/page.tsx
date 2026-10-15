@@ -9,12 +9,15 @@ import {
 	where,
 	doc,
 	updateDoc,
+	addDoc,
+	serverTimestamp,
 	collectionGroup,
 	Timestamp,
 	orderBy,
 	limit,
 } from "firebase/firestore";
 import { STOCK_LABELS, StoreId, STORE_NAMES, SupplyOrder, formatDate, SupplyOrderSnapshot, normalizeSearchText } from "@/types";
+import { INVENTORY_DATA } from "@/lib/insumos-data";
 import {
 	RefreshCw,
 	Store,
@@ -43,6 +46,7 @@ import {
 	Menu,
 	Snowflake,
 	Warehouse,
+	ShoppingCart,
 } from "lucide-react";
 
 interface FullStoreData {
@@ -497,6 +501,41 @@ export default function InsumosPage() {
 			await updateDoc(orderRef, updateData);
 		} catch (error) {
 			console.error("Erro ao alternar check:", error);
+		}
+	};
+
+	const [addedToSupplierOrderId, setAddedToSupplierOrderId] = useState<string | null>(null);
+
+	const handleAddToSupplierOrders = async (itemName: string, orderId: string) => {
+		try {
+			const finalName = itemName.trim().toUpperCase();
+			const norm = normalizeSearchText(finalName);
+			let category = "OUTROS";
+			for (const cat of INVENTORY_DATA) {
+				for (const item of cat.items) {
+					if (normalizeSearchText(item) === norm) {
+						category = cat.category;
+						break;
+					}
+				}
+			}
+
+			await addDoc(collection(db, "fornecedorPedidos"), {
+				name: finalName,
+				category,
+				status: "pending",
+				createdAt: serverTimestamp(),
+			});
+
+			setAddedToSupplierOrderId(orderId);
+			setTimeout(() => {
+				setAddedToSupplierOrderId((prev) => (prev === orderId ? null : prev));
+			}, 3000);
+
+			setOpenMenuOrderId(null);
+		} catch (error) {
+			console.error("Erro ao adicionar insumo para compra aos fornecedores:", error);
+			alert("Erro ao adicionar à lista de pedidos.");
 		}
 	};
 
@@ -992,6 +1031,22 @@ export default function InsumosPage() {
 																							);
 																						})}
 																					</div>
+
+																					{/* Opção Comprar: Adiciona à rota /gerencia/insumos/pedidos */}
+																					<div className="pt-1 mt-1 border-t border-slate-100 dark:border-slate-700/60">
+																						<button
+																							type="button"
+																							onClick={() => handleAddToSupplierOrders(order.name, order.id)}
+																							className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-black transition-all cursor-pointer text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/40">
+																							<div className="flex items-center gap-2.5">
+																								<ShoppingCart size={16} className="text-blue-600 dark:text-blue-400" />
+																								<span>Comprar</span>
+																							</div>
+																							<span className="text-[10px] font-bold uppercase tracking-wider text-blue-500/80 bg-blue-100 dark:bg-blue-900/50 px-1.5 py-0.5 rounded">
+																								+ Pedido
+																							</span>
+																						</button>
+																					</div>
 																				</div>
 																			)}
 																		</div>
@@ -1047,6 +1102,14 @@ export default function InsumosPage() {
 																	{formatDate(order.createdAt?.toDate())}
 																</p>
 															</div>
+
+															{/* Feedback de Adicionado aos Pedidos de Fornecedores */}
+															{addedToSupplierOrderId === order.id && (
+																<div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-100 dark:bg-blue-950/60 border border-blue-300 dark:border-blue-700 text-blue-700 dark:text-blue-300 text-xs font-bold animate-in fade-in slide-in-from-top-1 duration-150">
+																	<Check size={14} className="stroke-[3]" />
+																	<span>Adicionado à lista de Pedidos a Fornecedores!</span>
+																</div>
+															)}
 
 															{/* Botões de Reordenação: Topo, Subir, Descer, Fundo */}
 															<div
