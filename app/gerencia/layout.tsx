@@ -15,7 +15,7 @@ export default function GerenciaLayout({
 	const pathname = usePathname();
 
 	const tabs = [
-		{ id: "insumos", label: "Insumos", href: "/gerencia/insumos", icon: LayoutDashboard },
+		{ id: "insumos", label: "Insumos", href: "/gerencia/insumos/lojas", icon: LayoutDashboard },
 		{ id: "estoque", label: "Estoque", href: "/gerencia/estoque/atual", icon: Package },
 		{ id: "funcionarios", label: "Funcionários", href: "/gerencia/funcionarios", icon: Users },
 	];
@@ -105,7 +105,10 @@ export default function GerenciaLayout({
 						<div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-xl w-full sm:w-auto">
 							{tabs.map((tab) => {
 								const Icon = tab.icon;
-								const isActive = pathname.startsWith(tab.href);
+								const isActive =
+									tab.id === "insumos"
+										? pathname.startsWith("/gerencia/insumos")
+										: pathname.startsWith(tab.href);
 								return (
 									<Link
 										key={tab.id}
