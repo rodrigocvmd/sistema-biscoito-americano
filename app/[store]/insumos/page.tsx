@@ -33,6 +33,7 @@ import {
 	Edit2,
 	X,
 	Tag,
+	Clock,
 } from "lucide-react";
 
 import { use } from "react";
@@ -413,12 +414,15 @@ export default function SuppliesPage({ params }: { params: Promise<{ store: stri
 							})
 							.map((order) => {
 								const isUrgentItem = order.urgency === "Urgente";
+								const isPendingSupply = !!order.isPendingSupply;
 
 								return (
 									<div
 										key={order.id}
 										className={`p-5 rounded-3xl border transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-4 ${
-											isUrgentItem
+											isPendingSupply
+												? "bg-amber-50/40 dark:bg-amber-950/20 border-amber-300 dark:border-amber-800/60 shadow-sm opacity-80"
+												: isUrgentItem
 												? "bg-red-50/40 dark:bg-red-950/20 border-red-200 dark:border-red-900/60 shadow-sm"
 												: "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 shadow-sm"
 										}`}>
@@ -427,7 +431,12 @@ export default function SuppliesPage({ params }: { params: Promise<{ store: stri
 												<span className="text-lg font-black text-slate-800 dark:text-slate-200 truncate">
 													{order.name}
 												</span>
-												{isUrgentItem && (
+												{isPendingSupply && (
+													<span className="flex items-center gap-1 bg-amber-500 text-white px-2.5 py-0.5 rounded-md text-[0.6875rem] font-black uppercase tracking-wider shadow-xs">
+														<Clock size={12} /> Aguardando reposição
+													</span>
+												)}
+												{isUrgentItem && !isPendingSupply && (
 													<span className="flex items-center gap-1 bg-red-600 text-white px-2.5 py-0.5 rounded-md text-[0.6875rem] font-black uppercase tracking-wider shadow-xs animate-pulse">
 														<AlertTriangle size={12} /> Urgente
 													</span>

@@ -54,6 +54,7 @@ import {
 	ArrowDown,
 	GripVertical,
 	ArrowUpDown,
+	Clock,
 } from "lucide-react";
 
 interface FullStoreData {
@@ -264,6 +265,20 @@ export default function InsumosLojasPage() {
 	// Ordenação dos pedidos
 	const getStoreDisplayOrders = (store: FullStoreData) => {
 		const baseSorted = [...store.pendingOrders].sort((a, b) => {
+			// Insumos pendentes (aguardando reposição) vão sempre para o fim total da lista
+			const isPendA = a.isPendingSupply ? 1 : 0;
+			const isPendB = b.isPendingSupply ? 1 : 0;
+			if (isPendA !== isPendB) {
+				return isPendA - isPendB;
+			}
+
+			// Insumos conferidos (checked) ficam abaixo dos não-conferidos (mas acima de pendência)
+			const isCheckedA = a.checkedByGerencia ? 1 : 0;
+			const isCheckedB = b.checkedByGerencia ? 1 : 0;
+			if (isCheckedA !== isCheckedB) {
+				return isCheckedA - isCheckedB;
+			}
+
 			if (insumosSort === "alphabetical") {
 				return a.name.localeCompare(b.name, "pt-BR");
 			}
@@ -286,6 +301,12 @@ export default function InsumosLojasPage() {
 
 		const orderIds = manualOrderMap[store.id];
 		return [...baseSorted].sort((a, b) => {
+			const isPendA = a.isPendingSupply ? 1 : 0;
+			const isPendB = b.isPendingSupply ? 1 : 0;
+			if (isPendA !== isPendB) {
+				return isPendA - isPendB;
+			}
+
 			const idxA = orderIds.indexOf(a.id);
 			const idxB = orderIds.indexOf(b.id);
 			if (idxA === -1 && idxB === -1) return 0;
@@ -343,6 +364,34 @@ export default function InsumosLojasPage() {
 			});
 		} catch (error) {
 			console.error("Erro ao alternar check:", error);
+		}
+	};
+
+	// Alternar status de Pendência (Aguardando reposição de insumo)
+	const handleTogglePendingSupply = async (
+		storeId: string,
+		orderId: string,
+		currentPending: boolean,
+		store: FullStoreData,
+	) => {
+		try {
+			const nextPending = !currentPending;
+			const orderRef = doc(db, "stores", storeId, "supplyOrders", orderId);
+			await updateDoc(orderRef, {
+				isPendingSupply: nextPending,
+			});
+
+			// Se colocou em pendência e a ordenação for manual, move para o final do array manual também
+			if (nextPending && manualOrderMap[storeId]) {
+				const currentIds = manualOrderMap[storeId].filter((id) => id !== orderId);
+				currentIds.push(orderId);
+				setManualOrderMap((prev) => ({
+					...prev,
+					[storeId]: currentIds,
+				}));
+			}
+		} catch (error) {
+			console.error("Erro ao alternar pendência:", error);
 		}
 	};
 
@@ -675,7 +724,7 @@ export default function InsumosLojasPage() {
 							key={store.id}
 							className="bg-white dark:bg-slate-900 rounded-[36px] border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden transition-all">
 							{/* Header da Loja */}
-							<div className="p-6 md:p-8 flex flex-col sm:flex-row sm:items-center justify-between gap-6 hover:bg-slate-50/60 dark:hover:bg-slate-800/40 transition-all">
+							<div className="p-6 md:p-8 flex items-center justify-between gap-4 hover:bg-slate-50/60 dark:hover:bg-slate-800/40 transition-all">
 								<div
 									onClick={() => toggleStore(store.id)}
 									className="flex items-center gap-4 text-left cursor-pointer flex-1 min-w-0">
@@ -692,7 +741,7 @@ export default function InsumosLojasPage() {
 
 									<div className="min-w-0">
 										<div className="flex items-center gap-3 flex-wrap">
-											<h3 className="text-2xl md:text-3xl font-black text-slate-800 dark:text-slate-100 uppercase tracking-tight">
+											<h3 className="text-3xl md:text-4xl font-black text-slate-800 dark:text-slate-100 uppercase tracking-tight">
 												{store.name}
 											</h3>
 
@@ -709,12 +758,12 @@ export default function InsumosLojasPage() {
 
 										<div className="flex flex-wrap items-center gap-3 mt-2">
 											{pendingCount === 0 ? (
-												<p className="font-bold text-xs uppercase tracking-widest text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5">
-													<CheckCircle2 size={16} /> Nada pendente
+												<p className="font-bold text-sm md:text-base uppercase tracking-widest text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5">
+													<CheckCircle2 size={18} /> Nada pendente
 												</p>
 											) : (
-												<p className="font-bold text-xs uppercase tracking-widest text-slate-500 dark:text-slate-400">
-													<strong className="text-base font-black text-blue-600 dark:text-blue-400">
+												<p className="font-bold text-sm md:text-base uppercase tracking-widest text-slate-500 dark:text-slate-400">
+													<strong className="text-lg md:text-xl font-black text-blue-600 dark:text-blue-400">
 														{pendingCount}
 													</strong>{" "}
 													{pendingCount === 1 ? "insumo solicitado" : "insumos solicitados"}
@@ -724,16 +773,8 @@ export default function InsumosLojasPage() {
 									</div>
 								</div>
 
-								{/* Ações da Loja no Topo: Botão "Concluir Entrega" */}
-								<div className="flex items-center gap-3 shrink-0 self-end sm:self-center">
-									<button
-										onClick={() => handleOpenConcluirEntrega(store)}
-										disabled={pendingCount === 0}
-										className="cursor-pointer bg-emerald-600 hover:bg-emerald-700 disabled:opacity-40 disabled:cursor-not-allowed text-white font-black px-6 py-3.5 rounded-2xl shadow-lg shadow-emerald-200 dark:shadow-none transition-all flex items-center gap-2.5 text-sm active:scale-95">
-										<CheckCircle2 size={20} />
-										<span>Concluir Entrega</span>
-									</button>
-
+								{/* Ações da Loja no Topo: Botão Expandir/Recolher centralizado verticalmente */}
+								<div className="flex items-center gap-3 shrink-0 self-center">
 									<button
 										onClick={() => toggleStore(store.id)}
 										className="p-3 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 cursor-pointer">
@@ -746,16 +787,9 @@ export default function InsumosLojasPage() {
 							{isExpanded && (
 								<div className="p-6 md:p-8 pt-0 border-t border-slate-100 dark:border-slate-800 space-y-6 animate-in slide-in-from-top-2 duration-300">
 									<div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 py-3 border-b border-slate-100 dark:border-slate-800">
-										<h4 className="text-base font-black text-slate-700 dark:text-slate-300 flex items-center gap-2">
-											<Package className="text-blue-600" size={18} />
-											Pedidos de Insumos da Loja ({pendingCount})
-										</h4>
-
-										{pendingCount > 0 && (
-											<div className="flex items-center gap-2">
-												<span className="text-[11px] font-black text-slate-400 uppercase tracking-wider">
-													Ordenar:
-												</span>
+										{/* Botões de Ordenação Centralizados Horizontalmente (sem a string 'Ordenar') */}
+										{pendingCount > 0 ? (
+											<div className="w-full sm:w-auto flex justify-center">
 												<div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-xl gap-1">
 													{[
 														{ id: "urgency", label: "Prioridade" },
@@ -775,7 +809,20 @@ export default function InsumosLojasPage() {
 													))}
 												</div>
 											</div>
+										) : (
+											<div />
 										)}
+
+										{/* Botão Concluir Entrega */}
+										<div className="w-full sm:w-auto flex justify-center">
+											<button
+												onClick={() => handleOpenConcluirEntrega(store)}
+												disabled={pendingCount === 0}
+												className="cursor-pointer bg-emerald-600 hover:bg-emerald-700 disabled:opacity-40 disabled:cursor-not-allowed text-white font-black px-6 py-3 rounded-2xl shadow-lg shadow-emerald-200 dark:shadow-none transition-all flex items-center justify-center gap-2.5 text-sm active:scale-95">
+												<CheckCircle2 size={18} />
+												<span>Concluir Entrega</span>
+											</button>
+										</div>
 									</div>
 
 									{pendingCount === 0 ? (
@@ -790,13 +837,16 @@ export default function InsumosLojasPage() {
 											{getStoreDisplayOrders(store).map((order) => {
 												const isUrgent = order.urgency === "Urgente";
 												const isChecked = !!order.checkedByGerencia;
+												const isPending = !!order.isPendingSupply;
 
 												return (
 													<div
 														key={order.id}
 														id={`order-${store.id}-${order.id}`}
 														className={`p-5 rounded-3xl border transition-all flex flex-col justify-between gap-4 group ${
-															isUrgent
+															isPending
+																? "bg-amber-50/30 dark:bg-amber-950/20 border-amber-300 dark:border-amber-800/60 opacity-60 shadow-xs"
+																: isUrgent
 																? "bg-red-50/40 dark:bg-red-950/20 border-red-300 dark:border-red-900/60 shadow-xs"
 																: isChecked
 																? "bg-emerald-50/40 dark:bg-emerald-950/20 border-emerald-300 dark:border-emerald-800/60 opacity-80"
@@ -823,18 +873,26 @@ export default function InsumosLojasPage() {
 																	<Check size={18} strokeWidth={isChecked ? 4 : 2.5} />
 																</button>
 
-																<div className="flex-1 min-w-0">
+																<div className="flex-1 min-w-0 flex flex-col items-center text-center">
 																	<h5
-																		className={`text-base md:text-lg font-black uppercase break-words leading-tight ${
+																		className={`text-xl md:text-2xl font-black uppercase break-words leading-tight text-center ${
 																			isChecked
 																				? "text-emerald-900 dark:text-emerald-200 line-through decoration-emerald-500/60"
+																				: isPending
+																				? "text-amber-900 dark:text-amber-200"
 																				: "text-slate-800 dark:text-slate-100"
 																		}`}>
 																		{order.name}
 																	</h5>
 
-																	<div className="flex flex-wrap items-center gap-2 mt-2">
-																		{isUrgent && (
+																	<div className="flex flex-wrap items-center justify-center gap-2 mt-2">
+																		{isPending && (
+																			<span className="flex items-center gap-1 bg-amber-500 text-white px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider shadow-xs">
+																				<Clock size={12} /> Pendência (Falta insumo)
+																			</span>
+																		)}
+
+																		{isUrgent && !isPending && (
 																			<span className="flex items-center gap-1 bg-red-600 text-white px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider shadow-xs animate-pulse">
 																				<AlertTriangle size={12} /> Urgente
 																			</span>
@@ -847,56 +905,80 @@ export default function InsumosLojasPage() {
 																		)}
 																	</div>
 																</div>
-
-																<button
-																	onClick={() =>
-																		handleAddToSupplierOrders(order.name, order.id)
-																	}
-																	className="p-2 rounded-xl text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/40 transition-all cursor-pointer shrink-0"
-																	title="Comprar deste fornecedor (+ Pedido)">
-																	<ShoppingCart size={16} />
-																</button>
 															</div>
 
 															{addedToSupplierOrderId === order.id && (
-																<div className="mt-2 text-[11px] font-black text-blue-600 dark:text-blue-400 flex items-center gap-1">
-																	<Check size={12} />
+																<div className="mt-2 text-xs font-black text-blue-600 dark:text-blue-400 flex items-center justify-center gap-1 text-center">
+																	<Check size={14} />
 																	<span>Adicionado à lista de Compras!</span>
 																</div>
 															)}
 														</div>
 
-														<div className="pt-2 border-t border-slate-100 dark:border-slate-700/60 flex items-center justify-between text-xs text-slate-400 font-bold">
-															<span className="flex items-center gap-1">
-																<Calendar size={12} />
+														<div className="pt-2.5 border-t border-slate-100 dark:border-slate-700/60 flex items-center justify-between text-sm text-slate-400 font-bold gap-2">
+															<span className="flex items-center gap-1.5 shrink-0">
+																<Calendar size={14} />
 																{formatDate(order.createdAt?.toDate())}
 															</span>
 
+															{/* Botão de Pendência (Apenas o ícone de relógio, entre a data e o botão de compra) */}
+															<button
+																onClick={() =>
+																	handleTogglePendingSupply(
+																		store.id,
+																		order.id,
+																		isPending,
+																		store,
+																	)
+																}
+																className={`p-1.5 rounded-xl border transition-all cursor-pointer shrink-0 ${
+																	isPending
+																		? "bg-amber-500 border-amber-500 text-white shadow-xs"
+																		: "bg-slate-50 dark:bg-slate-700/60 border-slate-200 dark:border-slate-600 text-slate-400 hover:text-amber-600 hover:border-amber-300 dark:hover:text-amber-400"
+																}`}
+																title={
+																	isPending
+																		? "Marcar como disponível (remover pendência)"
+																		: "Marcar como pendente (aguardando reposição)"
+																}>
+																<Clock size={16} />
+															</button>
+
+															{/* Botão de Compra no Centro */}
+															<button
+																onClick={() =>
+																	handleAddToSupplierOrders(order.name, order.id)
+																}
+																className="p-1.5 rounded-xl text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/40 transition-all cursor-pointer shrink-0"
+																title="Comprar deste fornecedor (+ Pedido)">
+																<ShoppingCart size={18} />
+															</button>
+
 															{/* Botões de Reordenação Simples */}
-															<div className="flex items-center gap-1">
+															<div className="flex items-center gap-1 shrink-0">
 																<button
 																	onClick={() => handleReorderOrder(store, order.id, "top")}
-																	className="p-1 hover:text-blue-600 cursor-pointer"
+																	className="p-1.5 hover:text-blue-600 cursor-pointer text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-all"
 																	title="Mandar para o topo">
-																	<ArrowUpToLine size={14} />
+																	<ArrowUpToLine size={16} />
 																</button>
 																<button
 																	onClick={() => handleReorderOrder(store, order.id, "up")}
-																	className="p-1 hover:text-blue-600 cursor-pointer"
+																	className="p-1.5 hover:text-blue-600 cursor-pointer text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-all"
 																	title="Subir">
-																	<ArrowUp size={14} />
+																	<ArrowUp size={16} />
 																</button>
 																<button
 																	onClick={() => handleReorderOrder(store, order.id, "down")}
-																	className="p-1 hover:text-blue-600 cursor-pointer"
+																	className="p-1.5 hover:text-blue-600 cursor-pointer text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-all"
 																	title="Descer">
-																	<ArrowDown size={14} />
+																	<ArrowDown size={16} />
 																</button>
 																<button
 																	onClick={() => handleReorderOrder(store, order.id, "bottom")}
-																	className="p-1 hover:text-blue-600 cursor-pointer"
+																	className="p-1.5 hover:text-blue-600 cursor-pointer text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-all"
 																	title="Mandar para o fundo">
-																	<ArrowDownToLine size={14} />
+																	<ArrowDownToLine size={16} />
 																</button>
 															</div>
 														</div>
@@ -1102,11 +1184,11 @@ export default function InsumosLojasPage() {
 												? "bg-emerald-50/50 dark:bg-emerald-950/20 border-emerald-300 dark:border-emerald-800"
 												: "bg-slate-50/70 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700"
 										}`}>
-										<div className="flex items-center gap-3 flex-1 min-w-0">
+										<div className="flex items-start gap-3 flex-1 min-w-0">
 											<button
 												type="button"
 												onClick={() => handleModalToggleCheck(item.id)}
-												className={`cursor-pointer p-2 rounded-xl border transition-all shrink-0 ${
+												className={`cursor-pointer p-2 rounded-xl border transition-all shrink-0 mt-0.5 ${
 													item.checked
 														? "bg-emerald-600 border-emerald-600 text-white"
 														: "bg-white dark:bg-slate-700 border-slate-200 dark:border-slate-600 text-slate-300 hover:text-emerald-500"
@@ -1115,10 +1197,10 @@ export default function InsumosLojasPage() {
 												<Check size={16} strokeWidth={item.checked ? 4 : 2.5} />
 											</button>
 
-											<div className="min-w-0 flex-1">
+											<div className="min-w-0 flex-1 space-y-2">
 												<div className="flex items-center gap-2 flex-wrap">
 													<p
-														className={`text-sm md:text-base font-black uppercase truncate ${
+														className={`text-base md:text-lg font-black uppercase break-words ${
 															item.checked
 																? "text-emerald-900 dark:text-emerald-200 line-through decoration-emerald-500"
 																: "text-slate-800 dark:text-slate-100"
@@ -1131,23 +1213,24 @@ export default function InsumosLojasPage() {
 														</span>
 													)}
 												</div>
+
+												{/* Caixa de Texto de Quantidade: alinhada à esquerda do card, menor altura e placeholder menor */}
+												<div className="flex items-center gap-1.5">
+													<label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase">
+														Qtd:
+													</label>
+													<input
+														type="text"
+														placeholder="Ex: 2 un, 1 cx"
+														value={item.quantity}
+														onChange={(e) => handleModalUpdateQuantity(item.id, e.target.value)}
+														className="w-32 px-2.5 py-1 text-xs placeholder:text-[10px] font-bold text-left bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all"
+													/>
+												</div>
 											</div>
 										</div>
 
-										<div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
-											<div className="flex items-center gap-1.5">
-												<label className="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase">
-													Qtd:
-												</label>
-												<input
-													type="text"
-													placeholder="Ex: 2 un, 1 cx"
-													value={item.quantity}
-													onChange={(e) => handleModalUpdateQuantity(item.id, e.target.value)}
-													className="w-32 px-3 py-1.5 text-xs font-black text-right bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-												/>
-											</div>
-
+										<div className="flex items-center justify-end shrink-0 self-end sm:self-center">
 											<button
 												type="button"
 												onClick={() => handleModalRemoveItem(item.id)}

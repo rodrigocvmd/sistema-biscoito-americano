@@ -182,6 +182,7 @@ export interface SupplyOrder {
 	quantity?: string;
 	status: "pending" | "delivered" | "cancelled";
 	checkedByGerencia?: boolean; // Novo campo para o check do administrador
+	isPendingSupply?: boolean; // Pendência: aguardando reposição para ser levado
 	category?: "Geladeira" | "Garagem" | "Loja" | "Outros" | string | null;
 	createdAt: any; // Firestore Timestamp
 	deliveredAt?: any; // Firestore Timestamp
