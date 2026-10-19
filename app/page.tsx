@@ -14,6 +14,21 @@ export default function Home() {
 	const [passInput, setPassInput] = useState("");
 	const [passError, setPassError] = useState(false);
 
+	const handlePasswordChange = (val: string) => {
+		const clean = val.replace(/\D/g, "").slice(0, 4);
+		setPassInput(clean);
+		setPassError(false);
+
+		if (clean.length === 4) {
+			if (clean === "4572") {
+				window.location.href = "/gerencia";
+			} else {
+				setPassError(true);
+				setPassInput("");
+			}
+		}
+	};
+
 	const handleGerenciaAccess = (e: React.FormEvent) => {
 		e.preventDefault();
 		if (passInput === "4572") {
@@ -83,12 +98,10 @@ export default function Home() {
 								type="password"
 								inputMode="numeric"
 								pattern="[0-9]*"
+								maxLength={4}
 								autoFocus
 								value={passInput}
-								onChange={(e) => {
-									setPassInput(e.target.value.replace(/\D/g, ""));
-									setPassError(false);
-								}}
+								onChange={(e) => handlePasswordChange(e.target.value)}
 								placeholder="Insira a senha"
 								className={`w-full px-4 py-4 bg-slate-50 dark:bg-slate-800 border-2 rounded-2xl text-center text-2xl font-black tracking-widest focus:outline-none transition-all cursor-pointer caret-transparent ${
 									passError
@@ -102,11 +115,6 @@ export default function Home() {
 								</p>
 							)}
 							<div className="flex flex-col gap-3 pt-2">
-								<button
-									type="submit"
-									className="cursor-pointer w-full bg-blue-600 hover:bg-blue-700 text-white font-black py-4 rounded-2xl transition-all shadow-lg shadow-blue-100 dark:shadow-none">
-									Entrar
-								</button>
 								<button
 									type="button"
 									onClick={() => {

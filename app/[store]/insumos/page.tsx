@@ -257,7 +257,7 @@ export default function SuppliesPage({ params }: { params: Promise<{ store: stri
 									setIsDropdownOpen(true);
 								}}
 								autoComplete="off"
-								className="w-full px-4 py-3.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl focus:outline-none focus:ring-2 focus:ring-red-500 transition-all text-slate-800 dark:text-slate-200 font-bold placeholder:font-medium uppercase text-sm"
+								className="w-full h-[50px] px-4 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl focus:outline-none focus:ring-2 focus:ring-red-500 transition-all text-slate-800 dark:text-slate-200 font-bold placeholder:font-medium uppercase text-sm"
 							/>
 							<div className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
 								<ChevronDown size={18} />

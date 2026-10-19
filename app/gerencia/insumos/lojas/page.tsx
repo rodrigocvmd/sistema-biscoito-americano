@@ -651,7 +651,7 @@ export default function InsumosLojasPage() {
 					/>
 					<input
 						type="text"
-						placeholder="Pesquisar insumo nos pedidos pendentes das lojas..."
+						placeholder="Pesquisar insumo nos pedidos..."
 						value={searchTerm}
 						onChange={(e) => setSearchTerm(e.target.value)}
 						className="w-full bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-2xl py-3.5 pl-12 pr-10 text-sm md:text-base font-bold text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all shadow-inner"
