@@ -11,13 +11,24 @@ import {
 	updateDoc,
 	addDoc,
 	serverTimestamp,
-	collectionGroup,
 	Timestamp,
 	orderBy,
 	limit,
 } from "firebase/firestore";
-import { STOCK_LABELS, StoreId, STORE_NAMES, SupplyOrder, formatDate, SupplyOrderSnapshot, normalizeSearchText } from "@/types";
-import { INVENTORY_DATA } from "@/lib/insumos-data";
+import {
+	StoreId,
+	STORE_NAMES,
+	SupplyOrder,
+	formatDate,
+	SupplyOrderSnapshot,
+	SupplyOrderSnapshotItem,
+	normalizeSearchText,
+	UrgencyLevel,
+} from "@/types";
+import {
+	INVENTORY_DATA,
+	getInsumoCategory,
+} from "@/lib/insumos-data";
 import {
 	RefreshCw,
 	Store,
@@ -25,28 +36,24 @@ import {
 	ChevronUp,
 	Check,
 	AlertTriangle,
-	AlertCircle,
-	Hourglass,
 	Package,
 	CheckCircle2,
 	Trash2,
 	ArrowLeftRight,
 	Search,
 	X,
-	GripVertical,
-	ArrowUpDown,
-	ArrowUpToLine,
-	ArrowDownToLine,
-	ArrowUp,
-	ArrowDown,
 	ListChecks,
 	Copy,
 	ExternalLink,
 	Calendar,
-	Menu,
-	Snowflake,
-	Warehouse,
+	Tag,
 	ShoppingCart,
+	ArrowUpToLine,
+	ArrowDownToLine,
+	ArrowUp,
+	ArrowDown,
+	GripVertical,
+	ArrowUpDown,
 } from "lucide-react";
 
 interface FullStoreData {
@@ -55,62 +62,21 @@ interface FullStoreData {
 	pendingOrders: SupplyOrder[];
 	historicalOrders: SupplyOrder[];
 	orderSnapshots: SupplyOrderSnapshot[];
-	activeCount: number;
-	deliveringCount: number;
+	urgentCount: number;
+}
+
+interface DeliveryModalItem {
+	id: string;
+	name: string;
+	urgency: UrgencyLevel;
+	quantity: string;
+	checked: boolean;
+	createdAt?: any;
 }
 
 const STORE_ORDER: StoreId[] = ["lago", "terraco", "conjunto", "noroeste"];
 
-const INSUMO_CATEGORIES = ["Geladeira", "Garagem", "Loja", "Outros"] as const;
-type InsumoCategory = (typeof INSUMO_CATEGORIES)[number];
-const SECTION_ORDER: InsumoCategory[] = ["Outros", "Geladeira", "Garagem", "Loja"];
-
-const CATEGORY_CONFIG: Record<
-	InsumoCategory,
-	{
-		label: string;
-		icon: any;
-		badgeBg: string;
-		headerBorder: string;
-		headerBg: string;
-		textColor: string;
-	}
-> = {
-	Geladeira: {
-		label: "Geladeira",
-		icon: Snowflake,
-		badgeBg: "bg-cyan-100 dark:bg-cyan-900/50 text-cyan-800 dark:text-cyan-300",
-		headerBorder: "border-cyan-200 dark:border-cyan-800/60",
-		headerBg: "bg-cyan-50/70 dark:bg-cyan-950/25",
-		textColor: "text-cyan-800 dark:text-cyan-300",
-	},
-	Garagem: {
-		label: "Garagem",
-		icon: Warehouse,
-		badgeBg: "bg-amber-100 dark:bg-amber-900/50 text-amber-800 dark:text-amber-300",
-		headerBorder: "border-amber-200 dark:border-amber-800/60",
-		headerBg: "bg-amber-50/70 dark:bg-amber-950/25",
-		textColor: "text-amber-800 dark:text-amber-300",
-	},
-	Loja: {
-		label: "Loja",
-		icon: Store,
-		badgeBg: "bg-indigo-100 dark:bg-indigo-900/50 text-indigo-800 dark:text-indigo-300",
-		headerBorder: "border-indigo-200 dark:border-indigo-800/60",
-		headerBg: "bg-indigo-50/70 dark:bg-indigo-950/25",
-		textColor: "text-indigo-800 dark:text-indigo-300",
-	},
-	Outros: {
-		label: "Outros",
-		icon: Package,
-		badgeBg: "bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-200",
-		headerBorder: "border-slate-200 dark:border-slate-700",
-		headerBg: "bg-slate-100/70 dark:bg-slate-800/40",
-		textColor: "text-slate-700 dark:text-slate-300",
-	},
-};
-
-export default function InsumosPage() {
+export default function InsumosLojasPage() {
 	const [loading, setLoading] = useState(true);
 	const [allData, setAllData] = useState<FullStoreData[]>([]);
 	const [expandedStores, setExpandedStores] = useState<Record<string, boolean>>({});
@@ -118,10 +84,20 @@ export default function InsumosPage() {
 	const [showSnapshotsHistory, setShowSnapshotsHistory] = useState<Record<string, boolean>>({});
 	const [selectedSnapshotModal, setSelectedSnapshotModal] = useState<SupplyOrderSnapshot | null>(null);
 	const [copiedSnapshotId, setCopiedSnapshotId] = useState<string | null>(null);
-	const [insumosSort, setInsumosSort] = useState<"default" | "urgency" | "date" | "alphabetical" | "manual">("urgency");
-	const [manualOrderMap, setManualOrderMap] = useState<Record<string, string[]>>({});
 	const [searchTerm, setSearchTerm] = useState("");
-	const [openMenuOrderId, setOpenMenuOrderId] = useState<string | null>(null);
+	const [addedToSupplierOrderId, setAddedToSupplierOrderId] = useState<string | null>(null);
+
+	// Estado da ordenação
+	const [insumosSort, setInsumosSort] = useState<"urgency" | "date" | "alphabetical" | "manual">("urgency");
+	const [manualOrderMap, setManualOrderMap] = useState<Record<string, string[]>>({});
+
+	// Modal de Concluir Entrega
+	const [deliveryModal, setDeliveryModal] = useState<{
+		storeId: StoreId;
+		storeName: string;
+		items: DeliveryModalItem[];
+	} | null>(null);
+	const [savingDelivery, setSavingDelivery] = useState(false);
 
 	const rotateStores = () => {
 		setAllData((prev) => {
@@ -130,297 +106,6 @@ export default function InsumosPage() {
 			return [...rest, first];
 		});
 	};
-
-	// Função de ordenação base padrão de acordo com a seleção atual (não-manual)
-	const getBaseSortedOrders = (orders: SupplyOrder[], sortType: "default" | "urgency" | "date" | "alphabetical") => {
-		return [...orders].sort((a, b) => {
-			if (a.checkedByGerencia && !b.checkedByGerencia) return 1;
-			if (!a.checkedByGerencia && b.checkedByGerencia) return -1;
-
-			if (sortType === "alphabetical") {
-				return a.name.localeCompare(b.name, "pt-BR");
-			}
-			if (sortType === "urgency") {
-				const weight: Record<string, number> = {
-					Urgente: 3,
-					Acabando: 2,
-					Adiantando: 1,
-				};
-				return (weight[b.urgency] || 0) - (weight[a.urgency] || 0);
-			}
-			if (sortType === "date") {
-				return (a.createdAt?.toMillis() || 0) - (b.createdAt?.toMillis() || 0);
-			}
-			return 0;
-		});
-	};
-
-	// Obter a lista final de pedidos de uma loja (aplicando manual se ativo)
-	const getStoreDisplayOrders = (store: FullStoreData) => {
-		const baseSorted = getBaseSortedOrders(
-			store.pendingOrders,
-			insumosSort === "manual" ? "urgency" : insumosSort
-		);
-
-		if (insumosSort !== "manual" || !manualOrderMap[store.id]) {
-			return baseSorted;
-		}
-
-		// Ordenação manual: separa pendentes e a entregar
-		const pendingList = baseSorted.filter((o) => !o.checkedByGerencia);
-		const deliveringList = baseSorted.filter((o) => !!o.checkedByGerencia);
-
-		const orderIds = manualOrderMap[store.id];
-		const sortByIds = (list: SupplyOrder[]) => {
-			return [...list].sort((a, b) => {
-				const idxA = orderIds.indexOf(a.id);
-				const idxB = orderIds.indexOf(b.id);
-				if (idxA === -1 && idxB === -1) return 0;
-				if (idxA === -1) return 1;
-				if (idxB === -1) return -1;
-				return idxA - idxB;
-			});
-		};
-
-		return [...sortByIds(pendingList), ...sortByIds(deliveringList)];
-	};
-
-	// Estado para drag and drop
-	const [draggingItem, setDraggingItem] = useState<{ storeId: StoreId; orderId: string; checked: boolean; category?: string | null } | null>(null);
-	const [dragOverItem, setDragOverItem] = useState<string | null>(null);
-
-	// Fechar menu de categoria ao clicar fora
-	useEffect(() => {
-		const handleClickOutside = (e: MouseEvent) => {
-			if (openMenuOrderId) {
-				const target = e.target as HTMLElement;
-				if (!target.closest(`[data-menu-order="${openMenuOrderId}"]`)) {
-					setOpenMenuOrderId(null);
-				}
-			}
-		};
-		document.addEventListener("mousedown", handleClickOutside);
-		return () => document.removeEventListener("mousedown", handleClickOutside);
-	}, [openMenuOrderId]);
-
-	// Handlers de Drag and Drop
-	const handleDragStart = (e: React.DragEvent, storeId: StoreId, orderId: string, isChecked: boolean, category?: string | null) => {
-		setDraggingItem({ storeId, orderId, checked: isChecked, category: category || null });
-		e.dataTransfer.effectAllowed = "move";
-		e.dataTransfer.setData("text/plain", orderId);
-	};
-
-	const handleDragOver = (e: React.DragEvent, targetOrderId: string, targetChecked: boolean, targetStoreId: StoreId, targetCategory?: string | null) => {
-		if (
-			draggingItem &&
-			draggingItem.storeId === targetStoreId &&
-			draggingItem.checked === targetChecked &&
-			(draggingItem.category || null) === (targetCategory || null)
-		) {
-			e.preventDefault();
-			e.dataTransfer.dropEffect = "move";
-			if (dragOverItem !== targetOrderId) {
-				setDragOverItem(targetOrderId);
-			}
-		}
-	};
-
-	const handleDragLeave = () => {
-		setDragOverItem(null);
-	};
-
-	const handleDrop = (e: React.DragEvent, store: FullStoreData, targetOrderId: string, isChecked: boolean) => {
-		e.preventDefault();
-		setDragOverItem(null);
-
-		if (!draggingItem || draggingItem.storeId !== store.id || draggingItem.orderId === targetOrderId) {
-			setDraggingItem(null);
-			return;
-		}
-
-		const currentOrders = getStoreDisplayOrders(store);
-		const sourceOrder = currentOrders.find((o) => o.id === draggingItem.orderId);
-		const targetOrder = currentOrders.find((o) => o.id === targetOrderId);
-		if (!sourceOrder || !targetOrder) {
-			setDraggingItem(null);
-			return;
-		}
-
-		const sourceCat = sourceOrder.category || null;
-		const targetCat = targetOrder.category || null;
-
-		if (sourceCat !== targetCat || isChecked !== !!sourceOrder.checkedByGerencia) {
-			setDraggingItem(null);
-			return;
-		}
-
-		const groupOrders = isChecked
-			? currentOrders.filter((o) => !!o.checkedByGerencia)
-			: currentOrders.filter((o) => !o.checkedByGerencia && (o.category || null) === targetCat);
-
-		const sourceIndex = groupOrders.findIndex((o) => o.id === draggingItem.orderId);
-		const targetIndex = groupOrders.findIndex((o) => o.id === targetOrderId);
-
-		if (sourceIndex === -1 || targetIndex === -1 || sourceIndex === targetIndex) {
-			setDraggingItem(null);
-			return;
-		}
-
-		const newGroupOrders = [...groupOrders];
-		const [movedOrder] = newGroupOrders.splice(sourceIndex, 1);
-		newGroupOrders.splice(targetIndex, 0, movedOrder);
-
-		const otherOrders = currentOrders.filter((o) => {
-			if (isChecked) return !o.checkedByGerencia;
-			return !!o.checkedByGerencia || (o.category || null) !== targetCat;
-		});
-
-		const combined = [...otherOrders, ...newGroupOrders];
-		const pendingFinal = combined.filter((o) => !o.checkedByGerencia);
-		const deliveringFinal = combined.filter((o) => !!o.checkedByGerencia);
-		const finalIds = [...pendingFinal.map((o) => o.id), ...deliveringFinal.map((o) => o.id)];
-
-		setManualOrderMap((prev) => {
-			const next = { ...prev, [store.id]: finalIds };
-			allData.forEach((s) => {
-				if (s.id !== store.id && !next[s.id]) {
-					next[s.id] = getStoreDisplayOrders(s).map((o) => o.id);
-				}
-			});
-			return next;
-		});
-		setInsumosSort("manual");
-		setDraggingItem(null);
-	};
-
-	const handleDragEnd = () => {
-		setDraggingItem(null);
-		setDragOverItem(null);
-	};
-
-	// Reordenar item via botões: topo, subir 1, descer 1, fundo
-	const handleReorderOrder = (
-		store: FullStoreData,
-		orderId: string,
-		action: "top" | "up" | "down" | "bottom"
-	) => {
-		const currentOrders = getStoreDisplayOrders(store);
-		const order = currentOrders.find((o) => o.id === orderId);
-		if (!order) return;
-
-		const isChecked = !!order.checkedByGerencia;
-		const orderCat = order.category || null;
-
-		const groupOrders = isChecked
-			? currentOrders.filter((o) => !!o.checkedByGerencia)
-			: currentOrders.filter((o) => !o.checkedByGerencia && (o.category || null) === orderCat);
-
-		const currentIndex = groupOrders.findIndex((o) => o.id === orderId);
-		if (currentIndex === -1) return;
-
-		let targetIndex = currentIndex;
-		if (action === "top") {
-			if (currentIndex === 0) return;
-			targetIndex = 0;
-		} else if (action === "up") {
-			if (currentIndex === 0) return;
-			targetIndex = currentIndex - 1;
-		} else if (action === "down") {
-			if (currentIndex === groupOrders.length - 1) return;
-			targetIndex = currentIndex + 1;
-		} else if (action === "bottom") {
-			if (currentIndex === groupOrders.length - 1) return;
-			targetIndex = groupOrders.length - 1;
-		}
-
-		if (targetIndex === currentIndex) return;
-
-		// Salvar a posição de rolagem exata da janela antes de qualquer alteração no DOM
-		const scrollYBefore = typeof window !== "undefined" ? window.scrollY : 0;
-
-		const newGroupOrders = [...groupOrders];
-		const [movedOrder] = newGroupOrders.splice(currentIndex, 1);
-		newGroupOrders.splice(targetIndex, 0, movedOrder);
-
-		const otherOrders = currentOrders.filter((o) => {
-			if (isChecked) return !o.checkedByGerencia;
-			return !!o.checkedByGerencia || (o.category || null) !== orderCat;
-		});
-
-		const combined = [...otherOrders, ...newGroupOrders];
-		const pendingFinal = combined.filter((o) => !o.checkedByGerencia);
-		const deliveringFinal = combined.filter((o) => !!o.checkedByGerencia);
-		const finalIds = [...pendingFinal.map((o) => o.id), ...deliveringFinal.map((o) => o.id)];
-
-		setManualOrderMap((prev) => {
-			const next = { ...prev, [store.id]: finalIds };
-			allData.forEach((s) => {
-				if (s.id !== store.id && !next[s.id]) {
-					next[s.id] = getStoreDisplayOrders(s).map((o) => o.id);
-				}
-			});
-			return next;
-		});
-		setInsumosSort("manual");
-
-		// No mobile e desktop: focar no card e animar APENAS para os botões "Subir" e "Descer"
-		if (action === "up" || action === "down") {
-			requestAnimationFrame(() => {
-				setTimeout(() => {
-					const cardElement = document.getElementById(`order-${store.id}-${orderId}`);
-					if (cardElement) {
-						cardElement.scrollIntoView({ behavior: "smooth", block: "center", inline: "nearest" });
-						cardElement.classList.add("ring-4", "ring-blue-500", "scale-[1.01]");
-						setTimeout(() => {
-							cardElement.classList.remove("ring-4", "ring-blue-500", "scale-[1.01]");
-						}, 450);
-					}
-				}, 60);
-			});
-		} else {
-			// Para "top" e "bottom": desfocar o elemento ativo e travar o scroll rigorosamente na mesma posição
-			if (typeof document !== "undefined" && document.activeElement instanceof HTMLElement) {
-				document.activeElement.blur();
-			}
-			requestAnimationFrame(() => {
-				window.scrollTo({ top: scrollYBefore, behavior: "instant" as any });
-				setTimeout(() => {
-					window.scrollTo({ top: scrollYBefore, behavior: "instant" as any });
-				}, 50);
-			});
-		}
-	};
-
-	// Ao trocar para uma ordenação específica, reseta a ordenação manual
-	const handleSelectSort = (sort: "default" | "urgency" | "date" | "alphabetical") => {
-		setInsumosSort(sort);
-		setManualOrderMap({});
-		localStorage.removeItem("biscoito_admin_insumos_manual_order");
-	};
-
-	// Persistir ordenação
-	useEffect(() => {
-		const savedSort = localStorage.getItem("biscoito_admin_insumos_sort");
-		if (savedSort) setInsumosSort(savedSort as any);
-		const savedManual = localStorage.getItem("biscoito_admin_insumos_manual_order");
-		if (savedManual) {
-			try {
-				setManualOrderMap(JSON.parse(savedManual));
-			} catch (e) {
-				console.error("Erro ao carregar ordem manual de insumos:", e);
-			}
-		}
-	}, []);
-
-	useEffect(() => {
-		localStorage.setItem("biscoito_admin_insumos_sort", insumosSort);
-	}, [insumosSort]);
-
-	useEffect(() => {
-		if (Object.keys(manualOrderMap).length > 0) {
-			localStorage.setItem("biscoito_admin_insumos_manual_order", JSON.stringify(manualOrderMap));
-		}
-	}, [manualOrderMap]);
 
 	const toggleStore = (storeId: string) => {
 		setExpandedStores((prev) => ({
@@ -443,69 +128,225 @@ export default function InsumosPage() {
 		}));
 	};
 
-	const handleCopySnapshot = (snapshot: SupplyOrderSnapshot) => {
-		const urgentes = (snapshot.items || []).filter((i) => i.urgency === "Urgente");
-		const acabando = (snapshot.items || []).filter((i) => i.urgency === "Acabando");
-		const adiantando = (snapshot.items || []).filter((i) => i.urgency === "Adiantando");
+	// Persistir ordenação
+	useEffect(() => {
+		const savedSort = localStorage.getItem("biscoito_admin_insumos_sort");
+		if (savedSort === "urgency" || savedSort === "date" || savedSort === "alphabetical" || savedSort === "manual") {
+			setInsumosSort(savedSort as any);
+		}
+		const savedManual = localStorage.getItem("biscoito_admin_insumos_manual_order");
+		if (savedManual) {
+			try {
+				setManualOrderMap(JSON.parse(savedManual));
+			} catch (e) {
+				console.error("Erro ao carregar ordem manual de insumos:", e);
+			}
+		}
+	}, []);
 
-		const closedDateStr = snapshot.closedAt?.toDate
-			? formatDate(snapshot.closedAt.toDate())
-			: snapshot.closedAt
-			? formatDate(new Date(snapshot.closedAt))
-			: "n/a";
+	useEffect(() => {
+		localStorage.setItem("biscoito_admin_insumos_sort", insumosSort);
+	}, [insumosSort]);
 
-		let text = `📦 *LISTA DE INSUMOS - ${snapshot.storeName.toUpperCase()}*\n`;
-		text += `📅 Fechamento: ${snapshot.cycleClosingDate} | Entrega: ${snapshot.cycleDeliveryDate}\n`;
-		text += `⏰ Salva em: ${closedDateStr}\n`;
-		text += `🔢 Total: ${snapshot.itemsCount} insumos\n\n`;
+	useEffect(() => {
+		if (Object.keys(manualOrderMap).length > 0) {
+			localStorage.setItem("biscoito_admin_insumos_manual_order", JSON.stringify(manualOrderMap));
+		}
+	}, [manualOrderMap]);
 
-		if (urgentes.length > 0) {
-			text += `🚨 *URGENTE (${urgentes.length}):*\n`;
-			urgentes.forEach((item) => {
-				text += `• ${item.name}\n`;
+	// Listeners para Firestore
+	useEffect(() => {
+		const storeIds = STORE_ORDER;
+		const fourWeeksAgo = new Date();
+		fourWeeksAgo.setDate(fourWeeksAgo.getDate() - 28);
+
+		const storePendingData: Record<string, SupplyOrder[]> = {};
+		const storeHistoryData: Record<string, SupplyOrder[]> = {};
+		const storeSnapshotsData: Record<string, SupplyOrderSnapshot[]> = {};
+
+		const updateAllData = () => {
+			setAllData((currentData) => {
+				const newFullData = storeIds.map((id) => {
+					const sPending = storePendingData[id] || [];
+					const sHistory = storeHistoryData[id] || [];
+					const sSnapshots = storeSnapshotsData[id] || [];
+					const urgentCount = sPending.filter((o) => o.urgency === "Urgente").length;
+
+					return {
+						id,
+						name: STORE_NAMES[id],
+						pendingOrders: sPending,
+						historicalOrders: sHistory,
+						orderSnapshots: sSnapshots,
+						urgentCount,
+					};
+				});
+
+				if (currentData.length > 0) {
+					const currentIdOrder = currentData.map((d) => d.id);
+					return currentIdOrder.map((id) => newFullData.find((d) => d.id === id)!);
+				}
+				return newFullData;
 			});
-			text += `\n`;
+			setLoading(false);
+		};
+
+		// 1. Pending Listeners por Loja
+		const pendingUnsubs = storeIds.map((id) => {
+			const pendingRef = collection(db, "stores", id, "supplyOrders");
+			const qPending = query(
+				pendingRef,
+				where("status", "==", "pending"),
+				orderBy("createdAt", "desc"),
+			);
+
+			return onSnapshot(
+				qPending,
+				(snapshot) => {
+					storePendingData[id] = snapshot.docs.map((doc) => ({
+						id: doc.id,
+						...doc.data(),
+					})) as SupplyOrder[];
+					updateAllData();
+				},
+				(error) => console.error(`Erro ao carregar insumos pendentes da loja ${id}:`, error),
+			);
+		});
+
+		// 2. Histórico de Insumos Entregues/Cancelados
+		const historyUnsubs = storeIds.map((id) => {
+			const historyRef = collection(db, "stores", id, "supplyOrders");
+			const qHistory = query(
+				historyRef,
+				where("status", "in", ["delivered", "cancelled"]),
+				where("deliveredAt", ">=", Timestamp.fromDate(fourWeeksAgo)),
+				orderBy("deliveredAt", "desc"),
+			);
+
+			return onSnapshot(
+				qHistory,
+				(snapshot) => {
+					storeHistoryData[id] = snapshot.docs.map((doc) => ({
+						id: doc.id,
+						...doc.data(),
+					})) as SupplyOrder[];
+					updateAllData();
+				},
+				(error) => console.error(`Erro ao carregar histórico da loja ${id}:`, error),
+			);
+		});
+
+		// 3. Snapshots de Listas Salvas
+		const snapshotUnsubs = storeIds.map((id) => {
+			const snapRef = collection(db, "stores", id, "supplyOrderSnapshots");
+			const qSnap = query(snapRef, orderBy("closedAt", "desc"), limit(25));
+
+			return onSnapshot(
+				qSnap,
+				(snapshot) => {
+					storeSnapshotsData[id] = snapshot.docs.map((doc) => ({
+						id: doc.id,
+						...doc.data(),
+					})) as SupplyOrderSnapshot[];
+					updateAllData();
+				},
+				(error) => console.error(`Erro ao carregar snapshots da loja ${id}:`, error),
+			);
+		});
+
+		return () => {
+			pendingUnsubs.forEach((unsub) => unsub());
+			historyUnsubs.forEach((unsub) => unsub());
+			snapshotUnsubs.forEach((unsub) => unsub());
+		};
+	}, []);
+
+	// Ordenação dos pedidos
+	const getStoreDisplayOrders = (store: FullStoreData) => {
+		const baseSorted = [...store.pendingOrders].sort((a, b) => {
+			if (insumosSort === "alphabetical") {
+				return a.name.localeCompare(b.name, "pt-BR");
+			}
+			if (insumosSort === "date") {
+				return (b.createdAt?.toMillis() || 0) - (a.createdAt?.toMillis() || 0);
+			}
+
+			// Padrão (urgency): Urgente vem sempre PRIMEIRO no topo da lista
+			const isUrgentA = a.urgency === "Urgente" ? 1 : 0;
+			const isUrgentB = b.urgency === "Urgente" ? 1 : 0;
+			if (isUrgentB !== isUrgentA) {
+				return isUrgentB - isUrgentA;
+			}
+			return (b.createdAt?.toMillis() || 0) - (a.createdAt?.toMillis() || 0);
+		});
+
+		if (insumosSort !== "manual" || !manualOrderMap[store.id]) {
+			return baseSorted;
 		}
 
-		if (acabando.length > 0) {
-			text += `⚠️ *ACABANDO (${acabando.length}):*\n`;
-			acabando.forEach((item) => {
-				text += `• ${item.name}\n`;
-			});
-			text += `\n`;
-		}
-
-		if (adiantando.length > 0) {
-			text += `⏳ *ADIANTANDO (${adiantando.length}):*\n`;
-			adiantando.forEach((item) => {
-				text += `• ${item.name}\n`;
-			});
-			text += `\n`;
-		}
-
-		navigator.clipboard.writeText(text);
-		setCopiedSnapshotId(snapshot.id);
-		setTimeout(() => setCopiedSnapshotId(null), 2500);
+		const orderIds = manualOrderMap[store.id];
+		return [...baseSorted].sort((a, b) => {
+			const idxA = orderIds.indexOf(a.id);
+			const idxB = orderIds.indexOf(b.id);
+			if (idxA === -1 && idxB === -1) return 0;
+			if (idxA === -1) return 1;
+			if (idxB === -1) return -1;
+			return idxA - idxB;
+		});
 	};
 
+	// Reordenar manualmente (Topo, Subir, Descer, Fundo)
+	const handleReorderOrder = (
+		store: FullStoreData,
+		orderId: string,
+		action: "top" | "up" | "down" | "bottom",
+	) => {
+		const currentOrders = getStoreDisplayOrders(store);
+		const currentIndex = currentOrders.findIndex((o) => o.id === orderId);
+		if (currentIndex === -1) return;
+
+		let targetIndex = currentIndex;
+		if (action === "top") {
+			if (currentIndex === 0) return;
+			targetIndex = 0;
+		} else if (action === "up") {
+			if (currentIndex === 0) return;
+			targetIndex = currentIndex - 1;
+		} else if (action === "down") {
+			if (currentIndex === currentOrders.length - 1) return;
+			targetIndex = currentIndex + 1;
+		} else if (action === "bottom") {
+			if (currentIndex === currentOrders.length - 1) return;
+			targetIndex = currentOrders.length - 1;
+		}
+
+		if (targetIndex === currentIndex) return;
+
+		const newOrders = [...currentOrders];
+		const [movedOrder] = newOrders.splice(currentIndex, 1);
+		newOrders.splice(targetIndex, 0, movedOrder);
+
+		const finalIds = newOrders.map((o) => o.id);
+		setManualOrderMap((prev) => ({
+			...prev,
+			[store.id]: finalIds,
+		}));
+		setInsumosSort("manual");
+	};
+
+	// Toggle check simples na visualização da gerência
 	const handleToggleCheck = async (storeId: string, orderId: string, currentChecked: boolean) => {
 		try {
 			const orderRef = doc(db, "stores", storeId, "supplyOrders", orderId);
-			const newChecked = !currentChecked;
-			const updateData: any = {
-				checkedByGerencia: newChecked,
-			};
-			if (newChecked) {
-				updateData.category = null;
-			}
-			await updateDoc(orderRef, updateData);
+			await updateDoc(orderRef, {
+				checkedByGerencia: !currentChecked,
+			});
 		} catch (error) {
 			console.error("Erro ao alternar check:", error);
 		}
 	};
 
-	const [addedToSupplierOrderId, setAddedToSupplierOrderId] = useState<string | null>(null);
-
+	// Adicionar ao pedido de compras (fornecedores)
 	const handleAddToSupplierOrders = async (itemName: string, orderId: string) => {
 		try {
 			const finalName = itemName.trim().toUpperCase();
@@ -531,175 +372,167 @@ export default function InsumosPage() {
 			setTimeout(() => {
 				setAddedToSupplierOrderId((prev) => (prev === orderId ? null : prev));
 			}, 3000);
-
-			setOpenMenuOrderId(null);
 		} catch (error) {
-			console.error("Erro ao adicionar insumo para compra aos fornecedores:", error);
-			alert("Erro ao adicionar à lista de pedidos.");
+			console.error("Erro ao adicionar à lista de compras:", error);
+			alert("Erro ao adicionar insumo à lista de compras.");
 		}
 	};
 
-	const handleSetCategory = async (storeId: string, orderId: string, category: string | null) => {
-		try {
-			const orderRef = doc(db, "stores", storeId, "supplyOrders", orderId);
-			await updateDoc(orderRef, {
-				category: category,
-			});
-			setOpenMenuOrderId(null);
-		} catch (error) {
-			console.error("Erro ao definir categoria:", error);
-		}
+	// ABRIR MODAL: CONCLUIR ENTREGA
+	const handleOpenConcluirEntrega = (store: FullStoreData) => {
+		const sorted = getStoreDisplayOrders(store);
+		const modalItems: DeliveryModalItem[] = sorted.map((o) => ({
+			id: o.id,
+			name: o.name,
+			urgency: o.urgency,
+			quantity: o.quantity || "",
+			checked: !!o.checkedByGerencia,
+			createdAt: o.createdAt || null,
+		}));
+
+		setDeliveryModal({
+			storeId: store.id,
+			storeName: store.name,
+			items: modalItems,
+		});
 	};
 
-	const handleMarkAsDelivered = async (storeId: string, orderId: string) => {
+	// MODAL: ALTERAR QUANTIDADE DE UM ITEM
+	const handleModalUpdateQuantity = (itemId: string, newQty: string) => {
+		if (!deliveryModal) return;
+		setDeliveryModal({
+			...deliveryModal,
+			items: deliveryModal.items.map((i) =>
+				i.id === itemId ? { ...i, quantity: newQty } : i,
+			),
+		});
+	};
+
+	// MODAL: ALTERAR CHECK DE UM ITEM
+	const handleModalToggleCheck = (itemId: string) => {
+		if (!deliveryModal) return;
+		setDeliveryModal({
+			...deliveryModal,
+			items: deliveryModal.items.map((i) =>
+				i.id === itemId ? { ...i, checked: !i.checked } : i,
+			),
+		});
+	};
+
+	// MODAL: REMOVER ITEM DA ENTREGA
+	const handleModalRemoveItem = (itemId: string) => {
+		if (!deliveryModal) return;
+		setDeliveryModal({
+			...deliveryModal,
+			items: deliveryModal.items.filter((i) => i.id !== itemId),
+		});
+	};
+
+	// MODAL: SALVAR E FINALIZAR ENTREGA
+	const handleSalvarEFinalizar = async () => {
+		if (!deliveryModal || deliveryModal.items.length === 0) {
+			alert("Não há itens para salvar nesta entrega.");
+			return;
+		}
+
+		setSavingDelivery(true);
 		try {
-			const orderRef = doc(db, "stores", storeId, "supplyOrders", orderId);
+			const { storeId, storeName, items } = deliveryModal;
 			const deliveredAt = new Date();
 			const expireAt = new Date();
 			expireAt.setDate(deliveredAt.getDate() + 14);
 
-			await updateDoc(orderRef, {
-				status: "delivered",
+			// 1. Salva no histórico como SupplyOrderSnapshot entregue
+			const snapshotItems: SupplyOrderSnapshotItem[] = items.map((i) => ({
+				id: i.id,
+				name: i.name,
+				urgency: i.urgency,
+				quantity: i.quantity.trim() || undefined,
+				category: getInsumoCategory(i.name),
+				checked: i.checked,
+				createdAt: i.createdAt || null,
+			}));
+
+			const snapshotsRef = collection(db, "stores", storeId, "supplyOrderSnapshots");
+			await addDoc(snapshotsRef, {
+				storeId,
+				storeName,
+				closedAt: serverTimestamp(),
 				deliveredAt: Timestamp.fromDate(deliveredAt),
-				expireAt: Timestamp.fromDate(expireAt),
+				status: "delivered",
+				itemsCount: snapshotItems.length,
+				items: snapshotItems,
 			});
+
+			// 2. Atualiza os pedidos entregues no Firestore
+			for (const item of items) {
+				try {
+					const orderRef = doc(db, "stores", storeId, "supplyOrders", item.id);
+					await updateDoc(orderRef, {
+						status: "delivered",
+						deliveredAt: Timestamp.fromDate(deliveredAt),
+						expireAt: Timestamp.fromDate(expireAt),
+						quantity: item.quantity.trim() || "",
+					});
+				} catch (e) {
+					console.warn("Item não encontrado ao atualizar:", item.id);
+				}
+			}
+
+			setDeliveryModal(null);
 		} catch (error) {
-			console.error("Erro ao marcar como entregue:", error);
+			console.error("Erro ao salvar e finalizar entrega:", error);
+			alert("Erro ao salvar e finalizar entrega. Tente novamente.");
+		} finally {
+			setSavingDelivery(false);
 		}
 	};
 
-	const normalizeUrgency = (
-		urgency: string,
-	): { label: string; type: "urgente" | "acabando" | "adiantando" } => {
-		const u = urgency.toLowerCase();
-		if (u.includes("urgente")) return { label: "Urgente", type: "urgente" };
-		if (u.includes("acabando") || u.includes("normal"))
-			return { label: "Acabando", type: "acabando" };
-		return { label: "Adiantando", type: "adiantando" };
+	// Copiar lista para WhatsApp
+	const handleCopySnapshot = (snapshot: SupplyOrderSnapshot) => {
+		const items = snapshot.items || [];
+		let text = `📦 *ENTREGA DE INSUMOS - ${snapshot.storeName.toUpperCase()}*\n`;
+		const dateStr = snapshot.deliveredAt?.toDate
+			? formatDate(snapshot.deliveredAt.toDate())
+			: snapshot.closedAt?.toDate
+			? formatDate(snapshot.closedAt.toDate())
+			: "Hoje";
+		text += `📅 Data: ${dateStr}\n`;
+		text += `🔢 Total: ${items.length} insumos\n\n`;
+
+		const categoriesInList = Array.from(
+			new Set(items.map((i) => i.category || getInsumoCategory(i.name))),
+		);
+
+		categoriesInList.forEach((cat) => {
+			const catItems = items.filter(
+				(i) => (i.category || getInsumoCategory(i.name)) === cat,
+			);
+			if (catItems.length === 0) return;
+
+			text += `📂 *${cat.toUpperCase()} (${catItems.length})*\n`;
+			catItems.forEach((i) => {
+				const checkMark = i.checked ? "✅" : "▫️";
+				const qtyStr = i.quantity ? ` • Qtd: ${i.quantity}` : "";
+				text += `${checkMark} ${i.name}${qtyStr} [${i.urgency}]\n`;
+			});
+			text += `\n`;
+		});
+
+		navigator.clipboard.writeText(text);
+		setCopiedSnapshotId(snapshot.id);
+		setTimeout(() => setCopiedSnapshotId(null), 2500);
 	};
 
-	useEffect(() => {
-		const storeIds = STORE_ORDER;
-
-		// Query for Pending - CollectionGroup is fine for single field
-		const pendingQuery = query(
-			collectionGroup(db, "supplyOrders"),
-			where("status", "==", "pending"),
-		);
-
-		const fourWeeksAgo = new Date();
-		fourWeeksAgo.setDate(fourWeeksAgo.getDate() - 28);
-
-		const storePendingData: Record<string, SupplyOrder[]> = {};
-		const storeHistoryData: Record<string, SupplyOrder[]> = {};
-		const storeSnapshotsData: Record<string, SupplyOrderSnapshot[]> = {};
-
-		const updateAllData = () => {
-			setAllData((currentData) => {
-				const newFullData = storeIds.map((id) => {
-					const sPending = storePendingData[id] || [];
-					const sHistory = storeHistoryData[id] || [];
-					const sSnapshots = storeSnapshotsData[id] || [];
-					const activeCount = sPending.filter((o) => !o.checkedByGerencia).length;
-					const deliveringCount = sPending.filter((o) => o.checkedByGerencia === true).length;
-					return {
-						id,
-						name: STORE_NAMES[id],
-						pendingOrders: sPending,
-						historicalOrders: sHistory,
-						orderSnapshots: sSnapshots,
-						activeCount,
-						deliveringCount,
-					};
-				});
-
-				if (currentData.length > 0) {
-					const currentIdOrder = currentData.map((d) => d.id);
-					return currentIdOrder.map((id) => newFullData.find((d) => d.id === id)!);
-				}
-				return newFullData;
-			});
-			setLoading(false);
-		};
-
-		// 1. Pending Listener (Per store for precise reference matching)
-		const pendingUnsubs = storeIds.map((id) => {
-			const pendingRef = collection(db, "stores", id, "supplyOrders");
-			const qPending = query(pendingRef, where("status", "==", "pending"));
-
-			return onSnapshot(
-				qPending,
-				(snapshot) => {
-					storePendingData[id] = snapshot.docs.map((doc) => ({
-						id: doc.id,
-						...doc.data(),
-					})) as SupplyOrder[];
-					updateAllData();
-				},
-				(error) => console.error(`Error fetching pending orders for store ${id}:`, error),
-			);
-		});
-
-		// 2. History Listeners (Per Store - for exact parity)
-		const historyUnsubs = storeIds.map((id) => {
-			const historyRef = collection(db, "stores", id, "supplyOrders");
-			const qHistory = query(
-				historyRef,
-				where("status", "in", ["delivered", "cancelled"]),
-				where("deliveredAt", ">=", Timestamp.fromDate(fourWeeksAgo)),
-				orderBy("deliveredAt", "desc")
-			);
-
-			return onSnapshot(qHistory, (snapshot) => {
-				storeHistoryData[id] = snapshot.docs.map(doc => ({
-					id: doc.id,
-					...doc.data()
-				})) as SupplyOrder[];
-				updateAllData();
-			}, (error) => console.error(`Error fetching history for store ${id}:`, error));
-		});
-
-		// 3. Snapshots Listeners (Per Store)
-		const snapshotUnsubs = storeIds.map((id) => {
-			const snapRef = collection(db, "stores", id, "supplyOrderSnapshots");
-			const qSnap = query(snapRef, orderBy("closedAt", "desc"), limit(20));
-
-			return onSnapshot(
-				qSnap,
-				(snapshot) => {
-					storeSnapshotsData[id] = snapshot.docs.map((doc) => ({
-						id: doc.id,
-						...doc.data(),
-					})) as SupplyOrderSnapshot[];
-					updateAllData();
-				},
-				(error) => console.error(`Error fetching snapshots for store ${id}:`, error),
-			);
-		});
-
-		return () => {
-			pendingUnsubs.forEach(unsub => unsub());
-			historyUnsubs.forEach(unsub => unsub());
-			snapshotUnsubs.forEach(unsub => unsub());
-		};
-	}, []);
-
-	if (loading) {
-		return (
-			<div className="flex flex-col items-center justify-center p-12">
-				<RefreshCw className="animate-spin text-blue-600 dark:text-blue-400 mb-4" size={48} />
-				<p className="text-slate-500 dark:text-slate-400 font-bold">Carregando insumos...</p>
-			</div>
-		);
-	}
-
-	// Cálculo dos resultados de busca de insumos em pedidos pendentes e a entregar
+	// Resultados de busca global
 	const searchResults = (() => {
 		const term = normalizeSearchText(searchTerm);
 		if (!term) return [];
 
-		// Mapeia por nome de insumo quais lojas têm pedidos
-		const resultsMap = new Map<string, { storeId: StoreId; storeName: string; orderId: string; checked: boolean }[]>();
+		const resultsMap = new Map<
+			string,
+			{ storeId: StoreId; storeName: string; orderId: string; quantity?: string }[]
+		>();
 
 		allData.forEach((store) => {
 			store.pendingOrders.forEach((order) => {
@@ -709,7 +542,7 @@ export default function InsumosPage() {
 						storeId: store.id,
 						storeName: store.name,
 						orderId: order.id,
-						checked: !!order.checkedByGerencia,
+						quantity: order.quantity,
 					});
 					resultsMap.set(order.name, existing);
 				}
@@ -723,10 +556,7 @@ export default function InsumosPage() {
 	})();
 
 	const handleGoToOrder = (storeId: StoreId, orderId: string) => {
-		// Abre o toggle da loja
 		setExpandedStores((prev) => ({ ...prev, [storeId]: true }));
-
-		// Aguarda o render e rola até o pedido
 		setTimeout(() => {
 			const element = document.getElementById(`order-${storeId}-${orderId}`);
 			if (element) {
@@ -739,6 +569,15 @@ export default function InsumosPage() {
 		}, 150);
 	};
 
+	if (loading) {
+		return (
+			<div className="flex flex-col items-center justify-center p-16">
+				<RefreshCw className="animate-spin text-blue-600 dark:text-blue-400 mb-4" size={48} />
+				<p className="text-slate-600 dark:text-slate-300 font-bold">Carregando pedidos de insumos...</p>
+			</div>
+		);
+	}
+
 	return (
 		<div className="space-y-8">
 			{/* Barra de Pesquisa de Insumos */}
@@ -750,7 +589,7 @@ export default function InsumosPage() {
 					/>
 					<input
 						type="text"
-						placeholder="Pesquisar insumo nos pedidos pendentes e a entregar..."
+						placeholder="Pesquisar insumo nos pedidos pendentes das lojas..."
 						value={searchTerm}
 						onChange={(e) => setSearchTerm(e.target.value)}
 						className="w-full bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-2xl py-3.5 pl-12 pr-10 text-sm md:text-base font-bold text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all shadow-inner"
@@ -791,9 +630,11 @@ export default function InsumosPage() {
 														onClick={() => handleGoToOrder(s.storeId, s.orderId)}
 														className="cursor-pointer inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white dark:bg-slate-700 text-xs md:text-sm font-black border border-slate-200 dark:border-slate-600 shadow-sm hover:border-blue-500 hover:text-blue-600 dark:hover:text-blue-400 transition-all">
 														<span className="text-slate-800 dark:text-slate-200">{s.storeName}</span>
-														<span className={`text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded-md ${s.checked ? "bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-400" : "bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-400"}`}>
-															{s.checked ? "A entregar" : "Pendente"}
-														</span>
+														{s.quantity && (
+															<span className="text-[11px] font-bold text-slate-500 dark:text-slate-400">
+																({s.quantity})
+															</span>
+														)}
 													</button>
 												))}
 											</div>
@@ -804,7 +645,7 @@ export default function InsumosPage() {
 						) : (
 							<div className="py-4 text-center">
 								<p className="text-sm font-bold text-slate-400 dark:text-slate-500">
-									Nenhum pedido pendente ou a entregar encontrado para &quot;{searchTerm}&quot;.
+									Nenhum pedido pendente encontrado para &quot;{searchTerm}&quot;.
 								</p>
 							</div>
 						)}
@@ -812,779 +653,620 @@ export default function InsumosPage() {
 				)}
 			</div>
 
-			<div className="flex justify-center items-center pt-2">
+			{/* Alternar Ordem das Lojas */}
+			<div className="flex justify-center items-center">
 				<button
 					onClick={rotateStores}
-					className="cursor-pointer flex items-center gap-3 bg-white dark:bg-slate-900 hover:bg-blue-50 dark:hover:bg-blue-900/30 text-blue-600 dark:text-blue-400 border border-slate-200 dark:border-slate-800 px-6 py-3 rounded-2xl font-black shadow-sm transition-all text-xs uppercase tracking-widest"
-					title="Alternar ordem das lojas">
-					<ArrowLeftRight size={18} />
+					className="cursor-pointer flex items-center gap-2.5 bg-white dark:bg-slate-900 hover:bg-blue-50 dark:hover:bg-blue-900/30 text-blue-600 dark:text-blue-400 border border-slate-200 dark:border-slate-800 px-5 py-2.5 rounded-2xl font-black shadow-xs transition-all text-xs uppercase tracking-widest">
+					<ArrowLeftRight size={16} />
 					Alternar Ordem das Lojas
 				</button>
 			</div>
 
-			{allData.map((store) => {
-				const activeCount = store.pendingOrders.filter((o) => !o.checkedByGerencia).length;
-				const deliveringCount = store.pendingOrders.filter((o) => !!o.checkedByGerencia).length;
+			{/* Lojas Accordion */}
+			<div className="space-y-6">
+				{allData.map((store) => {
+					const isExpanded = !!expandedStores[store.id];
+					const pendingCount = store.pendingOrders.length;
+					const urgentCount = store.urgentCount;
 
-				return (
-					<div
-						key={store.id}
-						className="bg-white dark:bg-slate-900 rounded-[40px] border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden transition-all">
-						<button
-							onClick={() => toggleStore(store.id)}
-							className="w-full flex items-center justify-between p-8 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all cursor-pointer group">
-							<div className="flex items-center gap-4 text-left">
+					return (
+						<div
+							key={store.id}
+							className="bg-white dark:bg-slate-900 rounded-[36px] border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden transition-all">
+							{/* Header da Loja */}
+							<div className="p-6 md:p-8 flex flex-col sm:flex-row sm:items-center justify-between gap-6 hover:bg-slate-50/60 dark:hover:bg-slate-800/40 transition-all">
 								<div
-									id="insumosStoreIcon"
-									className={`${
-										activeCount === 0 && deliveringCount === 0
-											? "bg-green-600 shadow-green-100 dark:shadow-none"
-											: activeCount > 0 || deliveringCount > 0
-												? "bg-blue-600 shadow-blue-100 dark:shadow-none"
-												: "bg-slate-300 dark:bg-slate-700 shadow-slate-100 dark:shadow-none"
-									} text-white p-5 rounded-[24px] shadow-lg group-hover:scale-105 transition-all`}>
-									<Store size={36} />
-								</div>
-								<div>
-									<h3 className="text-3xl font-black text-slate-800 dark:text-slate-200 uppercase tracking-tight leading-none">
-										{store.name}
-									</h3>
-									<div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-3">
-										{activeCount === 0 && deliveringCount === 0 ? (
-											<p className="font-bold uppercase tracking-[0.2em] text-green-600 dark:text-green-400">
-												Nada pendente
-											</p>
-										) : (
-											<>
-												{activeCount > 0 && (
-													<p className="font-bold uppercase tracking-[0.2em] text-slate-600 dark:text-slate-400">
-														<span className="text-xl font-extrabold text-blue-600 dark:text-blue-400">
-															{activeCount}
-														</span>{" "}
-														{activeCount === 1 ? "Pedido Pendente" : "Pedidos Pendentes"}
-													</p>
-												)}
-												{activeCount > 0 && deliveringCount > 0 && (
-													<span className="text-slate-300 dark:text-slate-700 hidden sm:inline">•</span>
-												)}
-												{deliveringCount > 0 && (
-													<p className="font-bold uppercase tracking-[0.2em] text-slate-600 dark:text-slate-400">
-														<span className="text-xl font-extrabold text-blue-600 dark:text-blue-400">
-															{deliveringCount}
-														</span>{" "}
-														{deliveringCount === 1 ? "Pedido a Entregar" : "Pedidos a Entregar"}
-													</p>
-												)}
-											</>
-										)}
+									onClick={() => toggleStore(store.id)}
+									className="flex items-center gap-4 text-left cursor-pointer flex-1 min-w-0">
+									<div
+										className={`p-4 md:p-5 rounded-[24px] text-white shadow-lg shrink-0 transition-all ${
+											urgentCount > 0
+												? "bg-red-600 shadow-red-200 dark:shadow-none animate-pulse"
+												: pendingCount > 0
+												? "bg-blue-600 shadow-blue-200 dark:shadow-none"
+												: "bg-emerald-600 shadow-emerald-200 dark:shadow-none"
+										}`}>
+										<Store size={32} />
 									</div>
-								</div>
-							</div>
-						<div className="bg-slate-50 dark:bg-slate-800 p-3 rounded-full border border-slate-100 dark:border-slate-700 group-hover:bg-white dark:group-hover:bg-slate-700 group-hover:border-blue-200 dark:group-hover:border-blue-800 transition-all">
-							{expandedStores[store.id] ? (
-								<ChevronUp size={24} className="text-blue-600 dark:text-blue-400" />
-							) : (
-								<ChevronDown size={24} className="text-slate-400 dark:text-slate-500" />
-							)}
-						</div>
-					</button>
 
-					{expandedStores[store.id] && (
-						<div className="p-8 pt-0 border-t border-slate-50 dark:border-slate-800 animate-in slide-in-from-top-2 duration-300 [overflow-anchor:none]">
-							{store.pendingOrders.length > 0 ? (
-								<>
-									<div className="flex flex-wrap items-center justify-between gap-4 py-6 border-b border-slate-50 dark:border-slate-800 mb-3">
-										<div className="flex flex-wrap items-center gap-3">
-											<span className="text-[12px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">
-												Ordenar:
-											</span>
-											<div className="flex flex-wrap bg-slate-100 dark:bg-slate-800 p-1.5 rounded-xl gap-1 w-fit max-w-full">
-												{[
-													{ id: "default", label: "Padrão" },
-													{ id: "urgency", label: "Urgência" },
-													{ id: "date", label: "Data" },
-													{ id: "alphabetical", label: "Alfabética" },
-												].map((sort) => (
-													<button
-														key={sort.id}
-														onClick={() => handleSelectSort(sort.id as any)}
-														className={`cursor-pointer px-4 py-2 rounded-lg text-sm font-black transition-all whitespace-nowrap ${insumosSort === sort.id ? "bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-sm" : "text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200"}`}>
-														{sort.label}
-													</button>
-												))}
-											</div>
+									<div className="min-w-0">
+										<div className="flex items-center gap-3 flex-wrap">
+											<h3 className="text-2xl md:text-3xl font-black text-slate-800 dark:text-slate-100 uppercase tracking-tight">
+												{store.name}
+											</h3>
+
+											{/* INDICAÇÃO VISUAL DE ITENS URGENTES (visível inclusive quando toggle fechado) */}
+											{urgentCount > 0 && (
+												<span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider bg-red-100 text-red-700 dark:bg-red-950/80 dark:text-red-300 border border-red-300 dark:border-red-800 animate-pulse shadow-xs">
+													<AlertTriangle size={14} className="text-red-600" />
+													<span>
+														{urgentCount} Urgente{urgentCount > 1 ? "s" : ""}
+													</span>
+												</span>
+											)}
 										</div>
 
-										{insumosSort === "manual" && manualOrderMap[store.id] && (
-											<div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-400 text-xs font-black uppercase tracking-wider animate-in fade-in">
-												<ArrowUpDown size={14} />
-												<span>Ordem manual personalizada</span>
+										<div className="flex flex-wrap items-center gap-3 mt-2">
+											{pendingCount === 0 ? (
+												<p className="font-bold text-xs uppercase tracking-widest text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5">
+													<CheckCircle2 size={16} /> Nada pendente
+												</p>
+											) : (
+												<p className="font-bold text-xs uppercase tracking-widest text-slate-500 dark:text-slate-400">
+													<strong className="text-base font-black text-blue-600 dark:text-blue-400">
+														{pendingCount}
+													</strong>{" "}
+													{pendingCount === 1 ? "insumo solicitado" : "insumos solicitados"}
+												</p>
+											)}
+										</div>
+									</div>
+								</div>
+
+								{/* Ações da Loja no Topo: Botão "Concluir Entrega" */}
+								<div className="flex items-center gap-3 shrink-0 self-end sm:self-center">
+									<button
+										onClick={() => handleOpenConcluirEntrega(store)}
+										disabled={pendingCount === 0}
+										className="cursor-pointer bg-emerald-600 hover:bg-emerald-700 disabled:opacity-40 disabled:cursor-not-allowed text-white font-black px-6 py-3.5 rounded-2xl shadow-lg shadow-emerald-200 dark:shadow-none transition-all flex items-center gap-2.5 text-sm active:scale-95">
+										<CheckCircle2 size={20} />
+										<span>Concluir Entrega</span>
+									</button>
+
+									<button
+										onClick={() => toggleStore(store.id)}
+										className="p-3 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 cursor-pointer">
+										{isExpanded ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+									</button>
+								</div>
+							</div>
+
+							{/* Lista Simples de Pedidos da Loja (Quando Aberta) */}
+							{isExpanded && (
+								<div className="p-6 md:p-8 pt-0 border-t border-slate-100 dark:border-slate-800 space-y-6 animate-in slide-in-from-top-2 duration-300">
+									<div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 py-3 border-b border-slate-100 dark:border-slate-800">
+										<h4 className="text-base font-black text-slate-700 dark:text-slate-300 flex items-center gap-2">
+											<Package className="text-blue-600" size={18} />
+											Pedidos de Insumos da Loja ({pendingCount})
+										</h4>
+
+										{pendingCount > 0 && (
+											<div className="flex items-center gap-2">
+												<span className="text-[11px] font-black text-slate-400 uppercase tracking-wider">
+													Ordenar:
+												</span>
+												<div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-xl gap-1">
+													{[
+														{ id: "urgency", label: "Prioridade" },
+														{ id: "date", label: "Data" },
+														{ id: "alphabetical", label: "Alfabética" },
+													].map((sort) => (
+														<button
+															key={sort.id}
+															onClick={() => setInsumosSort(sort.id as any)}
+															className={`cursor-pointer px-3 py-1.5 rounded-lg text-xs font-black transition-all whitespace-nowrap ${
+																insumosSort === sort.id
+																	? "bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-xs"
+																	: "text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
+															}`}>
+															{sort.label}
+														</button>
+													))}
+												</div>
 											</div>
 										)}
 									</div>
 
-									<div className="space-y-8">
-										{(() => {
-											const displayOrders = getStoreDisplayOrders(store);
-											const pendingOrders = displayOrders.filter((o) => !o.checkedByGerencia);
-											const deliveringOrders = displayOrders.filter((o) => !!o.checkedByGerencia);
-
-											const hasCategorized = INSUMO_CATEGORIES.some((cat) =>
-												pendingOrders.some((o) => o.category === cat)
-											);
-
-											const renderCard = (order: SupplyOrder) => {
-												const norm = normalizeUrgency(order.urgency);
-												const isChecked = order.checkedByGerencia || false;
-												const isBeingDragged = draggingItem?.orderId === order.id;
-												const isDropTarget = dragOverItem === order.id;
-
-												const groupOrders = isChecked
-													? displayOrders.filter((o) => !!o.checkedByGerencia)
-													: displayOrders.filter((o) => !o.checkedByGerencia && (o.category || null) === (order.category || null));
-												const groupIndex = groupOrders.findIndex((o) => o.id === order.id);
-												const isFirst = groupIndex === 0;
-												const isLast = groupIndex === groupOrders.length - 1;
-
-												const isMenuOpen = openMenuOrderId === order.id;
+									{pendingCount === 0 ? (
+										<div className="py-12 text-center bg-slate-50 dark:bg-slate-800/40 rounded-3xl border border-dashed border-slate-200 dark:border-slate-700">
+											<Package className="mx-auto text-slate-300 dark:text-slate-600 mb-2" size={40} />
+											<p className="text-slate-500 dark:text-slate-400 font-bold">
+												Nenhum pedido de insumo pendente para a loja {store.name}.
+											</p>
+										</div>
+									) : (
+										<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+											{getStoreDisplayOrders(store).map((order) => {
+												const isUrgent = order.urgency === "Urgente";
+												const isChecked = !!order.checkedByGerencia;
 
 												return (
 													<div
 														key={order.id}
 														id={`order-${store.id}-${order.id}`}
-														data-menu-order={order.id}
-														draggable={true}
-														onDragStart={(e) => handleDragStart(e, store.id, order.id, isChecked, order.category)}
-														onDragOver={(e) => handleDragOver(e, order.id, isChecked, store.id, order.category)}
-														onDragLeave={handleDragLeave}
-														onDrop={(e) => handleDrop(e, store, order.id, isChecked)}
-														onDragEnd={handleDragEnd}
-														className={`p-6 rounded-[32px] border flex flex-col justify-between gap-4 transition-all duration-200 cursor-grab active:cursor-grabbing select-none outline-none relative ${
-															isMenuOpen ? "z-30 ring-2 ring-blue-400/50" : ""
-														} ${
-															isBeingDragged
-																? "opacity-30 scale-95 border-dashed border-blue-500 bg-blue-50/50 dark:bg-blue-950/30 shadow-none"
-																: isDropTarget
-																	? "ring-4 ring-blue-500 scale-[1.03] bg-blue-50/80 dark:bg-blue-900/40 border-blue-400"
-																	: isChecked
-																		? "bg-slate-100 dark:bg-slate-800/50 border-slate-200 dark:border-slate-800 opacity-80"
-																		: "bg-slate-50 dark:bg-slate-800 border-slate-100 dark:border-slate-700 hover:bg-white dark:hover:bg-slate-700 hover:border-blue-200 dark:hover:border-blue-800 hover:shadow-xl dark:hover:shadow-none"
+														className={`p-5 rounded-3xl border transition-all flex flex-col justify-between gap-4 group ${
+															isUrgent
+																? "bg-red-50/40 dark:bg-red-950/20 border-red-300 dark:border-red-900/60 shadow-xs"
+																: isChecked
+																? "bg-emerald-50/40 dark:bg-emerald-950/20 border-emerald-300 dark:border-emerald-800/60 opacity-80"
+																: "bg-white dark:bg-slate-800/90 border-slate-200 dark:border-slate-700/80 shadow-sm hover:border-slate-300"
 														}`}>
-														<div className="space-y-4">
-															<div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-																<div className="flex items-center gap-2 flex-1 min-w-0">
-																	<GripVertical size={20} className="text-slate-300 dark:text-slate-600 hover:text-slate-500 shrink-0" />
-																	<p className="text-2xl font-black leading-tight text-slate-800 dark:text-slate-200 break-words sm:truncate" title={order.name}>
-																		{order.name}
-																	</p>
-																</div>
+														<div>
+															<div className="flex items-start justify-between gap-3">
+																{/* Checkbox Simples de Apoio Logístico */}
+																<button
+																	type="button"
+																	onClick={() =>
+																		handleToggleCheck(store.id, order.id, isChecked)
+																	}
+																	className={`cursor-pointer p-2.5 rounded-xl border transition-all shrink-0 ${
+																		isChecked
+																			? "bg-emerald-600 border-emerald-600 text-white shadow-xs"
+																			: "bg-slate-50 dark:bg-slate-700 border-slate-200 dark:border-slate-600 text-slate-300 hover:text-emerald-500 hover:border-emerald-400"
+																	}`}
+																	title={
+																		isChecked
+																			? "Conferido (clique para desmarcar)"
+																			: "Marcar como conferido"
+																	}>
+																	<Check size={18} strokeWidth={isChecked ? 4 : 2.5} />
+																</button>
 
-																<div className="flex items-center justify-end gap-2 shrink-0 self-end sm:self-auto">
-																	{/* Menu Hamburger para Categorias (Geladeira, Garagem, Loja, Outros) */}
-																	{!isChecked && (
-																		<div className="relative">
-																			<button
-																				type="button"
-																				id="botaoSecaoInsumo"
-																				onClick={(e) => {
-																					e.stopPropagation();
-																					setOpenMenuOrderId(isMenuOpen ? null : order.id);
-																				}}
-																				className={`p-3 rounded-2xl border transition-all cursor-pointer ${
-																					order.category
-																						? "bg-blue-50 dark:bg-blue-950/40 border-blue-300 dark:border-blue-700 text-blue-600 dark:text-blue-400 shadow-xs"
-																						: "bg-white dark:bg-slate-700 border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-600 hover:border-slate-300"
-																				}`}
-																				title={order.category ? `Seção: ${order.category}` : "Organizar em seção"}>
-																				<Menu size={20} />
-																			</button>
-
-																			{/* Dropdown Menu */}
-																			{isMenuOpen && (
-																				<div
-																					onClick={(e) => e.stopPropagation()}
-																					className="absolute right-0 top-full mt-2 w-52 bg-white dark:bg-slate-800 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 p-2 z-50 animate-in fade-in zoom-in-95 duration-150">
-																					<div className="px-3 py-2 text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 border-b border-slate-100 dark:border-slate-700/60 mb-1">
-																						Mover para seção
-																					</div>
-																					<div className="space-y-1">
-																						{INSUMO_CATEGORIES.map((cat) => {
-																							const catConf = CATEGORY_CONFIG[cat];
-																							const isSelected = order.category === cat;
-																							const IconComponent = catConf.icon;
-																							return (
-																								<button
-																									key={cat}
-																									type="button"
-																									onClick={() => handleSetCategory(store.id, order.id, isSelected ? null : cat)}
-																									className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-black transition-all cursor-pointer ${
-																										isSelected
-																											? `${catConf.badgeBg} shadow-xs font-black`
-																											: "text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700/70"
-																									}`}>
-																									<div className="flex items-center gap-2.5">
-																										<IconComponent size={16} />
-																										<span>{cat}</span>
-																									</div>
-																									{isSelected && <Check size={14} className="stroke-[3]" />}
-																								</button>
-																							);
-																						})}
-																					</div>
-
-																					{/* Opção Comprar: Adiciona à rota /gerencia/insumos/pedidos */}
-																					<div className="pt-1 mt-1 border-t border-slate-100 dark:border-slate-700/60">
-																						<button
-																							type="button"
-																							onClick={() => handleAddToSupplierOrders(order.name, order.id)}
-																							className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-black transition-all cursor-pointer text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/40">
-																							<div className="flex items-center gap-2.5">
-																								<ShoppingCart size={16} className="text-blue-600 dark:text-blue-400" />
-																								<span>Comprar</span>
-																							</div>
-																							<span className="text-[10px] font-bold uppercase tracking-wider text-blue-500/80 bg-blue-100 dark:bg-blue-900/50 px-1.5 py-0.5 rounded">
-																								+ Pedido
-																							</span>
-																						</button>
-																					</div>
-																				</div>
-																			)}
-																		</div>
-																	)}
-
-																	{/* Botão de Check */}
-																	<button
-																		type="button"
-																		id="checkBtn"
-																		onMouseDown={(e) => e.preventDefault()}
-																		onClick={() => handleToggleCheck(store.id, order.id, isChecked)}
-																		className={`p-3 rounded-2xl border transition-all shrink-0 cursor-pointer ${
+																<div className="flex-1 min-w-0">
+																	<h5
+																		className={`text-base md:text-lg font-black uppercase break-words leading-tight ${
 																			isChecked
-																				? "bg-green-600 border-green-600 text-white"
-																				: "bg-white dark:bg-slate-700 border-slate-200 dark:border-slate-600 text-slate-300 dark:text-slate-500 hover:border-blue-400 dark:hover:border-blue-500 hover:text-green-500 dark:hover:text-green-400"
+																				? "text-emerald-900 dark:text-emerald-200 line-through decoration-emerald-500/60"
+																				: "text-slate-800 dark:text-slate-100"
 																		}`}>
-																		<Check size={24} strokeWidth={isChecked ? 5 : 3} />
-																	</button>
-																</div>
-															</div>
+																		{order.name}
+																	</h5>
 
-															<div className="flex items-center justify-between gap-4 mt-8">
-																<div className="flex items-center gap-2">
-																	<div className="shrink-0 opacity-80">
-																		{norm.type === "urgente" ? (
-																			<span className="text-red-600 dark:text-red-500">
-																				<AlertTriangle size={25} />
+																	<div className="flex flex-wrap items-center gap-2 mt-2">
+																		{isUrgent && (
+																			<span className="flex items-center gap-1 bg-red-600 text-white px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider shadow-xs animate-pulse">
+																				<AlertTriangle size={12} /> Urgente
 																			</span>
-																		) : norm.type === "acabando" ? (
-																			<span className="text-amber-600 dark:text-amber-500">
-																				<AlertCircle size={25} />
-																			</span>
-																		) : (
-																			<span className="text-blue-600 dark:text-blue-500">
-																				<Hourglass size={35} />
+																		)}
+
+																		{order.quantity && (
+																			<span className="text-xs font-black text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-700 px-2 py-0.5 rounded-md">
+																				Qtd: {order.quantity}
 																			</span>
 																		)}
 																	</div>
-																	<span
-																		className={`text-[14px] font-black px-2 py-0.5 rounded-full uppercase whitespace-nowrap ${
-																			isChecked
-																				? "bg-slate-200 dark:bg-slate-700 text-slate-500 dark:text-slate-400"
-																				: norm.type === "urgente"
-																					? "bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400"
-																					: norm.type === "acabando"
-																						? "bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400"
-																						: "bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400"
-																		}`}>
-																		{norm.label}
-																	</span>
 																</div>
-																<p className="text-lg font-bold text-slate-400 dark:text-slate-500 whitespace-nowrap">
-																	{formatDate(order.createdAt?.toDate())}
-																</p>
+
+																<button
+																	onClick={() =>
+																		handleAddToSupplierOrders(order.name, order.id)
+																	}
+																	className="p-2 rounded-xl text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/40 transition-all cursor-pointer shrink-0"
+																	title="Comprar deste fornecedor (+ Pedido)">
+																	<ShoppingCart size={16} />
+																</button>
 															</div>
 
-															{/* Feedback de Adicionado aos Pedidos de Fornecedores */}
 															{addedToSupplierOrderId === order.id && (
-																<div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-100 dark:bg-blue-950/60 border border-blue-300 dark:border-blue-700 text-blue-700 dark:text-blue-300 text-xs font-bold animate-in fade-in slide-in-from-top-1 duration-150">
-																	<Check size={14} className="stroke-[3]" />
-																	<span>Adicionado à lista de Pedidos a Fornecedores!</span>
+																<div className="mt-2 text-[11px] font-black text-blue-600 dark:text-blue-400 flex items-center gap-1">
+																	<Check size={12} />
+																	<span>Adicionado à lista de Compras!</span>
 																</div>
 															)}
+														</div>
 
-															{/* Botões de Reordenação: Topo, Subir, Descer, Fundo */}
-															<div
-																className="pt-3 border-t border-slate-200/70 dark:border-slate-700/70"
-																onClick={(e) => e.stopPropagation()}
-																onMouseDown={(e) => e.stopPropagation()}
-																onTouchStart={(e) => e.stopPropagation()}
-																draggable={false}>
-																<div className="grid grid-cols-4 gap-1.5 w-full bg-slate-100/70 dark:bg-slate-900/50 p-1 rounded-2xl border border-slate-200/60 dark:border-slate-800/80">
-																	{/* Topo */}
-																	<button
-																		type="button"
-																		disabled={isFirst}
-																		onMouseDown={(e) => {
-																			e.preventDefault();
-																			(e.currentTarget as HTMLElement)?.blur();
-																		}}
-																		onClick={(e) => {
-																			e.preventDefault();
-																			(e.currentTarget as HTMLElement)?.blur();
-																			handleReorderOrder(store, order.id, "top");
-																		}}
-																		title={isFirst ? "Já está no topo" : "Mandar para o topo"}
-																		className={`flex flex-col sm:flex-row items-center justify-center gap-1 py-2 px-1 rounded-xl text-xs font-black transition-all select-none ${
-																			isFirst
-																				? "opacity-25 text-slate-400 dark:text-slate-600 cursor-not-allowed pointer-events-none"
-																				: "bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-blue-50 dark:hover:bg-blue-950/40 hover:text-blue-600 dark:hover:text-blue-400 border border-slate-200/80 dark:border-slate-700 active:scale-95 shadow-xs cursor-pointer"
-																		}`}>
-																		<ArrowUpToLine size={15} className="shrink-0 text-blue-600 dark:text-blue-400" />
-																		<span className="text-[10px] md:text-[11px] uppercase tracking-tight">Topo</span>
-																	</button>
+														<div className="pt-2 border-t border-slate-100 dark:border-slate-700/60 flex items-center justify-between text-xs text-slate-400 font-bold">
+															<span className="flex items-center gap-1">
+																<Calendar size={12} />
+																{formatDate(order.createdAt?.toDate())}
+															</span>
 
-																	{/* Subir 1 */}
-																	<button
-																		type="button"
-																		disabled={isFirst}
-																		onClick={() => handleReorderOrder(store, order.id, "up")}
-																		title={isFirst ? "Não pode subir mais" : "Subir 1 posição"}
-																		className={`flex flex-col sm:flex-row items-center justify-center gap-1 py-2 px-1 rounded-xl text-xs font-black transition-all select-none ${
-																			isFirst
-																				? "opacity-25 text-slate-400 dark:text-slate-600 cursor-not-allowed pointer-events-none"
-																				: "bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-blue-50 dark:hover:bg-blue-950/40 hover:text-blue-600 dark:hover:text-blue-400 border border-slate-200/80 dark:border-slate-700 active:scale-95 shadow-xs cursor-pointer"
-																		}`}>
-																		<ArrowUp size={15} className="shrink-0 text-blue-600 dark:text-blue-400" />
-																		<span className="text-[10px] md:text-[11px] uppercase tracking-tight">Subir</span>
-																	</button>
-
-																	{/* Descer 1 */}
-																	<button
-																		type="button"
-																		disabled={isLast}
-																		onClick={() => handleReorderOrder(store, order.id, "down")}
-																		title={isLast ? "Não pode descer mais" : "Descer 1 posição"}
-																		className={`flex flex-col sm:flex-row items-center justify-center gap-1 py-2 px-1 rounded-xl text-xs font-black transition-all select-none ${
-																			isLast
-																				? "opacity-25 text-slate-400 dark:text-slate-600 cursor-not-allowed pointer-events-none"
-																				: "bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-blue-50 dark:hover:bg-blue-950/40 hover:text-blue-600 dark:hover:text-blue-400 border border-slate-200/80 dark:border-slate-700 active:scale-95 shadow-xs cursor-pointer"
-																		}`}>
-																		<ArrowDown size={15} className="shrink-0 text-blue-600 dark:text-blue-400" />
-																		<span className="text-[10px] md:text-[11px] uppercase tracking-tight">Descer</span>
-																	</button>
-
-																	{/* Fundo */}
-																	<button
-																		type="button"
-																		disabled={isLast}
-																		onMouseDown={(e) => {
-																			e.preventDefault();
-																			(e.currentTarget as HTMLElement)?.blur();
-																		}}
-																		onClick={(e) => {
-																			e.preventDefault();
-																			(e.currentTarget as HTMLElement)?.blur();
-																			handleReorderOrder(store, order.id, "bottom");
-																		}}
-																		title={isLast ? "Já está no fundo" : "Mandar para o fundo"}
-																		className={`flex flex-col sm:flex-row items-center justify-center gap-1 py-2 px-1 rounded-xl text-xs font-black transition-all select-none ${
-																			isLast
-																				? "opacity-25 text-slate-400 dark:text-slate-600 cursor-not-allowed pointer-events-none"
-																				: "bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-blue-50 dark:hover:bg-blue-950/40 hover:text-blue-600 dark:hover:text-blue-400 border border-slate-200/80 dark:border-slate-700 active:scale-95 shadow-xs cursor-pointer"
-																		}`}>
-																		<ArrowDownToLine size={15} className="shrink-0 text-blue-600 dark:text-blue-400" />
-																		<span className="text-[10px] md:text-[11px] uppercase tracking-tight">Fundo</span>
-																	</button>
-																</div>
+															{/* Botões de Reordenação Simples */}
+															<div className="flex items-center gap-1">
+																<button
+																	onClick={() => handleReorderOrder(store, order.id, "top")}
+																	className="p-1 hover:text-blue-600 cursor-pointer"
+																	title="Mandar para o topo">
+																	<ArrowUpToLine size={14} />
+																</button>
+																<button
+																	onClick={() => handleReorderOrder(store, order.id, "up")}
+																	className="p-1 hover:text-blue-600 cursor-pointer"
+																	title="Subir">
+																	<ArrowUp size={14} />
+																</button>
+																<button
+																	onClick={() => handleReorderOrder(store, order.id, "down")}
+																	className="p-1 hover:text-blue-600 cursor-pointer"
+																	title="Descer">
+																	<ArrowDown size={14} />
+																</button>
+																<button
+																	onClick={() => handleReorderOrder(store, order.id, "bottom")}
+																	className="p-1 hover:text-blue-600 cursor-pointer"
+																	title="Mandar para o fundo">
+																	<ArrowDownToLine size={14} />
+																</button>
 															</div>
-
-															{isChecked && (
-																<div className="pt-2">
-																	<button
-																		type="button"
-																		onClick={() => handleMarkAsDelivered(store.id, order.id)}
-																		className="w-full flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white py-3 rounded-2xl font-black text-md transition-all shadow-md shadow-emerald-100 dark:shadow-none cursor-pointer active:scale-95">
-																		<CheckCircle2 size={18} />
-																		Entregue
-																	</button>
-																</div>
-															)}
 														</div>
 													</div>
 												);
-											};
+											})}
+										</div>
+									)}
 
-											return (
-												<>
-													{hasCategorized ? (
-														<div className="space-y-8">
-															{/* 1. Seções de Categorias na ordem: Outros, Geladeira, Garagem, Loja */}
-															{SECTION_ORDER.map((cat) => {
-																const catOrders = pendingOrders.filter((o) => o.category === cat);
-																if (catOrders.length === 0) return null;
-																const catConf = CATEGORY_CONFIG[cat];
-																const IconComp = catConf.icon;
+									{/* SEÇÃO: HISTÓRICO DE LISTAS SALVAS */}
+									<div className="pt-6 border-t border-slate-100 dark:border-slate-800">
+										<button
+											onClick={() => toggleSnapshotsHistory(store.id)}
+											className="w-full flex items-center justify-between p-3.5 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-2xl transition-all cursor-pointer group">
+											<h4 className="text-sm font-bold text-slate-700 dark:text-slate-300 flex items-center gap-2">
+												<ListChecks
+													className={`${
+														showSnapshotsHistory[store.id]
+															? "text-blue-600 dark:text-blue-400"
+															: "text-slate-400"
+													}`}
+													size={20}
+												/>
+												({(store.orderSnapshots || []).length}) Histórico de Entregas Salvas
+											</h4>
+											<span className="text-slate-400 font-bold text-xs uppercase tracking-widest group-hover:text-slate-600 dark:group-hover:text-slate-200">
+												{showSnapshotsHistory[store.id] ? "Recolher" : "Visualizar"}
+											</span>
+										</button>
 
-																return (
-																	<div key={cat} className="space-y-4 animate-in fade-in duration-200">
-																		<div className={`flex items-center justify-between p-3.5 px-6 rounded-2xl border ${catConf.headerBorder} ${catConf.headerBg} shadow-xs`}>
-																			<div className="flex items-center gap-3">
-																				<div className={`p-2 rounded-xl ${catConf.badgeBg}`}>
-																					<IconComp size={20} />
-																				</div>
-																				<h4 className={`text-xl font-black uppercase tracking-tight ${catConf.textColor}`}>
-																					{catConf.label}
-																				</h4>
-																			</div>
-																			<span className={`text-xs font-black px-3 py-1 rounded-full ${catConf.badgeBg} uppercase tracking-wider`}>
-																				{catOrders.length} {catOrders.length === 1 ? "insumo" : "insumos"}
-																			</span>
-																		</div>
+										{showSnapshotsHistory[store.id] && (
+											<div className="mt-3 space-y-3 animate-in fade-in duration-200">
+												{(store.orderSnapshots || []).map((snapshot) => {
+													const dateStr = snapshot.deliveredAt?.toDate
+														? formatDate(snapshot.deliveredAt.toDate())
+														: snapshot.closedAt?.toDate
+														? formatDate(snapshot.closedAt.toDate())
+														: "Data n/a";
 
-																		<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-																			{catOrders.map(renderCard)}
-																		</div>
-																	</div>
-																);
-															})}
-
-															{/* 2. Demais Insumos Pendentes (sem categoria definida) */}
-															{(() => {
-																const uncategorized = pendingOrders.filter((o) => !o.category);
-																if (uncategorized.length === 0) return null;
-
-																return (
-																	<div className="space-y-4 pt-2 animate-in fade-in duration-200">
-																		<div className="flex items-center justify-between p-3.5 px-6 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-100/70 dark:bg-slate-800/40 shadow-xs">
-																			<div className="flex items-center gap-3">
-																				<div className="p-2 rounded-xl bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300">
-																					<Package size={20} />
-																				</div>
-																				<h4 className="text-xl font-black uppercase tracking-tight text-slate-700 dark:text-slate-300">
-																					Demais Insumos
-																				</h4>
-																			</div>
-																			<span className="text-xs font-black px-3 py-1 rounded-full bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 uppercase tracking-wider">
-																				{uncategorized.length} {uncategorized.length === 1 ? "insumo" : "insumos"}
-																			</span>
-																		</div>
-
-																		<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-																			{uncategorized.map(renderCard)}
-																		</div>
-																	</div>
-																);
-															})()}
-														</div>
-													) : (
-														/* Sem categorias ativas: lista pendente padrão */
-														pendingOrders.length > 0 && (
-															<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-																{pendingOrders.map(renderCard)}
-															</div>
-														)
-													)}
-
-													{/* 3. Itens Verificados / A Entregar (com Check) no fundo */}
-													{deliveringOrders.length > 0 && (
-														<div className="space-y-4 pt-4 border-t border-slate-200/70 dark:border-slate-800">
-															{hasCategorized && (
-																<div className="flex items-center justify-between p-3.5 px-6 rounded-2xl border border-emerald-200/70 dark:border-emerald-800/50 bg-emerald-50/60 dark:bg-emerald-950/20 shadow-xs">
-																	<div className="flex items-center gap-3">
-																		<div className="p-2 rounded-xl bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-400">
-																			<CheckCircle2 size={20} />
-																		</div>
-																		<h4 className="text-xl font-black uppercase tracking-tight text-emerald-800 dark:text-emerald-300">
-																			Itens a Entregar (Verificados)
-																		</h4>
-																	</div>
-																	<span className="text-xs font-black px-3 py-1 rounded-full bg-emerald-100 dark:bg-emerald-900/40 text-emerald-800 dark:text-emerald-300 uppercase tracking-wider">
-																		{deliveringOrders.length} {deliveringOrders.length === 1 ? "insumo" : "insumos"}
+													return (
+														<div
+															key={snapshot.id}
+															className="p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/40 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+															<div className="space-y-1">
+																<div className="flex items-center gap-2">
+																	<span className="text-sm font-black text-slate-800 dark:text-slate-100">
+																		Entrega {dateStr}
+																	</span>
+																	<span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
+																		Finalizada
 																	</span>
 																</div>
-															)}
+																<p className="text-xs text-slate-500">
+																	{snapshot.itemsCount} insumos entregues
+																</p>
+															</div>
 
-															<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-																{deliveringOrders.map(renderCard)}
+															<div className="flex items-center gap-2">
+																<button
+																	onClick={() => handleCopySnapshot(snapshot)}
+																	className="cursor-pointer flex items-center gap-1 px-3 py-1.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-700 dark:text-slate-300 shadow-xs">
+																	{copiedSnapshotId === snapshot.id ? (
+																		<>
+																			<Check className="text-emerald-500" size={14} />
+																			<span>Copiado!</span>
+																		</>
+																	) : (
+																		<>
+																			<Copy size={14} />
+																			<span>WhatsApp</span>
+																		</>
+																	)}
+																</button>
+
+																<button
+																	onClick={() => setSelectedSnapshotModal(snapshot)}
+																	className="cursor-pointer flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition-all shadow-xs">
+																	<ExternalLink size={14} />
+																	<span>Ver Itens ({snapshot.itemsCount})</span>
+																</button>
 															</div>
 														</div>
-													)}
-												</>
-											);
-										})()}
+													);
+												})}
+
+												{(store.orderSnapshots || []).length === 0 && (
+													<p className="py-4 text-center text-xs text-slate-400">
+														Nenhuma entrega salva até o momento para esta loja.
+													</p>
+												)}
+											</div>
+										)}
 									</div>
-								</>
-							) : (
-								<div className="py-12 text-center">
-									<Package className="mx-auto text-slate-200 dark:text-slate-400 mb-4" size={48} />
-									<p className="text-slate-400 dark:text-slate-400 font-bold">
-										Nenhum pedido de insumo pendente para esta loja.
-									</p>
-								</div>
-							)}
 
-							{/* Saved Order Lists Snapshots Toggle Section */}
-							<div className="mt-8 pt-6 border-t border-slate-50 dark:border-slate-800">
-								<button
-									onClick={() => toggleSnapshotsHistory(store.id)}
-									className="w-full flex items-center justify-between p-4 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-2xl transition-all cursor-pointer group">
-									<h4 className="text-lg font-bold text-slate-700 dark:text-slate-300 flex items-center gap-2">
-										<ListChecks
-											className={`${showSnapshotsHistory[store.id] ? "text-blue-600 dark:text-blue-400" : "text-slate-300 dark:text-slate-500"}`}
-											size={32}
-										/>
-										({(store.orderSnapshots || []).length}) Histórico de Listas de Pedidos Salvas
-									</h4>
-									<span className="text-slate-400 dark:text-slate-500 font-bold text-xs uppercase tracking-widest group-hover:text-slate-600 dark:group-hover:text-slate-300 transition-colors">
-										{showSnapshotsHistory[store.id] ? "Recolher" : "Visualizar"}
-									</span>
-								</button>
+									{/* SEÇÃO: HISTÓRICO DE INSUMOS INDIVIDUAIS */}
+									<div className="pt-3 border-t border-slate-100 dark:border-slate-800">
+										<button
+											onClick={() => toggleHistory(store.id)}
+											className="w-full flex items-center justify-between p-3 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-2xl transition-all cursor-pointer group">
+											<h4 className="text-xs font-bold text-slate-500 dark:text-slate-400 flex items-center gap-2">
+												<CheckCircle2
+													className={`${
+														showHistory[store.id] ? "text-emerald-500" : "text-slate-400"
+													}`}
+													size={16}
+												/>
+												({store.historicalOrders.length}) Insumos Finalizados (Últimas 4 Semanas)
+											</h4>
+											<span className="text-slate-400 font-bold text-xs uppercase tracking-widest group-hover:text-slate-600 dark:group-hover:text-slate-200">
+												{showHistory[store.id] ? "Recolher" : "Visualizar"}
+											</span>
+										</button>
 
-								{showSnapshotsHistory[store.id] && (
-									<div className="mt-4 space-y-3 animate-in fade-in slide-in-from-top-2 duration-300">
-										{(store.orderSnapshots || []).map((snapshot, idx) => {
-											const isLatest = idx === 0;
-											const closedDateStr = snapshot.closedAt?.toDate
-												? formatDate(snapshot.closedAt.toDate())
-												: snapshot.closedAt
-												? formatDate(new Date(snapshot.closedAt))
-												: "n/a";
-
-											return (
-												<div
-													key={snapshot.id || idx}
-													className={`p-5 rounded-2xl border transition-all ${
-														isLatest
-															? "bg-blue-50/40 dark:bg-blue-950/20 border-blue-200 dark:border-blue-900/50 shadow-sm"
-															: "bg-slate-50 dark:bg-slate-800/40 border-slate-100 dark:border-slate-800"
-													}`}>
-													<div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-														<div className="space-y-1.5 flex-1 min-w-0">
-															<div className="flex flex-wrap items-center gap-2">
-																<h5 className="text-base font-black text-slate-800 dark:text-slate-100 flex items-center gap-2">
-																	<ListChecks className="text-blue-600 dark:text-blue-400" size={18} />
-																	Lista de Fechamento: {snapshot.cycleClosingDate}
-																</h5>
-																{isLatest && (
-																	<span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-blue-600 text-white shadow-sm">
-																		Mais Recente
-																	</span>
-																)}
-																{snapshot.updatedAt && (
-																	<span className="px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-300">
-																		Atualizada após fechamento
-																	</span>
-																)}
-															</div>
-
-															<div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-500 dark:text-slate-400 font-medium">
-																<span>
-																	🚚 Entrega prevista: <strong className="text-slate-700 dark:text-slate-300">{snapshot.cycleDeliveryDate}</strong>
-																</span>
-																<span>•</span>
-																<span>
-																	Salva em: <strong className="text-slate-700 dark:text-slate-300">{closedDateStr}</strong>
-																</span>
-																<span>•</span>
-																<span>
-																	Total: <strong className="text-slate-700 dark:text-slate-300">{snapshot.itemsCount} insumos</strong>
-																</span>
-															</div>
+										{showHistory[store.id] && (
+											<div className="mt-3 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 opacity-80 animate-in fade-in duration-300">
+												{store.historicalOrders.map((order) => (
+													<div
+														key={order.id}
+														className={`p-3 rounded-2xl border flex items-center justify-between gap-3 text-xs ${
+															order.status === "cancelled"
+																? "bg-red-50/50 dark:bg-red-900/10 border-red-100 dark:border-red-900/30"
+																: "bg-slate-50 dark:bg-slate-800/40 border-slate-200 dark:border-slate-700/60"
+														}`}>
+														<div className="min-w-0 flex-1">
+															<p
+																className={`font-bold truncate ${
+																	order.status === "cancelled"
+																		? "text-red-700 dark:text-red-400"
+																		: "text-slate-700 dark:text-slate-300 line-through"
+																}`}>
+																{order.name}
+																{order.quantity && ` (${order.quantity})`}
+															</p>
+															<p className="text-[10px] text-slate-400 font-bold uppercase mt-0.5">
+																{order.status === "cancelled"
+																	? "Cancelado em: "
+																	: "Entregue em: "}
+																{formatDate(order.deliveredAt?.toDate())}
+															</p>
 														</div>
-
-														<div className="flex items-center gap-2 shrink-0">
-															<button
-																onClick={() => handleCopySnapshot(snapshot)}
-																className="cursor-pointer flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-700 dark:text-slate-200 transition-all shadow-sm">
-																{copiedSnapshotId === snapshot.id ? (
-																	<>
-																		<Check className="text-emerald-500" size={14} />
-																		<span className="text-emerald-600 dark:text-emerald-400">Copiado!</span>
-																	</>
-																) : (
-																	<>
-																		<Copy size={14} />
-																		<span>Copiar p/ WhatsApp</span>
-																	</>
-																)}
-															</button>
-
-															<button
-																onClick={() => setSelectedSnapshotModal(snapshot)}
-																className="cursor-pointer flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition-all shadow-sm shadow-blue-200 dark:shadow-none">
-																<ExternalLink size={14} />
-																<span>Ver Insumos ({snapshot.itemsCount})</span>
-															</button>
+														<div className="shrink-0">
+															{order.status === "cancelled" ? (
+																<Trash2 size={14} className="text-red-500" />
+															) : (
+																<CheckCircle2 size={14} className="text-emerald-500" />
+															)}
 														</div>
 													</div>
-												</div>
-											);
-										})}
-
-										{(store.orderSnapshots || []).length === 0 && (
-											<div className="py-8 text-center bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-dashed border-slate-200 dark:border-slate-700">
-												<ListChecks className="mx-auto text-slate-300 dark:text-slate-600 mb-2" size={32} />
-												<p className="text-sm text-slate-400 dark:text-slate-500 font-medium">
-													Nenhuma lista consolidada salva até o momento para esta loja.
-												</p>
+												))}
+												{store.historicalOrders.length === 0 && (
+													<p className="col-span-full py-4 text-center text-xs text-slate-400 italic">
+														Nenhum histórico recente.
+													</p>
+												)}
 											</div>
 										)}
 									</div>
-								)}
-							</div>
+								</div>
+							)}
+						</div>
+					);
+				})}
+			</div>
 
-							{/* History Toggle Section */}
-							<div className="mt-8 pt-6 border-t border-slate-50 dark:border-slate-800">
+			{/* MODAL: CONCLUIR ENTREGA */}
+			{deliveryModal && (
+				<div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
+					<div className="bg-white dark:bg-slate-900 rounded-[32px] p-6 sm:p-8 max-w-2xl w-full max-h-[90vh] flex flex-col shadow-2xl border border-slate-200 dark:border-slate-800">
+						{/* Cabeçalho do Modal */}
+						<div className="flex items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-800">
+							<div className="flex items-center gap-3">
+								<div className="p-3 rounded-2xl bg-emerald-100 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 font-black">
+									<CheckCircle2 size={24} />
+								</div>
+								<div>
+									<h3 className="text-xl md:text-2xl font-black text-slate-800 dark:text-slate-100">
+										Concluir Entrega • Loja {deliveryModal.storeName}
+									</h3>
+									<p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+										Insira ou edite as quantidades (opcionalmente) e remova os itens que não serão entregues.
+									</p>
+								</div>
+							</div>
+							<button
+								onClick={() => setDeliveryModal(null)}
+								className="cursor-pointer p-2 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
+								<X size={20} />
+							</button>
+						</div>
+
+						{/* Lista de Itens no Modal */}
+						<div className="flex-1 overflow-y-auto py-4 pr-1 space-y-3 max-h-[55vh]">
+							{deliveryModal.items.length === 0 ? (
+								<div className="py-12 text-center text-slate-400">
+									<p className="font-bold">Todos os itens foram removidos desta entrega.</p>
+								</div>
+							) : (
+								deliveryModal.items.map((item) => (
+									<div
+										key={item.id}
+										className={`p-4 rounded-2xl border transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
+											item.checked
+												? "bg-emerald-50/50 dark:bg-emerald-950/20 border-emerald-300 dark:border-emerald-800"
+												: "bg-slate-50/70 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700"
+										}`}>
+										<div className="flex items-center gap-3 flex-1 min-w-0">
+											<button
+												type="button"
+												onClick={() => handleModalToggleCheck(item.id)}
+												className={`cursor-pointer p-2 rounded-xl border transition-all shrink-0 ${
+													item.checked
+														? "bg-emerald-600 border-emerald-600 text-white"
+														: "bg-white dark:bg-slate-700 border-slate-200 dark:border-slate-600 text-slate-300 hover:text-emerald-500"
+												}`}
+												title={item.checked ? "Conferido" : "Marcar conferido"}>
+												<Check size={16} strokeWidth={item.checked ? 4 : 2.5} />
+											</button>
+
+											<div className="min-w-0 flex-1">
+												<div className="flex items-center gap-2 flex-wrap">
+													<p
+														className={`text-sm md:text-base font-black uppercase truncate ${
+															item.checked
+																? "text-emerald-900 dark:text-emerald-200 line-through decoration-emerald-500"
+																: "text-slate-800 dark:text-slate-100"
+														}`}>
+														{item.name}
+													</p>
+													{item.urgency === "Urgente" && (
+														<span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-md bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300">
+															Urgente
+														</span>
+													)}
+												</div>
+											</div>
+										</div>
+
+										<div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
+											<div className="flex items-center gap-1.5">
+												<label className="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase">
+													Qtd:
+												</label>
+												<input
+													type="text"
+													placeholder="Ex: 2 un, 1 cx"
+													value={item.quantity}
+													onChange={(e) => handleModalUpdateQuantity(item.id, e.target.value)}
+													className="w-32 px-3 py-1.5 text-xs font-black text-right bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+												/>
+											</div>
+
+											<button
+												type="button"
+												onClick={() => handleModalRemoveItem(item.id)}
+												className="cursor-pointer p-2 rounded-xl text-slate-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 transition-all shrink-0"
+												title="Remover item da entrega (permanecerá pendente na loja)">
+												<Trash2 size={16} />
+											</button>
+										</div>
+									</div>
+								))
+							)}
+						</div>
+
+						{/* Rodapé com botão Salvar e Finalizar */}
+						<div className="pt-4 border-t border-slate-100 dark:border-slate-800 mt-2 flex flex-col sm:flex-row items-center justify-between gap-4">
+							<span className="text-xs font-bold text-slate-500 dark:text-slate-400">
+								Total para entrega: <strong>{deliveryModal.items.length} itens</strong>
+							</span>
+
+							<div className="flex items-center gap-2 w-full sm:w-auto">
 								<button
-									onClick={() => toggleHistory(store.id)}
-									className="w-full flex items-center justify-center p-4 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-2xl transition-all cursor-pointer group">
-									<h4 className="text-lg font-bold text-slate-500 dark:text-slate-400 flex items-center gap-2">
-										<CheckCircle2
-											className={`${showHistory[store.id] ? "text-emerald-500" : "text-slate-300 dark:text-slate-500"}`}
-											size={32}
-										/>
-										({store.historicalOrders.length}) Insumos Finalizados (Últimas 4 Semanas)
-									</h4>
-									{/* <span className="text-slate-400 dark:text-slate-500 font-bold text-xs uppercase tracking-widest group-hover:text-slate-600 dark:group-hover:text-slate-300 transition-colors">
-										{showHistory[store.id] ? "Esconder" : "Mostrar"}
-									</span> */}
+									onClick={() => setDeliveryModal(null)}
+									className="cursor-pointer flex-1 sm:flex-none px-5 py-3 rounded-2xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-400 font-bold text-sm transition-all">
+									Cancelar
 								</button>
 
-								{showHistory[store.id] && (
-									<div className="mt-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 opacity-70 dark:opacity-80 animate-in fade-in slide-in-from-top-2 duration-300">
-										{store.historicalOrders
-											.sort((a, b) => (b.deliveredAt?.toMillis() || 0) - (a.deliveredAt?.toMillis() || 0))
-											.map((order) => (
-											<div
-												key={order.id}
-												className={`p-4 rounded-2xl border flex items-center justify-between transition-all ${
-													order.status === "cancelled"
-														? "bg-red-50/50 dark:bg-red-900/10 border-red-100 dark:border-red-900/30"
-														: "bg-slate-50 dark:bg-slate-800/50 border-slate-100 dark:border-slate-700"
-												}`}>
-												<div className="min-w-0 flex-1">
-													<p
-														className={`text-md font-bold truncate ${
-															order.status === "cancelled"
-																? "text-red-700 dark:text-red-400"
-																: "text-slate-700 dark:text-slate-300 line-through decoration-slate-400 dark:decoration-slate-600"
-														}`}>
-														{order.name}
-														{order.status === "cancelled" && " (CANCELADO)"}
-													</p>
-													<p className="text-sm text-slate-400 dark:text-slate-500 font-bold uppercase mt-1">
-														{order.status === "cancelled" ? "Cancelado em: " : "Entregue em: "}
-														{formatDate(order.deliveredAt?.toDate())}
-													</p>
-												</div>
-												<div className={`ml-3 shrink-0 ${order.status === "cancelled" ? "text-red-500 dark:text-red-400" : "text-emerald-600 dark:text-emerald-500"}`}>
-													{order.status === "cancelled" ? <Trash2 size={16} /> : <CheckCircle2 size={16} />}
-												</div>
-											</div>
-										))}
-										{store.historicalOrders.length === 0 && (
-											<div className="col-span-full py-8 text-center bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-dashed border-slate-200 dark:border-slate-700">
-												<p className="text-sm text-slate-400 dark:text-slate-500 italic">
-													Nenhum histórico recente para exibir.
-												</p>
-											</div>
-										)}
-									</div>
-								)}
+								<button
+									onClick={handleSalvarEFinalizar}
+									disabled={savingDelivery || deliveryModal.items.length === 0}
+									className="cursor-pointer flex-1 sm:flex-none bg-emerald-600 hover:bg-emerald-700 disabled:opacity-40 text-white font-black px-6 py-3 rounded-2xl shadow-lg shadow-emerald-200 dark:shadow-none transition-all flex items-center justify-center gap-2 text-sm active:scale-95">
+									{savingDelivery ? (
+										<RefreshCw className="animate-spin" size={16} />
+									) : (
+										<CheckCircle2 size={18} />
+									)}
+									<span>Salvar e Finalizar</span>
+								</button>
 							</div>
 						</div>
-					)}
-				</div>
-			);
-		})}
-
-			{allData.length === 0 && (
-				<div className="bg-white dark:bg-slate-900 rounded-3xl p-12 text-center border border-slate-200 dark:border-slate-800 border-dashed">
-					<Package className="mx-auto text-slate-200 dark:text-slate-800 mb-4" size={64} />
-					<p className="text-slate-400 dark:text-slate-500 font-bold">
-						Nenhum pedido de insumo pendente em nenhuma loja.
-					</p>
+					</div>
 				</div>
 			)}
 
-			{/* Modal para Visualizar Detalhes do Snapshot de Insumos */}
+			{/* MODAL: VISUALIZAR DETALHES DE UMA LISTA SALVA NO HISTÓRICO */}
 			{selectedSnapshotModal && (
 				<div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
-					<div className="bg-white dark:bg-slate-900 rounded-3xl p-6 sm:p-8 max-w-2xl w-full max-h-[85vh] flex flex-col shadow-2xl animate-in zoom-in-95 duration-200 border border-slate-200 dark:border-slate-800">
+					<div className="bg-white dark:bg-slate-900 rounded-3xl p-6 sm:p-8 max-w-2xl w-full max-h-[85vh] flex flex-col shadow-2xl border border-slate-200 dark:border-slate-800">
 						<div className="flex items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-800">
 							<div>
 								<h3 className="text-xl font-black text-slate-800 dark:text-slate-100 flex items-center gap-2">
-									<ListChecks className="text-blue-600 dark:text-blue-400" size={24} />
-									Lista de Pedidos • Loja {selectedSnapshotModal.storeName}
+									<ListChecks className="text-blue-600" size={22} />
+									Entrega • Loja {selectedSnapshotModal.storeName}
 								</h3>
-								<p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-									Fechamento: {selectedSnapshotModal.cycleClosingDate} • Entrega: {selectedSnapshotModal.cycleDeliveryDate} • Salva em:{" "}
-									{selectedSnapshotModal.closedAt?.toDate
+								<p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+									Entregue em:{" "}
+									{selectedSnapshotModal.deliveredAt?.toDate
+										? formatDate(selectedSnapshotModal.deliveredAt.toDate())
+										: selectedSnapshotModal.closedAt?.toDate
 										? formatDate(selectedSnapshotModal.closedAt.toDate())
-										: selectedSnapshotModal.closedAt
-										? formatDate(new Date(selectedSnapshotModal.closedAt))
 										: "n/a"}
 								</p>
 							</div>
 							<button
 								onClick={() => setSelectedSnapshotModal(null)}
-								className="cursor-pointer p-2 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all">
+								className="cursor-pointer p-2 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
 								<X size={20} />
 							</button>
 						</div>
 
-						<div className="py-4 flex items-center justify-between gap-4">
-							<span className="text-xs font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider">
-								{selectedSnapshotModal.itemsCount} insumos solicitados nesta lista:
+						<div className="py-4 flex items-center justify-between">
+							<span className="text-xs font-black text-slate-500 uppercase tracking-wider">
+								{selectedSnapshotModal.itemsCount} insumos entregues:
 							</span>
 							<button
 								onClick={() => handleCopySnapshot(selectedSnapshotModal)}
-								className="cursor-pointer flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-xs font-bold text-slate-700 dark:text-slate-300 transition-all">
+								className="cursor-pointer flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-xs font-bold text-slate-700 dark:text-slate-300">
 								{copiedSnapshotId === selectedSnapshotModal.id ? (
 									<>
 										<Check className="text-emerald-500" size={14} />
-										<span className="text-emerald-600 dark:text-emerald-400 font-bold">Copiado!</span>
+										<span className="text-emerald-600">Copiado!</span>
 									</>
 								) : (
 									<>
 										<Copy size={14} />
-										<span>Copiar lista</span>
+										<span>Copiar Lista</span>
 									</>
 								)}
 							</button>
 						</div>
 
+						{/* Itens */}
 						<div className="flex-1 overflow-y-auto pr-1 space-y-2.5 max-h-[50vh]">
-							{selectedSnapshotModal.items && selectedSnapshotModal.items.length > 0 ? (
-								selectedSnapshotModal.items.map((item, idx) => (
-									<div
-										key={item.id || idx}
-										className="p-3.5 rounded-xl border border-slate-100 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-800/40 flex items-center justify-between gap-3">
-										<span className="text-sm font-bold text-slate-800 dark:text-slate-200">
-											{item.name}
-										</span>
-										<span
-											className={`text-[10px] font-black uppercase px-2.5 py-1 rounded-md shrink-0 ${
-												item.urgency === "Urgente"
-													? "bg-red-100 text-red-700 dark:bg-red-950/60 dark:text-red-300"
-													: item.urgency === "Acabando"
-													? "bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300"
-													: "bg-blue-100 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300"
-											}`}>
-											{item.urgency}
-										</span>
+							{(selectedSnapshotModal.items || []).map((item, idx) => (
+								<div
+									key={item.id || idx}
+									className="p-3.5 rounded-xl border border-slate-100 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-800/40 flex items-center justify-between gap-3 text-xs">
+									<span className="font-bold text-slate-800 dark:text-slate-200 uppercase">
+										{item.name}
+									</span>
+									<div className="flex items-center gap-2">
+										{item.quantity && (
+											<span className="px-2 py-0.5 rounded-md bg-white dark:bg-slate-700 font-black text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-600">
+												Qtd: {item.quantity}
+											</span>
+										)}
+										{item.urgency === "Urgente" && (
+											<span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-md bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300">
+												Urgente
+											</span>
+										)}
 									</div>
-								))
-							) : (
-								<p className="text-sm text-slate-400 italic text-center py-6">
-									Nenhum insumo registrado nesta lista.
-								</p>
-							)}
+								</div>
+							))}
 						</div>
 
-						<div className="pt-4 border-t border-slate-100 dark:border-slate-800 mt-2 flex justify-end">
+						<div className="pt-4 border-t border-slate-100 dark:border-slate-800 mt-4 flex justify-end">
 							<button
 								onClick={() => setSelectedSnapshotModal(null)}
-								className="cursor-pointer px-6 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-900 dark:bg-slate-700 dark:hover:bg-slate-600 text-white font-bold text-sm transition-all">
+								className="cursor-pointer px-6 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-900 text-white font-bold text-sm">
 								Fechar
 							</button>
 						</div>

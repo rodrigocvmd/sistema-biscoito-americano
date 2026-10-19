@@ -1362,3 +1362,164 @@ export const DEFAULT_INSUMOS_CATALOG: InsumoCatalogItem[] = [
 		observacoes: "Fardo c/ 24 a 48 rolos folha dupla",
 	},
 ];
+
+export const INSUMO_CATEGORIES_LIST = [
+	"BEBIDAS E SODAS",
+	"INSUMOS E CONFEITARIA",
+	"CALDAS",
+	"CAFETERIA E MATINAL",
+	"EMBALAGENS E DESCARTÁVEIS",
+	"OPERACIONAL E DELIVERY",
+	"HIGIENE E SEGURANÇA",
+	"OUTROS",
+] as const;
+
+export type InsumoCategoryName = (typeof INSUMO_CATEGORIES_LIST)[number];
+
+export function getInsumoCategory(itemName: string): string {
+	if (!itemName) return "OUTROS";
+	const norm = itemName
+		.normalize("NFD")
+		.replace(/[\u0300-\u036f]/g, "")
+		.toLowerCase()
+		.trim();
+
+	// 1. Direct match in INVENTORY_DATA
+	for (const cat of INVENTORY_DATA) {
+		for (const item of cat.items) {
+			const itemNorm = item
+				.normalize("NFD")
+				.replace(/[\u0300-\u036f]/g, "")
+				.toLowerCase()
+				.trim();
+			if (itemNorm === norm) {
+				return cat.category;
+			}
+		}
+	}
+
+	// 2. Contains match in catalog
+	for (const cat of INVENTORY_DATA) {
+		for (const item of cat.items) {
+			const itemNorm = item
+				.normalize("NFD")
+				.replace(/[\u0300-\u036f]/g, "")
+				.toLowerCase()
+				.trim();
+			if (norm.includes(itemNorm) || itemNorm.includes(norm)) {
+				return cat.category;
+			}
+		}
+	}
+
+	// 3. Keyword heuristic
+	if (
+		norm.includes("agua") ||
+		norm.includes("coca") ||
+		norm.includes("refrigerante") ||
+		norm.includes("soda") ||
+		norm.includes("red bull") ||
+		norm.includes("bubble") ||
+		norm.includes("gatorade") ||
+		norm.includes("fanta") ||
+		norm.includes("bebida")
+	) {
+		return "BEBIDAS E SODAS";
+	}
+
+	if (
+		norm.includes("nutella") ||
+		norm.includes("ninho") ||
+		norm.includes("leite") ||
+		norm.includes("cacau") ||
+		norm.includes("m&m") ||
+		norm.includes("granulado") ||
+		norm.includes("chantilly") ||
+		norm.includes("doce de leite") ||
+		norm.includes("ovomaltine") ||
+		norm.includes("chocolate") ||
+		norm.includes("lotus") ||
+		norm.includes("oreo") ||
+		norm.includes("alpino") ||
+		norm.includes("kinder") ||
+		norm.includes("gelo") ||
+		norm.includes("confeitaria")
+	) {
+		return "INSUMOS E CONFEITARIA";
+	}
+
+	if (norm.includes("calda")) {
+		return "CALDAS";
+	}
+
+	if (
+		norm.includes("cafe") ||
+		norm.includes("capsula") ||
+		norm.includes("capuccino") ||
+		norm.includes("nescafe") ||
+		norm.includes("cha") ||
+		norm.includes("acucar") ||
+		norm.includes("adocante")
+	) {
+		return "CAFETERIA E MATINAL";
+	}
+
+	if (
+		norm.includes("copo") ||
+		norm.includes("tampa") ||
+		norm.includes("canudo") ||
+		norm.includes("guardanapo") ||
+		norm.includes("saquinho") ||
+		norm.includes("kraft") ||
+		norm.includes("caixa") ||
+		norm.includes("bag") ||
+		norm.includes("hamburgueira") ||
+		norm.includes("papel manteiga") ||
+		norm.includes("papel interfolhado") ||
+		norm.includes("sacola") ||
+		norm.includes("filme pvc") ||
+		norm.includes("pvc") ||
+		norm.includes("colher") ||
+		norm.includes("misturador") ||
+		norm.includes("suporte") ||
+		norm.includes("embalag") ||
+		norm.includes("descart")
+	) {
+		return "EMBALAGENS E DESCARTÁVEIS";
+	}
+
+	if (
+		norm.includes("etiqueta") ||
+		norm.includes("bobina") ||
+		norm.includes("bilhete") ||
+		norm.includes("envelope") ||
+		norm.includes("troco") ||
+		norm.includes("grampo") ||
+		norm.includes("clipe") ||
+		norm.includes("cielo")
+	) {
+		return "OPERACIONAL E DELIVERY";
+	}
+
+	if (
+		norm.includes("luva") ||
+		norm.includes("touca") ||
+		norm.includes("desinfetante") ||
+		norm.includes("detergente") ||
+		norm.includes("veja") ||
+		norm.includes("alcool") ||
+		norm.includes("lixo") ||
+		norm.includes("sabao") ||
+		norm.includes("bucha") ||
+		norm.includes("perfex") ||
+		norm.includes("kiboa") ||
+		norm.includes("papel toalha") ||
+		norm.includes("papel higienico") ||
+		norm.includes("higiene") ||
+		norm.includes("seguranca")
+	) {
+		return "HIGIENE E SEGURANÇA";
+	}
+
+	return "OUTROS";
+}

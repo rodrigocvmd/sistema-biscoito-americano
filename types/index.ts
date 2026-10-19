@@ -151,7 +151,7 @@ export interface RepositionHistory {
 }
 
 // Padronização dos termos de urgência
-export type UrgencyLevel = "Urgente" | "Acabando" | "Adiantando";
+export type UrgencyLevel = "Urgente" | "Acabando" | "Adiantando" | "Normal";
 
 // Padronização de data e hora
 export const formatDate = (date: Date | null) => {
@@ -234,6 +234,9 @@ export interface SupplyOrderSnapshotItem {
 	id: string;
 	name: string;
 	urgency: UrgencyLevel;
+	quantity?: string;
+	category?: string;
+	checked?: boolean;
 	createdAt?: any;
 }
 
@@ -241,11 +244,12 @@ export interface SupplyOrderSnapshot {
 	id: string;
 	storeId: StoreId;
 	storeName: string;
-	cycleClosingDate: string; // Ex: "28/09/2026"
-	cycleDeliveryDate: string; // Ex: "29/09/2026"
+	cycleClosingDate?: string; // Ex: "28/09/2026"
+	cycleDeliveryDate?: string; // Ex: "29/09/2026"
 	closedAt: any; // Firestore Timestamp
 	updatedAt?: any; // Firestore Timestamp
-	status: "closed" | "reopened";
+	deliveredAt?: any; // Firestore Timestamp
+	status: "closed" | "delivered" | "reopened";
 	itemsCount: number;
 	items: SupplyOrderSnapshotItem[];
 }
