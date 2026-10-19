@@ -86,6 +86,8 @@ export default function InsumosLojasPage() {
 	const [selectedSnapshotModal, setSelectedSnapshotModal] = useState<SupplyOrderSnapshot | null>(null);
 	const [copiedSnapshotId, setCopiedSnapshotId] = useState<string | null>(null);
 	const [searchTerm, setSearchTerm] = useState("");
+	const [snapshotSearchMap, setSnapshotSearchMap] = useState<Record<string, string>>({});
+	const [historySearchMap, setHistorySearchMap] = useState<Record<string, string>>({});
 	const [addedToSupplierOrderId, setAddedToSupplierOrderId] = useState<string | null>(null);
 
 	// Estado da ordenação
@@ -786,20 +788,20 @@ export default function InsumosLojasPage() {
 							{/* Lista Simples de Pedidos da Loja (Quando Aberta) */}
 							{isExpanded && (
 								<div className="p-6 md:p-8 pt-0 border-t border-slate-100 dark:border-slate-800 space-y-6 animate-in slide-in-from-top-2 duration-300">
-									<div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 py-3 border-b border-slate-100 dark:border-slate-800">
-										{/* Botões de Ordenação Centralizados Horizontalmente (sem a string 'Ordenar') */}
+									<div className="flex flex-row items-center justify-between gap-2 sm:gap-4 py-3 border-b border-slate-100 dark:border-slate-800">
+										{/* Botões de Ordenação Lado a Lado no Mobile */}
 										{pendingCount > 0 ? (
-											<div className="w-full sm:w-auto flex justify-center">
-												<div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-xl gap-1">
+											<div className="flex justify-start">
+												<div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-xl gap-0.5 sm:gap-1">
 													{[
-														{ id: "urgency", label: "Prioridade" },
+														{ id: "urgency", label: "Prior." },
 														{ id: "date", label: "Data" },
-														{ id: "alphabetical", label: "Alfabética" },
+														{ id: "alphabetical", label: "Alfab." },
 													].map((sort) => (
 														<button
 															key={sort.id}
 															onClick={() => setInsumosSort(sort.id as any)}
-															className={`cursor-pointer px-3 py-1.5 rounded-lg text-xs font-black transition-all whitespace-nowrap ${
+															className={`cursor-pointer px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-black transition-all whitespace-nowrap ${
 																insumosSort === sort.id
 																	? "bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-xs"
 																	: "text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
@@ -813,14 +815,14 @@ export default function InsumosLojasPage() {
 											<div />
 										)}
 
-										{/* Botão Concluir Entrega */}
-										<div className="w-full sm:w-auto flex justify-center">
+										{/* Botão Concluir Lado a Lado no Mobile */}
+										<div className="flex justify-end">
 											<button
 												onClick={() => handleOpenConcluirEntrega(store)}
 												disabled={pendingCount === 0}
-												className="cursor-pointer bg-emerald-600 hover:bg-emerald-700 disabled:opacity-40 disabled:cursor-not-allowed text-white font-black px-6 py-3 rounded-2xl shadow-lg shadow-emerald-200 dark:shadow-none transition-all flex items-center justify-center gap-2.5 text-sm active:scale-95">
-												<CheckCircle2 size={18} />
-												<span>Concluir Entrega</span>
+												className="cursor-pointer bg-emerald-600 hover:bg-emerald-700 disabled:opacity-40 disabled:cursor-not-allowed text-white font-black px-4 sm:px-6 py-2 sm:py-3 rounded-2xl shadow-lg shadow-emerald-200 dark:shadow-none transition-all flex items-center justify-center gap-1.5 sm:gap-2 text-xs sm:text-sm active:scale-95 whitespace-nowrap">
+												<CheckCircle2 size={16} />
+												<span>Concluir</span>
 											</button>
 										</div>
 									</div>
@@ -853,7 +855,7 @@ export default function InsumosLojasPage() {
 																: "bg-white dark:bg-slate-800/90 border-slate-200 dark:border-slate-700/80 shadow-sm hover:border-slate-300"
 														}`}>
 														<div>
-															<div className="flex items-start justify-between gap-3">
+															<div className="flex items-center justify-between gap-3">
 																{/* Checkbox Simples de Apoio Logístico */}
 																<button
 																	type="button"
@@ -873,9 +875,9 @@ export default function InsumosLojasPage() {
 																	<Check size={18} strokeWidth={isChecked ? 4 : 2.5} />
 																</button>
 
-																<div className="flex-1 min-w-0 flex flex-col items-center text-center">
+																<div className="flex-1 min-w-0 flex flex-col items-start text-left justify-center">
 																	<h5
-																		className={`text-xl md:text-2xl font-black uppercase break-words leading-tight text-center ${
+																		className={`text-xl md:text-2xl font-black uppercase break-words leading-tight text-left ${
 																			isChecked
 																				? "text-emerald-900 dark:text-emerald-200 line-through decoration-emerald-500/60"
 																				: isPending
@@ -885,7 +887,7 @@ export default function InsumosLojasPage() {
 																		{order.name}
 																	</h5>
 
-																	<div className="flex flex-wrap items-center justify-center gap-2 mt-2">
+																	<div className="flex flex-wrap items-center gap-2 mt-2">
 																		{isPending && (
 																			<span className="flex items-center gap-1 bg-amber-500 text-white px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider shadow-xs">
 																				<Clock size={12} /> Pendência (Falta insumo)
@@ -1011,64 +1013,90 @@ export default function InsumosLojasPage() {
 
 										{showSnapshotsHistory[store.id] && (
 											<div className="mt-3 space-y-3 animate-in fade-in duration-200">
-												{(store.orderSnapshots || []).map((snapshot) => {
-													const dateStr = snapshot.deliveredAt?.toDate
-														? formatDate(snapshot.deliveredAt.toDate())
-														: snapshot.closedAt?.toDate
-														? formatDate(snapshot.closedAt.toDate())
-														: "Data n/a";
+												{/* Barra de Pesquisa de Entregas Salvas por Insumo */}
+												<div className="relative">
+													<Search
+														size={16}
+														className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"
+													/>
+													<input
+														type="text"
+														placeholder="Pesquisar insumo nas entregas salvas..."
+														value={snapshotSearchMap[store.id] || ""}
+														onChange={(e) =>
+															setSnapshotSearchMap((prev) => ({
+																...prev,
+																[store.id]: e.target.value,
+															}))
+														}
+														className="w-full bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl py-2 pl-9 pr-8 text-xs font-bold text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+													/>
+													{snapshotSearchMap[store.id] && (
+														<button
+															onClick={() =>
+																setSnapshotSearchMap((prev) => ({
+																	...prev,
+																	[store.id]: "",
+																}))
+															}
+															className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-0.5">
+															<X size={14} />
+														</button>
+													)}
+												</div>
 
-													return (
-														<div
-															key={snapshot.id}
-															className="p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/40 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-															<div className="space-y-1">
-																<div className="flex items-center gap-2">
-																	<span className="text-sm font-black text-slate-800 dark:text-slate-100">
-																		Entrega {dateStr}
-																	</span>
-																	<span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
-																		Finalizada
-																	</span>
+												{(() => {
+													const term = normalizeSearchText(snapshotSearchMap[store.id] || "");
+													const filteredSnapshots = (store.orderSnapshots || []).filter((snapshot) => {
+														if (!term) return true;
+														return (snapshot.items || []).some((item) =>
+															normalizeSearchText(item.name || "").includes(term),
+														);
+													});
+
+													if (filteredSnapshots.length === 0) {
+														return (
+															<p className="py-4 text-center text-xs text-slate-400">
+																{term
+																	? "Nenhuma entrega salva encontrada com este insumo."
+																	: "Nenhuma entrega salva até o momento para esta loja."}
+															</p>
+														);
+													}
+
+													return filteredSnapshots.map((snapshot) => {
+														const dateStr = snapshot.deliveredAt?.toDate
+															? formatDate(snapshot.deliveredAt.toDate())
+															: snapshot.closedAt?.toDate
+															? formatDate(snapshot.closedAt.toDate())
+															: "Data n/a";
+
+														return (
+															<div
+																key={snapshot.id}
+																onClick={() => setSelectedSnapshotModal(snapshot)}
+																className="p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/40 hover:bg-blue-50/50 dark:hover:bg-slate-800 hover:border-blue-300 dark:hover:border-blue-700 flex items-center justify-between gap-3 cursor-pointer transition-all group shadow-xs">
+																<div className="space-y-1 min-w-0">
+																	<div className="flex items-center gap-2 flex-wrap">
+																		<span className="text-sm font-black text-slate-800 dark:text-slate-100 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+																			Entrega {dateStr}
+																		</span>
+																		<span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
+																			Finalizada
+																		</span>
+																	</div>
+																	<p className="text-xs text-slate-500">
+																		{snapshot.itemsCount} insumos entregues
+																	</p>
 																</div>
-																<p className="text-xs text-slate-500">
-																	{snapshot.itemsCount} insumos entregues
-																</p>
+
+																<div className="text-slate-400 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors shrink-0">
+																	<ChevronDown size={18} className="-rotate-90" />
+																</div>
 															</div>
-
-															<div className="flex items-center gap-2">
-																<button
-																	onClick={() => handleCopySnapshot(snapshot)}
-																	className="cursor-pointer flex items-center gap-1 px-3 py-1.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-700 dark:text-slate-300 shadow-xs">
-																	{copiedSnapshotId === snapshot.id ? (
-																		<>
-																			<Check className="text-emerald-500" size={14} />
-																			<span>Copiado!</span>
-																		</>
-																	) : (
-																		<>
-																			<Copy size={14} />
-																			<span>WhatsApp</span>
-																		</>
-																	)}
-																</button>
-
-																<button
-																	onClick={() => setSelectedSnapshotModal(snapshot)}
-																	className="cursor-pointer flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition-all shadow-xs">
-																	<ExternalLink size={14} />
-																	<span>Ver Itens ({snapshot.itemsCount})</span>
-																</button>
-															</div>
-														</div>
-													);
-												})}
-
-												{(store.orderSnapshots || []).length === 0 && (
-													<p className="py-4 text-center text-xs text-slate-400">
-														Nenhuma entrega salva até o momento para esta loja.
-													</p>
-												)}
+														);
+													});
+												})()}
 											</div>
 										)}
 									</div>
@@ -1093,46 +1121,95 @@ export default function InsumosLojasPage() {
 										</button>
 
 										{showHistory[store.id] && (
-											<div className="mt-3 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 opacity-80 animate-in fade-in duration-300">
-												{store.historicalOrders.map((order) => (
-													<div
-														key={order.id}
-														className={`p-3 rounded-2xl border flex items-center justify-between gap-3 text-xs ${
-															order.status === "cancelled"
-																? "bg-red-50/50 dark:bg-red-900/10 border-red-100 dark:border-red-900/30"
-																: "bg-slate-50 dark:bg-slate-800/40 border-slate-200 dark:border-slate-700/60"
-														}`}>
-														<div className="min-w-0 flex-1">
-															<p
-																className={`font-bold truncate ${
-																	order.status === "cancelled"
-																		? "text-red-700 dark:text-red-400"
-																		: "text-slate-700 dark:text-slate-300 line-through"
-																}`}>
-																{order.name}
-																{order.quantity && ` (${order.quantity})`}
+											<div className="mt-3 space-y-3 animate-in fade-in duration-300">
+												{/* Barra de Pesquisa de Insumos Finalizados */}
+												<div className="relative">
+													<Search
+														size={16}
+														className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"
+													/>
+													<input
+														type="text"
+														placeholder="Pesquisar nos insumos finalizados..."
+														value={historySearchMap[store.id] || ""}
+														onChange={(e) =>
+															setHistorySearchMap((prev) => ({
+																...prev,
+																[store.id]: e.target.value,
+															}))
+														}
+														className="w-full bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl py-2 pl-9 pr-8 text-xs font-bold text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+													/>
+													{historySearchMap[store.id] && (
+														<button
+															onClick={() =>
+																setHistorySearchMap((prev) => ({
+																	...prev,
+																	[store.id]: "",
+																}))
+															}
+															className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-0.5">
+															<X size={14} />
+														</button>
+													)}
+												</div>
+
+												{(() => {
+													const term = normalizeSearchText(historySearchMap[store.id] || "");
+													const filteredOrders = store.historicalOrders.filter((order) => {
+														if (!term) return true;
+														return normalizeSearchText(order.name || "").includes(term);
+													});
+
+													if (filteredOrders.length === 0) {
+														return (
+															<p className="py-4 text-center text-xs text-slate-400 italic">
+																{term
+																	? "Nenhum insumo finalizado encontrado."
+																	: "Nenhum histórico recente."}
 															</p>
-															<p className="text-[10px] text-slate-400 font-bold uppercase mt-0.5">
-																{order.status === "cancelled"
-																	? "Cancelado em: "
-																	: "Entregue em: "}
-																{formatDate(order.deliveredAt?.toDate())}
-															</p>
+														);
+													}
+
+													return (
+														<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 opacity-80">
+															{filteredOrders.map((order) => (
+																<div
+																	key={order.id}
+																	className={`p-3 rounded-2xl border flex items-center justify-between gap-3 text-xs ${
+																		order.status === "cancelled"
+																			? "bg-red-50/50 dark:bg-red-900/10 border-red-100 dark:border-red-900/30"
+																			: "bg-slate-50 dark:bg-slate-800/40 border-slate-200 dark:border-slate-700/60"
+																	}`}>
+																	<div className="min-w-0 flex-1">
+																		<p
+																			className={`font-bold truncate ${
+																				order.status === "cancelled"
+																					? "text-red-700 dark:text-red-400"
+																					: "text-slate-700 dark:text-slate-300 line-through"
+																			}`}>
+																			{order.name}
+																			{order.quantity && ` (${order.quantity})`}
+																		</p>
+																		<p className="text-[10px] text-slate-400 font-bold uppercase mt-0.5">
+																			{order.status === "cancelled"
+																				? "Cancelado em: "
+																				: "Entregue em: "}
+																			{formatDate(order.deliveredAt?.toDate())}
+																		</p>
+																	</div>
+																	<div className="shrink-0">
+																		{order.status === "cancelled" ? (
+																			<Trash2 size={14} className="text-red-500" />
+																		) : (
+																			<CheckCircle2 size={14} className="text-emerald-500" />
+																		)}
+																	</div>
+																</div>
+															))}
 														</div>
-														<div className="shrink-0">
-															{order.status === "cancelled" ? (
-																<Trash2 size={14} className="text-red-500" />
-															) : (
-																<CheckCircle2 size={14} className="text-emerald-500" />
-															)}
-														</div>
-													</div>
-												))}
-												{store.historicalOrders.length === 0 && (
-													<p className="col-span-full py-4 text-center text-xs text-slate-400 italic">
-														Nenhum histórico recente.
-													</p>
-												)}
+													);
+												})()}
 											</div>
 										)}
 									</div>
