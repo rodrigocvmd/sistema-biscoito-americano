@@ -55,6 +55,8 @@ import {
 	GripVertical,
 	ArrowUpDown,
 	Clock,
+	Plus,
+	Minus,
 } from "lucide-react";
 
 interface FullStoreData {
@@ -448,14 +450,23 @@ export default function InsumosLojasPage() {
 		});
 	};
 
-	// MODAL: ALTERAR QUANTIDADE DE UM ITEM
-	const handleModalUpdateQuantity = (itemId: string, newQty: string) => {
+	// MODAL: ALTERAR QUANTIDADE DE UM ITEM (COM BOTÕES +/-)
+	const handleModalStepQuantity = (itemId: string, delta: number) => {
 		if (!deliveryModal) return;
 		setDeliveryModal({
 			...deliveryModal,
-			items: deliveryModal.items.map((i) =>
-				i.id === itemId ? { ...i, quantity: newQty } : i,
-			),
+			items: deliveryModal.items.map((i) => {
+				if (i.id !== itemId) return i;
+				const currentNum = parseInt(i.quantity, 10);
+				let nextQty = "";
+				if (isNaN(currentNum)) {
+					nextQty = delta > 0 ? "1" : "";
+				} else {
+					const nextVal = currentNum + delta;
+					nextQty = nextVal <= 0 ? "" : nextVal.toString();
+				}
+				return { ...i, quantity: nextQty };
+			}),
 		});
 	};
 
@@ -862,7 +873,7 @@ export default function InsumosLojasPage() {
 																	onClick={() =>
 																		handleToggleCheck(store.id, order.id, isChecked)
 																	}
-																	className={`cursor-pointer p-2.5 rounded-xl border transition-all shrink-0 ${
+																	className={`cursor-pointer p-2.5 rounded-xl border transition-all shrink-0 self-center ${
 																		isChecked
 																			? "bg-emerald-600 border-emerald-600 text-white shadow-xs"
 																			: "bg-slate-50 dark:bg-slate-700 border-slate-200 dark:border-slate-600 text-slate-300 hover:text-emerald-500 hover:border-emerald-400"
@@ -875,7 +886,7 @@ export default function InsumosLojasPage() {
 																	<Check size={18} strokeWidth={isChecked ? 4 : 2.5} />
 																</button>
 
-																<div className="flex-1 min-w-0 flex flex-col items-start text-left justify-center">
+																<div className="flex-1 min-w-0 flex flex-col items-start text-left justify-center self-center">
 																	<h5
 																		className={`text-xl md:text-2xl font-black uppercase break-words leading-tight text-left ${
 																			isChecked
@@ -923,7 +934,7 @@ export default function InsumosLojasPage() {
 																{formatDate(order.createdAt?.toDate())}
 															</span>
 
-															{/* Botão de Pendência (Apenas o ícone de relógio, entre a data e o botão de compra) */}
+															{/* Botão de Pendência (Sem borda, apenas o ícone de relógio) */}
 															<button
 																onClick={() =>
 																	handleTogglePendingSupply(
@@ -933,17 +944,17 @@ export default function InsumosLojasPage() {
 																		store,
 																	)
 																}
-																className={`p-1.5 rounded-xl border transition-all cursor-pointer shrink-0 ${
+																className={`p-1.5 rounded-xl transition-all cursor-pointer shrink-0 ${
 																	isPending
-																		? "bg-amber-500 border-amber-500 text-white shadow-xs"
-																		: "bg-slate-50 dark:bg-slate-700/60 border-slate-200 dark:border-slate-600 text-slate-400 hover:text-amber-600 hover:border-amber-300 dark:hover:text-amber-400"
+																		? "text-amber-500 hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/40"
+																		: "text-slate-400 hover:text-amber-600 hover:bg-slate-100 dark:hover:bg-slate-800"
 																}`}
 																title={
 																	isPending
 																		? "Marcar como disponível (remover pendência)"
 																		: "Marcar como pendente (aguardando reposição)"
 																}>
-																<Clock size={16} />
+																<Clock size={18} />
 															</button>
 
 															{/* Botão de Compra no Centro */}
@@ -1029,7 +1040,7 @@ export default function InsumosLojasPage() {
 																[store.id]: e.target.value,
 															}))
 														}
-														className="w-full bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl py-2 pl-9 pr-8 text-xs font-bold text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+														className="w-full bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl py-2 pl-9 pr-8 text-xs placeholder:text-[10.5px] font-bold text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
 													/>
 													{snapshotSearchMap[store.id] && (
 														<button
@@ -1138,7 +1149,7 @@ export default function InsumosLojasPage() {
 																[store.id]: e.target.value,
 															}))
 														}
-														className="w-full bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl py-2 pl-9 pr-8 text-xs font-bold text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+														className="w-full bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl py-2 pl-9 pr-8 text-xs placeholder:text-[10.5px] font-bold text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
 													/>
 													{historySearchMap[store.id] && (
 														<button
@@ -1253,31 +1264,35 @@ export default function InsumosLojasPage() {
 									<p className="font-bold">Todos os itens foram removidos desta entrega.</p>
 								</div>
 							) : (
-								deliveryModal.items.map((item) => (
-									<div
-										key={item.id}
-										className={`p-4 rounded-2xl border transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
-											item.checked
-												? "bg-emerald-50/50 dark:bg-emerald-950/20 border-emerald-300 dark:border-emerald-800"
-												: "bg-slate-50/70 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700"
-										}`}>
-										<div className="flex items-start gap-3 flex-1 min-w-0">
-											<button
-												type="button"
-												onClick={() => handleModalToggleCheck(item.id)}
-												className={`cursor-pointer p-2 rounded-xl border transition-all shrink-0 mt-0.5 ${
-													item.checked
-														? "bg-emerald-600 border-emerald-600 text-white"
-														: "bg-white dark:bg-slate-700 border-slate-200 dark:border-slate-600 text-slate-300 hover:text-emerald-500"
-												}`}
-												title={item.checked ? "Conferido" : "Marcar conferido"}>
-												<Check size={16} strokeWidth={item.checked ? 4 : 2.5} />
-											</button>
+								deliveryModal.items.map((item) => {
+									const qtyNum = parseInt(item.quantity, 10);
+									const hasQty = !isNaN(qtyNum) && qtyNum > 0;
 
-											<div className="min-w-0 flex-1 space-y-2">
-												<div className="flex items-center gap-2 flex-wrap">
+									return (
+										<div
+											key={item.id}
+											className={`p-4 rounded-2xl border transition-all flex flex-col gap-3 ${
+												item.checked
+													? "bg-emerald-50/50 dark:bg-emerald-950/20 border-emerald-300 dark:border-emerald-800"
+													: "bg-slate-50/70 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700"
+											}`}>
+											{/* Topo do card: Checkbox e Nome do Insumo Centralizado Horizontalmente */}
+											<div className="flex items-center justify-between gap-3 w-full">
+												<button
+													type="button"
+													onClick={() => handleModalToggleCheck(item.id)}
+													className={`cursor-pointer p-2.5 rounded-xl border transition-all shrink-0 ${
+														item.checked
+															? "bg-emerald-600 border-emerald-600 text-white shadow-xs"
+															: "bg-white dark:bg-slate-700 border-slate-200 dark:border-slate-600 text-slate-300 hover:text-emerald-500"
+													}`}
+													title={item.checked ? "Conferido" : "Marcar conferido"}>
+													<Check size={18} strokeWidth={item.checked ? 4 : 2.5} />
+												</button>
+
+												<div className="flex-1 min-w-0 flex flex-col items-center justify-center text-center px-1">
 													<p
-														className={`text-base md:text-lg font-black uppercase break-words ${
+														className={`text-lg md:text-xl font-black uppercase break-words text-center leading-tight ${
 															item.checked
 																? "text-emerald-900 dark:text-emerald-200 line-through decoration-emerald-500"
 																: "text-slate-800 dark:text-slate-100"
@@ -1285,39 +1300,53 @@ export default function InsumosLojasPage() {
 														{item.name}
 													</p>
 													{item.urgency === "Urgente" && (
-														<span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-md bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300">
+														<span className="mt-1 text-[10px] font-black uppercase px-2 py-0.5 rounded-md bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300">
 															Urgente
 														</span>
 													)}
 												</div>
 
-												{/* Caixa de Texto de Quantidade: alinhada à esquerda do card, menor altura e placeholder menor */}
-												<div className="flex items-center gap-1.5">
-													<label className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase">
+												{/* Espaçador invisível para manter o nome centralizado perfeitamente */}
+												<div className="w-[42px] shrink-0" />
+											</div>
+
+											{/* Base do card: Quantidade com botões +/- e Botão de Excluir */}
+											<div className="pt-2 border-t border-slate-200/60 dark:border-slate-700/60 flex items-center justify-between gap-2 w-full mt-1">
+												<div className="flex items-center gap-2">
+													<span className="text-xs font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider">
 														Qtd:
-													</label>
-													<input
-														type="text"
-														placeholder="Ex: 2 un, 1 cx"
-														value={item.quantity}
-														onChange={(e) => handleModalUpdateQuantity(item.id, e.target.value)}
-														className="w-32 px-2.5 py-1 text-xs placeholder:text-[10px] font-bold text-left bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all"
-													/>
+													</span>
+													<div className="flex items-center gap-1.5 bg-white dark:bg-slate-900 p-1 rounded-xl border border-slate-200 dark:border-slate-700">
+														<button
+															type="button"
+															onClick={() => handleModalStepQuantity(item.id, -1)}
+															disabled={!hasQty}
+															className="w-7 h-7 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center text-slate-600 dark:text-slate-300 transition-all cursor-pointer">
+															<Minus size={14} />
+														</button>
+														<span className="min-w-[28px] text-center text-xs font-black text-slate-800 dark:text-slate-100">
+															{hasQty ? qtyNum : "-"}
+														</span>
+														<button
+															type="button"
+															onClick={() => handleModalStepQuantity(item.id, 1)}
+															className="w-7 h-7 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 flex items-center justify-center text-slate-600 dark:text-slate-300 transition-all cursor-pointer">
+															<Plus size={14} />
+														</button>
+													</div>
 												</div>
+
+												<button
+													type="button"
+													onClick={() => handleModalRemoveItem(item.id)}
+													className="cursor-pointer p-2 rounded-xl text-slate-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 transition-all shrink-0"
+													title="Remover item da entrega (permanecerá pendente na loja)">
+													<Trash2 size={18} />
+												</button>
 											</div>
 										</div>
-
-										<div className="flex items-center justify-end shrink-0 self-end sm:self-center">
-											<button
-												type="button"
-												onClick={() => handleModalRemoveItem(item.id)}
-												className="cursor-pointer p-2 rounded-xl text-slate-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 transition-all shrink-0"
-												title="Remover item da entrega (permanecerá pendente na loja)">
-												<Trash2 size={16} />
-											</button>
-										</div>
-									</div>
-								))
+									);
+								})
 							)}
 						</div>
 

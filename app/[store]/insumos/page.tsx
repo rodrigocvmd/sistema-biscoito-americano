@@ -34,6 +34,7 @@ import {
 	X,
 	Tag,
 	Clock,
+	Minus,
 } from "lucide-react";
 
 import { use } from "react";
@@ -304,18 +305,45 @@ export default function SuppliesPage({ params }: { params: Promise<{ store: stri
 						</div>
 					</div>
 
-					{/* Campo Quantidade (Opcional) */}
+					{/* Campo Quantidade (Opcional com botões +/-) */}
 					<div className="space-y-1 md:col-span-2">
 						<label className="text-xs font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider ml-1">
 							Qtd (opcional)
 						</label>
-						<input
-							type="text"
-							placeholder="Ex: 2 un, 1 cx"
-							value={newQuantity}
-							onChange={(e) => setNewQuantity(e.target.value)}
-							className="w-full px-4 py-3.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl focus:outline-none focus:ring-2 focus:ring-red-500 transition-all text-slate-800 dark:text-slate-200 font-bold placeholder:font-medium text-sm"
-						/>
+						<div className="flex items-center justify-between w-full h-[50px] px-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl">
+							<button
+								type="button"
+								onClick={() => {
+									const cur = parseInt(newQuantity, 10);
+									if (isNaN(cur) || cur <= 1) {
+										setNewQuantity("");
+									} else {
+										setNewQuantity((cur - 1).toString());
+									}
+								}}
+								disabled={!newQuantity || parseInt(newQuantity, 10) <= 0}
+								className="w-8 h-8 rounded-xl bg-white dark:bg-slate-700 hover:bg-slate-100 dark:hover:bg-slate-600 disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center text-slate-600 dark:text-slate-300 shadow-xs cursor-pointer transition-all">
+								<Minus size={16} />
+							</button>
+
+							<span className="text-sm font-black text-slate-800 dark:text-slate-100 select-none">
+								{newQuantity ? newQuantity : <span className="text-slate-400 font-bold text-xs">-</span>}
+							</span>
+
+							<button
+								type="button"
+								onClick={() => {
+									const cur = parseInt(newQuantity, 10);
+									if (isNaN(cur) || cur <= 0) {
+										setNewQuantity("1");
+									} else {
+										setNewQuantity((cur + 1).toString());
+									}
+								}}
+								className="w-8 h-8 rounded-xl bg-white dark:bg-slate-700 hover:bg-slate-100 dark:hover:bg-slate-600 flex items-center justify-center text-slate-600 dark:text-slate-300 shadow-xs cursor-pointer transition-all">
+								<Plus size={16} />
+							</button>
+						</div>
 					</div>
 
 					{/* Botão de Urgente */}
@@ -612,15 +640,42 @@ export default function SuppliesPage({ params }: { params: Promise<{ store: stri
 						<div className="space-y-4 mb-6">
 							<div>
 								<label className="text-xs font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider block mb-1">
-									Quantidade
+									Quantidade (opcional)
 								</label>
-								<input
-									type="text"
-									placeholder="Ex: 2 un, 1 fardo, 3 cx"
-									value={editingOrder.quantity}
-									onChange={(e) => setEditingOrder({ ...editingOrder, quantity: e.target.value })}
-									className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl text-slate-800 dark:text-slate-200 font-bold text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-								/>
+								<div className="flex items-center justify-between w-full h-[50px] px-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl">
+									<button
+										type="button"
+										onClick={() => {
+											const cur = parseInt(editingOrder.quantity, 10);
+											if (isNaN(cur) || cur <= 1) {
+												setEditingOrder({ ...editingOrder, quantity: "" });
+											} else {
+												setEditingOrder({ ...editingOrder, quantity: (cur - 1).toString() });
+											}
+										}}
+										disabled={!editingOrder.quantity || parseInt(editingOrder.quantity, 10) <= 0}
+										className="w-8 h-8 rounded-xl bg-white dark:bg-slate-700 hover:bg-slate-100 dark:hover:bg-slate-600 disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center text-slate-600 dark:text-slate-300 shadow-xs cursor-pointer transition-all">
+										<Minus size={16} />
+									</button>
+
+									<span className="text-sm font-black text-slate-800 dark:text-slate-100 select-none">
+										{editingOrder.quantity ? editingOrder.quantity : <span className="text-slate-400 font-bold text-xs">-</span>}
+									</span>
+
+									<button
+										type="button"
+										onClick={() => {
+											const cur = parseInt(editingOrder.quantity, 10);
+											if (isNaN(cur) || cur <= 0) {
+												setEditingOrder({ ...editingOrder, quantity: "1" });
+											} else {
+												setEditingOrder({ ...editingOrder, quantity: (cur + 1).toString() });
+											}
+										}}
+										className="w-8 h-8 rounded-xl bg-white dark:bg-slate-700 hover:bg-slate-100 dark:hover:bg-slate-600 flex items-center justify-center text-slate-600 dark:text-slate-300 shadow-xs cursor-pointer transition-all">
+										<Plus size={16} />
+									</button>
+								</div>
 							</div>
 
 							<div>
