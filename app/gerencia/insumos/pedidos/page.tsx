@@ -12,10 +12,16 @@ import {
 	orderBy,
 	onSnapshot,
 	serverTimestamp,
-	Timestamp,
 } from "firebase/firestore";
-import { INVENTORY_DATA, InventoryCategory } from "@/lib/insumos-data";
+import {
+	INVENTORY_DATA,
+	DEFAULT_INSUMOS_CATALOG,
+	InsumoCatalogItem,
+	slugifyInsumoName,
+} from "@/lib/insumos-data";
 import { formatDate } from "@/types";
+import { ResponsavelTagsList } from "../components/responsavel-tag";
+import { InsumoModal } from "../components/insumo-modal";
 import {
 	Plus,
 	Search,
@@ -28,10 +34,8 @@ import {
 	ChevronDown,
 	ShoppingCart,
 	ClipboardList,
-	Sparkles,
-	Tag,
-	Filter,
 	X,
+	Info,
 } from "lucide-react";
 
 export interface SupplierOrder {
@@ -47,6 +51,14 @@ export default function InsumosPedidosPage() {
 	const [orders, setOrders] = useState<SupplierOrder[]>([]);
 	const [loading, setLoading] = useState(true);
 
+	// Catálogo de Insumos (para buscar responsáveis, valores, locais de compra, etc.)
+	const [catalogOverrides, setCatalogOverrides] = useState<Record<string, InsumoCatalogItem>>({});
+	const [customCatalogItems, setCustomCatalogItems] = useState<InsumoCatalogItem[]>([]);
+
+	// Modal de detalhes do insumo
+	const [selectedInsumo, setSelectedInsumo] = useState<InsumoCatalogItem | null>(null);
+	const [isModalOpen, setIsModalOpen] = useState(false);
+
 	// Form State
 	const [inputName, setInputName] = useState("");
 	const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -60,7 +72,15 @@ export default function InsumosPedidosPage() {
 	const dropdownRef = useRef<HTMLDivElement>(null);
 	const inputRef = useRef<HTMLInputElement>(null);
 
-	// Real-time Firestore sync
+	// Normalizador para busca sem acentos
+	const normalizeString = (str: string) =>
+		str
+			.normalize("NFD")
+			.replace(/[\u0300-\u036f]/g, "")
+			.toLowerCase()
+			.trim();
+
+	// Real-time Firestore sync para os pedidos a fornecedores
 	useEffect(() => {
 		const q = query(collection(db, "fornecedorPedidos"), orderBy("createdAt", "desc"));
 		const unsubscribe = onSnapshot(
@@ -90,13 +110,69 @@ export default function InsumosPedidosPage() {
 		return () => unsubscribe();
 	}, []);
 
-	// Normalizador para busca sem acentos
-	const normalizeString = (str: string) =>
-		str
-			.normalize("NFD")
-			.replace(/[\u0300-\u036f]/g, "")
-			.toLowerCase()
-			.trim();
+	// Real-time Firestore sync para o catálogo geral de insumos
+	useEffect(() => {
+		const unsubscribe = onSnapshot(
+			collection(db, "insumosCatalog"),
+			(snapshot) => {
+				const overrides: Record<string, InsumoCatalogItem> = {};
+				const customs: InsumoCatalogItem[] = [];
+
+				snapshot.forEach((docSnap) => {
+					const data = docSnap.data() as InsumoCatalogItem;
+					const id = docSnap.id;
+					const item = { ...data, id };
+
+					const isDefault = DEFAULT_INSUMOS_CATALOG.some((d) => d.id === id);
+					if (isDefault) {
+						overrides[id] = item;
+					} else {
+						customs.push(item);
+					}
+				});
+
+				setCatalogOverrides(overrides);
+				setCustomCatalogItems(customs);
+			},
+			(err) => {
+				console.error("Erro ao sincronizar catálogo de insumos:", err);
+			}
+		);
+
+		return () => unsubscribe();
+	}, []);
+
+	// Catálogo combinado: Padrões + Sobrescritas + Itens Personalizados
+	const fullCatalog = useMemo(() => {
+		const mergedDefaults = DEFAULT_INSUMOS_CATALOG.map((item) => {
+			if (catalogOverrides[item.id]) {
+				return { ...item, ...catalogOverrides[item.id] };
+			}
+			return item;
+		});
+
+		return [...mergedDefaults, ...customCatalogItems];
+	}, [catalogOverrides, customCatalogItems]);
+
+	// Dicionário rápido do catálogo por ID e nome normalizado
+	const catalogMap = useMemo(() => {
+		const map = new Map<string, InsumoCatalogItem>();
+		fullCatalog.forEach((item) => {
+			map.set(item.id, item);
+			map.set(normalizeString(item.name), item);
+		});
+		return map;
+	}, [fullCatalog]);
+
+	// Atualiza o item do modal aberto quando o catálogo é modificado
+	useEffect(() => {
+		if (selectedInsumo) {
+			const updated = fullCatalog.find((i) => i.id === selectedInsumo.id);
+			if (updated) {
+				setSelectedInsumo(updated);
+			}
+		}
+	}, [fullCatalog]);
 
 	// Sugestões filtradas no combobox
 	const filteredInventory = useMemo(() => {
@@ -120,6 +196,34 @@ export default function InsumosPedidosPage() {
 			}
 		}
 		return "OUTROS";
+	};
+
+	// Localiza ou gera o objeto InsumoCatalogItem correspondente ao pedido
+	const getInsumoForOrder = (order: SupplierOrder): InsumoCatalogItem => {
+		const slug = slugifyInsumoName(order.name);
+		const norm = normalizeString(order.name);
+		const found = catalogMap.get(slug) || catalogMap.get(norm);
+		if (found) return found;
+
+		return {
+			id: slug,
+			name: order.name,
+			category: order.category || findCategoryForItem(order.name),
+			valorBom: "",
+			valorMaximo: "",
+			localCompra: "",
+			locaisCompra: [],
+			responsaveis: [],
+			marca: "",
+			observacoes: "",
+		};
+	};
+
+	// Abertura do modal ao clicar na linha
+	const handleRowClick = (order: SupplierOrder) => {
+		const insumo = getInsumoForOrder(order);
+		setSelectedInsumo(insumo);
+		setIsModalOpen(true);
 	};
 
 	// Adicionar novo pedido
@@ -211,11 +315,17 @@ export default function InsumosPedidosPage() {
 				const q = normalizeString(searchFilter);
 				const matchesName = normalizeString(o.name).includes(q);
 				const matchesCategory = normalizeString(o.category || "").includes(q);
-				return matchesName || matchesCategory;
+				const insumo =
+					catalogMap.get(slugifyInsumoName(o.name)) ||
+					catalogMap.get(normalizeString(o.name));
+				const matchesResponsavel = insumo?.responsaveis?.some((r) =>
+					normalizeString(r).includes(q)
+				);
+				return matchesName || matchesCategory || matchesResponsavel;
 			}
 			return true;
 		});
-	}, [orders, statusFilter, searchFilter]);
+	}, [orders, statusFilter, searchFilter, catalogMap]);
 
 	const pendingCount = orders.filter((o) => o.status === "pending").length;
 	const completedCount = orders.filter((o) => o.status === "completed").length;
@@ -410,7 +520,7 @@ export default function InsumosPedidosPage() {
 						/>
 						<input
 							type="text"
-							placeholder="Filtrar pedidos..."
+							placeholder="Buscar por insumo ou responsável..."
 							value={searchFilter}
 							onChange={(e) => setSearchFilter(e.target.value)}
 							className="w-full pl-9 pr-8 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs md:text-sm font-medium text-slate-800 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -423,6 +533,13 @@ export default function InsumosPedidosPage() {
 							</button>
 						)}
 					</div>
+				</div>
+
+				<div className="flex items-center gap-1.5 text-2xs text-slate-400 font-medium">
+					<Info size={14} className="text-blue-500 shrink-0" />
+					<span>
+						Clique em qualquer linha para visualizar e editar os parâmetros de compra do insumo.
+					</span>
 				</div>
 
 				{/* Tabela / Lista de Consulta */}
@@ -451,7 +568,8 @@ export default function InsumosPedidosPage() {
 							<thead className="bg-slate-50 dark:bg-slate-800/80 text-[11px] font-black uppercase text-slate-500 dark:text-slate-400 tracking-wider border-b border-slate-200 dark:border-slate-800">
 								<tr>
 									<th className="py-3.5 px-4 w-12 text-center">Status</th>
-									<th className="py-3.5 px-4">Insumo</th>
+									<th className="py-3.5 px-4 min-w-[200px]">Insumo</th>
+									<th className="py-3.5 px-4 min-w-[150px]">Responsável</th>
 									<th className="py-3.5 px-4">Categoria</th>
 									<th className="py-3.5 px-4 hidden sm:table-cell">Data de Inserção</th>
 									<th className="py-3.5 px-4 text-right">Ações</th>
@@ -463,16 +581,24 @@ export default function InsumosPedidosPage() {
 									const dateStr = order.createdAt?.toDate
 										? formatDate(order.createdAt.toDate())
 										: "Recente";
+									const insumo = getInsumoForOrder(order);
 
 									return (
 										<tr
 											key={order.id}
-											className={`hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors ${
+											onClick={() => handleRowClick(order)}
+											className={`cursor-pointer hover:bg-blue-50/50 dark:hover:bg-slate-800/60 transition-colors group ${
 												isCompleted ? "opacity-60 bg-slate-50/40 dark:bg-slate-900/30" : ""
 											}`}>
-											<td className="py-3 px-4 text-center">
+											{/* Status Checkbox */}
+											<td
+												className="py-3 px-4 text-center"
+												onClick={(e) => e.stopPropagation()}>
 												<button
-													onClick={() => handleToggleStatus(order)}
+													onClick={(e) => {
+														e.stopPropagation();
+														handleToggleStatus(order);
+													}}
 													title={isCompleted ? "Marcar como pendente" : "Marcar como comprado"}
 													className={`cursor-pointer w-6 h-6 rounded-lg flex items-center justify-center transition-all ${
 														isCompleted
@@ -482,25 +608,43 @@ export default function InsumosPedidosPage() {
 													<Check size={14} />
 												</button>
 											</td>
+
+											{/* Nome do Insumo */}
 											<td className="py-3 px-4">
 												<span
-													className={`font-black text-slate-800 dark:text-slate-100 uppercase text-xs md:text-sm ${
+													className={`font-black text-slate-800 dark:text-slate-100 uppercase text-xs md:text-sm group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors ${
 														isCompleted ? "line-through text-slate-400 dark:text-slate-500" : ""
 													}`}>
 													{order.name}
 												</span>
 											</td>
+
+											{/* Coluna Responsável (Tags Rodrigo, Ana, Edson) */}
+											<td className="py-3 px-4">
+												<ResponsavelTagsList responsaveis={insumo.responsaveis} />
+											</td>
+
+											{/* Categoria */}
 											<td className="py-3 px-4">
 												<span className="inline-block px-2.5 py-1 rounded-lg text-2xs font-black tracking-wide uppercase bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
 													{order.category || "Outros"}
 												</span>
 											</td>
+
+											{/* Data */}
 											<td className="py-3 px-4 hidden sm:table-cell text-xs text-slate-400">
 												{dateStr}
 											</td>
-											<td className="py-3 px-4 text-right">
+
+											{/* Botão Remover */}
+											<td
+												className="py-3 px-4 text-right"
+												onClick={(e) => e.stopPropagation()}>
 												<button
-													onClick={() => handleDeleteOrder(order.id)}
+													onClick={(e) => {
+														e.stopPropagation();
+														handleDeleteOrder(order.id);
+													}}
 													title="Remover insumo"
 													className="cursor-pointer p-2 rounded-xl text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40 transition-colors">
 													<Trash2 size={16} />
@@ -514,6 +658,16 @@ export default function InsumosPedidosPage() {
 					</div>
 				)}
 			</section>
+
+			{/* Modal de Detalhes e Edição de Parâmetros do Insumo */}
+			<InsumoModal
+				isOpen={isModalOpen}
+				onClose={() => setIsModalOpen(false)}
+				item={selectedInsumo}
+				onSaved={(updated) => {
+					setSelectedInsumo(updated);
+				}}
+			/>
 		</div>
 	);
 }

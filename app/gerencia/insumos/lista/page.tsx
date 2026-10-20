@@ -7,15 +7,20 @@ import {
 	onSnapshot,
 	doc,
 	setDoc,
-	deleteDoc,
 	serverTimestamp,
 } from "firebase/firestore";
 import {
 	DEFAULT_INSUMOS_CATALOG,
 	INVENTORY_DATA,
 	InsumoCatalogItem,
+	InsumoResponsavel,
+	RESPONSAVEIS_COMPRA,
 	slugifyInsumoName,
+	parseLocaisCompra,
+	sanitizeExternalUrl,
 } from "@/lib/insumos-data";
+import { ResponsavelTag, ResponsavelTagsList } from "../components/responsavel-tag";
+import { InsumoModal } from "../components/insumo-modal";
 import {
 	Search,
 	Edit3,
@@ -26,13 +31,10 @@ import {
 	DollarSign,
 	Store,
 	Tag,
-	Filter,
-	Sparkles,
 	RefreshCw,
 	Layers,
+	ExternalLink,
 	Info,
-	Trash2,
-	ChevronDown,
 } from "lucide-react";
 
 export default function InsumosListaPage() {
@@ -44,13 +46,24 @@ export default function InsumosListaPage() {
 	const [searchTerm, setSearchTerm] = useState("");
 	const [selectedCategory, setSelectedCategory] = useState<string>("TODAS");
 
-	// Edit Modal
-	const [editingItem, setEditingItem] = useState<InsumoCatalogItem | null>(null);
-	const [isSaving, setIsSaving] = useState(false);
+	// Insumo Modal (View / Edit)
+	const [modalItem, setModalItem] = useState<InsumoCatalogItem | null>(null);
+	const [isModalOpen, setIsModalOpen] = useState(false);
+	const [initialEditing, setInitialEditing] = useState(false);
 
 	// New Insumo Modal
 	const [isAddingNew, setIsAddingNew] = useState(false);
-	const [newItemForm, setNewItemForm] = useState<Omit<InsumoCatalogItem, "id">>({
+	const [isSavingNew, setIsSavingNew] = useState(false);
+	const [newItemForm, setNewItemForm] = useState<{
+		name: string;
+		category: string;
+		valorBom: string;
+		valorMaximo: string;
+		localCompra: string;
+		marca: string;
+		observacoes: string;
+		responsaveis: InsumoResponsavel[];
+	}>({
 		name: "",
 		category: "BEBIDAS E SODAS",
 		valorBom: "",
@@ -58,6 +71,7 @@ export default function InsumosListaPage() {
 		localCompra: "",
 		marca: "",
 		observacoes: "",
+		responsaveis: [],
 	});
 
 	// Subscribe to Firestore overrides & custom additions
@@ -107,6 +121,16 @@ export default function InsumosListaPage() {
 		return [...mergedDefaults, ...customItems];
 	}, [catalogOverrides, customItems]);
 
+	// Keep modalItem in sync with Firestore updates if modal is open
+	useEffect(() => {
+		if (modalItem) {
+			const updated = fullCatalog.find((i) => i.id === modalItem.id);
+			if (updated) {
+				setModalItem(updated);
+			}
+		}
+	}, [fullCatalog]);
+
 	// Filter and sort items
 	const filteredCatalog = useMemo(() => {
 		return fullCatalog.filter((item) => {
@@ -122,7 +146,8 @@ export default function InsumosListaPage() {
 					.replace(/[\u0300-\u036f]/g, "")
 					.toLowerCase();
 
-				const targetStr = `${item.name} ${item.category} ${item.marca} ${item.localCompra} ${item.observacoes} ${item.valorBom} ${item.valorMaximo}`
+				const respStr = (item.responsaveis || []).join(" ");
+				const targetStr = `${item.name} ${item.category} ${item.marca} ${item.localCompra} ${item.observacoes} ${item.valorBom} ${item.valorMaximo} ${respStr}`
 					.normalize("NFD")
 					.replace(/[\u0300-\u036f]/g, "")
 					.toLowerCase();
@@ -134,37 +159,19 @@ export default function InsumosListaPage() {
 		});
 	}, [fullCatalog, selectedCategory, searchTerm]);
 
-	// Save edited item to Firestore
-	const handleSaveEdit = async (e: React.FormEvent) => {
-		e.preventDefault();
-		if (!editingItem) return;
+	// Open modal in View mode
+	const handleRowClick = (item: InsumoCatalogItem) => {
+		setModalItem(item);
+		setInitialEditing(false);
+		setIsModalOpen(true);
+	};
 
-		setIsSaving(true);
-		try {
-			const itemRef = doc(db, "insumosCatalog", editingItem.id);
-			await setDoc(
-				itemRef,
-				{
-					id: editingItem.id,
-					name: editingItem.name,
-					category: editingItem.category,
-					valorBom: editingItem.valorBom || "",
-					valorMaximo: editingItem.valorMaximo || "",
-					localCompra: editingItem.localCompra || "",
-					marca: editingItem.marca || "",
-					observacoes: editingItem.observacoes || "",
-					updatedAt: serverTimestamp(),
-				},
-				{ merge: true }
-			);
-
-			setEditingItem(null);
-		} catch (error) {
-			console.error("Erro ao salvar insumo:", error);
-			alert("Erro ao salvar as informações do insumo.");
-		} finally {
-			setIsSaving(false);
-		}
+	// Open modal directly in Edit mode
+	const handleEditClick = (item: InsumoCatalogItem, e: React.MouseEvent) => {
+		e.stopPropagation();
+		setModalItem(item);
+		setInitialEditing(true);
+		setIsModalOpen(true);
 	};
 
 	// Save newly added custom item to Firestore
@@ -173,7 +180,7 @@ export default function InsumosListaPage() {
 		const name = newItemForm.name.trim().toUpperCase();
 		if (!name) return;
 
-		setIsSaving(true);
+		setIsSavingNew(true);
 		try {
 			const id = slugifyInsumoName(name);
 			const itemRef = doc(db, "insumosCatalog", id);
@@ -186,6 +193,7 @@ export default function InsumosListaPage() {
 				localCompra: newItemForm.localCompra || "",
 				marca: newItemForm.marca || "",
 				observacoes: newItemForm.observacoes || "",
+				responsaveis: newItemForm.responsaveis || [],
 				createdAt: serverTimestamp(),
 				updatedAt: serverTimestamp(),
 			});
@@ -199,13 +207,24 @@ export default function InsumosListaPage() {
 				localCompra: "",
 				marca: "",
 				observacoes: "",
+				responsaveis: [],
 			});
 		} catch (error) {
 			console.error("Erro ao cadastrar novo insumo:", error);
 			alert("Erro ao cadastrar novo insumo.");
 		} finally {
-			setIsSaving(false);
+			setIsSavingNew(false);
 		}
+	};
+
+	// Toggle responsible in new item modal
+	const handleToggleNewItemResponsavel = (nome: InsumoResponsavel) => {
+		setNewItemForm((prev) => ({
+			...prev,
+			responsaveis: prev.responsaveis.includes(nome)
+				? prev.responsaveis.filter((r) => r !== nome)
+				: [...prev.responsaveis, nome],
+		}));
 	};
 
 	// Categories list for tabs
@@ -228,7 +247,7 @@ export default function InsumosListaPage() {
 								Tabela Geral de Insumos
 							</h1>
 							<p className="text-sm font-medium text-slate-500 dark:text-slate-400 mt-0.5">
-								Consulta completa de insumos, parâmetros de valores ideais/máximos, fornecedores e marcas
+								Consulta completa de insumos, parâmetros de valores ideais/máximos, responsáveis e locais de compra
 							</p>
 						</div>
 					</div>
@@ -262,7 +281,7 @@ export default function InsumosListaPage() {
 						/>
 						<input
 							type="text"
-							placeholder="Buscar por insumo, marca, local de compra ou observações..."
+							placeholder="Buscar por insumo, responsável, marca, local de compra..."
 							value={searchTerm}
 							onChange={(e) => setSearchTerm(e.target.value)}
 							className="w-full pl-11 pr-10 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl text-xs md:text-sm font-medium text-slate-800 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
@@ -325,20 +344,24 @@ export default function InsumosListaPage() {
 								<tr className="bg-slate-50 dark:bg-slate-800/80 text-[11px] font-black uppercase text-slate-500 dark:text-slate-400 tracking-wider border-b border-slate-200 dark:border-slate-800">
 									<th className="py-4 px-4 w-12 text-center">#</th>
 									<th className="py-4 px-4 min-w-[200px]">Insumo</th>
-									<th className="py-4 px-3 min-w-[120px]">Valor Bom</th>
-									<th className="py-4 px-3 min-w-[120px]">Valor Máximo</th>
-									<th className="py-4 px-4 min-w-[160px]">Local de Compra</th>
-									<th className="py-4 px-4 min-w-[140px]">Marca</th>
-									<th className="py-4 px-4 min-w-[220px]">Observações</th>
+									<th className="py-4 px-4 min-w-[140px]">Responsável</th>
+									<th className="py-4 px-3 min-w-[110px]">Valor Bom</th>
+									<th className="py-4 px-3 min-w-[110px]">Valor Máximo</th>
+									<th className="py-4 px-4 min-w-[170px]">Local de Compra</th>
+									<th className="py-4 px-4 min-w-[130px]">Marca</th>
+									<th className="py-4 px-4 min-w-[200px]">Observações</th>
 									<th className="py-4 px-3 w-16 text-center">Editar</th>
 								</tr>
 							</thead>
 							<tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 font-medium">
 								{filteredCatalog.map((item, idx) => {
+									const locais = parseLocaisCompra(item);
+
 									return (
 										<tr
 											key={item.id}
-											className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors group">
+											onClick={() => handleRowClick(item)}
+											className="hover:bg-blue-50/40 dark:hover:bg-slate-800/40 transition-colors group cursor-pointer">
 											{/* Index */}
 											<td className="py-3.5 px-4 text-center text-xs text-slate-400 font-mono">
 												{idx + 1}
@@ -346,12 +369,17 @@ export default function InsumosListaPage() {
 
 											{/* Insumo Name & Category */}
 											<td className="py-3.5 px-4">
-												<div className="font-black text-slate-800 dark:text-slate-100 uppercase text-xs md:text-sm">
+												<div className="font-black text-slate-800 dark:text-slate-100 uppercase text-xs md:text-sm group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
 													{item.name}
 												</div>
 												<span className="inline-block mt-1 px-2 py-0.5 rounded text-2xs font-bold uppercase tracking-wider bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400">
 													{item.category}
 												</span>
+											</td>
+
+											{/* Responsável (Tags Rodrigo, Ana, Edson) */}
+											<td className="py-3.5 px-4">
+												<ResponsavelTagsList responsaveis={item.responsaveis} />
 											</td>
 
 											{/* Valor Bom */}
@@ -382,7 +410,27 @@ export default function InsumosListaPage() {
 
 											{/* Local de Compra */}
 											<td className="py-3.5 px-4 text-xs font-bold text-slate-700 dark:text-slate-300">
-												{item.localCompra || (
+												{locais.length > 0 ? (
+													<div className="flex flex-col gap-1">
+														{locais.map((loc, lIdx) => (
+															<div key={lIdx} className="flex items-center gap-1">
+																{loc.url ? (
+																	<a
+																		href={sanitizeExternalUrl(loc.url)}
+																		target="_blank"
+																		rel="noopener noreferrer"
+																		onClick={(e) => e.stopPropagation()}
+																		className="inline-flex items-center gap-1 text-blue-600 hover:text-blue-700 dark:text-blue-400 hover:underline">
+																		<span>{loc.nome || "Link"}</span>
+																		<ExternalLink size={11} />
+																	</a>
+																) : (
+																	<span>{loc.nome}</span>
+																)}
+															</div>
+														))}
+													</div>
+												) : (
 													<span className="text-slate-300 dark:text-slate-600 italic font-normal">
 														Não informado
 													</span>
@@ -410,7 +458,7 @@ export default function InsumosListaPage() {
 											{/* Ação Editar */}
 											<td className="py-3.5 px-3 text-center">
 												<button
-													onClick={() => setEditingItem(item)}
+													onClick={(e) => handleEditClick(item, e)}
 													title="Editar parâmetros deste insumo"
 													className="cursor-pointer p-2 rounded-xl text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-all active:scale-95">
 													<Edit3 size={16} />
@@ -425,123 +473,16 @@ export default function InsumosListaPage() {
 				)}
 			</section>
 
-			{/* Modal de Edição de Insumo */}
-			{editingItem && (
-				<div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
-					<div className="bg-white dark:bg-slate-900 rounded-3xl p-6 md:p-8 max-w-lg w-full shadow-2xl border border-slate-200 dark:border-slate-800 space-y-6">
-						<div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
-							<div>
-								<span className="text-2xs font-bold uppercase tracking-wider text-blue-600 dark:text-blue-400">
-									Editar Parâmetros de Compra
-								</span>
-								<h3 className="text-lg md:text-xl font-black text-slate-800 dark:text-slate-100 uppercase">
-									{editingItem.name}
-								</h3>
-							</div>
-							<button
-								onClick={() => setEditingItem(null)}
-								className="cursor-pointer p-2 rounded-xl text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
-								<X size={20} />
-							</button>
-						</div>
-
-						<form onSubmit={handleSaveEdit} className="space-y-4">
-							<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-								<div>
-									<label className="block text-xs font-bold text-slate-500 uppercase mb-1">
-										Valor Bom (R$)
-									</label>
-									<input
-										type="text"
-										placeholder="Ex: R$ 45,00"
-										value={editingItem.valorBom}
-										onChange={(e) =>
-											setEditingItem({ ...editingItem, valorBom: e.target.value })
-										}
-										className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-									/>
-								</div>
-
-								<div>
-									<label className="block text-xs font-bold text-slate-500 uppercase mb-1">
-										Valor Máximo (R$)
-									</label>
-									<input
-										type="text"
-										placeholder="Ex: R$ 55,00"
-										value={editingItem.valorMaximo}
-										onChange={(e) =>
-											setEditingItem({ ...editingItem, valorMaximo: e.target.value })
-										}
-										className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-									/>
-								</div>
-							</div>
-
-							<div>
-								<label className="block text-xs font-bold text-slate-500 uppercase mb-1">
-									Local de Compra
-								</label>
-								<input
-									type="text"
-									placeholder="Ex: Atacadão, Sam's Club, Distribuidora..."
-									value={editingItem.localCompra}
-									onChange={(e) =>
-										setEditingItem({ ...editingItem, localCompra: e.target.value })
-									}
-									className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-								/>
-							</div>
-
-							<div>
-								<label className="block text-xs font-bold text-slate-500 uppercase mb-1">
-									Marca Recomendada
-								</label>
-								<input
-									type="text"
-									placeholder="Ex: Ferrero, Nestlé, Coca-Cola..."
-									value={editingItem.marca}
-									onChange={(e) =>
-										setEditingItem({ ...editingItem, marca: e.target.value })
-									}
-									className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-bold text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-								/>
-							</div>
-
-							<div>
-								<label className="block text-xs font-bold text-slate-500 uppercase mb-1">
-									Observações
-								</label>
-								<textarea
-									rows={3}
-									placeholder="Ex: Balde de 3kg, comprar somente fardo lacrado, tamanho P..."
-									value={editingItem.observacoes}
-									onChange={(e) =>
-										setEditingItem({ ...editingItem, observacoes: e.target.value })
-									}
-									className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-medium text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
-								/>
-							</div>
-
-							<div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-100 dark:border-slate-800">
-								<button
-									type="button"
-									onClick={() => setEditingItem(null)}
-									className="cursor-pointer px-4 py-2.5 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
-									Cancelar
-								</button>
-								<button
-									type="submit"
-									disabled={isSaving}
-									className="cursor-pointer px-6 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-bold rounded-xl text-xs flex items-center gap-2 shadow-md shadow-blue-200 dark:shadow-none transition-all active:scale-95">
-									{isSaving ? <RefreshCw className="animate-spin" size={14} /> : <Check size={14} />}
-									Salvar Alterações
-								</button>
-							</div>
-						</form>
-					</div>
-				</div>
-			)}
+			{/* Modal de Detalhes e Edição de Insumo */}
+			<InsumoModal
+				isOpen={isModalOpen}
+				onClose={() => setIsModalOpen(false)}
+				item={modalItem}
+				initialEditing={initialEditing}
+				onSaved={(updated) => {
+					setModalItem(updated);
+				}}
+			/>
 
 			{/* Modal para Adicionar Novo Insumo Personalizado */}
 			{isAddingNew && (
@@ -596,6 +537,27 @@ export default function InsumosListaPage() {
 										</option>
 									))}
 								</select>
+							</div>
+
+							{/* Seleção de Responsáveis no Novo Insumo */}
+							<div>
+								<label className="block text-xs font-bold text-slate-500 uppercase mb-1">
+									Responsável(is) pela Compra
+								</label>
+								<div className="flex flex-wrap gap-2 pt-1">
+									{RESPONSAVEIS_COMPRA.map((nome) => {
+										const isSelected = newItemForm.responsaveis.includes(nome);
+										return (
+											<ResponsavelTag
+												key={nome}
+												nome={nome}
+												size="md"
+												selected={isSelected}
+												onClick={() => handleToggleNewItemResponsavel(nome)}
+											/>
+										);
+									})}
+								</div>
 							</div>
 
 							<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -684,9 +646,9 @@ export default function InsumosListaPage() {
 								</button>
 								<button
 									type="submit"
-									disabled={isSaving || !newItemForm.name.trim()}
+									disabled={isSavingNew || !newItemForm.name.trim()}
 									className="cursor-pointer px-6 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-bold rounded-xl text-xs flex items-center gap-2 shadow-md shadow-blue-200 dark:shadow-none transition-all active:scale-95">
-									{isSaving ? <RefreshCw className="animate-spin" size={14} /> : <Check size={14} />}
+									{isSavingNew ? <RefreshCw className="animate-spin" size={14} /> : <Check size={14} />}
 									Cadastrar Insumo
 								</button>
 							</div>

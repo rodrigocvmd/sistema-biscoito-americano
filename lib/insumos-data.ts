@@ -147,6 +147,14 @@ export const INVENTORY_DATA: InventoryCategory[] = [
 	},
 ];
 
+export type InsumoResponsavel = "Rodrigo" | "Ana" | "Edson";
+export const RESPONSAVEIS_COMPRA: InsumoResponsavel[] = ["Rodrigo", "Ana", "Edson"];
+
+export interface InsumoLocalCompraItem {
+	nome: string;
+	url?: string;
+}
+
 export interface InsumoCatalogItem {
 	id: string;
 	name: string;
@@ -154,8 +162,11 @@ export interface InsumoCatalogItem {
 	valorBom: string;
 	valorMaximo: string;
 	localCompra: string;
+	locaisCompra?: InsumoLocalCompraItem[];
+	responsaveis?: InsumoResponsavel[];
 	marca: string;
 	observacoes: string;
+	createdAt?: any;
 	updatedAt?: any;
 }
 
@@ -178,6 +189,44 @@ export function slugifyInsumoName(name: string): string {
 		.toLowerCase()
 		.replace(/[^a-z0-9]+/g, "-")
 		.replace(/(^-|-$)/g, "");
+}
+
+// Converte e normaliza os locais de compra a partir de um insumo
+export function parseLocaisCompra(item?: Partial<InsumoCatalogItem> | null): InsumoLocalCompraItem[] {
+	if (!item) return [];
+	if (item.locaisCompra && Array.isArray(item.locaisCompra) && item.locaisCompra.length > 0) {
+		return item.locaisCompra
+			.filter((loc) => loc && (loc.nome?.trim() || loc.url?.trim()))
+			.map((loc) => ({
+				nome: loc.nome ? loc.nome.trim() : "",
+				url: loc.url ? loc.url.trim() : "",
+			}));
+	}
+	if (item.localCompra && item.localCompra.trim()) {
+		return item.localCompra
+			.split("/")
+			.map((s) => s.trim())
+			.filter(Boolean)
+			.map((nome) => ({ nome, url: "" }));
+	}
+	return [];
+}
+
+// Formata a lista de locais de compra para a string tradicional separada por " / "
+export function formatLocalCompraString(locais: InsumoLocalCompraItem[]): string {
+	return locais
+		.map((l) => l.nome.trim())
+		.filter(Boolean)
+		.join(" / ");
+}
+
+// Higieniza URL garantindo protocolo para links externos
+export function sanitizeExternalUrl(url?: string): string {
+	if (!url) return "";
+	const trimmed = url.trim();
+	if (!trimmed) return "";
+	if (/^[a-zA-Z][a-zA-Z0-9+.-]*:\/\//i.test(trimmed)) return trimmed;
+	return `https://${trimmed}`;
 }
 
 // Catálogo padrão pré-populado para todos os insumos conhecidos
