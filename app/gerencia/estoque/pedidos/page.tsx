@@ -1581,9 +1581,9 @@ export default function EstoquePedidosPage() {
 											const qtyText = isPacotes
 												? `${item.qty} pacotes`
 												: `${item.boxesCount} ${item.boxesCount === 1 ? "caixa" : "caixas"}`;
-											return `<li style="display:flex; justify-content:space-between; padding:4px 0; font-size:14px; border-bottom:1px solid #f0f0f0;">
-												<span>• <strong>${item.label}</strong></span>
-												<strong>${qtyText}</strong>
+											return `<li style="display:flex; align-items:baseline; gap:8px; padding:4px 0; font-size:14px; border-bottom:1px solid #f0f0f0;">
+												<span>• <strong>${item.label}:</strong></span>
+												<strong style="color:#000;">${qtyText}</strong>
 											</li>`;
 										})
 										.join("");
@@ -1747,11 +1747,11 @@ export default function EstoquePedidosPage() {
 																? `${item.qty} pacotes`
 																: `${item.boxesCount} ${item.boxesCount === 1 ? "caixa" : "caixas"}`;
 															return (
-																<li key={i} className="flex items-baseline justify-between py-0.5 border-b border-neutral-100">
+																<li key={i} className="flex items-baseline gap-2 py-0.5 border-b border-neutral-100">
 																	<span>
-																		• <strong className="font-black uppercase">{item.label}</strong>
+																		• <strong className="font-black uppercase">{item.label}:</strong>
 																	</span>
-																	<strong className="font-black">{qtyText}</strong>
+																	<strong className="font-black text-black">{qtyText}</strong>
 																</li>
 															);
 														})}
