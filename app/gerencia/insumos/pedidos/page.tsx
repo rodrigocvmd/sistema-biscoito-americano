@@ -17,10 +17,12 @@ import {
 	INVENTORY_DATA,
 	DEFAULT_INSUMOS_CATALOG,
 	InsumoCatalogItem,
+	InsumoResponsavel,
+	RESPONSAVEIS_COMPRA,
 	slugifyInsumoName,
 } from "@/lib/insumos-data";
 import { formatDate } from "@/types";
-import { ResponsavelTagsList } from "../components/responsavel-tag";
+import { ResponsavelTag, ResponsavelTagsList } from "../components/responsavel-tag";
 import { InsumoModal } from "../components/insumo-modal";
 import {
 	Plus,
@@ -36,6 +38,7 @@ import {
 	ClipboardList,
 	X,
 	Info,
+	AlertTriangle,
 } from "lucide-react";
 
 export interface SupplierOrder {
@@ -67,7 +70,12 @@ export default function InsumosPedidosPage() {
 	// Filter / Search State
 	const [searchFilter, setSearchFilter] = useState("");
 	const [statusFilter, setStatusFilter] = useState<"all" | "pending" | "completed">("pending");
+	const [selectedResponsavel, setSelectedResponsavel] = useState<InsumoResponsavel | "all">("all");
 	const [copied, setCopied] = useState(false);
+
+	// Modal de Confirmação de Exclusão
+	const [orderToDelete, setOrderToDelete] = useState<SupplierOrder | null>(null);
+	const [deleting, setDeleting] = useState(false);
 
 	const dropdownRef = useRef<HTMLDivElement>(null);
 	const inputRef = useRef<HTMLInputElement>(null);
@@ -264,13 +272,21 @@ export default function InsumosPedidosPage() {
 		}
 	};
 
-	// Deletar pedido
-	const handleDeleteOrder = async (orderId: string) => {
-		if (!confirm("Deseja remover este insumo da lista de pedidos?")) return;
+	// Deletar pedido com modal de confirmação
+	const handleRequestDelete = (order: SupplierOrder) => {
+		setOrderToDelete(order);
+	};
+
+	const handleConfirmDelete = async () => {
+		if (!orderToDelete) return;
+		setDeleting(true);
 		try {
-			await deleteDoc(doc(db, "fornecedorPedidos", orderId));
+			await deleteDoc(doc(db, "fornecedorPedidos", orderToDelete.id));
+			setOrderToDelete(null);
 		} catch (error) {
 			console.error("Erro ao deletar pedido:", error);
+		} finally {
+			setDeleting(false);
 		}
 	};
 
@@ -311,13 +327,22 @@ export default function InsumosPedidosPage() {
 	const displayedOrders = useMemo(() => {
 		return orders.filter((o) => {
 			if (statusFilter !== "all" && o.status !== statusFilter) return false;
+
+			const insumo =
+				catalogMap.get(slugifyInsumoName(o.name)) ||
+				catalogMap.get(normalizeString(o.name));
+
+			// Filtro por tag de responsável
+			if (selectedResponsavel !== "all") {
+				if (!insumo?.responsaveis || !insumo.responsaveis.includes(selectedResponsavel)) {
+					return false;
+				}
+			}
+
 			if (searchFilter.trim()) {
 				const q = normalizeString(searchFilter);
 				const matchesName = normalizeString(o.name).includes(q);
 				const matchesCategory = normalizeString(o.category || "").includes(q);
-				const insumo =
-					catalogMap.get(slugifyInsumoName(o.name)) ||
-					catalogMap.get(normalizeString(o.name));
 				const matchesResponsavel = insumo?.responsaveis?.some((r) =>
 					normalizeString(r).includes(q)
 				);
@@ -325,7 +350,7 @@ export default function InsumosPedidosPage() {
 			}
 			return true;
 		});
-	}, [orders, statusFilter, searchFilter, catalogMap]);
+	}, [orders, statusFilter, selectedResponsavel, searchFilter, catalogMap]);
 
 	const pendingCount = orders.filter((o) => o.status === "pending").length;
 	const completedCount = orders.filter((o) => o.status === "completed").length;
@@ -535,6 +560,33 @@ export default function InsumosPedidosPage() {
 					</div>
 				</div>
 
+				{/* Filtro por Tags de Responsáveis */}
+				<div className="flex flex-wrap items-center gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+					<span className="text-2xs font-black uppercase tracking-wider text-slate-400 mr-1">
+						Filtrar por Responsável:
+					</span>
+					<button
+						type="button"
+						onClick={() => setSelectedResponsavel("all")}
+						className={`cursor-pointer px-3 py-1 rounded-lg text-2xs font-black uppercase tracking-wider border transition-all ${
+							selectedResponsavel === "all"
+								? "bg-slate-800 dark:bg-slate-700 text-white border-slate-800 dark:border-slate-700 shadow-sm"
+								: "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700 opacity-60 hover:opacity-100"
+						}`}>
+						Todos
+					</button>
+					{RESPONSAVEIS_COMPRA.map((nome) => (
+						<ResponsavelTag
+							key={nome}
+							nome={nome}
+							selected={selectedResponsavel === nome}
+							onClick={() =>
+								setSelectedResponsavel(selectedResponsavel === nome ? "all" : nome)
+							}
+						/>
+					))}
+				</div>
+
 				<div className="flex items-center gap-1.5 text-2xs text-slate-400 font-medium">
 					<Info size={14} className="text-blue-500 shrink-0" />
 					<span>
@@ -555,8 +607,8 @@ export default function InsumosPedidosPage() {
 							Nenhum pedido encontrado
 						</h3>
 						<p className="text-xs text-slate-400 mt-1 max-w-sm mx-auto">
-							{searchFilter
-								? "Nenhum insumo coincide com o termo pesquisado."
+							{searchFilter || selectedResponsavel !== "all"
+								? "Nenhum insumo coincide com os filtros pesquisados."
 								: statusFilter === "pending"
 								? "Não há pedidos pendentes no momento. Digite na caixa acima para inserir."
 								: "Nenhum insumo neste filtro."}
@@ -609,14 +661,19 @@ export default function InsumosPedidosPage() {
 												</button>
 											</td>
 
-											{/* Nome do Insumo */}
+											{/* Nome do Insumo com Data visível no mobile */}
 											<td className="py-3 px-4">
-												<span
-													className={`font-black text-slate-800 dark:text-slate-100 uppercase text-xs md:text-sm group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors ${
-														isCompleted ? "line-through text-slate-400 dark:text-slate-500" : ""
-													}`}>
-													{order.name}
-												</span>
+												<div className="flex flex-col">
+													<span
+														className={`font-black text-slate-800 dark:text-slate-100 uppercase text-xs md:text-sm group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors ${
+															isCompleted ? "line-through text-slate-400 dark:text-slate-500" : ""
+														}`}>
+														{order.name}
+													</span>
+													<span className="sm:hidden text-2xs text-slate-400 font-medium mt-0.5">
+														{dateStr}
+													</span>
+												</div>
 											</td>
 
 											{/* Coluna Responsável (Tags Rodrigo, Ana, Edson) */}
@@ -631,7 +688,7 @@ export default function InsumosPedidosPage() {
 												</span>
 											</td>
 
-											{/* Data */}
+											{/* Data (Desktop / Tablet) */}
 											<td className="py-3 px-4 hidden sm:table-cell text-xs text-slate-400">
 												{dateStr}
 											</td>
@@ -643,7 +700,7 @@ export default function InsumosPedidosPage() {
 												<button
 													onClick={(e) => {
 														e.stopPropagation();
-														handleDeleteOrder(order.id);
+														handleRequestDelete(order);
 													}}
 													title="Remover insumo"
 													className="cursor-pointer p-2 rounded-xl text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40 transition-colors">
@@ -658,6 +715,44 @@ export default function InsumosPedidosPage() {
 					</div>
 				)}
 			</section>
+
+			{/* Modal de Confirmação de Exclusão */}
+			{orderToDelete && (
+				<div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
+					<div className="bg-white dark:bg-slate-900 rounded-3xl p-6 sm:p-8 max-w-sm w-full shadow-2xl animate-in zoom-in-95 duration-200 border border-slate-200 dark:border-slate-800">
+						<div className="bg-red-50 dark:bg-red-950/40 text-red-600 dark:text-red-400 w-16 h-16 rounded-2xl flex items-center justify-center mb-5 mx-auto">
+							<AlertTriangle size={32} />
+						</div>
+						<h3 className="text-xl font-black text-slate-800 dark:text-slate-100 text-center mb-2">
+							Remover Pedido?
+						</h3>
+						<p className="text-slate-500 dark:text-slate-400 text-center font-medium text-xs sm:text-sm mb-6">
+							Deseja remover <strong>{orderToDelete.name}</strong> da lista de pedidos a fornecedores?
+						</p>
+						<div className="flex flex-col gap-2.5">
+							<button
+								onClick={handleConfirmDelete}
+								disabled={deleting}
+								className="cursor-pointer w-full bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white font-black py-3.5 rounded-2xl transition-all shadow-md shadow-red-200 dark:shadow-none flex items-center justify-center gap-2 text-sm">
+								{deleting ? (
+									<>
+										<RefreshCw size={16} className="animate-spin" />
+										<span>Removendo...</span>
+									</>
+								) : (
+									<span>Sim, remover insumo</span>
+								)}
+							</button>
+							<button
+								onClick={() => setOrderToDelete(null)}
+								disabled={deleting}
+								className="cursor-pointer w-full bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold py-3 rounded-2xl transition-all text-sm">
+								Cancelar
+							</button>
+						</div>
+					</div>
+				</div>
+			)}
 
 			{/* Modal de Detalhes e Edição de Parâmetros do Insumo */}
 			<InsumoModal
