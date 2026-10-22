@@ -1447,9 +1447,9 @@ export default function EstoqueReposicionarPage() {
 			</div>
 
 			{showSummary && (
-				<div id="modal-resumo-print" className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-3 md:p-6 animate-in fade-in duration-200">
+				<div id="modal-resumo-print" className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-3 pb-8 md:p-6 animate-in fade-in duration-200">
 
-					<div className="bg-white dark:bg-slate-900 rounded-[2rem] w-full max-w-full sm:max-w-2xl md:max-w-4xl lg:max-w-5xl shadow-2xl overflow-hidden flex flex-col max-h-[92vh] border border-slate-200 dark:border-slate-800">
+					<div className="bg-white dark:bg-slate-900 rounded-[2rem] w-full max-w-full sm:max-w-2xl md:max-w-4xl lg:max-w-5xl shadow-2xl overflow-hidden flex flex-col max-h-[82vh] md:max-h-[92vh] border border-slate-200 dark:border-slate-800">
 						<div className="p-3.5 md:p-5 border-b border-slate-100 dark:border-slate-800 flex flex-col items-center justify-center print:hidden">
 							<h2 className="text-lg md:text-xl font-black text-slate-800 dark:text-slate-200 tracking-tight text-center uppercase">
 								Verificação de Reposicionamento - {new Date().toLocaleDateString("pt-BR")}
@@ -1531,17 +1531,17 @@ export default function EstoqueReposicionarPage() {
 
 						<div className="p-4 md:p-6 bg-slate-50 dark:bg-slate-800/50 border-t border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-3 md:gap-4 transition-colors print:hidden">
 							<button
-								onClick={() => setShowSummary(false)}
-								disabled={savingRepos}
-								className="flex-1 sm:flex-none min-w-[200px] px-6 py-3.5 rounded-2xl font-black text-xs md:text-sm uppercase tracking-wider bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-300 dark:hover:bg-slate-600 shadow-sm transition-all cursor-pointer text-center">
-								Editar reposicionamento
-							</button>
-							<button
 								onClick={executeFinalizeReposition}
 								disabled={savingRepos}
 								className="flex-1 sm:flex-none min-w-[220px] flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-400 text-white px-8 py-3.5 rounded-2xl font-black text-xs md:text-sm uppercase tracking-wider shadow-lg shadow-emerald-500/20 dark:shadow-none transition-all cursor-pointer text-center">
 								{savingRepos ? <RefreshCw className="animate-spin" size={18} /> : <Check size={18} />}
 								{savingRepos ? "Finalizando..." : "Finalizar reposicionamento"}
+							</button>
+							<button
+								onClick={() => setShowSummary(false)}
+								disabled={savingRepos}
+								className="flex-1 sm:flex-none min-w-[200px] px-6 py-3.5 rounded-2xl font-black text-xs md:text-sm uppercase tracking-wider bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-300 dark:hover:bg-slate-600 shadow-sm transition-all cursor-pointer text-center">
+								Editar reposicionamento
 							</button>
 						</div>
 					</div>

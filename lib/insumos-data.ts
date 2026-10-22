@@ -53,6 +53,7 @@ export const INVENTORY_DATA: InventoryCategory[] = [
 			"CHOCOLATE ALPINO",
 			"GELO",
 			"BARRA KINDER BUENO",
+			"BISCOITO KINDER BUENO",
 		],
 	},
 	{
@@ -643,6 +644,16 @@ export const DEFAULT_INSUMOS_CATALOG: InsumoCatalogItem[] = [
 		localCompra: "Sam's Club / Atacadão",
 		marca: "Ferrero Kinder Bueno",
 		observacoes: "Caixa display com unidades originais",
+	},
+	{
+		id: "biscoito-kinder-bueno",
+		name: "BISCOITO KINDER BUENO",
+		category: "INSUMOS E CONFEITARIA",
+		valorBom: "R$ 6,50",
+		valorMaximo: "R$ 8,50",
+		localCompra: "Sam's Club / Atacadão",
+		marca: "Ferrero Kinder Bueno",
+		observacoes: "Biscoito / Barra Kinder Bueno",
 	},
 
 	// CALDAS

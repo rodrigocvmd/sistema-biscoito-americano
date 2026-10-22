@@ -889,14 +889,7 @@ export default function InsumosLojasPage() {
 								<div
 									onClick={() => toggleStore(store.id)}
 									className="flex items-center gap-4 text-left cursor-pointer flex-1 min-w-0">
-									<div
-										className={`p-4 md:p-5 rounded-[24px] text-white shadow-lg shrink-0 transition-all ${
-											urgentCount > 0
-												? "bg-red-600 shadow-red-200 dark:shadow-none animate-pulse"
-												: totalPendingCount > 0
-												? "bg-blue-600 shadow-blue-200 dark:shadow-none"
-												: "bg-emerald-600 shadow-emerald-200 dark:shadow-none"
-										}`}>
+									<div className="p-4 md:p-5 rounded-[24px] text-white shadow-lg shrink-0 transition-all bg-blue-600 shadow-blue-200 dark:shadow-none">
 										<Store size={32} />
 									</div>
 
@@ -908,7 +901,7 @@ export default function InsumosLojasPage() {
 
 											{/* INDICAÇÃO VISUAL DE ITENS URGENTES (visível inclusive quando toggle fechado) */}
 											{urgentCount > 0 && (
-												<span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider bg-red-100 text-red-700 dark:bg-red-950/80 dark:text-red-300 border border-red-300 dark:border-red-800 animate-pulse shadow-xs">
+												<span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider bg-red-100 text-red-700 dark:bg-red-950/80 dark:text-red-300 border border-red-300 dark:border-red-800 shadow-xs">
 													<AlertTriangle size={14} className="text-red-600" />
 													<span>
 														{urgentCount} Urgente{urgentCount > 1 ? "s" : ""}
@@ -937,7 +930,7 @@ export default function InsumosLojasPage() {
 												<p className="font-bold text-xs md:text-sm uppercase tracking-wider text-amber-600 dark:text-amber-400 flex items-center gap-1.5">
 													<Clock size={15} />
 													<span>
-														<strong className="font-black text-lg md:text-base">
+														<strong className="font-black text-lg md:text-xl">
 															{pendingSupplyCount}
 														</strong>{" "}
 														{pendingSupplyCount === 1 ? "com pendência" : "com pendência"}
@@ -1087,7 +1080,7 @@ export default function InsumosLojasPage() {
 																		)}
 
 																		{isUrgent && !isPending && (
-																			<span className="flex items-center gap-1 bg-red-600 text-white px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider shadow-xs animate-pulse">
+																			<span className="flex items-center gap-1 bg-red-600 text-white px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider shadow-xs">
 																				<AlertTriangle size={12} /> Urgente
 																			</span>
 																		)}
