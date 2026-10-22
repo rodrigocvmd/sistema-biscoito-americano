@@ -639,7 +639,7 @@ export default function EstoquePedidosPage() {
 					@media print {
 					@page {
 						size: A4 portrait;
-						margin: 8mm 10mm;
+						margin: 10mm 12mm;
 					}
 					* {
 						-webkit-print-color-adjust: exact !important;
@@ -648,7 +648,7 @@ export default function EstoquePedidosPage() {
 						text-shadow: none !important;
 					}
 					html, body {
-						background: white !important;
+						background: #ffffff !important;
 						color: #000000 !important;
 						font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif !important;
 						padding: 0 !important;
@@ -663,10 +663,11 @@ export default function EstoquePedidosPage() {
 						display: none !important;
 					}
 
-					/* Se o modal de resumo ou modal de pedido parcial estiver aberto, ocultar o restante do corpo */
+					/* Se o modal de resumo ou modal de pedido parcial estiver aberto, ocultar o restante do corpo via visibilidade */
 					body:has(#modal-resumo-print),
 					body:has(#modal-pedido-parcial-print) {
 						visibility: hidden !important;
+						background: #ffffff !important;
 					}
 
 					body:has(#modal-resumo-print) #modal-resumo-print,
@@ -687,11 +688,17 @@ export default function EstoquePedidosPage() {
 						margin: 0 !important;
 						padding: 0 !important;
 						background: #ffffff !important;
+						background-color: #ffffff !important;
 						backdrop-filter: none !important;
+						-webkit-backdrop-filter: none !important;
 						z-index: 99999 !important;
-						box-sizing: border-box !important;
+						display: block !important;
 						page-break-before: avoid !important;
 						break-before: avoid !important;
+						page-break-after: avoid !important;
+						break-after: avoid !important;
+						page-break-inside: avoid !important;
+						break-inside: avoid !important;
 					}
 
 					#modal-resumo-print > div,
@@ -701,18 +708,21 @@ export default function EstoquePedidosPage() {
 						border: none !important;
 						box-shadow: none !important;
 						background: #ffffff !important;
+						background-color: #ffffff !important;
 						padding: 0 !important;
 						margin: 0 !important;
 						max-height: none !important;
 						overflow: visible !important;
 						page-break-before: avoid !important;
 						break-before: avoid !important;
+						page-break-after: avoid !important;
+						break-after: avoid !important;
 					}
 
 					.print-summary-card {
 						border: 1px solid #000000 !important;
 						border-radius: 4px !important;
-						padding: 12px 16px !important;
+						padding: 8px 12px !important;
 						margin: 0 auto !important;
 						max-width: 550px !important;
 						background: #ffffff !important;
@@ -721,12 +731,15 @@ export default function EstoquePedidosPage() {
 					table {
 						width: 100% !important;
 						border-collapse: collapse !important;
-						margin-top: 4px !important;
+						margin-top: 3px !important;
+						page-break-inside: avoid !important;
+						break-inside: avoid !important;
 					}
 					th, td {
 						border: 1px solid #000000 !important;
-						padding: 3px 5px !important;
+						padding: 2.5px 4px !important;
 						font-size: 8pt !important;
+						line-height: 1.2 !important;
 						color: #000000 !important;
 						background: transparent !important;
 						text-align: center !important;
@@ -744,7 +757,7 @@ export default function EstoquePedidosPage() {
 					h1, h2 {
 						font-size: 11pt !important;
 						font-weight: bold !important;
-						margin-bottom: 4px !important;
+						margin: 0 0 2px 0 !important;
 						text-align: center !important;
 						text-transform: uppercase !important;
 						color: #000000 !important;
@@ -2149,28 +2162,28 @@ export default function EstoquePedidosPage() {
 											</div>
 
 											{/* Visão de Impressão da Tabela Simplificada */}
-											<div className="hidden print:block w-full text-black font-sans text-[8pt] leading-tight max-w-[190mm] mx-auto">
+											<div className="hidden print:block w-full text-black font-sans text-[8.5pt] leading-tight max-w-full mx-auto">
 												<div className="mb-2 text-center">
-													<h2 className="text-[11pt] font-black uppercase tracking-wider text-black">
+													<h2 className="text-[11.5pt] font-black uppercase tracking-wider text-black">
 														Relatório de Pedido Parcial de Estoque
 													</h2>
-													<p className="text-[7.5pt] text-black mt-0.5">
+													<p className="text-[8pt] text-black mt-0.5">
 														{new Date().toLocaleDateString("pt-BR")} às {new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
 													</p>
 												</div>
 
-												<table className="w-full border-collapse border border-black text-[8pt]">
+												<table className="w-full border-collapse border border-black text-[8.5pt]">
 													<thead>
-														<tr className="bg-transparent text-black font-black uppercase text-[7.5pt]">
-															<th className="border border-black p-1 text-left text-black">Sabor (cx)</th>
+														<tr className="bg-transparent text-black font-black uppercase text-[8pt]">
+															<th className="border border-black px-1.5 py-1 text-left text-black">Sabor (cx)</th>
 															{STORE_ORDER.map((sId) => (
-																<th key={sId} className="border border-black p-1 text-center text-black">
+																<th key={sId} className="border border-black px-1.5 py-1 text-center text-black">
 																	{STORE_NAMES[sId] || sId}
 																</th>
 															))}
-															<th className="border border-black p-1 text-center text-black">Estoque</th>
-															<th className="border border-black p-1 text-center text-black">Meta</th>
-															<th className="border border-black p-1 text-center font-black text-black">A Pedir</th>
+															<th className="border border-black px-1.5 py-1 text-center text-black">Estoque</th>
+															<th className="border border-black px-1.5 py-1 text-center text-black">Meta</th>
+															<th className="border border-black px-1.5 py-1 text-center font-black text-black">A Pedir</th>
 														</tr>
 													</thead>
 													<tbody>
@@ -2184,24 +2197,24 @@ export default function EstoquePedidosPage() {
 
 															return (
 																<tr key={key} className="border-b border-black text-black">
-																	<td className="border border-black p-1 font-bold text-left text-black">
-																		{label} <span className="font-bold text-[7pt] text-black">({boxSize})</span>
+																	<td className="border border-black px-1.5 py-1 font-bold text-left text-black whitespace-nowrap">
+																		{label} <span className="font-bold text-[7.5pt] text-black">({boxSize})</span>
 																	</td>
 																	{STORE_ORDER.map((sId) => {
 																		const store = allData.find((s) => s.id === sId);
 																		return (
-																			<td key={sId} className="border border-black p-1 text-center text-black">
+																			<td key={sId} className="border border-black px-1.5 py-1 text-center text-black">
 																				{store?.stock[itemKey] || 0}
 																			</td>
 																		);
 																	})}
-																	<td className="border border-black p-1 text-center font-bold text-black">
+																	<td className="border border-black px-1.5 py-1 text-center font-bold text-black">
 																		{totalStock}
 																	</td>
-																	<td className="border border-black p-1 text-center text-black">
+																	<td className="border border-black px-1.5 py-1 text-center text-black">
 																		{desired > 0 ? desired : "-"}
 																	</td>
-																	<td className="border border-black p-1 text-center font-black text-black">
+																	<td className="border border-black px-1.5 py-1 text-center font-black text-black">
 																		{currentQty}
 																	</td>
 																</tr>
@@ -2209,33 +2222,33 @@ export default function EstoquePedidosPage() {
 														})}
 													</tbody>
 													<tfoot>
-														<tr className="bg-transparent border-t-2 border-black font-black text-[8pt] text-black">
-															<td className="border border-black p-1 uppercase text-left text-black">TOTAL</td>
+														<tr className="bg-transparent border-t-2 border-black font-black text-[8.5pt] text-black">
+															<td className="border border-black px-1.5 py-1 uppercase text-left text-black">TOTAL</td>
 															{STORE_ORDER.map((sId) => {
 																const storeTotal = displayedFlavors.reduce((sum, [key]) => {
 																	const store = allData.find((s) => s.id === sId);
 																	return sum + (store?.stock[key as keyof StockData] || 0);
 																}, 0);
 																return (
-																	<td key={sId} className="border border-black p-1 text-center text-black">
+																	<td key={sId} className="border border-black px-1.5 py-1 text-center text-black">
 																		{storeTotal}
 																	</td>
 																);
 															})}
-															<td className="border border-black p-1 text-center text-black">
+															<td className="border border-black px-1.5 py-1 text-center text-black">
 																{displayedFlavors.reduce((sum, [key]) => sum + allData.reduce((acc, s) => acc + (s.stock[key as keyof StockData] || 0), 0), 0)}
 															</td>
-															<td className="border border-black p-1 text-center text-black">
+															<td className="border border-black px-1.5 py-1 text-center text-black">
 																{displayedFlavors.reduce((sum, [key]) => sum + (desiredData[key as keyof StockData] || 0), 0)}
 															</td>
-															<td className="border border-black p-1 text-center font-black text-black">
+															<td className="border border-black px-1.5 py-1 text-center font-black text-black">
 																{totalPackages}
 															</td>
 														</tr>
 													</tfoot>
 												</table>
 
-												<div className="pt-2 text-[8pt] flex justify-between items-center border-t border-black mt-2 text-black">
+												<div className="pt-2 text-[8.5pt] flex justify-between items-center border-t border-black mt-2 text-black">
 													<div><strong>Total de Caixas:</strong> {totalBoxes} {totalBoxes === 1 ? "caixa" : "caixas"} ({totalPackages} pacotes)</div>
 													<div><strong>Subtotal:</strong> R$ {baseTotalVal.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
 													<div><strong>Total com Impostos (8%):</strong> R$ {finalTotalVal.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
