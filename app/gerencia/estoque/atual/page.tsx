@@ -504,7 +504,7 @@ export default function EstoqueAtualPage() {
 						font-size: 8.5pt !important;
 					}
 					.print-box-size {
-						font-size: 5.5pt !important;
+						font-size: 8.5pt !important;
 						color: #555555 !important;
 						font-weight: normal !important;
 					}
@@ -604,7 +604,7 @@ export default function EstoqueAtualPage() {
 										key={store.id}
 										className="p-3 md:p-6 text-center text-[0.6rem] md:text-[0.6875rem] font-black text-blue-600 dark:text-blue-400 tracking-widest border-l border-slate-200 dark:border-slate-700 min-w-[6.5rem] md:min-w-[8.75rem]">
 										<div className="flex flex-col items-center gap-1 md:gap-2">
-											<span className="text-[0.7rem] md:text-[0.87rem] font-extrabold text-slate-600 dark:text-slate-400 bg-white dark:bg-slate-900 px-2 md:px-3 py-0.5 md:py-1 rounded-full border border-slate-100 dark:border-slate-700 whitespace-nowrap">
+											<span className="text-[0.7rem] md:text-[0.87rem] font-extrabold text-slate-600 dark:text-slate-400 bg-white dark:bg-slate-900 px-2 md:px-3 py-0.5 md:py-1 rounded-full border border-slate-100 dark:border-slate-700 whitespace-nowrap print:hidden">
 												{formatDate(store.lastStockUpdate)}
 											</span>
 											<span className="leading-tight text-lg md:text-2xl">{store.name}</span>
@@ -714,7 +714,7 @@ export default function EstoqueAtualPage() {
 														<div className="flex items-center gap-1.5">
 															<span className="print-item-name">{label}</span>
 															{boxSize > 0 && (
-																<span className="!text-xl md:text-base font-black text-slate-400 dark:text-slate-500 normal-case print-box-size">
+																<span className="text-sm md:text-xl font-bold text-slate-400 dark:text-slate-500 normal-case print-box-size">
 																	({boxSize})
 																</span>
 															)}
