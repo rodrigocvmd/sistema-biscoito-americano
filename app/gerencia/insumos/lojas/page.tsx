@@ -505,20 +505,26 @@ export default function InsumosLojasPage() {
 			expireAt.setDate(deliveredAt.getDate() + 14);
 
 			// 1. Salva no histórico como SupplyOrderSnapshot entregue
-			const snapshotItems: SupplyOrderSnapshotItem[] = items.map((i) => ({
-				id: i.id,
-				name: i.name,
-				urgency: i.urgency,
-				quantity: i.quantity.trim() || undefined,
-				category: getInsumoCategory(i.name),
-				checked: i.checked,
-				createdAt: i.createdAt || null,
-			}));
+			const snapshotItems: SupplyOrderSnapshotItem[] = items.map((i) => {
+				const itemObj: SupplyOrderSnapshotItem = {
+					id: i.id || "",
+					name: i.name || "",
+					urgency: i.urgency || "low",
+					category: getInsumoCategory(i.name || "") || "OUTROS",
+					checked: !!i.checked,
+					createdAt: i.createdAt || null,
+				};
+				const trimmedQty = i.quantity ? i.quantity.trim() : "";
+				if (trimmedQty) {
+					itemObj.quantity = trimmedQty;
+				}
+				return itemObj;
+			});
 
 			const snapshotsRef = collection(db, "stores", storeId, "supplyOrderSnapshots");
 			await addDoc(snapshotsRef, {
-				storeId,
-				storeName,
+				storeId: storeId || "",
+				storeName: storeName || "",
 				closedAt: serverTimestamp(),
 				deliveredAt: Timestamp.fromDate(deliveredAt),
 				status: "delivered",
