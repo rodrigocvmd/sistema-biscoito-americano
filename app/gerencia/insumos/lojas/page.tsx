@@ -104,6 +104,14 @@ export default function InsumosLojasPage() {
 	} | null>(null);
 	const [savingDelivery, setSavingDelivery] = useState(false);
 
+	// Modal de Cancelar/Deletar Insumo da Loja
+	const [orderToCancel, setOrderToCancel] = useState<{
+		storeId: StoreId;
+		orderId: string;
+		orderName?: string;
+	} | null>(null);
+	const [cancelingOrder, setCancelingOrder] = useState(false);
+
 	const rotateStores = () => {
 		setAllData((prev) => {
 			if (prev.length < 2) return prev;
@@ -431,6 +439,30 @@ export default function InsumosLojasPage() {
 		}
 	};
 
+	// CANCELAR / DELETAR INSUMO DA LOJA
+	const handleCancelOrder = async () => {
+		if (!orderToCancel) return;
+		setCancelingOrder(true);
+		try {
+			const orderRef = doc(db, "stores", orderToCancel.storeId, "supplyOrders", orderToCancel.orderId);
+			const cancelledAt = new Date();
+			const expireAt = new Date();
+			expireAt.setDate(cancelledAt.getDate() + 14);
+
+			await updateDoc(orderRef, {
+				status: "cancelled",
+				deliveredAt: Timestamp.fromDate(cancelledAt),
+				expireAt: Timestamp.fromDate(expireAt),
+			});
+			setOrderToCancel(null);
+		} catch (error) {
+			console.error("Erro ao cancelar pedido de insumo:", error);
+			alert("Erro ao cancelar pedido de insumo.");
+		} finally {
+			setCancelingOrder(false);
+		}
+	};
+
 	// ABRIR MODAL: CONCLUIR ENTREGA
 	const handleOpenConcluirEntrega = (store: FullStoreData) => {
 		const sorted = getStoreDisplayOrders(store);
@@ -438,7 +470,7 @@ export default function InsumosLojasPage() {
 			id: o.id,
 			name: o.name,
 			urgency: o.urgency,
-			quantity: o.quantity || "",
+			quantity: o.quantity && o.quantity.trim() !== "" ? o.quantity.trim() : "1",
 			checked: !!o.checkedByGerencia,
 			createdAt: o.createdAt || null,
 		}));
@@ -457,14 +489,42 @@ export default function InsumosLojasPage() {
 			...deliveryModal,
 			items: deliveryModal.items.map((i) => {
 				if (i.id !== itemId) return i;
-				const currentNum = parseInt(i.quantity, 10);
-				let nextQty = "";
-				if (isNaN(currentNum)) {
-					nextQty = delta > 0 ? "1" : "";
+				const trimmed = (i.quantity || "").trim();
+
+				let nextQty = "1";
+
+				if (delta < 0) {
+					// Reduzindo quantidade
+					if (trimmed === "1/3") {
+						nextQty = "1/3";
+					} else if (trimmed === "1/2") {
+						nextQty = "1/3";
+					} else if (trimmed === "1") {
+						nextQty = "1/2";
+					} else {
+						const currentNum = parseInt(trimmed, 10);
+						if (isNaN(currentNum) || currentNum <= 1) {
+							nextQty = "1/2";
+						} else {
+							nextQty = (currentNum - 1).toString();
+						}
+					}
 				} else {
-					const nextVal = currentNum + delta;
-					nextQty = nextVal <= 0 ? "" : nextVal.toString();
+					// Aumentando quantidade
+					if (trimmed === "1/3") {
+						nextQty = "1/2";
+					} else if (trimmed === "1/2") {
+						nextQty = "1";
+					} else {
+						const currentNum = parseInt(trimmed, 10);
+						if (isNaN(currentNum) || currentNum < 1) {
+							nextQty = "1";
+						} else {
+							nextQty = (currentNum + 1).toString();
+						}
+					}
 				}
+
 				return { ...i, quantity: nextQty };
 			}),
 		});
@@ -973,6 +1033,20 @@ export default function InsumosLojasPage() {
 																<ShoppingCart size={18} />
 															</button>
 
+															{/* Botão de Deletar / Cancelar Insumo da Loja */}
+															<button
+																onClick={() =>
+																	setOrderToCancel({
+																		storeId: store.id,
+																		orderId: order.id,
+																		orderName: order.name,
+																	})
+																}
+																className="p-1.5 rounded-xl text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/40 transition-all cursor-pointer shrink-0"
+																title="Deletar/Cancelar insumo da loja">
+																<Trash2 size={18} />
+															</button>
+
 															{/* Botões de Reordenação Simples */}
 															<div className="flex items-center gap-1 shrink-0">
 																<button
@@ -1271,8 +1345,8 @@ export default function InsumosLojasPage() {
 								</div>
 							) : (
 								deliveryModal.items.map((item) => {
-									const qtyNum = parseInt(item.quantity, 10);
-									const hasQty = !isNaN(qtyNum) && qtyNum > 0;
+									const hasQty = !!item.quantity && item.quantity.trim() !== "";
+									const isAtMin = item.quantity === "1/3";
 
 									return (
 										<div
@@ -1326,12 +1400,12 @@ export default function InsumosLojasPage() {
 														<button
 															type="button"
 															onClick={() => handleModalStepQuantity(item.id, -1)}
-															disabled={!hasQty}
+															disabled={isAtMin}
 															className="w-7 h-7 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center text-slate-600 dark:text-slate-300 transition-all cursor-pointer">
 															<Minus size={14} />
 														</button>
 														<span className="min-w-[28px] text-center text-xs font-black text-slate-800 dark:text-slate-100">
-															{hasQty ? qtyNum : "-"}
+															{hasQty ? item.quantity : "-"}
 														</span>
 														<button
 															type="button"
@@ -1463,6 +1537,39 @@ export default function InsumosLojasPage() {
 								onClick={() => setSelectedSnapshotModal(null)}
 								className="cursor-pointer px-6 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-900 text-white font-bold text-sm">
 								Fechar
+							</button>
+						</div>
+					</div>
+				</div>
+			)}
+
+			{/* MODAL: CONFIRMAR CANCELAMENTO / EXCLUSÃO DE INSUMO DA LOJA */}
+			{orderToCancel && (
+				<div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
+					<div className="bg-white dark:bg-slate-900 rounded-3xl p-8 max-w-sm w-full shadow-2xl animate-in zoom-in-95 duration-200 border border-slate-200 dark:border-slate-800">
+						<div className="bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 w-16 h-16 rounded-2xl flex items-center justify-center mb-6 mx-auto">
+							<AlertTriangle size={32} />
+						</div>
+						<h3 className="text-xl font-black text-slate-800 dark:text-slate-200 text-center mb-2">
+							Confirmar Cancelamento
+						</h3>
+						<p className="text-slate-500 dark:text-slate-400 text-center font-medium text-sm mb-8">
+							Tem certeza que deseja cancelar esta solicitação de insumo
+							{orderToCancel.orderName ? ` (${orderToCancel.orderName})` : ""}? Ela será movida para o histórico como cancelada.
+						</p>
+						<div className="flex flex-col gap-3">
+							<button
+								onClick={handleCancelOrder}
+								disabled={cancelingOrder}
+								className="cursor-pointer w-full bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white font-black py-3.5 rounded-2xl transition-all shadow-lg shadow-red-100 dark:shadow-none flex items-center justify-center gap-2">
+								{cancelingOrder ? <RefreshCw className="animate-spin" size={18} /> : null}
+								<span>Sim, cancelar pedido</span>
+							</button>
+							<button
+								onClick={() => setOrderToCancel(null)}
+								disabled={cancelingOrder}
+								className="cursor-pointer w-full bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 disabled:opacity-50 text-slate-600 dark:text-slate-400 font-black py-3.5 rounded-2xl transition-all">
+								Não, manter
 							</button>
 						</div>
 					</div>
