@@ -639,7 +639,7 @@ export default function EstoquePedidosPage() {
 					@media print {
 					@page {
 						size: A4 portrait;
-						margin: 10mm 12mm;
+						margin: 15mm 15mm 15mm 15mm;
 					}
 					* {
 						-webkit-print-color-adjust: exact !important;
@@ -686,7 +686,8 @@ export default function EstoquePedidosPage() {
 						height: auto !important;
 						min-height: 0 !important;
 						margin: 0 !important;
-						padding: 0 !important;
+						padding: 12mm 15mm !important;
+						box-sizing: border-box !important;
 						background: #ffffff !important;
 						background-color: #ffffff !important;
 						backdrop-filter: none !important;
