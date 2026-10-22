@@ -66,6 +66,8 @@ interface FullStoreData {
 	historicalOrders: SupplyOrder[];
 	orderSnapshots: SupplyOrderSnapshot[];
 	urgentCount: number;
+	pendingSupplyCount: number;
+	storePendingCount: number;
 }
 
 interface DeliveryModalItem {
@@ -111,6 +113,17 @@ export default function InsumosLojasPage() {
 		orderName?: string;
 	} | null>(null);
 	const [cancelingOrder, setCancelingOrder] = useState(false);
+
+	// Modal de Adicionar Insumo
+	const [addInsumoModalStore, setAddInsumoModalStore] = useState<{
+		storeId: StoreId;
+		storeName: string;
+	} | null>(null);
+	const [newInsumoName, setNewInsumoName] = useState("");
+	const [newInsumoQuantity, setNewInsumoQuantity] = useState("");
+	const [newInsumoIsUrgent, setNewInsumoIsUrgent] = useState(false);
+	const [isInsumoDropdownOpen, setIsInsumoDropdownOpen] = useState(false);
+	const [addingInsumo, setAddingInsumo] = useState(false);
 
 	const rotateStores = () => {
 		setAllData((prev) => {
@@ -184,6 +197,8 @@ export default function InsumosLojasPage() {
 					const sHistory = storeHistoryData[id] || [];
 					const sSnapshots = storeSnapshotsData[id] || [];
 					const urgentCount = sPending.filter((o) => o.urgency === "Urgente").length;
+					const pendingSupplyCount = sPending.filter((o) => !!o.isPendingSupply).length;
+					const storePendingCount = sPending.filter((o) => !o.isPendingSupply).length;
 
 					return {
 						id,
@@ -192,6 +207,8 @@ export default function InsumosLojasPage() {
 						historicalOrders: sHistory,
 						orderSnapshots: sSnapshots,
 						urgentCount,
+						pendingSupplyCount,
+						storePendingCount,
 					};
 				});
 
@@ -460,6 +477,69 @@ export default function InsumosLojasPage() {
 			alert("Erro ao cancelar pedido de insumo.");
 		} finally {
 			setCancelingOrder(false);
+		}
+	};
+
+	// ABRIR MODAL: ADICIONAR INSUMO NA LOJA
+	const handleOpenAddInsumoModal = (storeId: StoreId, storeName: string) => {
+		setNewInsumoName("");
+		setNewInsumoQuantity("");
+		setNewInsumoIsUrgent(false);
+		setIsInsumoDropdownOpen(false);
+		setAddInsumoModalStore({ storeId, storeName });
+	};
+
+	// SALVAR NOVO INSUMO NA LOJA
+	const handleSaveNewInsumo = async (e: React.FormEvent) => {
+		e.preventDefault();
+		if (!addInsumoModalStore || !newInsumoName.trim()) return;
+
+		setAddingInsumo(true);
+		try {
+			const { storeId } = addInsumoModalStore;
+			const trimmedName = newInsumoName.trim().toUpperCase();
+			const trimmedQty = newInsumoQuantity.trim();
+			const insumoCategory = getInsumoCategory(trimmedName);
+
+			const ordersRef = collection(db, "stores", storeId, "supplyOrders");
+			const docRef = await addDoc(ordersRef, {
+				name: trimmedName,
+				quantity: trimmedQty,
+				urgency: newInsumoIsUrgent ? "Urgente" : "Normal",
+				status: "pending",
+				checkedByGerencia: false,
+				isPendingSupply: false,
+				category: insumoCategory,
+				createdAt: serverTimestamp(),
+			});
+
+			// Se o modal de entrega estiver aberto para a mesma loja, inclui imediatamente
+			if (deliveryModal && deliveryModal.storeId === storeId) {
+				setDeliveryModal({
+					...deliveryModal,
+					items: [
+						...deliveryModal.items,
+						{
+							id: docRef.id,
+							name: trimmedName,
+							urgency: newInsumoIsUrgent ? "Urgente" : "Normal",
+							quantity: trimmedQty || "1",
+							checked: false,
+							createdAt: Timestamp.now(),
+						},
+					],
+				});
+			}
+
+			setAddInsumoModalStore(null);
+			setNewInsumoName("");
+			setNewInsumoQuantity("");
+			setNewInsumoIsUrgent(false);
+		} catch (error) {
+			console.error("Erro ao adicionar insumo:", error);
+			alert("Erro ao adicionar insumo. Tente novamente.");
+		} finally {
+			setAddingInsumo(false);
 		}
 	};
 
@@ -795,7 +875,9 @@ export default function InsumosLojasPage() {
 			<div className="space-y-6">
 				{allData.map((store) => {
 					const isExpanded = !!expandedStores[store.id];
-					const pendingCount = store.pendingOrders.length;
+					const totalPendingCount = store.pendingOrders.length;
+					const pendingCount = store.storePendingCount;
+					const pendingSupplyCount = store.pendingSupplyCount;
 					const urgentCount = store.urgentCount;
 
 					return (
@@ -811,7 +893,7 @@ export default function InsumosLojasPage() {
 										className={`p-4 md:p-5 rounded-[24px] text-white shadow-lg shrink-0 transition-all ${
 											urgentCount > 0
 												? "bg-red-600 shadow-red-200 dark:shadow-none animate-pulse"
-												: pendingCount > 0
+												: totalPendingCount > 0
 												? "bg-blue-600 shadow-blue-200 dark:shadow-none"
 												: "bg-emerald-600 shadow-emerald-200 dark:shadow-none"
 										}`}>
@@ -835,25 +917,50 @@ export default function InsumosLojasPage() {
 											)}
 										</div>
 
-										<div className="flex flex-wrap items-center gap-3 mt-2">
-											{pendingCount === 0 ? (
-												<p className="font-bold text-sm md:text-base uppercase tracking-widest text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5">
-													<CheckCircle2 size={18} /> Nada pendente
-												</p>
-											) : (
-												<p className="font-bold text-sm md:text-base uppercase tracking-widest text-slate-500 dark:text-slate-400">
-													<strong className="text-lg md:text-xl font-black text-blue-600 dark:text-blue-400">
-														{pendingCount}
-													</strong>{" "}
-													{pendingCount === 1 ? "insumo solicitado" : "insumos solicitados"}
+										<div className="flex flex-col gap-1 mt-2">
+											<div className="flex flex-wrap items-center gap-3">
+												{pendingCount === 0 ? (
+													<p className="font-bold text-sm md:text-base uppercase tracking-widest text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5">
+														<CheckCircle2 size={18} /> Tudo entregue
+													</p>
+												) : (
+													<p className="font-bold text-sm md:text-base uppercase tracking-widest text-slate-500 dark:text-slate-400">
+														<strong className="text-lg md:text-xl font-black text-blue-600 dark:text-blue-400">
+															{pendingCount}
+														</strong>{" "}
+														{pendingCount === 1 ? "insumo solicitado" : "insumos solicitados"}
+													</p>
+												)}
+											</div>
+
+											{pendingSupplyCount > 0 && (
+												<p className="font-bold text-xs md:text-sm uppercase tracking-wider text-amber-600 dark:text-amber-400 flex items-center gap-1.5">
+													<Clock size={15} />
+													<span>
+														<strong className="font-black text-lg md:text-base">
+															{pendingSupplyCount}
+														</strong>{" "}
+														{pendingSupplyCount === 1 ? "com pendência" : "com pendência"}
+													</span>
 												</p>
 											)}
 										</div>
 									</div>
 								</div>
 
-								{/* Ações da Loja no Topo: Botão Expandir/Recolher centralizado verticalmente */}
-								<div className="flex items-center gap-3 shrink-0 self-center">
+								{/* Ações da Loja no Topo: Botão Adicionar Insumo (+) e Expandir/Recolher */}
+								<div className="flex items-center gap-2 sm:gap-3 shrink-0 self-center">
+									<button
+										type="button"
+										onClick={(e) => {
+											e.stopPropagation();
+											handleOpenAddInsumoModal(store.id, store.name);
+										}}
+										className="p-3 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white shadow-md shadow-emerald-200 dark:shadow-none transition-all cursor-pointer flex items-center justify-center active:scale-95"
+										title={`Adicionar Insumo para ${store.name}`}>
+										<Plus size={20} strokeWidth={3} />
+									</button>
+
 									<button
 										onClick={() => toggleStore(store.id)}
 										className="p-3 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 cursor-pointer">
@@ -867,7 +974,7 @@ export default function InsumosLojasPage() {
 								<div className="p-6 md:p-8 pt-0 border-t border-slate-100 dark:border-slate-800 space-y-6 animate-in slide-in-from-top-2 duration-300">
 									<div className="flex flex-row items-center justify-between gap-2 sm:gap-4 py-3 border-b border-slate-100 dark:border-slate-800">
 										{/* Botões de Ordenação Lado a Lado no Mobile */}
-										{pendingCount > 0 ? (
+										{totalPendingCount > 0 ? (
 											<div className="flex justify-start">
 												<div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-xl gap-0.5 sm:gap-1">
 													{[
@@ -892,11 +999,19 @@ export default function InsumosLojasPage() {
 											<div />
 										)}
 
-										{/* Botão Concluir Lado a Lado no Mobile */}
-										<div className="flex justify-end">
+										{/* Botão Adicionar e Botão Concluir Lado a Lado */}
+										<div className="flex items-center gap-2 justify-end">
+											<button
+												onClick={() => handleOpenAddInsumoModal(store.id, store.name)}
+												className="cursor-pointer bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold px-3 sm:px-4 py-2 sm:py-3 rounded-2xl border border-slate-200 dark:border-slate-700 transition-all flex items-center justify-center gap-1.5 text-xs sm:text-sm active:scale-95 whitespace-nowrap"
+												title={`Adicionar insumo para ${store.name}`}>
+												<Plus size={16} strokeWidth={2.5} />
+												<span className="hidden sm:inline">Adicionar</span>
+											</button>
+
 											<button
 												onClick={() => handleOpenConcluirEntrega(store)}
-												disabled={pendingCount === 0}
+												disabled={totalPendingCount === 0}
 												className="cursor-pointer bg-emerald-600 hover:bg-emerald-700 disabled:opacity-40 disabled:cursor-not-allowed text-white font-black px-4 sm:px-6 py-2 sm:py-3 rounded-2xl shadow-lg shadow-emerald-200 dark:shadow-none transition-all flex items-center justify-center gap-1.5 sm:gap-2 text-xs sm:text-sm active:scale-95 whitespace-nowrap">
 												<CheckCircle2 size={16} />
 												<span>Concluir</span>
@@ -904,7 +1019,7 @@ export default function InsumosLojasPage() {
 										</div>
 									</div>
 
-									{pendingCount === 0 ? (
+									{totalPendingCount === 0 ? (
 										<div className="py-12 text-center bg-slate-50 dark:bg-slate-800/40 rounded-3xl border border-dashed border-slate-200 dark:border-slate-700">
 											<Package className="mx-auto text-slate-300 dark:text-slate-600 mb-2" size={40} />
 											<p className="text-slate-500 dark:text-slate-400 font-bold">
@@ -1330,11 +1445,20 @@ export default function InsumosLojasPage() {
 									</p>
 								</div>
 							</div>
-							<button
-								onClick={() => setDeliveryModal(null)}
-								className="cursor-pointer p-2 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
-								<X size={20} />
-							</button>
+							<div className="flex items-center gap-2">
+								<button
+									type="button"
+									onClick={() => handleOpenAddInsumoModal(deliveryModal.storeId, deliveryModal.storeName)}
+									className="cursor-pointer p-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white shadow-md shadow-emerald-200 dark:shadow-none transition-all flex items-center justify-center active:scale-95"
+									title={`Adicionar insumo para ${deliveryModal.storeName}`}>
+									<Plus size={18} strokeWidth={3} />
+								</button>
+								<button
+									onClick={() => setDeliveryModal(null)}
+									className="cursor-pointer p-2 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
+									<X size={20} />
+								</button>
+							</div>
 						</div>
 
 						{/* Lista de Itens no Modal */}
@@ -1575,6 +1699,210 @@ export default function InsumosLojasPage() {
 					</div>
 				</div>
 			)}
+
+			{/* MODAL: ADICIONAR INSUMO NA LOJA */}
+			{addInsumoModalStore && (() => {
+				const currentStoreData = allData.find((d) => d.id === addInsumoModalStore.storeId);
+				const existingPendingOrders = currentStoreData ? currentStoreData.pendingOrders : [];
+				const normalizedQuery = normalizeSearchText(newInsumoName);
+
+				const filteredInventory = INVENTORY_DATA.map((cat) => ({
+					...cat,
+					items: cat.items
+						.filter((item) => normalizeSearchText(item).includes(normalizedQuery))
+						.filter(
+							(item) =>
+								!existingPendingOrders.some(
+									(order) => normalizeSearchText(order.name) === normalizeSearchText(item),
+								),
+						),
+				})).filter((cat) => cat.items.length > 0);
+
+				return (
+					<div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
+						<div className="bg-white dark:bg-slate-900 rounded-[32px] p-6 sm:p-8 max-w-xl w-full shadow-2xl border border-slate-200 dark:border-slate-800 animate-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]">
+							{/* Cabeçalho */}
+							<div className="flex items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-800 shrink-0">
+								<div className="flex items-center gap-3">
+									<div className="p-3 rounded-2xl bg-emerald-100 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 font-black">
+										<Plus size={24} />
+									</div>
+									<div>
+										<h3 className="text-xl md:text-2xl font-black text-slate-800 dark:text-slate-100">
+											Adicionar Insumo • {addInsumoModalStore.storeName}
+										</h3>
+										<p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+											Selecione ou digite o insumo que deseja solicitar para a loja.
+										</p>
+									</div>
+								</div>
+								<button
+									type="button"
+									onClick={() => setAddInsumoModalStore(null)}
+									className="cursor-pointer p-2 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
+									<X size={20} />
+								</button>
+							</div>
+
+							{/* Formulário */}
+							<form onSubmit={handleSaveNewInsumo} className="flex flex-col gap-5 py-4 overflow-y-visible">
+								{/* Campo Insumo */}
+								<div className="space-y-1 relative">
+									<label className="text-xs font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider ml-1">
+										Insumo *
+									</label>
+									<div className="relative">
+										<input
+											type="text"
+											required
+											autoFocus
+											placeholder="BUSCAR OU DIGITAR INSUMO..."
+											value={newInsumoName}
+											onFocus={() => setIsInsumoDropdownOpen(true)}
+											onBlur={() => setTimeout(() => setIsInsumoDropdownOpen(false), 250)}
+											onChange={(e) => {
+												setNewInsumoName(e.target.value.toUpperCase());
+												setIsInsumoDropdownOpen(true);
+											}}
+											autoComplete="off"
+											className="w-full h-[50px] px-4 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all text-slate-800 dark:text-slate-200 font-bold placeholder:font-medium uppercase text-sm"
+										/>
+										<div className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
+											<ChevronDown size={18} />
+										</div>
+
+										{/* Dropdown Results */}
+										{isInsumoDropdownOpen && (
+											<div className="absolute z-50 left-0 right-0 mt-2 max-h-[240px] overflow-y-auto bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl animate-in fade-in zoom-in-95 duration-150">
+												{filteredInventory.length > 0 ? (
+													filteredInventory.map((category) => (
+														<div key={category.category}>
+															<div className="px-4 py-2 bg-slate-50 dark:bg-slate-800 text-[0.625rem] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] border-y border-slate-100 dark:border-slate-800 first:border-t-0">
+																{category.category}
+															</div>
+															{category.items.map((item) => (
+																<div
+																	key={item}
+																	onMouseDown={(e) => {
+																		e.preventDefault();
+																		setNewInsumoName(item);
+																		setIsInsumoDropdownOpen(false);
+																	}}
+																	className="px-4 py-3 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 hover:text-emerald-600 dark:hover:text-emerald-400 cursor-pointer text-sm font-bold text-slate-700 dark:text-slate-300 transition-colors flex items-center justify-between group">
+																	<span>{item}</span>
+																	<Plus
+																		size={14}
+																		className="opacity-0 group-hover:opacity-100 transition-opacity"
+																	/>
+																</div>
+															))}
+														</div>
+													))
+												) : (
+													newInsumoName.trim() !== "" && (
+														<div className="px-4 py-4 text-center">
+															<p className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase">
+																Adicionar item personalizado:
+															</p>
+															<p className="text-sm font-black text-emerald-600 dark:text-emerald-400 mt-1">
+																&quot;{newInsumoName}&quot;
+															</p>
+														</div>
+													)
+												)}
+											</div>
+										)}
+									</div>
+								</div>
+
+								{/* Campo Quantidade e Prioridade */}
+								<div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+									{/* Quantidade */}
+									<div className="space-y-1">
+										<label className="text-xs font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider ml-1">
+											Qtd (opcional)
+										</label>
+										<div className="flex items-center justify-between w-full h-[50px] px-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl">
+											<button
+												type="button"
+												onClick={() => {
+													const cur = parseInt(newInsumoQuantity, 10);
+													if (isNaN(cur) || cur <= 1) {
+														setNewInsumoQuantity("");
+													} else {
+														setNewInsumoQuantity((cur - 1).toString());
+													}
+												}}
+												disabled={!newInsumoQuantity || parseInt(newInsumoQuantity, 10) <= 0}
+												className="w-8 h-8 rounded-xl bg-white dark:bg-slate-700 hover:bg-slate-100 dark:hover:bg-slate-600 disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center text-slate-600 dark:text-slate-300 shadow-xs cursor-pointer transition-all">
+												<Minus size={16} />
+											</button>
+
+											<span className="text-sm font-black text-slate-800 dark:text-slate-100 select-none">
+												{newInsumoQuantity ? (
+													newInsumoQuantity
+												) : (
+													<span className="text-slate-400 font-bold text-xs">-</span>
+												)}
+											</span>
+
+											<button
+												type="button"
+												onClick={() => {
+													const cur = parseInt(newInsumoQuantity, 10);
+													if (isNaN(cur) || cur <= 0) {
+														setNewInsumoQuantity("1");
+													} else {
+														setNewInsumoQuantity((cur + 1).toString());
+													}
+												}}
+												className="w-8 h-8 rounded-xl bg-white dark:bg-slate-700 hover:bg-slate-100 dark:hover:bg-slate-600 flex items-center justify-center text-slate-600 dark:text-slate-300 shadow-xs cursor-pointer transition-all">
+												<Plus size={16} />
+											</button>
+										</div>
+									</div>
+
+									{/* Prioridade */}
+									<div className="space-y-1">
+										<label className="text-xs font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider ml-1">
+											Prioridade
+										</label>
+										<button
+											type="button"
+											onClick={() => setNewInsumoIsUrgent(!newInsumoIsUrgent)}
+											className={`w-full h-[50px] rounded-2xl font-black text-sm transition-all flex items-center justify-center gap-2 cursor-pointer border-2 ${
+												newInsumoIsUrgent
+													? "bg-red-600 hover:bg-red-700 text-white border-red-600 shadow-md shadow-red-200 dark:shadow-none animate-pulse"
+													: "bg-slate-50 dark:bg-slate-800 hover:bg-red-50 dark:hover:bg-red-950/30 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:text-red-600 hover:border-red-300"
+											}`}>
+											<AlertTriangle size={16} />
+											<span>{newInsumoIsUrgent ? "🚨 Urgente" : "Urgente?"}</span>
+										</button>
+									</div>
+								</div>
+
+								{/* Ações */}
+								<div className="pt-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-end gap-3 mt-2">
+									<button
+										type="button"
+										onClick={() => setAddInsumoModalStore(null)}
+										className="cursor-pointer px-5 py-3 rounded-2xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-400 font-bold text-sm transition-all">
+										Cancelar
+									</button>
+
+									<button
+										type="submit"
+										disabled={addingInsumo || !newInsumoName.trim()}
+										className="cursor-pointer bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-black px-6 py-3 rounded-2xl shadow-lg shadow-emerald-200 dark:shadow-none transition-all flex items-center justify-center gap-2 text-sm active:scale-95">
+										{addingInsumo ? <RefreshCw className="animate-spin" size={16} /> : <Plus size={16} strokeWidth={3} />}
+										<span>Adicionar Insumo</span>
+									</button>
+								</div>
+							</form>
+						</div>
+					</div>
+				);
+			})()}
 		</div>
 	);
 }
