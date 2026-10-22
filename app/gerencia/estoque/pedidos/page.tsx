@@ -639,7 +639,7 @@ export default function EstoquePedidosPage() {
 					@media print {
 					@page {
 						size: A4 portrait;
-						margin: 15mm 15mm 15mm 15mm;
+						margin: 12mm 24mm 12mm 24mm;
 					}
 					* {
 						-webkit-print-color-adjust: exact !important;
@@ -663,11 +663,16 @@ export default function EstoquePedidosPage() {
 						display: none !important;
 					}
 
-					/* Se o modal de resumo ou modal de pedido parcial estiver aberto, ocultar o restante do corpo via visibilidade */
+					/* Se o modal de resumo ou modal de pedido parcial estiver aberto, ocultar o restante do corpo */
 					body:has(#modal-resumo-print),
 					body:has(#modal-pedido-parcial-print) {
 						visibility: hidden !important;
 						background: #ffffff !important;
+					}
+
+					body:has(#modal-resumo-print) > *:not(:has(#modal-resumo-print)),
+					body:has(#modal-pedido-parcial-print) > *:not(:has(#modal-pedido-parcial-print)) {
+						display: none !important;
 					}
 
 					body:has(#modal-resumo-print) #modal-resumo-print,
@@ -686,7 +691,7 @@ export default function EstoquePedidosPage() {
 						height: auto !important;
 						min-height: 0 !important;
 						margin: 0 !important;
-						padding: 12mm 15mm !important;
+						padding: 2mm 8mm !important;
 						box-sizing: border-box !important;
 						background: #ffffff !important;
 						background-color: #ffffff !important;
@@ -713,11 +718,14 @@ export default function EstoquePedidosPage() {
 						padding: 0 !important;
 						margin: 0 !important;
 						max-height: none !important;
+						height: auto !important;
 						overflow: visible !important;
 						page-break-before: avoid !important;
 						break-before: avoid !important;
 						page-break-after: avoid !important;
 						break-after: avoid !important;
+						page-break-inside: avoid !important;
+						break-inside: avoid !important;
 					}
 
 					.print-summary-card {
@@ -733,14 +741,14 @@ export default function EstoquePedidosPage() {
 						width: 100% !important;
 						border-collapse: collapse !important;
 						margin-top: 3px !important;
-						page-break-inside: avoid !important;
-						break-inside: avoid !important;
+						page-break-inside: auto !important;
+						break-inside: auto !important;
 					}
 					th, td {
 						border: 1px solid #000000 !important;
-						padding: 2.5px 4px !important;
-						font-size: 8pt !important;
-						line-height: 1.2 !important;
+						padding: 4.5px 5px !important;
+						font-size: 10pt !important;
+						line-height: 1.25 !important;
 						color: #000000 !important;
 						background: transparent !important;
 						text-align: center !important;
@@ -754,6 +762,8 @@ export default function EstoquePedidosPage() {
 						background-color: transparent !important;
 						font-weight: bold !important;
 						text-transform: uppercase !important;
+						font-size: 8.5pt !important;
+						padding: 4px 4px !important;
 					}
 					h1, h2 {
 						font-size: 11pt !important;
@@ -1944,15 +1954,16 @@ export default function EstoquePedidosPage() {
 
 										const storeCellsHtml = STORE_ORDER.map((sId) => {
 											const store = allData.find((s) => s.id === sId);
-											return `<td style="border: 1px solid #000; padding: 4px; text-align: center; font-size: 8.5pt; color: #000;">${store?.stock[itemKey] || 0}</td>`;
+											return `<td style="border: 1px solid #000; padding: 5px 4px; text-align: center; font-size: 10pt; color: #000;">${store?.stock[itemKey] || 0}</td>`;
 										}).join("");
 
 										return `<tr>
-											<td style="border: 1px solid #000; padding: 4px; font-size: 8.5pt; text-align: left; font-weight: bold; color: #000;">${label} <span style="font-size: 7.5pt; color: #000; font-weight: bold;">(${boxSize})</span></td>
+											<td style="border: 1px solid #000; padding: 5px 6px; font-size: 9.5pt; text-align: left; font-weight: bold; color: #000; white-space: nowrap;">${label} <span style="font-size: 8pt; color: #000; font-weight: bold;">(${boxSize})</span></td>
 											${storeCellsHtml}
-											<td style="border: 1px solid #000; padding: 4px; text-align: center; font-size: 8.5pt; font-weight: bold; color: #000;">${totalStock}</td>
-											<td style="border: 1px solid #000; padding: 4px; text-align: center; font-size: 8.5pt; color: #000;">${desired > 0 ? desired : "-"}</td>
-											<td style="border: 1px solid #000; padding: 4px; text-align: center; font-size: 9pt; font-weight: bold; color: #000;">${currentQty}</td>
+											<td style="border: 1px solid #000; padding: 5px 4px; text-align: center; font-size: 10pt; font-weight: bold; color: #000;">${totalStock}</td>
+											<td style="border: 1px solid #000; padding: 5px 4px; text-align: center; font-size: 10pt; color: #000;">${desired > 0 ? desired : "-"}</td>
+											<td style="border: 1px solid #000; padding: 5px 4px; text-align: center; font-size: 11pt; font-weight: bold; color: #000;">${currentQty}</td>
+											<td style="border: 1px solid #000; padding: 5px 4px; text-align: center; width: 55px;"></td>
 										</tr>`;
 									}).join("");
 
@@ -1963,11 +1974,12 @@ export default function EstoquePedidosPage() {
 											<meta name="viewport" content="width=device-width, initial-scale=1.0">
 											<title>Pedido Parcial de Estoque</title>
 											<style>
-												body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; padding: 15px; color: #000; margin: 0; }
+												@page { margin: 12mm 24mm; }
+												body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; padding: 0 10px; color: #000; margin: 0 auto; max-width: 96%; }
 												h2 { font-size: 16px; margin: 0 0 4px 0; text-transform: uppercase; text-align: center; color: #000; }
 												p.date { font-size: 11px; color: #000; margin: 0 0 12px 0; text-align: center; }
 												table { width: 100%; border-collapse: collapse; margin-bottom: 12px; }
-												th { background: transparent; text-transform: uppercase; color: #000; }
+												th { background: transparent; text-transform: uppercase; color: #000; font-size: 8.5pt; padding: 5px 4px; }
 												.totals { border-top: 2px solid #000; padding-top: 8px; font-size: 12px; color: #000; }
 												.totals div { display: flex; justify-content: space-between; margin-bottom: 4px; }
 												.totals .final { font-weight: bold; font-size: 14px; border-top: 1px solid #000; padding-top: 4px; }
@@ -1979,11 +1991,12 @@ export default function EstoquePedidosPage() {
 											<table>
 												<thead>
 													<tr>
-														<th style="border: 1px solid #000; padding: 4px; text-align: left; font-size: 8.5pt; color: #000;">Sabor (cx)</th>
+														<th style="border: 1px solid #000; padding: 5px 4px; text-align: left; font-size: 8.5pt; color: #000;">Sabor (cx)</th>
 														${storeHeadersHtml}
-														<th style="border: 1px solid #000; padding: 4px; font-size: 8.5pt; color: #000;">Total</th>
-														<th style="border: 1px solid #000; padding: 4px; font-size: 8.5pt; color: #000;">Meta</th>
-														<th style="border: 1px solid #000; padding: 4px; font-size: 8.5pt; color: #000;">A Pedir</th>
+														<th style="border: 1px solid #000; padding: 5px 4px; font-size: 8.5pt; color: #000;">Total</th>
+														<th style="border: 1px solid #000; padding: 5px 4px; font-size: 8.5pt; color: #000;">Meta</th>
+														<th style="border: 1px solid #000; padding: 5px 4px; font-size: 8.5pt; color: #000;">A Pedir</th>
+														<th style="border: 1px solid #000; padding: 5px 4px; font-size: 8.5pt; color: #000; width: 55px;">Ajustes</th>
 													</tr>
 												</thead>
 												<tbody>${rowsHtml}</tbody>
@@ -2163,7 +2176,7 @@ export default function EstoquePedidosPage() {
 											</div>
 
 											{/* Visão de Impressão da Tabela Simplificada */}
-											<div className="hidden print:block w-full text-black font-sans text-[8.5pt] leading-tight max-w-full mx-auto">
+											<div className="hidden print:block w-full text-black font-sans text-[8.5pt] leading-tight max-w-[96%] mx-auto">
 												<div className="mb-2 text-center">
 													<h2 className="text-[11.5pt] font-black uppercase tracking-wider text-black">
 														Relatório de Pedido Parcial de Estoque
@@ -2185,6 +2198,7 @@ export default function EstoquePedidosPage() {
 															<th className="border border-black px-1.5 py-1 text-center text-black">Estoque</th>
 															<th className="border border-black px-1.5 py-1 text-center text-black">Meta</th>
 															<th className="border border-black px-1.5 py-1 text-center font-black text-black">A Pedir</th>
+															<th className="border border-black px-1.5 py-1 text-center font-black text-black w-14">Ajustes</th>
 														</tr>
 													</thead>
 													<tbody>
@@ -2198,26 +2212,27 @@ export default function EstoquePedidosPage() {
 
 															return (
 																<tr key={key} className="border-b border-black text-black">
-																	<td className="border border-black px-1.5 py-1 font-bold text-left text-black whitespace-nowrap">
+																	<td className="border border-black px-1.5 py-1.5 font-bold text-left text-black whitespace-nowrap text-[9pt]">
 																		{label} <span className="font-bold text-[7.5pt] text-black">({boxSize})</span>
 																	</td>
 																	{STORE_ORDER.map((sId) => {
 																		const store = allData.find((s) => s.id === sId);
 																		return (
-																			<td key={sId} className="border border-black px-1.5 py-1 text-center text-black">
+																			<td key={sId} className="border border-black px-1.5 py-1.5 text-center text-black text-[9.5pt]">
 																				{store?.stock[itemKey] || 0}
 																			</td>
 																		);
 																	})}
-																	<td className="border border-black px-1.5 py-1 text-center font-bold text-black">
+																	<td className="border border-black px-1.5 py-1.5 text-center font-bold text-black text-[9.5pt]">
 																		{totalStock}
 																	</td>
-																	<td className="border border-black px-1.5 py-1 text-center text-black">
+																	<td className="border border-black px-1.5 py-1.5 text-center text-black text-[9.5pt]">
 																		{desired > 0 ? desired : "-"}
 																	</td>
-																	<td className="border border-black px-1.5 py-1 text-center font-black text-black">
+																	<td className="border border-black px-1.5 py-1.5 text-center font-black text-black text-[10.5pt]">
 																		{currentQty}
 																	</td>
+																	<td className="border border-black px-1.5 py-1.5 text-center text-black w-14"></td>
 																</tr>
 															);
 														})}
@@ -2242,9 +2257,10 @@ export default function EstoquePedidosPage() {
 															<td className="border border-black px-1.5 py-1 text-center text-black">
 																{displayedFlavors.reduce((sum, [key]) => sum + (desiredData[key as keyof StockData] || 0), 0)}
 															</td>
-															<td className="border border-black px-1.5 py-1 text-center font-black text-black">
+															<td className="border border-black px-1.5 py-1 text-center font-black text-black text-[10pt]">
 																{totalPackages}
 															</td>
+															<td className="border border-black px-1.5 py-1 text-center text-black w-14"></td>
 														</tr>
 													</tfoot>
 												</table>
