@@ -499,6 +499,17 @@ export default function EstoqueAtualPage() {
 					.gap-2, .gap-9 { gap: 2px !important; }
 					th, td { min-width: 0 !important; width: auto !important; }
 					th span, td span, td div, td th, .font-black, .font-extrabold, .font-bold { font-size: 8.5pt !important; font-weight: normal !important; }
+					.print-box-size {
+						font-size: 6.5pt !important;
+						color: #444444 !important;
+						font-weight: normal !important;
+					}
+					.print-qty-cell,
+					.print-qty-span {
+						font-size: 10.5pt !important;
+						font-weight: bold !important;
+						line-height: 1 !important;
+					}
 					tr {
 						page-break-inside: avoid;
 					}
@@ -630,11 +641,11 @@ export default function EstoqueAtualPage() {
 										<td className="p-3 md:p-5 text-sm md:text-lg font-black text-slate-700 dark:text-slate-200 sticky left-0 bg-slate-100/90 dark:bg-slate-800/90 z-10 border-r border-slate-200 dark:border-slate-700 uppercase">
 											TOTAL DE PACOTES
 										</td>
-										<td className="p-3 md:p-5 text-center border-l border-slate-200 dark:border-slate-700 bg-blue-50/50 dark:bg-blue-900/30">
+										<td className="p-3 md:p-5 text-center border-l border-slate-200 dark:border-slate-700 bg-blue-50/50 dark:bg-blue-900/30 print-qty-cell">
 											<div className="flex justify-center items-center">
 												{overallClosed > 0 || overallOpen === 0 || hideOpen ? (
 													<span
-														className={`pr-1 md:pr-2 text-base md:text-2xl font-black ${
+														className={`pr-1 md:pr-2 text-base md:text-2xl font-black print-qty-span ${
 															overallClosed === 0 && (overallOpen === 0 || hideOpen)
 																? "text-slate-300 dark:text-slate-400"
 																: "text-slate-900 dark:text-slate-100"
@@ -654,11 +665,11 @@ export default function EstoqueAtualPage() {
 											return (
 												<td
 													key={`total-${isTop ? "top" : "bottom"}-${store.id}`}
-													className="p-3 md:p-5 text-center border-l border-slate-200 dark:border-slate-700">
+													className="p-3 md:p-5 text-center border-l border-slate-200 dark:border-slate-700 print-qty-cell">
 													<div className="flex justify-center items-center">
 														{closed > 0 || open === 0 || hideOpen ? (
 															<span
-																className={`pr-1 md:pr-2 text-base md:text-2xl font-black ${
+																className={`pr-1 md:pr-2 text-base md:text-2xl font-black print-qty-span ${
 																	closed === 0 && (open === 0 || hideOpen)
 																		? "text-slate-300 dark:text-slate-400"
 																		: "text-slate-900 dark:text-slate-100"
@@ -695,17 +706,17 @@ export default function EstoqueAtualPage() {
 														<div className="flex items-center gap-1.5">
 															<span>{label}</span>
 															{boxSize > 0 && (
-																<span className="!text-xl md:text-base font-black text-slate-400 dark:text-slate-500 normal-case">
+																<span className="!text-xl md:text-base font-black text-slate-400 dark:text-slate-500 normal-case print-box-size">
 																	({boxSize})
 																</span>
 															)}
 														</div>
 													</td>
-													<td className="p-3 md:p-6 text-center border-l border-slate-100 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-800/40">
+													<td className="p-3 md:p-6 text-center border-l border-slate-100 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-800/40 print-qty-cell">
 														<div className="flex justify-center items-center">
 															{itemClosedTotal > 0 || itemOpenTotal === 0 || hideOpen ? (
 																<span
-																	className={`pr-1 md:pr-2 text-base md:text-2xl font-black ${
+																	className={`pr-1 md:pr-2 text-base md:text-2xl font-black print-qty-span ${
 																		itemClosedTotal === 0 && (itemOpenTotal === 0 || hideOpen)
 																			? "text-slate-300 dark:text-slate-400"
 																			: "text-slate-900 dark:text-slate-100"
@@ -726,11 +737,11 @@ export default function EstoqueAtualPage() {
 														return (
 															<td
 																key={store.id}
-																className="p-3 md:p-6 text-center border-l border-slate-100 dark:border-slate-800">
+																className="p-3 md:p-6 text-center border-l border-slate-100 dark:border-slate-800 print-qty-cell">
 																<div className="flex justify-center items-center">
 																	{qty > 0 || openCount === 0 || hideOpen ? (
 																		<span
-																			className={`pr-1 md:pr-2 text-base md:text-2xl font-black ${
+																			className={`pr-1 md:pr-2 text-base md:text-2xl font-black print-qty-span ${
 																				qty === 0 && (openCount === 0 || hideOpen)
 																					? "text-slate-300 dark:text-slate-400"
 																					: "text-slate-900 dark:text-slate-100"
