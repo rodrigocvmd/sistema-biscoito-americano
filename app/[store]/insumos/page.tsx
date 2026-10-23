@@ -59,6 +59,7 @@ export default function SuppliesPage({ params }: { params: Promise<{ store: stri
 		urgency: UrgencyLevel;
 		quantity: string;
 	} | null>(null);
+	const [duplicateModalOrder, setDuplicateModalOrder] = useState<SupplyOrder | null>(null);
 	const [savingEdit, setSavingEdit] = useState(false);
 	const [sortOrder, setSortOrder] = useState<"urgency" | "date" | "alphabetical">("urgency");
 
@@ -141,13 +142,24 @@ export default function SuppliesPage({ params }: { params: Promise<{ store: stri
 
 	const handleAddOrder = async (e: React.FormEvent) => {
 		e.preventDefault();
-		if (!newName.trim()) return;
+		const trimmedName = newName.trim();
+		if (!trimmedName) return;
+
+		// Verifica se o insumo já está na lista de pendentes
+		const existingOrder = pendingOrders.find(
+			(o) => normalizeString(o.name) === normalizeString(trimmedName),
+		);
+
+		if (existingOrder) {
+			setDuplicateModalOrder(existingOrder);
+			return;
+		}
 
 		setAdding(true);
 		try {
 			const ordersRef = collection(db, "stores", store, "supplyOrders");
 			await addDoc(ordersRef, {
-				name: newName.trim().toUpperCase(),
+				name: trimmedName.toUpperCase(),
 				quantity: newQuantity.trim(),
 				urgency: isUrgent ? "Urgente" : "Normal",
 				status: "pending",
@@ -717,6 +729,51 @@ export default function SuppliesPage({ params }: { params: Promise<{ store: stri
 								disabled={savingEdit}
 								className="cursor-pointer px-5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-400 font-bold py-3.5 rounded-2xl transition-all text-sm">
 								Cancelar
+							</button>
+						</div>
+					</div>
+				</div>
+			)}
+
+			{/* Modal de Insumo Já Existente na Lista */}
+			{duplicateModalOrder && (
+				<div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
+					<div className="bg-white dark:bg-slate-900 rounded-3xl p-6 sm:p-8 max-w-sm w-full shadow-2xl animate-in zoom-in-95 duration-200 border border-slate-200 dark:border-slate-800">
+						<div className="bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 w-16 h-16 rounded-2xl flex items-center justify-center mb-6 mx-auto">
+							<AlertTriangle size={32} />
+						</div>
+						<h3 className="text-xl font-black text-slate-800 dark:text-slate-200 text-center mb-2">
+							Insumo Já na Lista
+						</h3>
+						<p className="text-slate-500 dark:text-slate-400 text-center font-medium text-sm mb-6">
+							O insumo <strong className="text-slate-800 dark:text-slate-100 font-black">&quot;{duplicateModalOrder.name}&quot;</strong> já consta nos pedidos pendentes desta loja.
+							<br />
+							Deseja editar o pedido dele?
+						</p>
+						<div className="flex flex-col gap-3">
+							<button
+								onClick={() => {
+									const orderToEdit = duplicateModalOrder;
+									setDuplicateModalOrder(null);
+									setEditingOrder({
+										id: orderToEdit.id,
+										name: orderToEdit.name,
+										urgency: orderToEdit.urgency,
+										quantity: orderToEdit.quantity || "",
+									});
+									setNewName("");
+									setNewQuantity("");
+									setIsUrgent(false);
+									setIsDropdownOpen(false);
+								}}
+								className="cursor-pointer w-full bg-blue-600 hover:bg-blue-700 text-white font-black py-3.5 rounded-2xl transition-all shadow-lg shadow-blue-100 dark:shadow-none flex items-center justify-center gap-2 text-sm">
+								<Edit2 size={16} />
+								Sim, editar pedido
+							</button>
+							<button
+								onClick={() => setDuplicateModalOrder(null)}
+								className="cursor-pointer w-full bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-400 font-black py-3.5 rounded-2xl transition-all text-sm">
+								Não, fechar
 							</button>
 						</div>
 					</div>

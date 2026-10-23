@@ -336,6 +336,13 @@ export default function InsumosLojasPage() {
 				return isPendA - isPendB;
 			}
 
+			// Insumos conferidos (checked) ficam sempre abaixo dos não-conferidos
+			const isCheckedA = a.checkedByGerencia ? 1 : 0;
+			const isCheckedB = b.checkedByGerencia ? 1 : 0;
+			if (isCheckedA !== isCheckedB) {
+				return isCheckedA - isCheckedB;
+			}
+
 			const idxA = orderIds.indexOf(a.id);
 			const idxB = orderIds.indexOf(b.id);
 			if (idxA === -1 && idxB === -1) return 0;
@@ -350,7 +357,16 @@ export default function InsumosLojasPage() {
 		store: FullStoreData,
 		orderId: string,
 		action: "top" | "up" | "down" | "bottom",
+		e?: React.MouseEvent,
 	) => {
+		// Impede que o foco/scroll da página pule
+		if (e) {
+			(e.currentTarget as HTMLElement)?.blur?.();
+		}
+
+		// Grava a posição de scroll atual da janela antes de qualquer reordenação
+		const scrollY = window.scrollY;
+
 		const currentOrders = getStoreDisplayOrders(store);
 		const currentIndex = currentOrders.findIndex((o) => o.id === orderId);
 		if (currentIndex === -1) return;
@@ -366,11 +382,14 @@ export default function InsumosLojasPage() {
 			if (currentIndex === currentOrders.length - 1) return;
 			targetIndex = currentIndex + 1;
 		} else if (action === "bottom") {
-			if (currentIndex === currentOrders.length - 1) return;
-			targetIndex = currentOrders.length - 1;
+			// Deve ir para o final, acima apenas de insumos pendentes e insumos com check
+			// Encontra o primeiro índice que é ou pendente ou checked (exceto o próprio item)
+			const otherOrders = currentOrders.filter((o) => o.id !== orderId);
+			const firstExcludedIdx = otherOrders.findIndex(
+				(o) => o.isPendingSupply || o.checkedByGerencia,
+			);
+			targetIndex = firstExcludedIdx === -1 ? otherOrders.length : firstExcludedIdx;
 		}
-
-		if (targetIndex === currentIndex) return;
 
 		const newOrders = [...currentOrders];
 		const [movedOrder] = newOrders.splice(currentIndex, 1);
@@ -382,15 +401,44 @@ export default function InsumosLojasPage() {
 			[store.id]: finalIds,
 		}));
 		setInsumosSort("manual");
+
+		if (action === "top") {
+			requestAnimationFrame(() => {
+				window.scrollTo({ top: scrollY, behavior: "instant" as any });
+			});
+		}
 	};
 
 	// Toggle check simples na visualização da gerência
-	const handleToggleCheck = async (storeId: string, orderId: string, currentChecked: boolean) => {
+	const handleToggleCheck = async (
+		storeId: string,
+		orderId: string,
+		currentChecked: boolean,
+		store: FullStoreData,
+	) => {
 		try {
+			const willCheck = !currentChecked;
 			const orderRef = doc(db, "stores", storeId, "supplyOrders", orderId);
 			await updateDoc(orderRef, {
-				checkedByGerencia: !currentChecked,
+				checkedByGerencia: willCheck,
 			});
+
+			// Se foi marcado como conferido (checked), mover para o final na lista manual
+			// ficando acima apenas dos insumos pendentes
+			const currentOrders = getStoreDisplayOrders(store);
+			const otherIds = currentOrders.filter((o) => o.id !== orderId);
+
+			if (willCheck) {
+				// Encontra onde começam os insumos pendentes
+				const firstPendingIdx = otherIds.findIndex((o) => o.isPendingSupply);
+				const insertIdx = firstPendingIdx === -1 ? otherIds.length : firstPendingIdx;
+				otherIds.splice(insertIdx, 0, currentOrders.find((o) => o.id === orderId)!);
+				const finalIds = otherIds.map((o) => o.id);
+				setManualOrderMap((prev) => ({
+					...prev,
+					[storeId]: finalIds,
+				}));
+			}
 		} catch (error) {
 			console.error("Erro ao alternar check:", error);
 		}
@@ -1045,7 +1093,7 @@ export default function InsumosLojasPage() {
 																<button
 																	type="button"
 																	onClick={() =>
-																		handleToggleCheck(store.id, order.id, isChecked)
+																		handleToggleCheck(store.id, order.id, isChecked, store)
 																	}
 																	className={`cursor-pointer p-2.5 rounded-xl border transition-all shrink-0 self-center ${
 																		isChecked
@@ -1158,25 +1206,29 @@ export default function InsumosLojasPage() {
 															{/* Botões de Reordenação Simples */}
 															<div className="flex items-center gap-1 shrink-0">
 																<button
-																	onClick={() => handleReorderOrder(store, order.id, "top")}
+																	type="button"
+																	onClick={(e) => handleReorderOrder(store, order.id, "top", e)}
 																	className="p-1.5 hover:text-blue-600 cursor-pointer text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-all"
 																	title="Mandar para o topo">
 																	<ArrowUpToLine size={16} />
 																</button>
 																<button
-																	onClick={() => handleReorderOrder(store, order.id, "up")}
+																	type="button"
+																	onClick={(e) => handleReorderOrder(store, order.id, "up", e)}
 																	className="p-1.5 hover:text-blue-600 cursor-pointer text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-all"
 																	title="Subir">
 																	<ArrowUp size={16} />
 																</button>
 																<button
-																	onClick={() => handleReorderOrder(store, order.id, "down")}
+																	type="button"
+																	onClick={(e) => handleReorderOrder(store, order.id, "down", e)}
 																	className="p-1.5 hover:text-blue-600 cursor-pointer text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-all"
 																	title="Descer">
 																	<ArrowDown size={16} />
 																</button>
 																<button
-																	onClick={() => handleReorderOrder(store, order.id, "bottom")}
+																	type="button"
+																	onClick={(e) => handleReorderOrder(store, order.id, "bottom", e)}
 																	className="p-1.5 hover:text-blue-600 cursor-pointer text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-all"
 																	title="Mandar para o fundo">
 																	<ArrowDownToLine size={16} />
