@@ -21,6 +21,7 @@ import {
 	LancamentoFinanceiro,
 	HorarioSemanaLoja,
 	HORARIO_PADRAO_SEMANA,
+	GastoPessoal,
 } from "@/types/funcionarios";
 import { StoreId } from "@/types";
 
@@ -28,6 +29,7 @@ const FUNCIONARIOS_COLLECTION = "funcionarios";
 const ESCALAS_COLLECTION = "escalas";
 const FINANCEIRO_COLLECTION = "financeiro_lancamentos";
 const LOJAS_HORARIOS_COLLECTION = "lojas_horarios";
+const GASTOS_PESSOAIS_COLLECTION = "gastos_pessoais";
 
 // ==================== FUNCIONÁRIOS ====================
 
@@ -426,4 +428,61 @@ export const saveLojaHorarios = async (lojaId: StoreId, horarios: HorarioSemanaL
 		{ merge: true }
 	);
 };
+
+// ==================== GASTOS PESSOAIS ====================
+
+export const subscribeGastosPessoais = (
+	callback: (data: GastoPessoal[]) => void
+) => {
+	const q = query(
+		collection(db, GASTOS_PESSOAIS_COLLECTION),
+		orderBy("data", "desc")
+	);
+
+	return onSnapshot(
+		q,
+		(snapshot) => {
+			const list: GastoPessoal[] = snapshot.docs.map((docSnap) => ({
+				id: docSnap.id,
+				...(docSnap.data() as Omit<GastoPessoal, "id">),
+			}));
+			callback(list);
+		},
+		(error) => {
+			console.error("Erro ao escutar gastos pessoais:", error);
+		}
+	);
+};
+
+export const createGastoPessoal = async (
+	data: Omit<GastoPessoal, "id" | "createdAt" | "updatedAt">
+) => {
+	const payload = sanitizeData({
+		...data,
+		valor: Number(data.valor) || 0,
+		createdAt: serverTimestamp(),
+		updatedAt: serverTimestamp(),
+	});
+	return await addDoc(collection(db, GASTOS_PESSOAIS_COLLECTION), payload);
+};
+
+export const updateGastoPessoal = async (
+	id: string,
+	data: Partial<Omit<GastoPessoal, "id">>
+) => {
+	const ref = doc(db, GASTOS_PESSOAIS_COLLECTION, id);
+	const rawPayload: Record<string, any> = {
+		...data,
+		updatedAt: serverTimestamp(),
+	};
+	if (data.valor !== undefined) rawPayload.valor = Number(data.valor) || 0;
+	const payload = sanitizeData(rawPayload);
+	return await updateDoc(ref, payload);
+};
+
+export const deleteGastoPessoal = async (id: string) => {
+	const ref = doc(db, GASTOS_PESSOAIS_COLLECTION, id);
+	return await deleteDoc(ref);
+};
+
 

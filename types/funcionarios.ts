@@ -200,3 +200,17 @@ export const TIPO_LANCAMENTO_CONFIG: Record<
 		isProvento: false, // Baixa
 	},
 };
+
+export interface GastoPessoal {
+	id: string;
+	nome: string;
+	valor: number;
+	responsavel: "Rodrigo" | "Ana" | "Edson";
+	data: string; // YYYY-MM-DD
+	mesReferencia: string; // YYYY-MM
+	observacoes?: string;
+	comprovanteUrl?: string;
+	createdAt?: any;
+	updatedAt?: any;
+}
+
