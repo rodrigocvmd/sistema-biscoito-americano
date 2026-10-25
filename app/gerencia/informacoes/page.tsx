@@ -18,6 +18,8 @@ import {
 	Globe,
 	Loader2,
 	CheckCircle2,
+	Copy,
+	Check,
 } from "lucide-react";
 
 const STORES: { id: StoreId; name: string }[] = [
@@ -58,6 +60,22 @@ export default function InformacoesPage() {
 	const [formData, setFormData] = useState<LojaInfo>({ ...DEFAULT_LOJA_INFO });
 	const [isSaving, setIsSaving] = useState(false);
 	const [saveSuccess, setSaveSuccess] = useState(false);
+
+	// Copy feedback state
+	const [copiedKey, setCopiedKey] = useState<string | null>(null);
+
+	const handleCopy = async (key: string, text: string) => {
+		if (!text || !text.trim()) return;
+		try {
+			await navigator.clipboard.writeText(text.trim());
+			setCopiedKey(key);
+			setTimeout(() => {
+				setCopiedKey((curr) => (curr === key ? null : curr));
+			}, 2000);
+		} catch (err) {
+			console.error("Erro ao copiar texto:", err);
+		}
+	};
 
 	useEffect(() => {
 		const unsubscribe = subscribeLojasInfo((data) => {
@@ -190,9 +208,25 @@ export default function InformacoesPage() {
 											</td>
 											<td className="py-4 px-6 text-sm">
 												{hasValue ? (
-													<span className="font-semibold text-slate-800 dark:text-slate-200 select-all">
-														{val}
-													</span>
+													<button
+														type="button"
+														onClick={() => handleCopy(field.key, val)}
+														title="Clique para copiar"
+														className="cursor-pointer group inline-flex items-center gap-2.5 py-1 px-2.5 -ml-2.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-all text-left">
+														<span className="font-semibold text-slate-800 dark:text-slate-200">
+															{val}
+														</span>
+														{copiedKey === field.key ? (
+															<span className="inline-flex items-center gap-1 text-xs font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded-lg border border-emerald-200 dark:border-emerald-800 animate-in fade-in zoom-in-95 duration-150">
+																<Check size={13} />
+																<span>Copiado!</span>
+															</span>
+														) : (
+															<span className="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 transition-opacity">
+																<Copy size={14} />
+															</span>
+														)}
+													</button>
 												) : (
 													<span className="text-slate-400 dark:text-slate-600 italic font-normal text-xs">
 														(Não informado)
