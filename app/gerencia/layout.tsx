@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ChevronLeft, ZoomIn, ZoomOut, LayoutDashboard, Package, Store, Users, DollarSign } from "lucide-react";
+import { ChevronLeft, ZoomIn, ZoomOut, LayoutDashboard, Package, Store, Users, DollarSign, Info } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -79,6 +79,16 @@ export default function GerenciaLayout({
 									<ZoomIn size={18} />
 								</button>
 							</div>
+							<Link
+								href="/gerencia/informacoes"
+								title="Informações das Lojas"
+								className={`cursor-pointer p-2 rounded-xl border transition-all ${
+									pathname === "/gerencia/informacoes"
+										? "bg-blue-600 text-white border-blue-600 shadow-sm"
+										: "bg-slate-50 dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 border-slate-200 dark:border-slate-700"
+								}`}>
+								<Info size={18} />
+							</Link>
 						</div>
 					</div>
 
@@ -101,6 +111,16 @@ export default function GerenciaLayout({
 									<ZoomIn size={18} />
 								</button>
 							</div>
+							<Link
+								href="/gerencia/informacoes"
+								title="Informações das Lojas"
+								className={`cursor-pointer p-2.5 rounded-xl border transition-all ${
+									pathname === "/gerencia/informacoes"
+										? "bg-blue-600 text-white border-blue-600 shadow-sm"
+										: "bg-slate-50 dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 border-slate-200 dark:border-slate-700 hover:bg-white dark:hover:bg-slate-700"
+								}`}>
+								<Info size={18} />
+							</Link>
 						</div>
 
 						<div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-xl w-full sm:w-auto">

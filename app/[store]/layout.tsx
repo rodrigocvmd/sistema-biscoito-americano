@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { STORE_NAMES, StoreId } from "@/types";
-import { ChevronLeft, ClipboardList, Package, ZoomIn, ZoomOut } from "lucide-react";
+import { ChevronLeft, ClipboardList, Package, ZoomIn, ZoomOut, Info } from "lucide-react";
 import { notFound, usePathname } from "next/navigation";
 import { use, useState, useEffect } from "react";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -79,6 +79,12 @@ export default function StoreLayout({
 									<ZoomIn size={28} />
 								</button>
 							</div>
+							<Link
+								href="/gerencia/informacoes"
+								title="Informações das Lojas"
+								className="cursor-pointer p-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:text-red-600 dark:hover:text-red-400 transition-all">
+								<Info size={24} />
+							</Link>
 						</div>
 					</div>
 
@@ -101,6 +107,12 @@ export default function StoreLayout({
 									<ZoomIn size={16} />
 								</button>
 							</div>
+							<Link
+								href="/gerencia/informacoes"
+								title="Informações das Lojas"
+								className="hidden sm:flex items-center justify-center cursor-pointer p-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-white dark:hover:bg-slate-700 transition-all h-fit my-auto">
+								<Info size={18} />
+							</Link>
 						</div>
 
 						<nav id="estoqueInsumosBtn" className="flex gap-6 sm:gap-8 border-t sm:border-t-0 border-slate-100 dark:border-slate-800 justify-center sm:justify-start flex-1 sm:flex-none">
