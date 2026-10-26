@@ -981,7 +981,7 @@ export default function InsumosLojasPage() {
 														<strong className="font-black text-lg md:text-xl">
 															{pendingSupplyCount}
 														</strong>{" "}
-														{pendingSupplyCount === 1 ? "com pendência" : "com pendência"}
+														{pendingSupplyCount === 1 ? "sem estoque" : "sem estoque"}
 													</span>
 												</p>
 											)}

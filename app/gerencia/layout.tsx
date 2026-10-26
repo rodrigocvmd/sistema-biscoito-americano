@@ -5,6 +5,7 @@ import { ChevronLeft, ZoomIn, ZoomOut, LayoutDashboard, Package, Store, Users, D
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { NotificationBell } from "@/components/notifications/notification-bell";
 
 export default function GerenciaLayout({
 	children,
@@ -79,6 +80,7 @@ export default function GerenciaLayout({
 									<ZoomIn size={18} />
 								</button>
 							</div>
+							<NotificationBell iconSize={18} variant="blue" />
 							<Link
 								href="/gerencia/informacoes"
 								title="Informações das Lojas"
@@ -111,6 +113,7 @@ export default function GerenciaLayout({
 									<ZoomIn size={18} />
 								</button>
 							</div>
+							<NotificationBell iconSize={18} variant="blue" />
 							<Link
 								href="/gerencia/informacoes"
 								title="Informações das Lojas"

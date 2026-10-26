@@ -6,6 +6,7 @@ import { ChevronLeft, ClipboardList, Package, ZoomIn, ZoomOut, Info } from "luci
 import { notFound, usePathname } from "next/navigation";
 import { use, useState, useEffect } from "react";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { NotificationBell } from "@/components/notifications/notification-bell";
 
 export default function StoreLayout({
 	children,
@@ -79,6 +80,7 @@ export default function StoreLayout({
 									<ZoomIn size={28} />
 								</button>
 							</div>
+							<NotificationBell iconSize={24} variant="red" />
 							<Link
 								href="/gerencia/informacoes"
 								title="Informações das Lojas"
@@ -107,6 +109,7 @@ export default function StoreLayout({
 									<ZoomIn size={16} />
 								</button>
 							</div>
+							<NotificationBell iconSize={18} variant="red" className="hidden sm:flex h-fit my-auto" />
 							<Link
 								href="/gerencia/informacoes"
 								title="Informações das Lojas"

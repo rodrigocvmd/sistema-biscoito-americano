@@ -27,6 +27,8 @@ export const viewport: Viewport = {
 	maximumScale: 1,
 };
 
+import { NotificationProvider } from "@/components/notifications/notification-provider";
+
 export default function RootLayout({
 	children,
 }: Readonly<{
@@ -42,7 +44,9 @@ export default function RootLayout({
 					disableTransitionOnChange
 					storageKey="biscoito-theme"
 				>
-					{children}
+					<NotificationProvider>
+						{children}
+					</NotificationProvider>
 				</ThemeProvider>
 			</body>
 		</html>

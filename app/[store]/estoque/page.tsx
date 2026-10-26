@@ -13,7 +13,8 @@ import {
 	serverTimestamp,
 	limit,
 } from "firebase/firestore";
-import { STOCK_LABELS, StockData, formatDate, StockMovement, sortStockEntries, normalizeStockData } from "@/types";
+import { STOCK_LABELS, StockData, formatDate, StockMovement, sortStockEntries, normalizeStockData, STORE_NAMES, StoreId } from "@/types";
+import { createNotification } from "@/lib/notifications-service";
 import {
 	Plus,
 	CheckCircle2,
@@ -268,6 +269,25 @@ export default function StockMovementsPage({ params }: { params: Promise<{ store
 				isUnits: newIsUnits,
 				timestamp: serverTimestamp(),
 			});
+
+			// Se a abertura resultou em 0 pacotes fechados (último pacote aberto), gera notificação no sistema
+			if (afterStock === 0) {
+				const storeLabel = STORE_NAMES[store as StoreId] || store;
+				const itemLabel = STOCK_LABELS[openItemId] || openItemId;
+				try {
+					await createNotification({
+						type: "ultimo_pacote_aberto",
+						title: "Último Pacote Aberto",
+						message: `O último pacote de ${itemLabel} foi aberto na loja ${storeLabel} (0 pacotes fechados restantes).`,
+						storeId: store,
+						storeName: storeLabel,
+						itemId: openItemId,
+						itemName: itemLabel,
+					});
+				} catch (notifErr) {
+					console.error("Erro ao gerar notificação de último pacote aberto:", notifErr);
+				}
+			}
 
 			setOpenMessage({ type: "success", text: "Abertura registrada com sucesso!" });
 			setOpenItemId("");
