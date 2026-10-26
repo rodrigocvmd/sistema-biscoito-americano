@@ -6,7 +6,6 @@ import { ChevronLeft, ClipboardList, Package, ZoomIn, ZoomOut, Info } from "luci
 import { notFound, usePathname } from "next/navigation";
 import { use, useState, useEffect } from "react";
 import { ThemeToggle } from "@/components/theme-toggle";
-import { NotificationBell } from "@/components/notifications/notification-bell";
 
 export default function StoreLayout({
 	children,
@@ -80,11 +79,14 @@ export default function StoreLayout({
 									<ZoomIn size={28} />
 								</button>
 							</div>
-							<NotificationBell iconSize={24} variant="red" />
 							<Link
-								href="/gerencia/informacoes"
-								title="Informações das Lojas"
-								className="cursor-pointer p-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:text-red-600 dark:hover:text-red-400 transition-all">
+								href={`/${store}/informacoes`}
+								title={`Informações • ${storeName}`}
+								className={`cursor-pointer p-2 rounded-xl border transition-all ${
+									pathname.startsWith(`/${store}/informacoes`)
+										? "bg-red-600 text-white border-red-600 shadow-sm"
+										: "bg-slate-50 dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:text-red-600 dark:hover:text-red-400 border-slate-200 dark:border-slate-700"
+								}`}>
 								<Info size={24} />
 							</Link>
 						</div>
@@ -109,11 +111,14 @@ export default function StoreLayout({
 									<ZoomIn size={16} />
 								</button>
 							</div>
-							<NotificationBell iconSize={18} variant="red" className="hidden sm:flex h-fit my-auto" />
 							<Link
-								href="/gerencia/informacoes"
-								title="Informações das Lojas"
-								className="hidden sm:flex items-center justify-center cursor-pointer p-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-white dark:hover:bg-slate-700 transition-all h-fit my-auto">
+								href={`/${store}/informacoes`}
+								title={`Informações • ${storeName}`}
+								className={`hidden sm:flex items-center justify-center cursor-pointer p-2 rounded-xl border transition-all h-fit my-auto ${
+									pathname.startsWith(`/${store}/informacoes`)
+										? "bg-red-600 text-white border-red-600 shadow-sm"
+										: "bg-slate-50 dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-white dark:hover:bg-slate-700 border-slate-200 dark:border-slate-700"
+								}`}>
 								<Info size={18} />
 							</Link>
 						</div>
