@@ -969,14 +969,14 @@ export default function InsumosLojasPage() {
 														<strong className="text-lg md:text-xl font-black text-blue-600 dark:text-blue-400">
 															{pendingCount}
 														</strong>{" "}
-														{pendingCount === 1 ? "insumo solicitado" : "insumos solicitados"}
+														{pendingCount === 1 ? "pendente" : "pendentes"}
 													</p>
 												)}
 											</div>
 
 											{pendingSupplyCount > 0 && (
 												<p className="font-bold text-xs md:text-sm uppercase tracking-wider text-amber-600 dark:text-amber-400 flex items-center gap-1.5">
-													<Clock size={15} />
+													
 													<span>
 														<strong className="font-black text-lg md:text-xl">
 															{pendingSupplyCount}

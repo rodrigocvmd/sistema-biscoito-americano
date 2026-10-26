@@ -60,10 +60,6 @@ export default function StockPage({ params }: { params: Promise<{ store: string 
 
 	const sortedItems = [...(Object.entries(STOCK_LABELS) as [keyof StockData, string][])].sort((a, b) => {
 		if (sortBy === "name") {
-			const isSorveteA = isSorvete(a[0]) || isSorvete(a[1]);
-			const isSorveteB = isSorvete(b[0]) || isSorvete(b[1]);
-			if (isSorveteA && !isSorveteB) return 1;
-			if (!isSorveteA && isSorveteB) return -1;
 			return a[1].localeCompare(b[1]);
 		}
 		if (sortBy === "quantity") {

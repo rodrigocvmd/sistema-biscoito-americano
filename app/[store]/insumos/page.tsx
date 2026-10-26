@@ -473,7 +473,7 @@ export default function SuppliesPage({ params }: { params: Promise<{ store: stri
 												</span>
 												{isPendingSupply && (
 													<span className="flex items-center gap-1 bg-amber-500 text-white px-2.5 py-0.5 rounded-md text-[0.6875rem] font-black uppercase tracking-wider shadow-xs">
-														<Clock size={12} /> Sem Estoque	
+														Sem Estoque	
 													</span>
 												)}
 												{isUrgentItem && !isPendingSupply && (

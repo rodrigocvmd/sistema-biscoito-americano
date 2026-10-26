@@ -54,6 +54,8 @@ export const INVENTORY_DATA: InventoryCategory[] = [
 			"GELO",
 			"BARRA KINDER BUENO",
 			"BISCOITO KINDER BUENO",
+			"SORVETE CREME",
+			"SORVETE FLOR DE LEITE",
 		],
 	},
 	{
@@ -654,6 +656,26 @@ export const DEFAULT_INSUMOS_CATALOG: InsumoCatalogItem[] = [
 		localCompra: "Sam's Club / Atacadão",
 		marca: "Ferrero Kinder Bueno",
 		observacoes: "Biscoito / Barra Kinder Bueno",
+	},
+	{
+		id: "sorvete-creme",
+		name: "SORVETE CREME",
+		category: "INSUMOS E CONFEITARIA",
+		valorBom: "R$ 45,00",
+		valorMaximo: "R$ 60,00",
+		localCompra: "Distribuidora de Sorvetes",
+		marca: "Nestlé / Kibon / Fornecedor Local",
+		observacoes: "Balde ou caixa de sorvete sabor creme",
+	},
+	{
+		id: "sorvete-flor-de-leite",
+		name: "SORVETE FLOR DE LEITE",
+		category: "INSUMOS E CONFEITARIA",
+		valorBom: "R$ 45,00",
+		valorMaximo: "R$ 60,00",
+		localCompra: "Distribuidora de Sorvetes",
+		marca: "Nestlé / Kibon / Fornecedor Local",
+		observacoes: "Balde ou caixa de sorvete sabor flor de leite",
 	},
 
 	// CALDAS

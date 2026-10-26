@@ -28,10 +28,6 @@ export interface StockData {
 	americanCookie: number;
 	oreo: number;
 	cocoDourado: number;
-	sorveteCremeCx: number;
-	sorveteCremePt: number;
-	sorveteFlorCx: number;
-	sorveteFlorPt: number;
 }
 
 export const STOCK_LABELS: Record<keyof StockData, string> = {
@@ -55,23 +51,10 @@ export const STOCK_LABELS: Record<keyof StockData, string> = {
 	americanCookie: "AMERICAN COOKIE",
 	oreo: "OREO",
 	cocoDourado: "COCO DOURADO",
-	sorveteCremeCx: "SORVETE CREME (CAIXA)",
-	sorveteCremePt: "SORVETE CREME (POTE)",
-	sorveteFlorCx: "SORVETE FLOR (CAIXA)",
-	sorveteFlorPt: "SORVETE FLOR (POTE)",
 };
 
-export const isSorvete = (keyOrLabel: string) => {
-	const str = keyOrLabel.toLowerCase();
-	return (
-		str.includes("sorvete") ||
-		str === "sorvetecaixa" ||
-		str === "sorvetepote" ||
-		str === "sorvetecremecx" ||
-		str === "sorvetecremept" ||
-		str === "sorveteflorcx" ||
-		str === "sorveteflorpt"
-	);
+export const isSorvete = (keyOrLabel: string = "") => {
+	return keyOrLabel.toLowerCase().includes("sorvete");
 };
 
 export const normalizeSearchText = (str: string = "") => {
@@ -82,29 +65,21 @@ export const normalizeSearchText = (str: string = "") => {
 		.trim();
 };
 
-
 export const normalizeStockData = (raw: any): Partial<StockData> => {
 	if (!raw) return {};
 	const stock = { ...raw };
-	if (stock.sorveteCremeCx === undefined && stock.sorveteCaixa !== undefined) {
-		stock.sorveteCremeCx = stock.sorveteCaixa;
-	}
-	if (stock.sorveteCremePt === undefined && stock.sorvetePote !== undefined) {
-		stock.sorveteCremePt = stock.sorvetePote;
-	}
 	delete stock.brookie;
 	delete stock.sorveteCaixa;
 	delete stock.sorvetePote;
+	delete stock.sorveteCremeCx;
+	delete stock.sorveteCremePt;
+	delete stock.sorveteFlorCx;
+	delete stock.sorveteFlorPt;
 	return stock;
 };
 
 export const sortStockEntries = (entries: [string, string][]): [keyof StockData, string][] => {
-	return (entries as [keyof StockData, string][]).sort(([keyA, labelA], [keyB, labelB]) => {
-		const isSorveteA = isSorvete(keyA) || isSorvete(labelA);
-		const isSorveteB = isSorvete(keyB) || isSorvete(labelB);
-
-		if (isSorveteA && !isSorveteB) return 1;
-		if (!isSorveteA && isSorveteB) return -1;
+	return (entries as [keyof StockData, string][]).sort(([, labelA], [, labelB]) => {
 		return labelA.localeCompare(labelB);
 	});
 };
