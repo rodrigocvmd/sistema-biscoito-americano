@@ -38,13 +38,14 @@ export default function InsumosLayout({ children }: { children: React.ReactNode 
 	const tabs = [
 		{ id: "lojas", label: "LOJAS", href: "/gerencia/insumos/lojas" },
 		{ id: "pedidos", label: "PEDIDOS", href: "/gerencia/insumos/pedidos" },
+		{ id: "estoque", label: "ESTOQUE", href: "/gerencia/insumos/estoque" },
 		{ id: "lista", label: "LISTA", href: "/gerencia/insumos/lista" },
 	];
 
 	return (
 		<div className="space-y-6">
 			{/* Tab Selector */}
-			<div className="bg-white dark:bg-slate-900 p-1.5 md:p-2 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex items-center justify-between gap-2 w-full max-w-md mx-auto print:hidden transition-colors">
+			<div className="bg-white dark:bg-slate-900 p-1.5 md:p-2 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex items-center justify-between gap-2 w-full max-w-xl mx-auto print:hidden transition-colors">
 				{tabs.map((tab) => {
 					const isActive = pathname === tab.href || pathname.startsWith(tab.href + "/");
 					return (
