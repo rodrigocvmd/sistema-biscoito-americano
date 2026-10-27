@@ -205,6 +205,21 @@ export default function SuppliesPage({ params }: { params: Promise<{ store: stri
 		}
 	};
 
+	const handleConfirmDelivery = async (orderId: string) => {
+		try {
+			const orderRef = doc(db, "stores", store, "supplyOrders", orderId);
+			const deliveredAt = new Date();
+
+			await updateDoc(orderRef, {
+				status: "delivered",
+				deliveredAt: Timestamp.fromDate(deliveredAt),
+			});
+		} catch (error) {
+			console.error("Erro ao confirmar entrega:", error);
+			alert("Erro ao confirmar entrega. Tente novamente.");
+		}
+	};
+
 	const handleSaveEditOrder = async () => {
 		if (!editingOrder) return;
 		setSavingEdit(true);
@@ -259,24 +274,10 @@ export default function SuppliesPage({ params }: { params: Promise<{ store: stri
 	return (
 		<div className="space-y-8">
 			{/* Mensagem Minimalista e Objetiva de Cronograma */}
-			<div className="bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-950/20 dark:to-orange-950/20 border border-amber-200 dark:border-amber-800/60 rounded-3xl p-4 sm:p-5 flex items-center gap-3.5 shadow-xs">
-				<div className="w-10 h-10 rounded-2xl bg-amber-500/10 dark:bg-amber-400/10 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
-					<Calendar size={20} />
-				</div>
-				<div className="text-xs sm:text-sm text-slate-700 dark:text-slate-200 leading-relaxed">
-					<span className="font-black text-amber-700 dark:text-amber-400 uppercase tracking-wide mr-1.5">
-						Aviso de Cronograma:
-					</span>
-					Os pedidos de insumos da semana devem ser realizados até{" "}
-					<strong className="font-black text-slate-900 dark:text-white underline decoration-amber-400 decoration-2">
-						segunda-feira
-					</strong>
-					. As entregas dos insumos serão realizadas na{" "}
-					<strong className="font-black text-slate-900 dark:text-white underline decoration-amber-400 decoration-2">
-						terça-feira
-					</strong>
-					.
-				</div>
+			<div className="py-2 px-1 text-center sm:text-left">
+				<p className="text-base sm:text-lg font-medium text-slate-800 dark:text-slate-100 leading-relaxed text-center">
+					Solicite os insumos necessários para a semana até <strong className="font-black text-slate-950 dark:text-white">SEGUNDA-FEIRA</strong>. As entregas serão realizadas às <strong className="font-black text-slate-950 dark:text-white">TERÇAS-FEIRAS</strong>.
+				</p>
 			</div>
 
 			{/* Form de Solicitação de Insumo */}
@@ -499,10 +500,6 @@ export default function SuppliesPage({ params }: { params: Promise<{ store: stri
 										className={`p-5 rounded-3xl border transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-4 ${
 											isPendingSupply
 												? "bg-amber-50/40 dark:bg-amber-950/20 border-amber-300 dark:border-amber-800/60 shadow-sm opacity-80"
-												: isUrgentItem
-												? "bg-red-50/40 dark:bg-red-950/20 border-red-200 dark:border-red-900/60 shadow-sm"
-												: isChecked
-												? "bg-blue-50/30 dark:bg-blue-950/20 border-blue-200 dark:border-blue-900/50 shadow-sm"
 												: "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 shadow-sm"
 										}`}>
 										<div className="flex-1 min-w-0">
@@ -514,18 +511,6 @@ export default function SuppliesPage({ params }: { params: Promise<{ store: stri
 												{isPendingSupply && (
 													<span className="flex items-center gap-1 bg-amber-500 text-white px-2.5 py-0.5 rounded-md text-[0.6875rem] font-black uppercase tracking-wider shadow-xs">
 														Sem Estoque
-													</span>
-												)}
-
-												{isUrgentItem && !isPendingSupply && (
-													<span className="flex items-center gap-1 bg-red-600 text-white px-2.5 py-0.5 rounded-md text-[0.6875rem] font-black uppercase tracking-wider shadow-xs animate-pulse">
-														<AlertTriangle size={12} /> Urgente
-													</span>
-												)}
-
-												{isChecked && (
-													<span className="flex items-center gap-1 bg-blue-600 text-white px-2.5 py-0.5 rounded-md text-[0.6875rem] font-black uppercase tracking-wider shadow-xs">
-														<Check size={12} strokeWidth={3} /> Separado pela gerência
 													</span>
 												)}
 											</div>
@@ -564,6 +549,13 @@ export default function SuppliesPage({ params }: { params: Promise<{ store: stri
 												className="flex items-center justify-center p-3 bg-slate-50 dark:bg-slate-800 text-slate-400 dark:text-slate-500 hover:bg-red-50 dark:hover:bg-red-900/30 hover:text-red-600 dark:hover:text-red-400 rounded-2xl transition-all border border-slate-100 dark:border-slate-700 cursor-pointer"
 												title="Cancelar pedido">
 												<Trash2 size={16} />
+											</button>
+
+											<button
+												onClick={() => handleConfirmDelivery(order.id)}
+												className="cursor-pointer bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-black px-4 py-3 rounded-2xl shadow-md shadow-emerald-200 dark:shadow-none transition-all flex items-center justify-center gap-1.5 text-xs sm:text-sm">
+												<CheckCircle2 size={16} />
+												<span>Entregue</span>
 											</button>
 										</div>
 									</div>

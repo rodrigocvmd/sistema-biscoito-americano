@@ -881,15 +881,12 @@ export default function InsumosLojasPage() {
 
 															{/* Botão de Confirmar Entrega Individual: Só aparece quando o check estiver marcado */}
 															{isChecked && (
-																<div className="mt-3 pt-3 border-t border-emerald-200 dark:border-emerald-800/50 flex items-center justify-between gap-2 animate-in fade-in zoom-in-95 duration-150">
-																	<span className="text-[11px] font-bold text-emerald-700 dark:text-emerald-400">
-																		Pronto para envio
-																	</span>
+																<div className="mt-3 pt-3 border-t border-emerald-200 dark:border-emerald-800/50 flex justify-center animate-in fade-in zoom-in-95 duration-150">
 																	<button
 																		type="button"
 																		onClick={() => handleConfirmDelivery(store.id, order)}
-																		className="cursor-pointer bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-black px-4 py-2 rounded-xl shadow-md shadow-emerald-200 dark:shadow-none transition-all flex items-center justify-center gap-1.5 text-xs sm:text-sm">
-																		<CheckCircle2 size={16} />
+																		className="cursor-pointer w-full max-w-xs bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-black py-2.5 px-6 rounded-2xl shadow-md shadow-emerald-200 dark:shadow-none transition-all flex items-center justify-center gap-2 text-sm">
+																		<CheckCircle2 size={18} />
 																		<span>Entregue</span>
 																	</button>
 																</div>
