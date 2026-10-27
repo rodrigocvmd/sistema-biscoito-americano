@@ -36,8 +36,8 @@ export default function InsumosLayout({ children }: { children: React.ReactNode 
 	}, [pathname]);
 
 	const tabs = [
-		{ id: "lojas", label: "LOJAS", href: "/gerencia/insumos/lojas" },
-		{ id: "pedidos", label: "PEDIDOS", href: "/gerencia/insumos/pedidos" },
+		{ id: "lojas", label: "PEDIDOS", href: "/gerencia/insumos/lojas" },
+		{ id: "pedidos", label: "COMPRAR", href: "/gerencia/insumos/pedidos" },
 		{ id: "estoque", label: "ESTOQUE", href: "/gerencia/insumos/estoque" },
 		{ id: "lista", label: "LISTA", href: "/gerencia/insumos/lista" },
 	];

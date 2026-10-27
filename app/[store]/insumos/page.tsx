@@ -18,6 +18,7 @@ import {
 	SupplyOrder,
 	UrgencyLevel,
 	formatDate,
+	formatOnlyDate,
 	STORE_NAMES,
 	StoreId,
 } from "@/types";
@@ -35,6 +36,9 @@ import {
 	Tag,
 	Clock,
 	Minus,
+	Search,
+	Check,
+	Filter,
 } from "lucide-react";
 
 import { use } from "react";
@@ -51,7 +55,7 @@ export default function SuppliesPage({ params }: { params: Promise<{ store: stri
 	const [newQuantity, setNewQuantity] = useState("");
 	const [isUrgent, setIsUrgent] = useState(false);
 	const [adding, setAdding] = useState(false);
-	const [showDelivered, setShowDelivered] = useState(false);
+	const [showDelivered, setShowDelivered] = useState(true);
 	const [orderToCancel, setOrderToCancel] = useState<string | null>(null);
 	const [editingOrder, setEditingOrder] = useState<{
 		id: string;
@@ -62,6 +66,10 @@ export default function SuppliesPage({ params }: { params: Promise<{ store: stri
 	const [duplicateModalOrder, setDuplicateModalOrder] = useState<SupplyOrder | null>(null);
 	const [savingEdit, setSavingEdit] = useState(false);
 	const [sortOrder, setSortOrder] = useState<"urgency" | "date" | "alphabetical">("urgency");
+
+	// Estados de Busca e Filtro no Histórico
+	const [historySearch, setHistorySearch] = useState("");
+	const [historyStatusFilter, setHistoryStatusFilter] = useState<"all" | "delivered" | "cancelled">("all");
 
 	// Persistir ordenação no localStorage da loja
 	useEffect(() => {
@@ -99,22 +107,17 @@ export default function SuppliesPage({ params }: { params: Promise<{ store: stri
 	useEffect(() => {
 		const ordersRef = collection(db, "stores", store, "supplyOrders");
 
-		// Query for Pending
+		// Query para Insumos Pendentes
 		const qPending = query(
 			ordersRef,
 			where("status", "==", "pending"),
 			orderBy("createdAt", "desc"),
 		);
 
-		// Query for Delivered or Cancelled (last 28 days / 4 weeks)
-		const twentyEightDaysAgo = new Date();
-		twentyEightDaysAgo.setDate(twentyEightDaysAgo.getDate() - 28);
-
+		// Query para Insumos Finalizados (Entregues e Cancelados) - sem limite de data para acumular indefinidamente
 		const qDelivered = query(
 			ordersRef,
 			where("status", "in", ["delivered", "cancelled"]),
-			where("deliveredAt", ">=", Timestamp.fromDate(twentyEightDaysAgo)),
-			orderBy("deliveredAt", "desc"),
 		);
 
 		const unsubscribePending = onSnapshot(qPending, (snapshot) => {
@@ -131,6 +134,12 @@ export default function SuppliesPage({ params }: { params: Promise<{ store: stri
 				id: doc.id,
 				...doc.data(),
 			})) as SupplyOrder[];
+			// Ordena por data de entrega/criação decrescente na memória
+			orders.sort((a, b) => {
+				const timeA = a.deliveredAt?.toMillis() || a.createdAt?.toMillis() || 0;
+				const timeB = b.deliveredAt?.toMillis() || b.createdAt?.toMillis() || 0;
+				return timeB - timeA;
+			});
 			setDeliveredOrders(orders);
 		});
 
@@ -163,6 +172,8 @@ export default function SuppliesPage({ params }: { params: Promise<{ store: stri
 				quantity: newQuantity.trim(),
 				urgency: isUrgent ? "Urgente" : "Normal",
 				status: "pending",
+				checkedByGerencia: false,
+				isPendingSupply: false,
 				createdAt: serverTimestamp(),
 			});
 
@@ -178,35 +189,15 @@ export default function SuppliesPage({ params }: { params: Promise<{ store: stri
 		}
 	};
 
-	const handleMarkAsDelivered = async (orderId: string) => {
-		try {
-			const orderRef = doc(db, "stores", store, "supplyOrders", orderId);
-			const deliveredAt = new Date();
-			const expireAt = new Date();
-			expireAt.setDate(deliveredAt.getDate() + 14);
-
-			await updateDoc(orderRef, {
-				status: "delivered",
-				deliveredAt: Timestamp.fromDate(deliveredAt),
-				expireAt: Timestamp.fromDate(expireAt),
-			});
-		} catch (error) {
-			console.error("Erro ao marcar como entregue:", error);
-		}
-	};
-
 	const handleCancelOrder = async () => {
 		if (!orderToCancel) return;
 		try {
 			const orderRef = doc(db, "stores", store, "supplyOrders", orderToCancel);
 			const cancelledAt = new Date();
-			const expireAt = new Date();
-			expireAt.setDate(cancelledAt.getDate() + 14);
 
 			await updateDoc(orderRef, {
 				status: "cancelled",
 				deliveredAt: Timestamp.fromDate(cancelledAt),
-				expireAt: Timestamp.fromDate(expireAt),
 			});
 			setOrderToCancel(null);
 		} catch (error) {
@@ -232,6 +223,30 @@ export default function SuppliesPage({ params }: { params: Promise<{ store: stri
 		}
 	};
 
+	// Cálculo de filtro dos últimos 3 meses ou busca indefinida
+	const threeMonthsAgo = new Date();
+	threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
+	const threeMonthsThreshold = threeMonthsAgo.getTime();
+
+	const isSearchingHistory = historySearch.trim() !== "";
+	const normalizedHistorySearch = normalizeString(historySearch);
+
+	const filteredHistoricalOrders = deliveredOrders.filter((order) => {
+		// Filtro de status
+		if (historyStatusFilter !== "all" && order.status !== historyStatusFilter) {
+			return false;
+		}
+
+		// Se o usuário digitou na busca, pesquisa indefinidamente em todo o histórico
+		if (isSearchingHistory) {
+			return normalizeString(order.name).includes(normalizedHistorySearch);
+		}
+
+		// Se não há termo de busca, exibe apenas os insumos dos últimos 3 meses
+		const orderTime = order.deliveredAt?.toMillis() || order.createdAt?.toMillis() || 0;
+		return orderTime >= threeMonthsThreshold;
+	});
+
 	if (loading) {
 		return (
 			<div className="flex flex-col items-center justify-center py-20 text-slate-400 dark:text-slate-600">
@@ -243,6 +258,27 @@ export default function SuppliesPage({ params }: { params: Promise<{ store: stri
 
 	return (
 		<div className="space-y-8">
+			{/* Mensagem Minimalista e Objetiva de Cronograma */}
+			<div className="bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-950/20 dark:to-orange-950/20 border border-amber-200 dark:border-amber-800/60 rounded-3xl p-4 sm:p-5 flex items-center gap-3.5 shadow-xs">
+				<div className="w-10 h-10 rounded-2xl bg-amber-500/10 dark:bg-amber-400/10 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
+					<Calendar size={20} />
+				</div>
+				<div className="text-xs sm:text-sm text-slate-700 dark:text-slate-200 leading-relaxed">
+					<span className="font-black text-amber-700 dark:text-amber-400 uppercase tracking-wide mr-1.5">
+						Aviso de Cronograma:
+					</span>
+					Os pedidos de insumos da semana devem ser realizados até{" "}
+					<strong className="font-black text-slate-900 dark:text-white underline decoration-amber-400 decoration-2">
+						segunda-feira
+					</strong>
+					. As entregas dos insumos serão realizadas na{" "}
+					<strong className="font-black text-slate-900 dark:text-white underline decoration-amber-400 decoration-2">
+						terça-feira
+					</strong>
+					.
+				</div>
+			</div>
+
 			{/* Form de Solicitação de Insumo */}
 			<section className="bg-white dark:bg-slate-900 p-6 md:p-8 rounded-[32px] shadow-sm border border-slate-200 dark:border-slate-800 transition-colors">
 				<h2 className="text-xl font-bold text-slate-800 dark:text-slate-200 mb-6 flex items-center gap-2">
@@ -376,7 +412,7 @@ export default function SuppliesPage({ params }: { params: Promise<{ store: stri
 						</button>
 					</div>
 
-					{/* Botão Adicionar */}
+					{/* Botão Solicitar */}
 					<div className="md:col-span-2">
 						<button
 							type="submit"
@@ -455,6 +491,7 @@ export default function SuppliesPage({ params }: { params: Promise<{ store: stri
 							.map((order) => {
 								const isUrgentItem = order.urgency === "Urgente";
 								const isPendingSupply = !!order.isPendingSupply;
+								const isChecked = !!order.checkedByGerencia;
 
 								return (
 									<div
@@ -464,6 +501,8 @@ export default function SuppliesPage({ params }: { params: Promise<{ store: stri
 												? "bg-amber-50/40 dark:bg-amber-950/20 border-amber-300 dark:border-amber-800/60 shadow-sm opacity-80"
 												: isUrgentItem
 												? "bg-red-50/40 dark:bg-red-950/20 border-red-200 dark:border-red-900/60 shadow-sm"
+												: isChecked
+												? "bg-blue-50/30 dark:bg-blue-950/20 border-blue-200 dark:border-blue-900/50 shadow-sm"
 												: "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 shadow-sm"
 										}`}>
 										<div className="flex-1 min-w-0">
@@ -471,14 +510,22 @@ export default function SuppliesPage({ params }: { params: Promise<{ store: stri
 												<span className="text-lg font-black text-slate-800 dark:text-slate-200 truncate">
 													{order.name}
 												</span>
+
 												{isPendingSupply && (
 													<span className="flex items-center gap-1 bg-amber-500 text-white px-2.5 py-0.5 rounded-md text-[0.6875rem] font-black uppercase tracking-wider shadow-xs">
-														Sem Estoque	
+														Sem Estoque
 													</span>
 												)}
+
 												{isUrgentItem && !isPendingSupply && (
 													<span className="flex items-center gap-1 bg-red-600 text-white px-2.5 py-0.5 rounded-md text-[0.6875rem] font-black uppercase tracking-wider shadow-xs animate-pulse">
 														<AlertTriangle size={12} /> Urgente
+													</span>
+												)}
+
+												{isChecked && (
+													<span className="flex items-center gap-1 bg-blue-600 text-white px-2.5 py-0.5 rounded-md text-[0.6875rem] font-black uppercase tracking-wider shadow-xs">
+														<Check size={12} strokeWidth={3} /> Separado pela gerência
 													</span>
 												)}
 											</div>
@@ -492,12 +539,12 @@ export default function SuppliesPage({ params }: { params: Promise<{ store: stri
 												)}
 												<span className="flex items-center gap-1 text-slate-400 dark:text-slate-500 font-bold uppercase tracking-wider">
 													<Calendar size={13} />
-													{formatDate(order.createdAt?.toDate())}
+													Pedido em: {formatDate(order.createdAt?.toDate())}
 												</span>
 											</div>
 										</div>
 
-										<div className="flex items-center gap-2 shrink-0 sm:w-auto w-full">
+										<div className="flex items-center gap-2 shrink-0 sm:w-auto w-full justify-end">
 											<button
 												onClick={() =>
 													setEditingOrder({
@@ -518,13 +565,6 @@ export default function SuppliesPage({ params }: { params: Promise<{ store: stri
 												title="Cancelar pedido">
 												<Trash2 size={16} />
 											</button>
-
-											<button
-												onClick={() => handleMarkAsDelivered(order.id)}
-												className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-600 hover:text-white px-4 py-3 rounded-2xl font-black text-sm transition-all border border-emerald-200 dark:border-emerald-800/50 cursor-pointer active:scale-95 shadow-xs">
-												<CheckCircle2 size={16} />
-												Recebido
-											</button>
 										</div>
 									</div>
 								);
@@ -533,64 +573,165 @@ export default function SuppliesPage({ params }: { params: Promise<{ store: stri
 				)}
 			</section>
 
-			{/* Seção de Insumos Entregues / Finalizados */}
+			{/* Seção de Histórico de Insumos (3 Meses e Pesquisa Indefinida) */}
 			<section className="space-y-4 pt-6 border-t border-slate-200 dark:border-slate-800">
-				<button
-					onClick={() => setShowDelivered(!showDelivered)}
-					className="w-full flex items-center justify-between p-3 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-2xl transition-all cursor-pointer group">
-					<h3 className="text-base font-bold text-slate-500 dark:text-slate-400 flex items-center gap-2">
+				<div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+					<button
+						onClick={() => setShowDelivered(!showDelivered)}
+						className="flex items-center gap-2 text-left cursor-pointer group">
 						<CheckCircle2
 							className={`${showDelivered ? "text-emerald-500" : "text-slate-300 dark:text-slate-700"}`}
-							size={20}
+							size={22}
 						/>
-						({deliveredOrders.length}) Insumos Finalizados (Últimas 4 Semanas)
-					</h3>
-					<span className="text-slate-400 dark:text-slate-500 font-bold text-xs uppercase tracking-widest group-hover:text-slate-600 dark:group-hover:text-slate-300">
-						{showDelivered ? "Esconder" : "Mostrar"}
-					</span>
-				</button>
+						<div>
+							<h3 className="text-base sm:text-lg font-black text-slate-700 dark:text-slate-200">
+								Histórico de Insumos ({filteredHistoricalOrders.length})
+							</h3>
+							<p className="text-xs text-slate-400 font-medium">
+								{isSearchingHistory
+									? "Pesquisando em todo o histórico acumulado"
+									: "Insumos entregues e finalizados nos últimos 3 meses"}
+							</p>
+						</div>
+					</button>
+
+					{showDelivered && (
+						<div className="flex items-center gap-2">
+							<div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-xl text-xs font-bold">
+								<button
+									onClick={() => setHistoryStatusFilter("all")}
+									className={`px-2.5 py-1 rounded-lg cursor-pointer transition-all ${
+										historyStatusFilter === "all"
+											? "bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-xs"
+											: "text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
+									}`}>
+									Todos
+								</button>
+								<button
+									onClick={() => setHistoryStatusFilter("delivered")}
+									className={`px-2.5 py-1 rounded-lg cursor-pointer transition-all ${
+										historyStatusFilter === "delivered"
+											? "bg-white dark:bg-slate-700 text-emerald-600 dark:text-emerald-400 shadow-xs"
+											: "text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
+									}`}>
+									Entregues
+								</button>
+								<button
+									onClick={() => setHistoryStatusFilter("cancelled")}
+									className={`px-2.5 py-1 rounded-lg cursor-pointer transition-all ${
+										historyStatusFilter === "cancelled"
+											? "bg-white dark:bg-slate-700 text-red-600 dark:text-red-400 shadow-xs"
+											: "text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
+									}`}>
+									Cancelados
+								</button>
+							</div>
+						</div>
+					)}
+				</div>
 
 				{showDelivered && (
-					<div className="grid grid-cols-1 md:grid-cols-2 gap-3 opacity-75 dark:opacity-80 animate-in fade-in slide-in-from-top-2 duration-300">
-						{deliveredOrders.map((order) => (
-							<div
-								key={order.id}
-								className={`p-4 rounded-2xl border flex items-center justify-between gap-3 ${
-									order.status === "cancelled"
-										? "bg-red-50/60 dark:bg-red-900/10 border-red-200 dark:border-red-900/30"
-										: "bg-slate-50 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700"
-								}`}>
-								<div className="min-w-0 flex-1">
-									<p
-										className={`text-sm font-bold truncate ${
-											order.status === "cancelled"
-												? "text-red-700 dark:text-red-400"
-												: "text-slate-700 dark:text-slate-300 line-through decoration-slate-400"
+					<div className="space-y-4">
+						{/* Barra de Pesquisa de Insumos no Histórico */}
+						<div className="relative">
+							<Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+							<input
+								type="text"
+								placeholder="Pesquisar insumo no histórico (busca em todo o período acumulado)..."
+								value={historySearch}
+								onChange={(e) => setHistorySearch(e.target.value)}
+								className="w-full h-[46px] pl-11 pr-10 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-2xl text-xs sm:text-sm font-bold text-slate-800 dark:text-slate-200 placeholder:text-slate-400 placeholder:font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+							/>
+							{historySearch && (
+								<button
+									onClick={() => setHistorySearch("")}
+									className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1 cursor-pointer">
+									<X size={16} />
+								</button>
+							)}
+						</div>
+
+						{/* Grid com Insumos do Histórico */}
+						<div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 animate-in fade-in duration-200">
+							{filteredHistoricalOrders.map((order) => {
+								const isCancelled = order.status === "cancelled";
+								const isUrgentItem = order.urgency === "Urgente";
+
+								return (
+									<div
+										key={order.id}
+										className={`p-4 rounded-2xl border flex flex-col justify-between gap-3 transition-all ${
+											isCancelled
+												? "bg-red-50/50 dark:bg-red-950/15 border-red-200 dark:border-red-900/30"
+												: "bg-slate-50/80 dark:bg-slate-800/60 border-slate-200 dark:border-slate-700/80"
 										}`}>
-										{order.name}
-										{order.quantity && ` (${order.quantity})`}
-										{order.status === "cancelled" && " (CANCELADO)"}
+										<div>
+											<div className="flex items-start justify-between gap-2 mb-1.5">
+												<span
+													className={`text-base font-black uppercase break-words leading-tight ${
+														isCancelled
+															? "text-red-800 dark:text-red-300 line-through decoration-red-400"
+															: "text-slate-800 dark:text-slate-200"
+													}`}>
+													{order.name}
+												</span>
+
+												<div className="flex items-center gap-1 shrink-0">
+													{isCancelled ? (
+														<span className="flex items-center gap-1 bg-red-100 dark:bg-red-950/80 text-red-700 dark:text-red-400 px-2 py-0.5 rounded-md text-[0.625rem] font-black uppercase tracking-wider border border-red-200 dark:border-red-900/50">
+															Cancelado
+														</span>
+													) : (
+														<span className="flex items-center gap-1 bg-emerald-100 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-400 px-2 py-0.5 rounded-md text-[0.625rem] font-black uppercase tracking-wider border border-emerald-200 dark:border-emerald-900/50">
+															<CheckCircle2 size={12} /> Entregue
+														</span>
+													)}
+												</div>
+											</div>
+
+											<div className="flex flex-wrap items-center gap-2">
+												{order.quantity && (
+													<span className="text-xs font-black text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-700 px-2 py-0.5 rounded-md border border-slate-200 dark:border-slate-600">
+														Qtd: {order.quantity}
+													</span>
+												)}
+												{isUrgentItem && (
+													<span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-md bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300">
+														Urgente
+													</span>
+												)}
+											</div>
+										</div>
+
+										<div className="pt-2 border-t border-slate-200/60 dark:border-slate-700/60 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-[11px] text-slate-400 font-bold uppercase tracking-wider">
+											<span className="flex items-center gap-1">
+												<Calendar size={12} />
+												Pedido: {formatDate(order.createdAt?.toDate())}
+											</span>
+											<span>
+												{isCancelled ? "Cancelado em: " : "Entregue em: "}
+												{formatDate(order.deliveredAt?.toDate())}
+											</span>
+										</div>
+									</div>
+								);
+							})}
+
+							{filteredHistoricalOrders.length === 0 && (
+								<div className="col-span-full py-10 text-center bg-slate-50 dark:bg-slate-800/30 rounded-2xl border border-dashed border-slate-200 dark:border-slate-700">
+									<p className="text-sm text-slate-400 dark:text-slate-500 font-bold">
+										{isSearchingHistory
+											? `Nenhum insumo encontrado para "${historySearch}" em todo o histórico.`
+											: "Nenhum insumo finalizado nos últimos 3 meses."}
 									</p>
-									<p className="text-[11px] text-slate-400 dark:text-slate-500 font-bold uppercase mt-0.5">
-										{order.status === "cancelled" ? "Cancelado em: " : "Entregue em: "}
-										{formatDate(order.deliveredAt?.toDate())}
+									<p className="text-xs text-slate-400 mt-1">
+										{isSearchingHistory
+											? "Tente buscar com outro termo."
+											: "Utilize a caixa de busca acima para pesquisar pedidos de datas anteriores."}
 									</p>
 								</div>
-								<div
-									className={`shrink-0 ${
-										order.status === "cancelled"
-											? "text-red-500 dark:text-red-400"
-											: "text-emerald-600 dark:text-emerald-400"
-									}`}>
-									{order.status === "cancelled" ? <Trash2 size={16} /> : <CheckCircle2 size={16} />}
-								</div>
-							</div>
-						))}
-						{deliveredOrders.length === 0 && (
-							<p className="col-span-full text-sm text-slate-400 dark:text-slate-500 italic py-4 text-center">
-								Nenhum insumo finalizado nas últimas 4 semanas.
-							</p>
-						)}
+							)}
+						</div>
 					</div>
 				)}
 			</section>
