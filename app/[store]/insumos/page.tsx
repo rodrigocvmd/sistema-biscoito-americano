@@ -65,7 +65,7 @@ export default function SuppliesPage({ params }: { params: Promise<{ store: stri
 	} | null>(null);
 	const [duplicateModalOrder, setDuplicateModalOrder] = useState<SupplyOrder | null>(null);
 	const [savingEdit, setSavingEdit] = useState(false);
-	const [sortOrder, setSortOrder] = useState<"urgency" | "date" | "alphabetical">("urgency");
+	const [sortOrder, setSortOrder] = useState<"urgency" | "date" | "alphabetical">("alphabetical");
 
 	// Estados de Busca e Filtro no Histórico
 	const [historySearch, setHistorySearch] = useState("");
@@ -76,6 +76,8 @@ export default function SuppliesPage({ params }: { params: Promise<{ store: stri
 		const savedSort = localStorage.getItem("biscoito_store_insumos_sort");
 		if (savedSort === "urgency" || savedSort === "date" || savedSort === "alphabetical") {
 			setSortOrder(savedSort);
+		} else {
+			setSortOrder("alphabetical");
 		}
 	}, []);
 
