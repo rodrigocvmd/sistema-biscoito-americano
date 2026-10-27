@@ -673,78 +673,83 @@ export default function InsumosLojasPage() {
 						<div
 							key={store.id}
 							className="bg-white dark:bg-slate-900 rounded-[32px] border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden transition-all">
-							{/* Cabeçalho da Loja */}
+							{/* Cabeçalho da Loja (Grid 3 linhas x 5 colunas) */}
 							<div
 								onClick={() => toggleStore(store.id)}
-								className="p-6 md:p-8 flex items-center justify-between gap-4 cursor-pointer hover:bg-slate-50/50 dark:hover:bg-slate-800/40 transition-colors">
-								<div className="flex items-center gap-4 min-w-0">
-									<div className="w-12 h-12 md:w-14 md:h-14 rounded-2xl bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 flex items-center justify-center font-black shrink-0">
-										<Store size={26} />
+								className="p-5 sm:p-6 md:p-8 grid grid-cols-5 grid-rows-[auto_auto_auto] gap-x-3 gap-y-2 cursor-pointer hover:bg-slate-50/50 dark:hover:bg-slate-800/40 transition-colors items-center">
+								
+								{/* Linhas 1 a 2, Colunas 1 a 3: Nome da Loja */}
+								<div className="col-span-3 row-span-2 flex items-center gap-3 min-w-0">
+									<div className="w-11 h-11 sm:w-14 sm:h-14 rounded-2xl bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 flex items-center justify-center font-black shrink-0">
+										<Store className="w-6 h-6 sm:w-7 sm:h-7" />
 									</div>
-									<div className="min-w-0">
-										<div className="flex items-center gap-2 flex-wrap">
-											<h3 className="text-xl md:text-2xl font-black text-slate-800 dark:text-slate-100 uppercase tracking-tight">
-												{store.name}
-											</h3>
-											{store.urgentCount > 0 && (
-												<span className="flex items-center gap-1 bg-red-600 text-white px-2.5 py-0.5 rounded-full text-xs font-black uppercase tracking-wider animate-pulse shadow-xs">
-													<AlertTriangle size={12} /> {store.urgentCount} urgente
-													{store.urgentCount > 1 ? "s" : ""}
-												</span>
-											)}
-										</div>
-
-										<div className="flex flex-col gap-1 mt-2">
-											<div className="flex flex-wrap items-center gap-3">
-												{totalPendingCount === 0 ? (
-													<p className="font-bold text-sm md:text-base uppercase tracking-widest text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5">
-														<CheckCircle2 size={18} /> Tudo entregue
-													</p>
-												) : (
-													<p className="font-bold text-sm md:text-base uppercase tracking-widest text-slate-500 dark:text-slate-400">
-														<strong className="text-lg md:text-xl font-black text-blue-600 dark:text-blue-400">
-															{pendingCount}
-														</strong>{" "}
-														{pendingCount === 1 ? "pendente" : "pendentes"}
-													</p>
-												)}
-											</div>
-
-											{pendingSupplyCount > 0 && (
-												<p className="font-bold text-xs md:text-sm uppercase tracking-wider text-amber-600 dark:text-amber-400 flex items-center gap-1.5">
-													<span>
-														<strong className="font-black text-lg md:text-xl">
-															{pendingSupplyCount}
-														</strong>{" "}
-														{pendingSupplyCount === 1 ? "sem estoque" : "sem estoque"}
-													</span>
-												</p>
-											)}
-										</div>
-									</div>
+									<h3 className="text-2xl sm:text-3xl font-black text-slate-800 dark:text-slate-100 uppercase tracking-tight truncate">
+										{store.name}
+									</h3>
 								</div>
 
-								{/* Ações da Loja no Topo: Botão Adicionar Insumo (+) e Expandir/Recolher */}
-								<div className="flex items-center gap-2 sm:gap-3 shrink-0 self-center">
+								{/* Linhas 1 a 2, Colunas 4 a 5: Botões de Ação (Adicionar Insumo e Toggle) */}
+								<div className="col-span-2 row-span-2 flex items-center justify-end gap-2 sm:gap-3">
 									<button
 										type="button"
 										onClick={(e) => {
 											e.stopPropagation();
 											handleOpenAddInsumoModal(store.id, store.name);
 										}}
-										className="p-3 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white shadow-md shadow-emerald-200 dark:shadow-none transition-all cursor-pointer flex items-center justify-center active:scale-95"
+										className="p-2.5 sm:p-3 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white shadow-md shadow-emerald-200 dark:shadow-none transition-all cursor-pointer flex items-center justify-center active:scale-95 shrink-0"
 										title={`Adicionar Insumo para ${store.name}`}>
-										<Plus size={20} strokeWidth={3} />
+										<Plus className="w-5 h-5 sm:w-6 sm:h-6" strokeWidth={3} />
 									</button>
 
 									<button
+										type="button"
 										onClick={(e) => {
 											e.stopPropagation();
 											toggleStore(store.id);
 										}}
-										className="p-3 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 cursor-pointer">
-										{isExpanded ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+										className="p-2.5 sm:p-3 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 cursor-pointer shrink-0">
+										{isExpanded ? <ChevronUp className="w-5 h-5 sm:w-6 sm:h-6" /> : <ChevronDown className="w-5 h-5 sm:w-6 sm:h-6" />}
 									</button>
+								</div>
+
+								{/* Linha 3, Colunas 1 a 5: Informes de pendentes e sem estoque */}
+								<div className="col-span-5 row-start-3 flex flex-wrap items-center gap-2 pt-1 border-t border-slate-100/70 dark:border-slate-800/60 text-xs sm:text-sm font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+									{totalPendingCount === 0 ? (
+										<span className="text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5 font-black">
+											<CheckCircle2 size={16} /> Tudo entregue
+										</span>
+									) : (
+										<div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+											{/* n pendente(s) */}
+											<span className="text-slate-700 dark:text-slate-300">
+												<strong className="text-blue-600 dark:text-blue-400 font-black text-sm sm:text-base">
+													{pendingCount}
+												</strong>{" "}
+												{pendingCount === 1 ? "pendente" : "pendentes"}
+											</span>
+
+											{/* Tag de urgente 'x !' quando houver */}
+											{store.urgentCount > 0 && (
+												<span className="inline-flex items-center gap-1 bg-red-600 text-white px-2 py-0.5 rounded-md text-[11px] font-black tracking-normal shadow-xs">
+													<AlertTriangle size={12} strokeWidth={2.5} />
+													{store.urgentCount}
+												</span>
+											)}
+
+											{/* Separador e informe de sem estoque: / y sem estoque */}
+											{pendingSupplyCount > 0 && (
+												<>
+													<span className="text-slate-300 dark:text-slate-700 font-black">/</span>
+													<span className="text-amber-600 dark:text-amber-400">
+														<strong className="font-black text-sm sm:text-base">
+															{pendingSupplyCount}
+														</strong>{" "}
+														{pendingSupplyCount === 1 ? "sem estoque" : "sem estoque"}
+													</span>
+												</>
+											)}
+										</div>
+									)}
 								</div>
 							</div>
 
