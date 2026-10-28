@@ -586,32 +586,22 @@ export default function InsumosLojasPage() {
 		<div className="space-y-8">
 			{/* Barra de Pesquisa de Insumos Pendentes */}
 			<div className="bg-white dark:bg-slate-900 p-4 md:p-6 rounded-[32px] border border-slate-200 dark:border-slate-800 shadow-sm space-y-4 transition-all">
-				<div className="flex flex-col sm:flex-row items-center gap-3">
-					<div className="relative flex-1 w-full">
-						<Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
-						<input
-							type="text"
-							placeholder="Buscar insumos pendentes entre todas as lojas..."
-							value={searchTerm}
-							onChange={(e) => setSearchTerm(e.target.value)}
-							className="w-full bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-2xl py-3 pl-12 pr-10 text-sm font-bold text-slate-800 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all uppercase"
-						/>
-						{searchTerm && (
-							<button
-								onClick={() => setSearchTerm("")}
-								className="cursor-pointer absolute right-3 top-1/2 -translate-y-1/2 p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-xl">
-								<X size={16} />
-							</button>
-						)}
-					</div>
-
-					{/* Botão de Rotacionar Lojas */}
-					<button
-						onClick={rotateStores}
-						className="cursor-pointer px-4 py-3 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-2xl text-xs font-black uppercase tracking-wider flex items-center gap-2 transition-all w-full sm:w-auto justify-center shrink-0">
-						<RefreshCw size={14} />
-						<span>Alternar Lojas</span>
-					</button>
+				<div className="relative w-full">
+					<Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+					<input
+						type="text"
+						placeholder="Buscar insumos pendentes entre todas as lojas..."
+						value={searchTerm}
+						onChange={(e) => setSearchTerm(e.target.value)}
+						className="w-full bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-2xl py-3 pl-11 pr-10 text-xs sm:text-sm font-bold text-slate-800 dark:text-slate-100 placeholder:text-slate-400 placeholder:text-[11px] sm:placeholder:text-xs placeholder:font-semibold placeholder:normal-case focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all uppercase"
+					/>
+					{searchTerm && (
+						<button
+							onClick={() => setSearchTerm("")}
+							className="cursor-pointer absolute right-3 top-1/2 -translate-y-1/2 p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-xl">
+							<X size={16} />
+						</button>
+					)}
 				</div>
 
 				{/* Resultados de Pesquisa Global */}
@@ -647,6 +637,16 @@ export default function InsumosLojasPage() {
 						)}
 					</div>
 				)}
+			</div>
+
+			{/* Botão de Rotacionar Lojas (Centralizado, abaixo da caixa de pesquisa, mesma largura dos cards de insumos) */}
+			<div className="w-full flex justify-center">
+				<button
+					onClick={rotateStores}
+					className="cursor-pointer w-full py-3.5 px-6 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl sm:rounded-3xl text-xs sm:text-sm font-black uppercase tracking-wider flex items-center justify-center gap-2.5 shadow-md shadow-blue-200 dark:shadow-none transition-all active:scale-[0.99]">
+					<RefreshCw size={16} />
+					<span>Alternar ordem das lojas</span>
+				</button>
 			</div>
 
 			{/* Lista de Lojas */}
@@ -713,25 +713,25 @@ export default function InsumosLojasPage() {
 								</div>
 
 								{/* Linha 3, Colunas 1 a 5: Informes de pendentes e sem estoque */}
-								<div className="col-span-5 row-start-3 flex flex-wrap items-center gap-2 pt-1 border-t border-slate-100/70 dark:border-slate-800/60 text-xs sm:text-sm font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+								<div className="col-span-5 row-start-3 flex items-center justify-center pt-2.5 border-t border-slate-100/70 dark:border-slate-800/60 font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
 									{totalPendingCount === 0 ? (
-										<span className="text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5 font-black">
-											<CheckCircle2 size={16} /> Tudo entregue
+										<span className="text-emerald-600 dark:text-emerald-400 flex items-center justify-center gap-2 font-black text-center text-lg sm:text-xl">
+											<CheckCircle2 size={22} /> Tudo entregue
 										</span>
 									) : (
-										<div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+										<div className="flex flex-wrap items-center justify-center gap-x-3 gap-y-2 text-center mt-2">
 											{/* n pendente(s) */}
-											<span className="text-slate-700 dark:text-slate-300">
-												<strong className="text-blue-600 dark:text-blue-400 font-black text-sm sm:text-base">
+											<span className="text-slate-700 dark:text-slate-300 text-base sm:text-lg">
+												<strong className="text-blue-600 dark:text-blue-400 font-black text-xl sm:text-2xl mr-1">
 													{pendingCount}
-												</strong>{" "}
+												</strong>
 												{pendingCount === 1 ? "pendente" : "pendentes"}
 											</span>
 
 											{/* Tag de urgente 'x !' quando houver */}
 											{store.urgentCount > 0 && (
-												<span className="inline-flex items-center gap-1 bg-red-600 text-white px-2 py-0.5 rounded-md text-[11px] font-black tracking-normal shadow-xs">
-													<AlertTriangle size={12} strokeWidth={2.5} />
+												<span className="inline-flex items-center gap-1.5 bg-red-600 text-white px-3 py-1 rounded-xl text-base sm:text-lg font-black tracking-normal shadow-xs">
+													<AlertTriangle size={18} strokeWidth={2.5} />
 													{store.urgentCount}
 												</span>
 											)}
@@ -739,11 +739,11 @@ export default function InsumosLojasPage() {
 											{/* Separador e informe de sem estoque: / y sem estoque */}
 											{pendingSupplyCount > 0 && (
 												<>
-													<span className="text-slate-300 dark:text-slate-700 font-black">/</span>
-													<span className="text-amber-600 dark:text-amber-400">
-														<strong className="font-black text-sm sm:text-base">
+													<span className="text-slate-300 dark:text-slate-700 font-black text-lg sm:text-xl">/</span>
+													<span className="text-amber-600 dark:text-amber-400 text-base sm:text-lg">
+														<strong className="font-black text-xl sm:text-2xl mr-1">
 															{pendingSupplyCount}
-														</strong>{" "}
+														</strong>
 														{pendingSupplyCount === 1 ? "sem estoque" : "sem estoque"}
 													</span>
 												</>
