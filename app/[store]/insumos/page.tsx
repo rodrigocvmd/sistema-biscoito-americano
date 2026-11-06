@@ -278,7 +278,15 @@ export default function SuppliesPage({ params }: { params: Promise<{ store: stri
 			{/* Mensagem Minimalista e Objetiva de Cronograma */}
 			<div className="py-2 px-1 text-center sm:text-left">
 				<p className="text-base sm:text-lg font-medium text-slate-800 dark:text-slate-100 leading-relaxed text-center">
-					Solicite os insumos necessários para a semana até <strong className="font-black text-slate-950 dark:text-white">SEGUNDA-FEIRA</strong>. As entregas serão realizadas às <strong className="font-black text-slate-950 dark:text-white">TERÇAS-FEIRAS</strong>.
+					{store === "noroeste" || store === "terraco" ? (
+						<>
+							Solicite os insumos necessários para a semana até <strong className="font-black text-slate-950 dark:text-white">TERÇA-FEIRA</strong>. As entregas serão realizadas às <strong className="font-black text-slate-950 dark:text-white">QUARTAS-FEIRAS</strong>.
+						</>
+					) : (
+						<>
+							Solicite os insumos necessários para a semana até <strong className="font-black text-slate-950 dark:text-white">SEGUNDA-FEIRA</strong>. As entregas serão realizadas às <strong className="font-black text-slate-950 dark:text-white">TERÇAS-FEIRAS</strong>.
+						</>
+					)}
 				</p>
 			</div>
 
