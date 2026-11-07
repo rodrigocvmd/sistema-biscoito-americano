@@ -56,9 +56,16 @@ export function NotificationModal({
 	onMarkAsRead,
 	onMarkAllAsRead,
 }: NotificationModalProps) {
-	const [filter, setFilter] = useState<"all" | "unread">("all");
+	const [filter, setFilter] = useState<"all" | "unread">("unread");
 	const [loadingActionId, setLoadingActionId] = useState<string | null>(null);
 	const [markingAll, setMarkingAll] = useState(false);
+
+	// Reseta para a aba default 'unread' ao abrir o modal
+	useEffect(() => {
+		if (isOpen) {
+			setFilter("unread");
+		}
+	}, [isOpen]);
 
 	// Fechar modal com tecla ESC
 	useEffect(() => {

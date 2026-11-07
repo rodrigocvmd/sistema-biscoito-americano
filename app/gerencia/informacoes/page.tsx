@@ -20,6 +20,7 @@ import {
 	CheckCircle2,
 	Copy,
 	Check,
+	KeyRound,
 } from "lucide-react";
 
 const STORES: { id: StoreId; name: string }[] = [
@@ -40,6 +41,9 @@ interface InfoFieldConfig {
 const INFO_FIELDS: InfoFieldConfig[] = [
 	{ key: "razaoSocial", label: "Razão Social", icon: Building2, placeholder: "Ex: Biscoito Americano Eireli" },
 	{ key: "cnpj", label: "CNPJ", icon: FileText, placeholder: "00.000.000/0000-00" },
+	{ key: "cnpjSimples", label: "CNPJ Simples", icon: FileText, placeholder: "00.000.000/0000-00" },
+	{ key: "chavePix1", label: "Chave PIX 1", icon: KeyRound, placeholder: "Chave PIX principal" },
+	{ key: "chavePix2", label: "Chave PIX 2", icon: KeyRound, placeholder: "Chave PIX secundária" },
 	{ key: "telefone", label: "Telefone", icon: Phone, placeholder: "(61) 90000-0000" },
 	{ key: "endereco", label: "Endereço", icon: MapPin, placeholder: "Logradouro, número, complemento" },
 	{ key: "cep", label: "CEP", icon: MapPin, placeholder: "00000-000" },
@@ -132,13 +136,6 @@ export default function InformacoesPage() {
 						</div>
 					</div>
 				</div>
-
-				<button
-					onClick={() => handleOpenEdit(activeStore)}
-					className="cursor-pointer inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-bold text-sm shadow-md shadow-blue-500/20 active:scale-95 transition-all">
-					<Pencil size={16} />
-					<span>Editar Loja {STORE_NAMES[activeStore]}</span>
-				</button>
 			</div>
 
 			{/* Abas das Lojas */}

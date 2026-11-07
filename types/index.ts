@@ -27,7 +27,6 @@ export interface StockData {
 	alpino: number;
 	americanCookie: number;
 	oreo: number;
-	cocoDourado: number;
 }
 
 export const STOCK_LABELS: Record<keyof StockData, string> = {
@@ -45,12 +44,11 @@ export const STOCK_LABELS: Record<keyof StockData, string> = {
 	triploChocolate: "TRIPLO CHOCOLATE",
 	redNinho: "RED NINHO",
 	redNutella: "RED NUTELLA",
-	redVelvet: "RED VELVET",
+	redVelvet: "CLÁSSICO RED VELVET",
 	eclipse: "ECLIPSE",
 	alpino: "ALPI SUPREME",
 	americanCookie: "AMERICAN COOKIE",
-	oreo: "OREO",
-	cocoDourado: "COCO DOURADO",
+	oreo: "NOVO OREO",
 };
 
 export const isSorvete = (keyOrLabel: string = "") => {
@@ -69,6 +67,7 @@ export const normalizeStockData = (raw: any): Partial<StockData> => {
 	if (!raw) return {};
 	const stock = { ...raw };
 	delete stock.brookie;
+	delete stock.cocoDourado;
 	delete stock.sorveteCaixa;
 	delete stock.sorvetePote;
 	delete stock.sorveteCremeCx;

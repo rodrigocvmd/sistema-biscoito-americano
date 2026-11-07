@@ -17,6 +17,7 @@ import {
 	Copy,
 	Check,
 	ArrowLeft,
+	KeyRound,
 } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -31,6 +32,9 @@ interface InfoFieldConfig {
 const INFO_FIELDS: InfoFieldConfig[] = [
 	{ key: "razaoSocial", label: "Razão Social", icon: Building2, placeholder: "Não informado" },
 	{ key: "cnpj", label: "CNPJ", icon: FileText, placeholder: "00.000.000/0000-00" },
+	{ key: "cnpjSimples", label: "CNPJ Simples", icon: FileText, placeholder: "00.000.000/0000-00" },
+	{ key: "chavePix1", label: "Chave PIX 1", icon: KeyRound, placeholder: "Chave PIX principal" },
+	{ key: "chavePix2", label: "Chave PIX 2", icon: KeyRound, placeholder: "Chave PIX secundária" },
 	{ key: "telefone", label: "Telefone", icon: Phone, placeholder: "(61) 90000-0000" },
 	{ key: "endereco", label: "Endereço", icon: MapPin, placeholder: "Logradouro, número, complemento" },
 	{ key: "cep", label: "CEP", icon: MapPin, placeholder: "00000-000" },

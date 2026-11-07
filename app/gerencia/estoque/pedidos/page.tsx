@@ -36,7 +36,6 @@ const DEFAULT_PACKAGE_PRICES: Partial<Record<keyof StockData, number>> = {
 	brigadeiro: 130.8,
 	brownie: 124.8,
 	classicoAoLeite: 124.8,
-	cocoDourado: 180.0,
 	eclipse: 158.4,
 	kinderBueno: 253.2,
 	lotus: 223.2,
