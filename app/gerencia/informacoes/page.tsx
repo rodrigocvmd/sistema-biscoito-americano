@@ -21,6 +21,10 @@ import {
 	Copy,
 	Check,
 	KeyRound,
+	Landmark,
+	CreditCard,
+	Key,
+	UserCheck,
 } from "lucide-react";
 
 const STORES: { id: StoreId; name: string }[] = [
@@ -42,13 +46,17 @@ const INFO_FIELDS: InfoFieldConfig[] = [
 	{ key: "razaoSocial", label: "Razão Social", icon: Building2, placeholder: "Ex: Biscoito Americano Eireli" },
 	{ key: "cnpj", label: "CNPJ", icon: FileText, placeholder: "00.000.000/0000-00" },
 	{ key: "cnpjSimples", label: "CNPJ Simples", icon: FileText, placeholder: "00.000.000/0000-00" },
-	{ key: "chavePix1", label: "Chave PIX 1", icon: KeyRound, placeholder: "Chave PIX principal" },
-	{ key: "chavePix2", label: "Chave PIX 2", icon: KeyRound, placeholder: "Chave PIX secundária" },
 	{ key: "telefone", label: "Telefone", icon: Phone, placeholder: "(61) 90000-0000" },
 	{ key: "endereco", label: "Endereço", icon: MapPin, placeholder: "Logradouro, número, complemento" },
 	{ key: "cep", label: "CEP", icon: MapPin, placeholder: "00000-000" },
 	{ key: "email", label: "Email", icon: Mail, placeholder: "contato@loja.com.br", type: "email" },
 	{ key: "gmail", label: "Gmail", icon: Globe, placeholder: "loja@gmail.com", type: "email" },
+	{ key: "chavePix1", label: "Chave PIX 1", icon: KeyRound, placeholder: "Chave PIX principal" },
+	{ key: "chavePix2", label: "Chave PIX 2", icon: KeyRound, placeholder: "Chave PIX secundária" },
+	{ key: "contaBb", label: "Conta BB", icon: CreditCard, placeholder: "Número da conta" },
+	{ key: "agenciaBb", label: "Agência BB", icon: Landmark, placeholder: "Número da agência" },
+	{ key: "chaveJBb", label: "Chave J BB", icon: Key, placeholder: "Chave J" },
+	{ key: "chaveJAnaBb", label: "Chave J Ana BB", icon: UserCheck, placeholder: "Chave J Ana" },
 	{ key: "operadoraCelular", label: "Operadora Celular", icon: Smartphone, placeholder: "Ex: Vivo, Claro" },
 	{ key: "provedorInternet", label: "Provedor Internet", icon: Wifi, placeholder: "Ex: Claro Fibra, Oi" },
 ];

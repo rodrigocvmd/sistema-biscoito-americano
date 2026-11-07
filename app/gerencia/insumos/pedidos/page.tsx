@@ -39,6 +39,9 @@ import {
 	X,
 	Info,
 	AlertTriangle,
+	ArrowUp,
+	ArrowDown,
+	ArrowUpDown,
 } from "lucide-react";
 
 export interface SupplierOrder {
@@ -72,6 +75,20 @@ export default function InsumosPedidosPage() {
 	const [statusFilter, setStatusFilter] = useState<"all" | "pending" | "completed">("pending");
 	const [selectedResponsavel, setSelectedResponsavel] = useState<InsumoResponsavel | "all">("all");
 	const [copied, setCopied] = useState(false);
+
+	// Sort State
+	type SortColumn = "name" | "responsavel" | "category" | "createdAt";
+	const [sortColumn, setSortColumn] = useState<SortColumn>("createdAt");
+	const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
+
+	const handleSortClick = (column: SortColumn) => {
+		if (sortColumn === column) {
+			setSortDirection((prev) => (prev === "asc" ? "desc" : "asc"));
+		} else {
+			setSortColumn(column);
+			setSortDirection(column === "createdAt" ? "desc" : "asc");
+		}
+	};
 
 	// Modal de Confirmação de Exclusão
 	const [orderToDelete, setOrderToDelete] = useState<SupplierOrder | null>(null);
@@ -325,7 +342,7 @@ export default function InsumosPedidosPage() {
 
 	// Itens filtrados para exibição
 	const displayedOrders = useMemo(() => {
-		return orders.filter((o) => {
+		const filtered = orders.filter((o) => {
 			if (statusFilter !== "all" && o.status !== statusFilter) return false;
 
 			const insumo =
@@ -350,7 +367,36 @@ export default function InsumosPedidosPage() {
 			}
 			return true;
 		});
-	}, [orders, statusFilter, selectedResponsavel, searchFilter, catalogMap]);
+
+		// Ordenação por coluna
+		filtered.sort((a, b) => {
+			let comp = 0;
+			const insumoA = getInsumoForOrder(a);
+			const insumoB = getInsumoForOrder(b);
+
+			if (sortColumn === "name") {
+				comp = a.name.localeCompare(b.name, "pt-BR");
+			} else if (sortColumn === "responsavel") {
+				const respA = (insumoA.responsaveis || []).join(", ");
+				const respB = (insumoB.responsaveis || []).join(", ");
+				comp = respA.localeCompare(respB, "pt-BR");
+				if (comp === 0) comp = a.name.localeCompare(b.name, "pt-BR");
+			} else if (sortColumn === "category") {
+				const catA = a.category || insumoA.category || "Outros";
+				const catB = b.category || insumoB.category || "Outros";
+				comp = catA.localeCompare(catB, "pt-BR");
+				if (comp === 0) comp = a.name.localeCompare(b.name, "pt-BR");
+			} else if (sortColumn === "createdAt") {
+				const timeA = a.createdAt?.toMillis ? a.createdAt.toMillis() : a.createdAt?.seconds ? a.createdAt.seconds * 1000 : 0;
+				const timeB = b.createdAt?.toMillis ? b.createdAt.toMillis() : b.createdAt?.seconds ? b.createdAt.seconds * 1000 : 0;
+				comp = timeA - timeB;
+			}
+
+			return sortDirection === "asc" ? comp : -comp;
+		});
+
+		return filtered;
+	}, [orders, statusFilter, selectedResponsavel, searchFilter, catalogMap, sortColumn, sortDirection]);
 
 	const pendingCount = orders.filter((o) => o.status === "pending").length;
 	const completedCount = orders.filter((o) => o.status === "completed").length;
@@ -619,12 +665,72 @@ export default function InsumosPedidosPage() {
 						<table className="w-full text-left text-sm">
 							<thead className="bg-slate-50 dark:bg-slate-800/80 text-[11px] font-black uppercase text-slate-500 dark:text-slate-400 tracking-wider border-b border-slate-200 dark:border-slate-800">
 								<tr>
-									<th className="py-3.5 px-4 w-12 text-center">Status</th>
-									<th className="py-3.5 px-4 min-w-[200px]">Insumo</th>
-									<th className="py-3.5 px-4 min-w-[150px]">Responsável</th>
-									<th className="py-3.5 px-4">Categoria</th>
-									<th className="py-3.5 px-4 hidden sm:table-cell">Data de Inserção</th>
-									<th className="py-3.5 px-4 text-right">Ações</th>
+									<th className="py-3.5 px-4 w-12 text-center select-none">Status</th>
+									<th
+										onClick={() => handleSortClick("name")}
+										className="py-3.5 px-4 min-w-[200px] cursor-pointer hover:text-blue-600 dark:hover:text-blue-400 select-none transition-colors">
+										<div className="flex items-center gap-1.5">
+											<span>Insumo</span>
+											{sortColumn === "name" ? (
+												sortDirection === "asc" ? (
+													<ArrowUp size={14} className="text-blue-600 dark:text-blue-400" />
+												) : (
+													<ArrowDown size={14} className="text-blue-600 dark:text-blue-400" />
+												)
+											) : (
+												<ArrowUpDown size={14} className="opacity-40" />
+											)}
+										</div>
+									</th>
+									<th
+										onClick={() => handleSortClick("responsavel")}
+										className="py-3.5 px-4 min-w-[150px] cursor-pointer hover:text-blue-600 dark:hover:text-blue-400 select-none transition-colors">
+										<div className="flex items-center gap-1.5">
+											<span>Responsável</span>
+											{sortColumn === "responsavel" ? (
+												sortDirection === "asc" ? (
+													<ArrowUp size={14} className="text-blue-600 dark:text-blue-400" />
+												) : (
+													<ArrowDown size={14} className="text-blue-600 dark:text-blue-400" />
+												)
+											) : (
+												<ArrowUpDown size={14} className="opacity-40" />
+											)}
+										</div>
+									</th>
+									<th
+										onClick={() => handleSortClick("category")}
+										className="py-3.5 px-4 cursor-pointer hover:text-blue-600 dark:hover:text-blue-400 select-none transition-colors">
+										<div className="flex items-center gap-1.5">
+											<span>Categoria</span>
+											{sortColumn === "category" ? (
+												sortDirection === "asc" ? (
+													<ArrowUp size={14} className="text-blue-600 dark:text-blue-400" />
+												) : (
+													<ArrowDown size={14} className="text-blue-600 dark:text-blue-400" />
+												)
+											) : (
+												<ArrowUpDown size={14} className="opacity-40" />
+											)}
+										</div>
+									</th>
+									<th
+										onClick={() => handleSortClick("createdAt")}
+										className="py-3.5 px-4 hidden sm:table-cell cursor-pointer hover:text-blue-600 dark:hover:text-blue-400 select-none transition-colors">
+										<div className="flex items-center gap-1.5">
+											<span>Data de Inserção</span>
+											{sortColumn === "createdAt" ? (
+												sortDirection === "asc" ? (
+													<ArrowUp size={14} className="text-blue-600 dark:text-blue-400" />
+												) : (
+													<ArrowDown size={14} className="text-blue-600 dark:text-blue-400" />
+												)
+											) : (
+												<ArrowUpDown size={14} className="opacity-40" />
+											)}
+										</div>
+									</th>
+									<th className="py-3.5 px-4 text-right select-none">Ações</th>
 								</tr>
 							</thead>
 							<tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 font-medium">

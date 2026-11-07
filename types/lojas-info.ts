@@ -6,6 +6,10 @@ export interface LojaInfo {
 	cnpjSimples: string;
 	chavePix1: string;
 	chavePix2: string;
+	contaBb: string;
+	agenciaBb: string;
+	chaveJBb: string;
+	chaveJAnaBb: string;
 	telefone: string;
 	endereco: string;
 	cep: string;
@@ -23,6 +27,10 @@ export const DEFAULT_LOJA_INFO: LojaInfo = {
 	cnpjSimples: "",
 	chavePix1: "",
 	chavePix2: "",
+	contaBb: "",
+	agenciaBb: "",
+	chaveJBb: "",
+	chaveJAnaBb: "",
 	telefone: "",
 	endereco: "",
 	cep: "",

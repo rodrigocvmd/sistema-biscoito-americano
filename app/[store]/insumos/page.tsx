@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { db } from "@/lib/firebase";
 import {
 	collection,
@@ -55,6 +55,7 @@ export default function SuppliesPage({ params }: { params: Promise<{ store: stri
 	const [newQuantity, setNewQuantity] = useState("");
 	const [isUrgent, setIsUrgent] = useState(false);
 	const [adding, setAdding] = useState(false);
+	const [isCustomSupply, setIsCustomSupply] = useState(false);
 	const [showDelivered, setShowDelivered] = useState(true);
 	const [orderToCancel, setOrderToCancel] = useState<string | null>(null);
 	const [editingOrder, setEditingOrder] = useState<{
@@ -94,6 +95,22 @@ export default function SuppliesPage({ params }: { params: Promise<{ store: stri
 			.replace(/[\u0300-\u036f]/g, "")
 			.toLowerCase()
 			.replace(/[^a-z0-9]/g, "");
+
+	const allKnownSuppliesNormalized = useMemo(() => {
+		const set = new Set<string>();
+		for (const cat of INVENTORY_DATA) {
+			for (const item of cat.items) {
+				set.add(normalizeString(item));
+			}
+		}
+		return set;
+	}, []);
+
+	const isSupplyFromList = useMemo(() => {
+		const trimmed = normalizeString(newName);
+		if (!trimmed) return false;
+		return allKnownSuppliesNormalized.has(trimmed);
+	}, [newName, allKnownSuppliesNormalized]);
 
 	const filteredInventory = INVENTORY_DATA.map((cat) => ({
 		...cat,
@@ -182,6 +199,7 @@ export default function SuppliesPage({ params }: { params: Promise<{ store: stri
 			setNewName("");
 			setNewQuantity("");
 			setIsUrgent(false);
+			setIsCustomSupply(false);
 			setIsDropdownOpen(false);
 		} catch (error) {
 			console.error("Erro ao adicionar insumo:", error);
@@ -299,15 +317,26 @@ export default function SuppliesPage({ params }: { params: Promise<{ store: stri
 				<form onSubmit={handleAddOrder} className="grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
 					{/* Campo Insumo */}
 					<div className="space-y-1 md:col-span-6 relative">
-						<label className="text-xs font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider ml-1">
-							Insumo *
-						</label>
+						<div className="flex items-center justify-between ml-1">
+							<label className="text-xs font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+								Insumo *
+							</label>
+							<label className="inline-flex items-center gap-1.5 cursor-pointer text-xs font-bold text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white select-none">
+								<input
+									type="checkbox"
+									checked={isCustomSupply}
+									onChange={(e) => setIsCustomSupply(e.target.checked)}
+									className="w-3.5 h-3.5 rounded text-red-600 focus:ring-0 cursor-pointer"
+								/>
+								<span>Insumo fora da lista</span>
+							</label>
+						</div>
 						<div className="relative">
 							<input
 								id="listaInsumos"
 								type="text"
 								required
-								placeholder="BUSCAR OU DIGITAR INSUMO..."
+								placeholder={isCustomSupply ? "DIGITE O INSUMO FORA DA LISTA..." : "BUSCAR OU SELECIONAR DA LISTA..."}
 								value={newName}
 								onFocus={() => setIsDropdownOpen(true)}
 								onBlur={() => setTimeout(() => setIsDropdownOpen(false), 250)}
@@ -325,40 +354,42 @@ export default function SuppliesPage({ params }: { params: Promise<{ store: stri
 							{/* Dropdown Results */}
 							{isDropdownOpen && (
 								<div className="absolute z-50 w-full mt-2 max-h-[300px] overflow-y-auto bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl animate-in fade-in zoom-in-95 duration-150">
-									{filteredInventory.length > 0
-										? filteredInventory.map((category) => (
-												<div key={category.category}>
-													<div className="px-4 py-2 bg-slate-50 dark:bg-slate-800 text-[0.625rem] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] border-y border-slate-100 dark:border-slate-800 first:border-t-0">
-														{category.category}
+									{filteredInventory.length > 0 ? (
+										filteredInventory.map((category) => (
+											<div key={category.category}>
+												<div className="px-4 py-2 bg-slate-50 dark:bg-slate-800 text-[0.625rem] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] border-y border-slate-100 dark:border-slate-800 first:border-t-0">
+													{category.category}
+												</div>
+												{category.items.map((item) => (
+													<div
+														key={item}
+														onMouseDown={(e) => {
+															e.preventDefault();
+															setNewName(item);
+															setIsDropdownOpen(false);
+														}}
+														className="px-4 py-3 hover:bg-red-50 dark:hover:bg-red-900/30 hover:text-red-600 dark:hover:text-red-400 cursor-pointer text-sm font-bold text-slate-700 dark:text-slate-300 transition-colors flex items-center justify-between group">
+														{item}
+														<Plus
+															size={14}
+															className="opacity-0 group-hover:opacity-100 transition-opacity"
+														/>
 													</div>
-													{category.items.map((item) => (
-														<div
-															key={item}
-															onMouseDown={(e) => {
-																e.preventDefault();
-																setNewName(item);
-																setIsDropdownOpen(false);
-															}}
-															className="px-4 py-3 hover:bg-red-50 dark:hover:bg-red-900/30 hover:text-red-600 dark:hover:text-red-400 cursor-pointer text-sm font-bold text-slate-700 dark:text-slate-300 transition-colors flex items-center justify-between group">
-															{item}
-															<Plus
-																size={14}
-																className="opacity-0 group-hover:opacity-100 transition-opacity"
-															/>
-														</div>
-													))}
-												</div>
-											))
-										: newName.trim() !== "" && (
-												<div className="px-4 py-4 text-center">
-													<p className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase">
-														Adicionar item personalizado:
-													</p>
-													<p className="text-sm font-black text-red-600 dark:text-red-400 mt-1">
-														&quot;{newName}&quot;
-													</p>
-												</div>
+												))}
+											</div>
+										))
+									) : (
+										<div className="px-4 py-4 text-center">
+											<p className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase">
+												{isCustomSupply ? "Insumo fora da lista a ser solicitado:" : "Nenhum insumo encontrado na lista"}
+											</p>
+											{newName.trim() !== "" && (
+												<p className="text-sm font-black text-red-600 dark:text-red-400 mt-1">
+													&quot;{newName}&quot;
+												</p>
 											)}
+										</div>
+									)}
 								</div>
 							)}
 						</div>
@@ -427,8 +458,15 @@ export default function SuppliesPage({ params }: { params: Promise<{ store: stri
 					<div className="md:col-span-2">
 						<button
 							type="submit"
-							disabled={adding || !newName.trim()}
-							className="cursor-pointer w-full bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white font-black h-[50px] rounded-2xl shadow-md shadow-emerald-200 dark:shadow-none transition-all flex items-center justify-center gap-2 text-base active:scale-95">
+							disabled={adding || !newName.trim() || (!isCustomSupply && !isSupplyFromList)}
+							title={
+								!newName.trim()
+									? "Informe ou selecione um insumo"
+									: !isCustomSupply && !isSupplyFromList
+									? "Selecione um insumo da lista ou marque 'Insumo fora da lista'"
+									: undefined
+							}
+							className="cursor-pointer w-full bg-emerald-600 hover:bg-emerald-700 disabled:opacity-40 disabled:cursor-not-allowed text-white font-black h-[50px] rounded-2xl shadow-md shadow-emerald-200 dark:shadow-none transition-all flex items-center justify-center gap-2 text-base active:scale-95">
 							{adding ? <RefreshCw className="animate-spin" size={18} /> : <Plus size={18} />}
 							Solicitar
 						</button>
@@ -886,12 +924,10 @@ export default function SuppliesPage({ params }: { params: Promise<{ store: stri
 							<AlertTriangle size={32} />
 						</div>
 						<h3 className="text-xl font-black text-slate-800 dark:text-slate-200 text-center mb-2">
-							Insumo Já na Lista
+							Insumo já está na lista
 						</h3>
 						<p className="text-slate-500 dark:text-slate-400 text-center font-medium text-sm mb-6">
 							O insumo <strong className="text-slate-800 dark:text-slate-100 font-black">&quot;{duplicateModalOrder.name}&quot;</strong> já consta nos pedidos pendentes desta loja.
-							<br />
-							Deseja editar o pedido dele?
 						</p>
 						<div className="flex flex-col gap-3">
 							<button
@@ -907,16 +943,17 @@ export default function SuppliesPage({ params }: { params: Promise<{ store: stri
 									setNewName("");
 									setNewQuantity("");
 									setIsUrgent(false);
+									setIsCustomSupply(false);
 									setIsDropdownOpen(false);
 								}}
 								className="cursor-pointer w-full bg-blue-600 hover:bg-blue-700 text-white font-black py-3.5 rounded-2xl transition-all shadow-lg shadow-blue-100 dark:shadow-none flex items-center justify-center gap-2 text-sm">
 								<Edit2 size={16} />
-								Sim, editar pedido
+								Editar pedido deste insumo
 							</button>
 							<button
 								onClick={() => setDuplicateModalOrder(null)}
 								className="cursor-pointer w-full bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-400 font-black py-3.5 rounded-2xl transition-all text-sm">
-								Não, fechar
+								Fechar
 							</button>
 						</div>
 					</div>

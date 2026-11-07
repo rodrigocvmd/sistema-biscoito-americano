@@ -3,6 +3,20 @@
 import * as React from "react";
 import { ThemeProvider as NextThemesProvider } from "next-themes";
 
+// Suprime aviso falso-positivo do React 19 para o script inline de tema do next-themes
+if (typeof window !== "undefined") {
+  const originalConsoleError = console.error;
+  console.error = (...args: unknown[]) => {
+    if (
+      typeof args[0] === "string" &&
+      args[0].includes("Encountered a script tag while rendering React component")
+    ) {
+      return;
+    }
+    originalConsoleError.apply(console, args);
+  };
+}
+
 export function ThemeProvider({
   children,
   ...props
