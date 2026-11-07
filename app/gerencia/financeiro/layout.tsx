@@ -38,7 +38,6 @@ export default function FinanceiroLayout({ children }: { children: React.ReactNo
 
 	const tabs = [
 		{ id: "controle", label: "Controle", href: "/gerencia/financeiro/Controle", icon: LayoutDashboard },
-		{ id: "folha", label: "Folha", href: "/gerencia/financeiro/folha", icon: FileSpreadsheet },
 		{ id: "pessoal", label: "Pessoal", href: "/gerencia/financeiro/Pessoal", icon: User },
 		{ id: "calculadora", label: "Calculadora", href: "/gerencia/financeiro/calculadora", icon: Calculator },
 	];
@@ -51,9 +50,7 @@ export default function FinanceiroLayout({ children }: { children: React.ReactNo
 					const Icon = tab.icon;
 					const isActive =
 						tab.id === "controle"
-							? pathname.toLowerCase().startsWith("/gerencia/financeiro/controle")
-							: tab.id === "folha"
-							? pathname === "/gerencia/financeiro" || pathname.startsWith("/gerencia/financeiro/folha")
+							? pathname === "/gerencia/financeiro" || pathname.toLowerCase().startsWith("/gerencia/financeiro/controle")
 							: pathname.toLowerCase().startsWith(tab.href.toLowerCase());
 
 					return (

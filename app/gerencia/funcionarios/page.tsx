@@ -16,7 +16,7 @@ import FuncionariosTab from "./components/funcionarios-tab";
 import EscalaTab from "./components/escala-tab";
 import FinanceiroTab from "./components/financeiro-tab";
 import HorariosTab from "./components/horarios-tab";
-import { Calendar, DollarSign, Users, Loader2, Clock } from "lucide-react";
+import { Calendar, DollarSign, Users, Loader2, Settings } from "lucide-react";
 import {
 	subscribeLojasHorarios,
 } from "@/lib/funcionarios-service";
@@ -85,9 +85,9 @@ export default function FuncionariosPage() {
 
 	const subTabs: { id: MainSubTab; label: string; icon: typeof Calendar }[] = [
 		{ id: "escala", label: "Escala", icon: Calendar },
-		{ id: "financeiro", label: "Financeiro", icon: DollarSign },
+		{ id: "financeiro", label: "Folha", icon: DollarSign },
 		{ id: "funcionarios", label: "Funcionários", icon: Users },
-		{ id: "horarios", label: "Horários", icon: Clock },
+		{ id: "horarios", label: "Configurações", icon: Settings },
 	];
 
 	return (

@@ -19,7 +19,7 @@ export default function GerenciaLayout({
 		{ id: "insumos", label: "Insumos", href: "/gerencia/insumos/lojas", icon: LayoutDashboard },
 		{ id: "estoque", label: "Estoque", href: "/gerencia/estoque/atual", icon: Package },
 		{ id: "funcionarios", label: "Funcionários", href: "/gerencia/funcionarios", icon: Users },
-		{ id: "financeiro", label: "Financeiro", href: "/gerencia/financeiro", icon: DollarSign },
+		{ id: "financeiro", label: "Financeiro", href: "/gerencia/financeiro/Controle", icon: DollarSign },
 	];
 
 	useEffect(() => {

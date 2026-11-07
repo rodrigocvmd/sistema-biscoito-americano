@@ -109,6 +109,60 @@ interface PositionedShift {
 }
 
 // Algoritmo de posicionamento e sobreposição de horários baseado nos limites de funcionamento da loja naquele dia
+// Verifica também se todo o período de funcionamento da loja está coberto por ao menos um colaborador
+export const checkDayCoverage = (
+	dayEscalas: EscalaItem[],
+	storeAbertura: string = "10:00",
+	storeFechamento: string = "22:00"
+) => {
+	const storeStartMin = parseTimeToMinutes(storeAbertura, 10);
+	const storeEndMin = parseTimeToMinutes(storeFechamento, 22);
+
+	if (storeEndMin <= storeStartMin) {
+		return { isFullyCovered: true, activeWorkingShifts: [] };
+	}
+
+	// Filtra apenas turnos de trabalho válidos com início e fim
+	const workingShifts: { start: number; end: number; item: EscalaItem }[] = [];
+	dayEscalas.forEach((e) => {
+		if (e.turno === "folga") return;
+		const sStr = e.horarioInicio || storeAbertura;
+		const fStr = e.horarioFim || storeFechamento;
+		const rawStart = parseTimeToMinutes(sStr, 10);
+		const rawEnd = parseTimeToMinutes(fStr, 22);
+		const start = Math.max(storeStartMin, Math.min(storeEndMin, rawStart));
+		const calculatedEnd = rawEnd > rawStart ? rawEnd : rawStart + 60;
+		const end = Math.max(start, Math.min(storeEndMin, calculatedEnd));
+
+		if (end > start) {
+			workingShifts.push({ start, end, item: e });
+		}
+	});
+
+	if (workingShifts.length === 0) {
+		return { isFullyCovered: false, activeWorkingShifts: [] };
+	}
+
+	// Mescla intervalos para checar cobertura contínua de storeStartMin a storeEndMin
+	const intervals = workingShifts
+		.map((s) => ({ start: s.start, end: s.end }))
+		.sort((a, b) => a.start - b.start);
+
+	let currentCovered = storeStartMin;
+	for (const iv of intervals) {
+		if (iv.start > currentCovered) {
+			// Há uma lacuna de atendimento descoberta
+			return { isFullyCovered: false, activeWorkingShifts: workingShifts.map((s) => s.item) };
+		}
+		if (iv.end > currentCovered) {
+			currentCovered = iv.end;
+		}
+	}
+
+	const isFullyCovered = currentCovered >= storeEndMin;
+	return { isFullyCovered, activeWorkingShifts: workingShifts.map((s) => s.item) };
+};
+
 const computeDayLayout = (
 	dayEscalas: EscalaItem[],
 	storeAbertura: string = "10:00",
@@ -327,11 +381,23 @@ export default function EscalaTab({
 		setSelectedWeekIndex(0);
 	};
 
-	// Helper para obter o dia da semana a partir de YYYY-MM-DD
+	// Helper para obter o dia da semana a partir de YYYY-MM-DD (0 = Dom, 1 = Seg, ..., 6 = Sáb)
 	const getDayOfWeek = (dateStr: string) => {
 		const [y, m, d] = dateStr.split("-").map(Number);
-		return new Date(y, m - 1, d).getDay(); // 0 = Dom, 1 = Seg, ..., 6 = Sáb
+		return new Date(y, m - 1, d).getDay();
 	};
+
+	// Horário configurado para a data selecionada no modal pontual
+	const modalDayStoreHours = useMemo(() => {
+		if (!formData.data) return defaultStoreHours;
+		const dayOfWeek = getDayOfWeek(formData.data);
+		const diaConfig = lojaHorariosConfig[dayOfWeek];
+		return {
+			abertura: diaConfig?.abertura || defaultStoreHours.abertura || "10:00",
+			fechamento: diaConfig?.fechamento || defaultStoreHours.fechamento || "22:00",
+			ativo: diaConfig?.ativo ?? true,
+		};
+	}, [formData.data, lojaHorariosConfig, defaultStoreHours]);
 
 	// Cálculo dos dias do mês (calendário padrão Seg a Dom)
 	const calendarDays = useMemo(() => {
@@ -781,244 +847,154 @@ export default function EscalaTab({
 			</div>
 
 			{/* ========================================================= */}
-			{/* VISÃO 1: LISTA DOS DIAS DO MÊS COM LINHA DO TEMPO NO EIXO X */}
+			{/* VISÃO 1: LISTA DOS DIAS DO MÊS SIMPLIFICADA (SEM SCROLL LATERAL) */}
 			{/* ========================================================= */}
 			{viewType === "lista" && (
 				<div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
-					{/* Cabeçalho da Régua Temporal */}
-					<div className="overflow-x-auto border-b-2 border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/80">
-						<div className="min-w-[700px] lg:min-w-0 w-full flex items-center">
-							<div className="w-36 sm:w-44 shrink-0 px-4 py-3 text-xs font-black text-slate-600 dark:text-slate-300 uppercase tracking-wider border-r border-slate-200 dark:border-slate-700">
-								Dia do Mês
-							</div>
-							<div className="flex-1 relative h-10 flex items-center pr-2">
-								{storeWeekRange.hours.map((hour, idx) => {
-									const leftPercent =
-										((hour - storeWeekRange.minH) /
-											(storeWeekRange.maxH - storeWeekRange.minH)) *
-										100;
-									return (
-										<div
-											key={hour}
-											style={{ left: `${leftPercent}%` }}
-											className="absolute -translate-x-1/2 flex flex-col items-center">
-											<span className="text-[10px] font-mono font-bold text-slate-500 dark:text-slate-400">
-												{String(hour).padStart(2, "0")}:00
-											</span>
-											<span className="w-px h-2 bg-slate-300 dark:bg-slate-600 mt-0.5" />
-										</div>
-									);
-								})}
-							</div>
-						</div>
+					{/* Cabeçalho da Tabela */}
+					<div className="grid grid-cols-[80px_100px_1fr] sm:grid-cols-[100px_140px_1fr] border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/80 px-4 py-3 text-xs font-black text-slate-600 dark:text-slate-300 uppercase tracking-wider">
+						<div>Dia</div>
+						<div>Status / Horário</div>
+						<div>Colaboradores Escalados</div>
 					</div>
 
-					{/* Linhas dos Dias do Mês com bordas e divisões bem definidas */}
-					<div className="overflow-x-auto divide-y divide-slate-200 dark:divide-slate-800">
-						<div className="min-w-[700px] lg:min-w-0 w-full">
-							{monthDays.map((cell) => {
-								const dayEscalas = escalasByDate[cell.dateStr] || [];
-								const diaConfig = lojaHorariosConfig[cell.dayOfWeek] || {
-									ativo: true,
-									abertura: "10:00",
-									fechamento: "22:00",
-								};
-								const isLojaAberta = diaConfig.ativo;
-								const { folgas, positioned } = computeDayLayout(
-									dayEscalas,
-									diaConfig.abertura || "10:00",
-									diaConfig.fechamento || "22:00"
-								);
-								const isWeekend = cell.dayOfWeek === 0 || cell.dayOfWeek === 6;
+					{/* Linhas dos Dias do Mês */}
+					<div className="divide-y divide-slate-100 dark:divide-slate-800/80">
+						{monthDays.map((cell) => {
+							const dayEscalas = escalasByDate[cell.dateStr] || [];
+							const diaConfig = lojaHorariosConfig[cell.dayOfWeek] || {
+								ativo: true,
+								abertura: "10:00",
+								fechamento: "22:00",
+							};
+							const isLojaAberta = diaConfig.ativo;
+							const { isFullyCovered, activeWorkingShifts } = isLojaAberta
+								? checkDayCoverage(
+										dayEscalas,
+										diaConfig.abertura || "10:00",
+										diaConfig.fechamento || "22:00"
+								  )
+								: { isFullyCovered: true, activeWorkingShifts: [] };
 
-								// Calcula a altura da linha baseado na quantidade de faixas sobrepostas
-								const maxConcurrentTracks = positioned.reduce(
-									(acc, p) => Math.max(acc, p.totalCols),
-									1
-								);
-								const rowMinHeight = Math.max(56, maxConcurrentTracks * 38 + 16);
+							const isWeekend = cell.dayOfWeek === 0 || cell.dayOfWeek === 6;
 
-								return (
-									<div
-										key={cell.dateStr}
-										onClick={() => openCreateModal(cell.dateStr)}
-										className={`flex items-stretch transition-colors group cursor-pointer border-b border-slate-200/90 dark:border-slate-800 last:border-b-0 ${
-											cell.isToday
-												? "bg-blue-50/30 dark:bg-blue-950/25"
-												: isWeekend
-												? "bg-slate-50/50 dark:bg-slate-900/50 hover:bg-blue-50/20 dark:hover:bg-slate-800/40"
-												: "hover:bg-blue-50/20 dark:hover:bg-slate-800/30"
-										}`}>
-										{/* Coluna Fixa do Dia (Eixo Y) */}
-										<div className="w-36 sm:w-44 shrink-0 px-3 py-2.5 flex items-center justify-between border-r border-slate-200 dark:border-slate-800 bg-inherit select-none">
-											<div className="flex items-center gap-2">
-												<span
-													className={`text-xs font-black rounded-lg w-7 h-7 flex items-center justify-center shrink-0 ${
-														cell.isToday
-															? "bg-blue-600 text-white shadow-sm"
-															: isWeekend
-															? "bg-amber-100 dark:bg-amber-950/70 text-amber-700 dark:text-amber-300 font-black"
-															: "bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300"
-													}`}>
-													{cell.dayNum}
+							// Estilos do status e da linha baseados no preenchimento do período:
+							// Azulado se satisfeito / coberto; Avermelhado se aberto e não coberto
+							const rowBg = !isLojaAberta
+								? "bg-slate-50/50 dark:bg-slate-950/40 text-slate-400 dark:text-slate-500"
+								: isFullyCovered
+								? "bg-blue-50/40 dark:bg-blue-950/20 hover:bg-blue-50/70 dark:hover:bg-blue-950/40"
+								: "bg-rose-50/50 dark:bg-rose-950/25 hover:bg-rose-50/80 dark:hover:bg-rose-950/40";
+
+							return (
+								<div
+									key={cell.dateStr}
+									onClick={() => openCreateModal(cell.dateStr)}
+									className={`grid grid-cols-[80px_100px_1fr] sm:grid-cols-[100px_140px_1fr] items-center px-4 py-2.5 transition-colors group cursor-pointer ${rowBg} ${
+										cell.isToday ? "ring-2 ring-blue-500/60 ring-inset" : ""
+									}`}>
+									{/* Coluna 1: Dia */}
+									<div className="flex items-center gap-2">
+										<span
+											className={`text-xs font-black rounded-lg w-7 h-7 flex items-center justify-center shrink-0 ${
+												cell.isToday
+													? "bg-blue-600 text-white shadow-sm"
+													: isWeekend
+													? "bg-amber-100 dark:bg-amber-950/70 text-amber-700 dark:text-amber-300"
+													: "bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300"
+											}`}>
+											{cell.dayNum}
+										</span>
+										<div>
+											<span
+												className={`text-xs font-bold leading-tight block ${
+													isWeekend
+														? "text-amber-600 dark:text-amber-400"
+														: "text-slate-700 dark:text-slate-300"
+												}`}>
+												{DIAS_SEMANA[cell.dayOfWeek === 0 ? 6 : cell.dayOfWeek - 1]}
+											</span>
+											{cell.isToday && (
+												<span className="text-[10px] font-bold text-blue-600 dark:text-blue-400 leading-none">
+													Hoje
 												</span>
-												<div className="min-w-0">
-													<div className="flex items-center gap-1">
-														<span
-															className={`text-xs font-bold leading-tight ${
-																isWeekend
-																	? "text-amber-600 dark:text-amber-400 font-black"
-																	: "text-slate-700 dark:text-slate-300"
-															}`}>
-															{DIAS_SEMANA[cell.dayOfWeek === 0 ? 6 : cell.dayOfWeek - 1]}
-														</span>
-													</div>
-													<div className="text-[10px] font-mono text-slate-400 leading-tight">
-														{isLojaAberta ? (
-															<span>
-																{diaConfig.abertura}-{diaConfig.fechamento}
-															</span>
-														) : (
-															<span className="text-rose-500 font-bold">Fechada</span>
-														)}
-													</div>
-												</div>
-											</div>
-
-											{/* Botão de adicionar e badge de contagem */}
-											<div className="flex items-center gap-1">
-												{dayEscalas.length > 0 && (
-													<span
-														title={`${dayEscalas.length} colaboradores agendados`}
-														className="text-[10px] px-1.5 py-0.5 rounded-full font-bold bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300">
-														{dayEscalas.length}
-													</span>
-												)}
-												<button
-													onClick={(e) => {
-														e.stopPropagation();
-														openCreateModal(cell.dateStr);
-													}}
-													title="Adicionar escala neste dia"
-													className="opacity-0 group-hover:opacity-100 p-1 hover:bg-blue-100 dark:hover:bg-slate-700 rounded-md text-blue-600 dark:text-blue-400 transition-opacity">
-													<Plus size={14} />
-												</button>
-											</div>
-										</div>
-
-										{/* Linha do Tempo no Eixo X */}
-										<div
-											style={{ minHeight: `${rowMinHeight}px` }}
-											className="flex-1 relative py-1.5 px-1 bg-inherit">
-											{/* Marcadores Verticais das Horas (Régua de Fundo) */}
-											{storeWeekRange.hours.map((hour) => {
-												const leftPercent =
-													((hour - storeWeekRange.minH) /
-														(storeWeekRange.maxH - storeWeekRange.minH)) *
-													100;
-												return (
-													<div
-														key={hour}
-														style={{ left: `${leftPercent}%` }}
-														className="absolute top-0 bottom-0 border-l border-slate-200/80 dark:border-slate-800 pointer-events-none"
-													/>
-												);
-											})}
-
-											{/* Badges de Folga */}
-											{folgas.length > 0 && (
-												<div className="absolute top-1 right-2 z-10 flex items-center gap-1 max-w-[200px] overflow-x-auto no-scrollbar pointer-events-auto">
-													{folgas.map((f) => (
-														<span
-															key={f.id}
-															onClick={(e) => openEditModal(f, e)}
-															title={`Folga: ${f.funcionarioNome} (Clique para alterar)`}
-															className="text-[9px] px-1.5 py-0.5 rounded bg-slate-200 dark:bg-slate-800 border border-slate-300/70 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-bold truncate hover:bg-slate-300 transition-colors">
-															🌴 {f.funcionarioNome}
-														</span>
-													))}
-												</div>
-											)}
-
-											{/* Blocos de Turnos no Eixo X */}
-											{positioned.map(
-												({ item, startMin, endMin, colIndex, totalCols, hasOverlap }) => {
-													// Converte os minutos para percentual horizontal dentro dos limites visíveis da loja
-													const visibleMin = storeWeekRange.minH * 60;
-													const visibleMax = storeWeekRange.maxH * 60;
-													const totalVisibleMin = Math.max(60, visibleMax - visibleMin);
-
-													const clampedStart = Math.max(visibleMin, Math.min(visibleMax, startMin));
-													const clampedEnd = Math.max(clampedStart + 30, Math.min(visibleMax, endMin));
-
-													const leftPercent = Math.max(
-														0,
-														Math.min(100, ((clampedStart - visibleMin) / totalVisibleMin) * 100)
-													);
-													const rightPercent = Math.max(
-														0,
-														Math.min(100, ((clampedEnd - visibleMin) / totalVisibleMin) * 100)
-													);
-													const widthPercent = Math.max(3, rightPercent - leftPercent);
-
-													// Posicionamento vertical para sobreposições (lanes/faixas)
-													const trackHeight = 32;
-													const topOffset = 6 + colIndex * (trackHeight + 4);
-
-													return (
-														<div
-															key={item.id}
-															onClick={(e) => openEditModal(item, e)}
-															style={{
-																left: `${leftPercent}%`,
-																width: `${widthPercent}%`,
-																top: `${topOffset}px`,
-																height: `${trackHeight}px`,
-															}}
-															title={`${item.funcionarioNome} (${item.horarioInicio || diaConfig.abertura} - ${
-																item.horarioFim || diaConfig.fechamento
-															})${hasOverlap ? " [Sobreposição]" : ""}${
-																item.observacoes ? " - " + item.observacoes : ""
-															}\n(Clique para alterar este dia pontual)`}
-															className="absolute rounded-lg border border-blue-300 dark:border-blue-700/60 bg-blue-50/95 dark:bg-blue-950/80 hover:bg-blue-100 dark:hover:bg-blue-900/80 text-blue-900 dark:text-blue-200 shadow-xs px-2 flex items-center justify-between gap-1 overflow-hidden transition-all hover:z-30 hover:shadow-md cursor-pointer select-none">
-															<div className="flex items-center gap-1.5 min-w-0 truncate">
-																<span className="w-1.5 h-1.5 rounded-full shrink-0 bg-blue-600 dark:bg-blue-400" />
-																<span className="text-[11px] font-black truncate leading-none">
-																	{item.funcionarioNome}
-																</span>
-																<span className="text-[10px] font-semibold opacity-75 truncate leading-none hidden sm:inline">
-																	• {item.funcionarioCargo || "Colaborador"}
-																</span>
-															</div>
-
-															<div className="flex items-center gap-1 shrink-0">
-																{hasOverlap && (
-																	<span
-																		title="Turno com sobreposição"
-																		className="text-amber-500 text-[10px]">
-																		●
-																	</span>
-																)}
-																<span className="text-[10px] font-mono font-bold bg-white/70 dark:bg-slate-900/70 px-1 py-0.5 rounded leading-none">
-																	{item.horarioInicio} - {item.horarioFim}
-																</span>
-															</div>
-														</div>
-													);
-												}
-											)}
-
-											{/* Feedback visual quando o dia não tem escalas */}
-											{dayEscalas.length === 0 && (
-												<div className="h-full flex items-center justify-center text-2xs font-medium text-slate-400/70 select-none pointer-events-none py-2">
-													Sem colaboradores escalados!
-												</div>
 											)}
 										</div>
 									</div>
-								);
-							})}
-						</div>
+
+									{/* Coluna 2: Status do Período e Horário da Loja */}
+									<div className="flex flex-col pr-2">
+										{!isLojaAberta ? (
+											<span className="inline-flex items-center gap-1 text-[11px] font-bold text-slate-500 dark:text-slate-400">
+												Fechada
+											</span>
+										) : isFullyCovered ? (
+											<div className="flex flex-col">
+												<span className="inline-flex items-center gap-1 text-[11px] font-black text-blue-700 dark:text-blue-300">
+													<CheckCircle2 size={13} className="text-blue-600 dark:text-blue-400 shrink-0" />
+													<span>Coberto</span>
+												</span>
+												<span className="text-[10px] font-mono text-blue-600/80 dark:text-blue-400/80 font-bold">
+													{diaConfig.abertura}-{diaConfig.fechamento}
+												</span>
+											</div>
+										) : (
+											<div className="flex flex-col">
+												<span className="inline-flex items-center gap-1 text-[11px] font-black text-rose-700 dark:text-rose-400">
+													<AlertTriangle size={13} className="text-rose-600 dark:text-rose-400 shrink-0" />
+													<span>Descoberto</span>
+												</span>
+												<span className="text-[10px] font-mono text-rose-600/80 dark:text-rose-400/80 font-bold">
+													{diaConfig.abertura}-{diaConfig.fechamento}
+												</span>
+											</div>
+										)}
+									</div>
+
+									{/* Coluna 3: Colaboradores Escalados no Dia */}
+									<div className="flex flex-wrap items-center gap-1.5 py-0.5">
+										{activeWorkingShifts.length > 0 ? (
+											activeWorkingShifts.map((item) => (
+												<button
+													key={item.id}
+													type="button"
+													onClick={(e) => openEditModal(item, e)}
+													title={`${item.funcionarioNome} (${item.horarioInicio || diaConfig.abertura} às ${
+														item.horarioFim || diaConfig.fechamento
+													})${item.observacoes ? " - " + item.observacoes : ""}\n(Clique para editar)`}
+													className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold transition-all shadow-2xs border bg-white/90 dark:bg-slate-900/90 text-slate-800 dark:text-slate-100 border-slate-200 dark:border-slate-700 hover:border-blue-400 dark:hover:border-blue-500 hover:text-blue-600 dark:hover:text-blue-400">
+													<span className="w-1.5 h-1.5 rounded-full bg-blue-600 dark:bg-blue-400 shrink-0" />
+													<span className="font-extrabold">{item.funcionarioNome}</span>
+													<span className="text-[11px] font-mono text-slate-500 dark:text-slate-400">
+														({item.horarioInicio || diaConfig.abertura} -{" "}
+														{item.horarioFim || diaConfig.fechamento})
+													</span>
+												</button>
+											))
+										) : isLojaAberta ? (
+											<span className="text-xs font-medium text-rose-600/80 dark:text-rose-400/80 italic">
+												Nenhum colaborador escalado para este dia
+											</span>
+										) : (
+											<span className="text-xs font-medium text-slate-400 dark:text-slate-500 italic">
+												Loja sem operação neste dia
+											</span>
+										)}
+
+										<button
+											type="button"
+											onClick={(e) => {
+												e.stopPropagation();
+												openCreateModal(cell.dateStr);
+											}}
+											title="Adicionar colaborador neste dia"
+											className="opacity-0 group-hover:opacity-100 p-1 hover:bg-white dark:hover:bg-slate-800 rounded-md text-blue-600 dark:text-blue-400 border border-dashed border-blue-300 dark:border-blue-700 transition-opacity ml-1">
+											<Plus size={13} />
+										</button>
+									</div>
+								</div>
+							);
+						})}
 					</div>
 				</div>
 			)}
@@ -1093,20 +1069,7 @@ export default function EscalaTab({
 											)}
 										</div>
 
-										{/* Badges de Folga no Topo */}
-										{folgas.length > 0 && (
-											<div className="flex items-center gap-1 overflow-x-auto max-w-[100px] no-scrollbar">
-												{folgas.map((f) => (
-													<span
-														key={f.id}
-														onClick={(e) => openEditModal(f, e)}
-														title={`Folga: ${f.funcionarioNome} (Clique para editar/remover este dia)`}
-														className="text-[9px] px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 font-bold truncate hover:bg-slate-200">
-														🌴 {f.funcionarioNome}
-													</span>
-												))}
-											</div>
-										)}
+										{/* Badges de Folga no Topo removidos na simplificação da escala */}
 
 										{cell.isCurrentMonth && (
 											<button
@@ -1333,22 +1296,7 @@ export default function EscalaTab({
 												);
 											})}
 
-											{/* Folgas */}
-											{folgas.length > 0 && (
-												<div className="absolute top-1 left-1 right-1 z-10 flex flex-col gap-1">
-													{folgas.map((f) => (
-														<span
-															key={f.id}
-															onClick={(e) => {
-																if (!day.isCurrentMonth) return;
-																openEditModal(f, e);
-															}}
-															className="text-[10px] px-2 py-0.5 rounded bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold truncate">
-															🌴 {f.funcionarioNome} (Folga)
-														</span>
-													))}
-												</div>
-											)}
+											{/* Folgas removidas na simplificação da escala */}
 
 											{/* Cards Proporcionais de Escala */}
 											{positioned.map(
@@ -1806,13 +1754,13 @@ export default function EscalaTab({
 										onClick={() =>
 											setFormData((prev) => ({
 												...prev,
-												horarioInicio: defaultStoreHours.abertura,
-												horarioFim: defaultStoreHours.fechamento,
+												horarioInicio: modalDayStoreHours.abertura,
+												horarioFim: modalDayStoreHours.fechamento,
 											}))
 										}
 										className="cursor-pointer text-[11px] font-bold text-blue-600 dark:text-blue-400 hover:underline">
-										Puxar horário da loja ({defaultStoreHours.abertura} às{" "}
-										{defaultStoreHours.fechamento})
+										Puxar horário da loja ({modalDayStoreHours.abertura} às{" "}
+										{modalDayStoreHours.fechamento})
 									</button>
 								</div>
 
