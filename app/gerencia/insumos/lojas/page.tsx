@@ -845,26 +845,27 @@ export default function InsumosLojasPage() {
 
 																<div className="flex-1 min-w-0 flex flex-col items-start text-left justify-center self-center">
 																	<h5
-																		className={`text-xl md:text-2xl font-black uppercase break-words leading-tight text-left ${
+																		className={`text-xl md:text-2xl font-black uppercase break-words leading-tight text-left flex items-center flex-wrap gap-2 ${
 																			isChecked
 																				? "text-emerald-900 dark:text-emerald-200"
 																				: isPending
 																				? "text-amber-900 dark:text-amber-200"
 																				: "text-slate-800 dark:text-slate-100"
 																		}`}>
-																		{order.name}
+																		{isUrgent && (
+																			<span
+																				title="Item Urgente"
+																				className="inline-flex items-center justify-center p-1 rounded-md bg-red-600 text-white shrink-0 shadow-xs">
+																				<AlertTriangle className="!w-5 !h-5" strokeWidth={2.5} />
+																			</span>
+																		)}
+																		<span>{order.name}</span>
 																	</h5>
 
 																	<div className="flex flex-wrap items-center gap-2 mt-2">
 																		{isPending && (
 																			<span className="flex items-center gap-1 bg-amber-500 text-white px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider shadow-xs">
 																				<Clock size={12} /> Pendência (Falta insumo)
-																			</span>
-																		)}
-
-																		{isUrgent && !isPending && (
-																			<span className="flex items-center gap-1 bg-red-600 text-white px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wider shadow-xs">
-																				<AlertTriangle size={12} /> Urgente
 																			</span>
 																		)}
 
@@ -898,86 +899,96 @@ export default function InsumosLojasPage() {
 															)}
 														</div>
 
-														<div className="pt-2.5 border-t border-slate-100 dark:border-slate-700/60 flex items-center justify-between text-sm text-slate-400 font-bold gap-2">
-															<span className="flex items-center gap-1.5 shrink-0 text-xs">
-																<Calendar size={13} />
-																{formatDate(order.createdAt?.toDate())}
-															</span>
+														<div className="pt-1 border-slate-100 dark:border-slate-700/60 flex flex-col sm:flex-row sm:items-center justify-between text-sm text-slate-400 font-bold gap-4">
+															{/* Linha 1 no mobile: Data e Horário (centralizada no mobile no eixo X) */}
+															<div className="flex items-center justify-center sm:justify-start w-full sm:w-auto text-center">
+																<span className="flex items-center justify-center gap-1.5 shrink-0 text-sm">
+																	<Calendar size={13} />
+																	{formatDate(order.createdAt?.toDate())}
+																</span>
+															</div>
 
-															{/* Botão de Pendência (Sem estoque) */}
-															<button
-																onClick={() =>
-																	handleTogglePendingSupply(
-																		store.id,
-																		order.id,
-																		isPending,
-																		store,
-																	)
-																}
-																className={`p-1.5 rounded-xl transition-all cursor-pointer shrink-0 ${
-																	isPending
-																		? "text-amber-500 hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/40"
-																		: "text-slate-400 hover:text-amber-600 hover:bg-slate-100 dark:hover:bg-slate-800"
-																}`}
-																title={
-																	isPending
-																		? "Marcar como disponível (remover pendência)"
-																		: "Marcar como pendente (aguardando reposição)"
-																}>
-																<Clock size={18} />
-															</button>
+															{/* Linha 2 no mobile: Botões de Ação ocupando toda a largura e com space-between */}
+															<div className="flex items-center justify-between w-full sm:w-auto sm:gap-2">
+																{/* Botão de Pendência (Sem estoque) */}
+																<button
+																	onClick={() =>
+																		handleTogglePendingSupply(
+																			store.id,
+																			order.id,
+																			isPending,
+																			store,
+																		)
+																	}
+																	className={`p-1.5 rounded-xl transition-all cursor-pointer shrink-0 ${
+																		isPending
+																			? "text-amber-500 hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/40"
+																			: "text-slate-400 hover:text-amber-600 hover:bg-slate-100 dark:hover:bg-slate-800"
+																	}`}
+																	title={
+																		isPending
+																			? "Marcar como disponível (remover pendência)"
+																			: "Marcar como pendente (aguardando reposição)"
+																	}>
+																	<Clock size={18} />
+																</button>
 
-															{/* Botão de Compra Fornecedor */}
-															<button
-																onClick={() =>
-																	handleAddToSupplierOrders(order.name, order.id)
-																}
-																className="p-1.5 rounded-xl text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/40 transition-all cursor-pointer shrink-0"
-																title="Comprar deste fornecedor (+ Pedido)">
-																<ShoppingCart size={18} />
-															</button>
+																{/* Botão de Compra Fornecedor */}
+																<button
+																	onClick={() =>
+																		handleAddToSupplierOrders(order.name, order.id)
+																	}
+																	className="p-1.5 rounded-xl text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/40 transition-all cursor-pointer shrink-0"
+																	title="Comprar deste fornecedor (+ Pedido)">
+																	<ShoppingCart size={18} />
+																</button>
 
-															{/* Botão de Deletar / Cancelar Insumo da Loja */}
-															<button
-																onClick={() =>
-																	setOrderToCancel({
-																		storeId: store.id,
-																		orderId: order.id,
-																		orderName: order.name,
-																	})
-																}
-																className="p-1.5 rounded-xl text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/40 transition-all cursor-pointer shrink-0"
-																title="Deletar/Cancelar insumo da loja">
-																<Trash2 size={18} />
-															</button>
+																{/* Botão de Deletar / Cancelar Insumo da Loja */}
+																<button
+																	onClick={() =>
+																		setOrderToCancel({
+																			storeId: store.id,
+																			orderId: order.id,
+																			orderName: order.name,
+																		})
+																	}
+																	className="p-1.5 rounded-xl text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/40 transition-all cursor-pointer shrink-0"
+																	title="Deletar/Cancelar insumo da loja">
+																	<Trash2 size={18} />
+																</button>
 
-															{/* Botões de Reordenação Simples */}
-															<div className="flex items-center gap-1 shrink-0">
+																{/* Botão Mandar para o Topo */}
 																<button
 																	type="button"
 																	onClick={(e) => handleReorderOrder(store, order.id, "top", e)}
-																	className="p-1.5 hover:text-blue-600 cursor-pointer text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-all"
+																	className="p-1.5 hover:text-blue-600 cursor-pointer text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-all shrink-0"
 																	title="Mandar para o topo">
 																	<ArrowUpToLine size={16} />
 																</button>
+
+																{/* Botão Subir */}
 																<button
 																	type="button"
 																	onClick={(e) => handleReorderOrder(store, order.id, "up", e)}
-																	className="p-1.5 hover:text-blue-600 cursor-pointer text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-all"
+																	className="p-1.5 hover:text-blue-600 cursor-pointer text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-all shrink-0"
 																	title="Subir">
 																	<ArrowUp size={16} />
 																</button>
+
+																{/* Botão Descer */}
 																<button
 																	type="button"
 																	onClick={(e) => handleReorderOrder(store, order.id, "down", e)}
-																	className="p-1.5 hover:text-blue-600 cursor-pointer text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-all"
+																	className="p-1.5 hover:text-blue-600 cursor-pointer text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-all shrink-0"
 																	title="Descer">
 																	<ArrowDown size={16} />
 																</button>
+
+																{/* Botão Mandar para o Fundo */}
 																<button
 																	type="button"
 																	onClick={(e) => handleReorderOrder(store, order.id, "bottom", e)}
-																	className="p-1.5 hover:text-blue-600 cursor-pointer text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-all"
+																	className="p-1.5 hover:text-blue-600 cursor-pointer text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-all shrink-0"
 																	title="Mandar para o fundo">
 																	<ArrowDownToLine size={16} />
 																</button>
