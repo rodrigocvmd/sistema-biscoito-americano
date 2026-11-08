@@ -495,16 +495,6 @@ export default function ControlePage() {
 								{STORE_NAMES_EXTENDED[sId]}
 							</button>
 						))}
-						<button
-							type="button"
-							onClick={() => setLojaFilter("geral")}
-							className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all ${
-								lojaFilter === "geral"
-									? "bg-blue-600 text-white shadow-xs font-black"
-									: "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700"
-							}`}>
-							Matriz / Geral
-						</button>
 					</div>
 
 					{/* Filtro de Período */}

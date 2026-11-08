@@ -185,15 +185,16 @@ export interface FaturamentoItem {
 	subtotal: number;
 }
 
-export type CanalVenda = "balcao" | "ifood" | "delivery_proprio" | "encomenda" | "eventos" | "geral";
+export type CanalVenda = "geral" | "balcao" | "delivery" | "ifood" | "delivery_proprio" | "encomenda" | "eventos";
 
 export const CANAL_VENDA_CONFIG: Record<CanalVenda, { label: string; badge: string }> = {
-	balcao: { label: "Balcão / Loja Física", badge: "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300" },
+	geral: { label: "Geral Consolidado", badge: "bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-300" },
+	balcao: { label: "Balcão", badge: "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300" },
+	delivery: { label: "Delivery", badge: "bg-blue-100 text-blue-800 dark:bg-blue-950/50 dark:text-blue-300" },
 	ifood: { label: "iFood / Delivery App", badge: "bg-red-100 text-red-800 dark:bg-red-950/50 dark:text-red-300" },
 	delivery_proprio: { label: "Delivery Próprio", badge: "bg-blue-100 text-blue-800 dark:bg-blue-950/50 dark:text-blue-300" },
 	encomenda: { label: "Encomendas Especiais", badge: "bg-purple-100 text-purple-800 dark:bg-purple-950/50 dark:text-purple-300" },
 	eventos: { label: "Eventos / Corporativo", badge: "bg-amber-100 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300" },
-	geral: { label: "Geral Consolidado", badge: "bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-300" },
 };
 
 export interface FaturamentoFinanceiro {

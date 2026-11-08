@@ -55,7 +55,7 @@ export default function FaturamentoModal({
 	const [lojaId, setLojaId] = useState<StoreIdWithGeral>(defaultLoja);
 	const [dataFaturamento, setDataFaturamento] = useState("");
 	const [valorGeral, setValorGeral] = useState("");
-	const [canal, setCanal] = useState<CanalVenda>("balcao");
+	const [canal, setCanal] = useState<CanalVenda>("geral");
 	const [descricao, setDescricao] = useState("");
 	const [observacoes, setObservacoes] = useState("");
 	const [itens, setItens] = useState<FaturamentoItem[]>([]);
@@ -69,7 +69,11 @@ export default function FaturamentoModal({
 				setLojaId(editingFaturamento.lojaId);
 				setDataFaturamento(editingFaturamento.data);
 				setValorGeral(editingFaturamento.valorTotal ? String(editingFaturamento.valorTotal).replace(".", ",") : "");
-				setCanal(editingFaturamento.canal || "balcao");
+				setCanal(
+					editingFaturamento.canal === "ifood" || editingFaturamento.canal === "delivery_proprio"
+						? "delivery"
+						: editingFaturamento.canal || "geral"
+				);
 				setDescricao(editingFaturamento.descricao || "");
 				setObservacoes(editingFaturamento.observacoes || "");
 				setItens(
@@ -88,7 +92,7 @@ export default function FaturamentoModal({
 				setLojaId(defaultLoja);
 				setDataFaturamento(todayStr);
 				setValorGeral("");
-				setCanal("balcao");
+				setCanal("geral");
 				setDescricao("");
 				setObservacoes("");
 				setItens([{ id: "item-1", nome: "", quantidade: 1, precoUnitario: 0, subtotal: 0 }]);
@@ -199,7 +203,7 @@ export default function FaturamentoModal({
 				tipo,
 				valorTotal: finalValor,
 				canal,
-				descricao: descricao.trim() || undefined,
+				descricao: descricao.trim() || "Faturamento",
 				itens: tipo === "discriminado" ? validItens : undefined,
 				observacoes: observacoes.trim() || undefined,
 			});
@@ -332,11 +336,9 @@ export default function FaturamentoModal({
 								value={canal}
 								onChange={(e) => setCanal(e.target.value as CanalVenda)}
 								className="w-full bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500">
-								{Object.entries(CANAL_VENDA_CONFIG).map(([k, cfg]) => (
-									<option key={k} value={k}>
-										{cfg.label}
-									</option>
-								))}
+								<option value="geral">Geral Consolidado</option>
+								<option value="balcao">Balcão</option>
+								<option value="delivery">Delivery</option>
 							</select>
 						</div>
 					</div>
@@ -360,19 +362,6 @@ export default function FaturamentoModal({
 										className="w-full pl-10 pr-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-base font-black text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
 									/>
 								</div>
-							</div>
-
-							<div>
-								<label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
-									Descrição Breve (Opcional)
-								</label>
-								<input
-									type="text"
-									placeholder="Ex: Fechamento de caixa sábado, vendas de balcão..."
-									value={descricao}
-									onChange={(e) => setDescricao(e.target.value)}
-									className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
-								/>
 							</div>
 						</div>
 					) : (
@@ -468,6 +457,21 @@ export default function FaturamentoModal({
 							</div>
 						</div>
 					)}
+
+					{/* Descrição */}
+					<div>
+						<label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1 flex items-center justify-between">
+							<span>Descrição</span>
+							<span className="text-[10px] text-slate-400 font-normal">Opcional (padrão: Faturamento)</span>
+						</label>
+						<input
+							type="text"
+							placeholder="Padrão: Faturamento"
+							value={descricao}
+							onChange={(e) => setDescricao(e.target.value)}
+							className="w-full bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
+						/>
+					</div>
 
 					{/* Observações */}
 					<div>

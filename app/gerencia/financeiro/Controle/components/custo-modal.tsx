@@ -7,9 +7,7 @@ import {
 	Calendar,
 	Store,
 	Tag,
-	CreditCard,
 	CheckCircle2,
-	AlertCircle,
 	FileText,
 } from "lucide-react";
 import {
@@ -31,15 +29,6 @@ interface CustoModalProps {
 	defaultCategoria?: CategoriaCusto;
 	defaultLoja?: StoreIdWithGeral;
 }
-
-const METODOS_PAGAMENTO: { id: MetodoPagamento; label: string }[] = [
-	{ id: "pix", label: "Pix" },
-	{ id: "boleto", label: "Boleto Bancário" },
-	{ id: "cartao", label: "Cartão de Crédito/Débito" },
-	{ id: "debito", label: "Débito em Conta" },
-	{ id: "dinheiro", label: "Dinheiro em Espécie" },
-	{ id: "outro", label: "Outro" },
-];
 
 export default function CustoModal({
 	isOpen,
@@ -91,6 +80,8 @@ export default function CustoModal({
 
 	if (!isOpen) return null;
 
+	const catConfig = CATEGORIAS_CUSTO_CONFIG[categoria];
+
 	const handleSubmit = async (e: React.FormEvent) => {
 		e.preventDefault();
 
@@ -99,11 +90,8 @@ export default function CustoModal({
 			return;
 		}
 
-		const trimmedDesc = descricao.trim();
-		if (!trimmedDesc) {
-			alert("Por favor, preencha a descrição do custo.");
-			return;
-		}
+		const defaultDesc = catConfig?.label || "Custo";
+		const finalDescricao = descricao.trim() || defaultDesc;
 
 		const cleanedVal = valor.replace(/\./g, "").replace(",", ".").trim();
 		const valNum = parseFloat(cleanedVal);
@@ -119,7 +107,7 @@ export default function CustoModal({
 			await onSave({
 				categoria,
 				lojaId,
-				descricao: trimmedDesc,
+				descricao: finalDescricao,
 				valor: valNum,
 				data: dataCusto,
 				mesReferencia,
@@ -135,8 +123,6 @@ export default function CustoModal({
 			setIsSubmitting(false);
 		}
 	};
-
-	const catConfig = CATEGORIAS_CUSTO_CONFIG[categoria];
 
 	return (
 		<div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-3 md:p-4 overflow-y-auto animate-in fade-in duration-200">
@@ -237,13 +223,15 @@ export default function CustoModal({
 
 					{/* Descrição do Custo */}
 					<div>
-						<label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
-							Descrição do Custo <span className="text-rose-500">*</span>
+						<label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5 flex items-center justify-between">
+							<span>Descrição do Custo</span>
+							<span className="text-[10px] text-slate-400 font-normal">
+								Opcional (padrão: {catConfig?.label || "Tipo de custo"})
+							</span>
 						</label>
 						<input
 							type="text"
-							required
-							placeholder="Ex: Compra de Chocolate Callebaut, Aluguel Outubro, Enel Lago..."
+							placeholder={`Padrão: ${catConfig?.label || "Tipo de custo"}`}
 							value={descricao}
 							onChange={(e) => setDescricao(e.target.value)}
 							className="w-full bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
@@ -266,53 +254,6 @@ export default function CustoModal({
 								onChangeValue={(num, str) => setValor(str)}
 								className="w-full pl-10 pr-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-base font-black text-rose-600 dark:text-rose-400 focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500"
 							/>
-						</div>
-					</div>
-
-					{/* Forma de Pagamento e Status */}
-					<div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-						<div>
-							<label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
-								Forma de Pagamento
-							</label>
-							<select
-								value={metodoPagamento}
-								onChange={(e) => setMetodoPagamento(e.target.value as MetodoPagamento)}
-								className="w-full bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500">
-								{METODOS_PAGAMENTO.map((m) => (
-									<option key={m.id} value={m.id}>
-										{m.label}
-									</option>
-								))}
-							</select>
-						</div>
-
-						<div>
-							<label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
-								Situação
-							</label>
-							<div className="grid grid-cols-2 gap-2">
-								<button
-									type="button"
-									onClick={() => setStatus("pago")}
-									className={`py-2 px-3 rounded-xl text-xs font-bold border transition-all ${
-										status === "pago"
-											? "bg-emerald-50 dark:bg-emerald-950/40 border-emerald-500 text-emerald-700 dark:text-emerald-300 font-black"
-											: "border-slate-200 dark:border-slate-800 text-slate-500"
-									}`}>
-									Liquidado (Pago)
-								</button>
-								<button
-									type="button"
-									onClick={() => setStatus("pendente")}
-									className={`py-2 px-3 rounded-xl text-xs font-bold border transition-all ${
-										status === "pendente"
-											? "bg-amber-50 dark:bg-amber-950/40 border-amber-500 text-amber-700 dark:text-amber-300 font-black"
-											: "border-slate-200 dark:border-slate-800 text-slate-500"
-									}`}>
-									Pendente
-								</button>
-							</div>
 						</div>
 					</div>
 
