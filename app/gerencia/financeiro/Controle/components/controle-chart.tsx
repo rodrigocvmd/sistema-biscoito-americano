@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import {
 	BarChart3,
 	TrendingUp,
@@ -44,6 +44,7 @@ interface ControleChartProps {
 	totalFaturamento: number;
 	totalCustos: number;
 	totalLucro: number;
+	isConsolidado?: boolean;
 }
 
 const formatCurrency = (val: number) => {
@@ -75,10 +76,16 @@ export default function ControleChart({
 	totalFaturamento,
 	totalCustos,
 	totalLucro,
+	isConsolidado = true,
 }: ControleChartProps) {
-	// Padrão: "Por Loja"
-	const [modoAgrupamento, setModoAgrupamento] = useState<ChartModoAgrupamento>("lojas");
-	const [tipoVisualizacao, setTipoVisualizacao] = useState<ChartTipoVisualizacao>("barras");
+	// Padrão: "Por Loja" (apenas quando consolidado) ou "Evolução Mensal"
+	const [modoAgrupamento, setModoAgrupamento] = useState<ChartModoAgrupamento>(() => {
+		return isConsolidado ? "lojas" : "mensal";
+	});
+	const [tipoVisualizacao, setTipoVisualizacao] = useState<ChartTipoVisualizacao>(() => {
+		return isConsolidado ? "barras" : "linha";
+	});
+
 	const [showFaturamento, setShowFaturamento] = useState(true);
 	const [showCustos, setShowCustos] = useState(true);
 	const [showLucro, setShowLucro] = useState(false);
@@ -93,13 +100,37 @@ export default function ControleChart({
 	const innerW = SVG_WIDTH - MARGIN.left - MARGIN.right;
 	const innerH = SVG_HEIGHT - MARGIN.top - MARGIN.bottom;
 
+	// Quando altera o filtro de loja (Consolidado vs Loja Específica), ajusta o agrupamento e o formato
+	useEffect(() => {
+		if (isConsolidado) {
+			setModoAgrupamento("lojas");
+			setTipoVisualizacao("barras");
+		} else {
+			setModoAgrupamento("mensal");
+			setTipoVisualizacao("linha");
+		}
+	}, [isConsolidado]);
+
+	// Troca de abas com seus formatos padrões
+	const handleSelectLojas = () => {
+		setModoAgrupamento("lojas");
+		setTipoVisualizacao("barras");
+	};
+
+	const handleSelectMensal = () => {
+		setModoAgrupamento("mensal");
+		setTipoVisualizacao("linha");
+	};
+
+	const handleSelectCategorias = () => {
+		setModoAgrupamento("categorias");
+		setTipoVisualizacao("linha");
+	};
+
 	// Ajusta tipo de visualização conforme o modo selecionado
 	const effectiveTipo = useMemo(() => {
-		if (modoAgrupamento === "categorias" && tipoVisualizacao === "linha") {
-			return "rosca";
-		}
-		if (modoAgrupamento === "mensal" && tipoVisualizacao === "rosca") {
-			return "barras";
+		if ((modoAgrupamento === "mensal" || modoAgrupamento === "categorias") && tipoVisualizacao === "rosca") {
+			return "linha";
 		}
 		return tipoVisualizacao;
 	}, [modoAgrupamento, tipoVisualizacao]);
@@ -129,7 +160,7 @@ export default function ControleChart({
 		}
 	}, [modoAgrupamento, lojaData, mensalData, categoriaData, showFaturamento, showCustos, showLucro]);
 
-	// Dados para o modo Rosca (Por Categoria ou Por Loja)
+	// Dados para o modo Rosca (Por Loja)
 	const donutItems = useMemo(() => {
 		if (modoAgrupamento === "lojas") {
 			const totalFat = lojaData.reduce((acc, l) => acc + l.faturamento, 0);
@@ -184,27 +215,31 @@ export default function ControleChart({
 						</h3>
 					</div>
 					<p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-						Comparativos por loja, evolução mensal consolidada e composição de despesas
+						{isConsolidado
+							? "Comparativos por loja, evolução mensal consolidada e composição de despesas"
+							: "Evolução mensal da unidade e composição de despesas por categoria"}
 					</p>
 				</div>
 
 				{/* Botões de Configuração */}
 				<div className="flex flex-wrap items-center gap-2.5">
-					{/* Agrupamento: Por Loja (Padrão), Evolução Mensal, Por Categoria */}
+					{/* Agrupamento: Por Loja (apenas no consolidado), Evolução Mensal, Por Categoria */}
 					<div className="flex items-center bg-slate-100 dark:bg-slate-800/80 p-1 rounded-xl text-xs font-bold">
+						{isConsolidado && (
+							<button
+								type="button"
+								onClick={handleSelectLojas}
+								className={`px-3 py-1.5 rounded-lg transition-all ${
+									modoAgrupamento === "lojas"
+										? "bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-xs font-black"
+										: "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200"
+								}`}>
+								Por Loja
+							</button>
+						)}
 						<button
 							type="button"
-							onClick={() => setModoAgrupamento("lojas")}
-							className={`px-3 py-1.5 rounded-lg transition-all ${
-								modoAgrupamento === "lojas"
-									? "bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-xs font-black"
-									: "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200"
-							}`}>
-							Por Loja
-						</button>
-						<button
-							type="button"
-							onClick={() => setModoAgrupamento("mensal")}
+							onClick={handleSelectMensal}
 							className={`px-3 py-1.5 rounded-lg transition-all ${
 								modoAgrupamento === "mensal"
 									? "bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-xs font-black"
@@ -214,7 +249,7 @@ export default function ControleChart({
 						</button>
 						<button
 							type="button"
-							onClick={() => setModoAgrupamento("categorias")}
+							onClick={handleSelectCategorias}
 							className={`px-3 py-1.5 rounded-lg transition-all ${
 								modoAgrupamento === "categorias"
 									? "bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-xs font-black"
@@ -226,42 +261,69 @@ export default function ControleChart({
 
 					{/* Tipo de Gráfico */}
 					<div className="flex items-center bg-slate-100 dark:bg-slate-800/80 p-1 rounded-xl text-xs">
-						<button
-							type="button"
-							title="Gráfico de Barras"
-							onClick={() => setTipoVisualizacao("barras")}
-							className={`p-1.5 rounded-lg transition-all ${
-								effectiveTipo === "barras"
-									? "bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-xs"
-									: "text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
-							}`}>
-							<BarChart3 size={16} />
-						</button>
-						{modoAgrupamento !== "categorias" && (
-							<button
-								type="button"
-								title="Gráfico de Linha"
-								onClick={() => setTipoVisualizacao("linha")}
-								className={`p-1.5 rounded-lg transition-all ${
-									effectiveTipo === "linha"
-										? "bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-xs"
-										: "text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
-							}`}>
-								<TrendingUp size={16} />
-							</button>
-						)}
-						{modoAgrupamento !== "mensal" && (
-							<button
-								type="button"
-								title="Gráfico de Rosca / Distribuição"
-								onClick={() => setTipoVisualizacao("rosca")}
-								className={`p-1.5 rounded-lg transition-all ${
-									effectiveTipo === "rosca"
-										? "bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-xs"
-										: "text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
-							}`}>
-								<PieChart size={16} />
-							</button>
+						{/* Para Evolução Mensal e Por Categoria: Linha (padrão) e Barras */}
+						{modoAgrupamento !== "lojas" ? (
+							<>
+								<button
+									type="button"
+									title="Gráfico de Linha"
+									onClick={() => setTipoVisualizacao("linha")}
+									className={`p-1.5 rounded-lg transition-all ${
+										effectiveTipo === "linha"
+											? "bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-xs"
+											: "text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
+									}`}>
+									<TrendingUp size={16} />
+								</button>
+								<button
+									type="button"
+									title="Gráfico de Barras"
+									onClick={() => setTipoVisualizacao("barras")}
+									className={`p-1.5 rounded-lg transition-all ${
+										effectiveTipo === "barras"
+											? "bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-xs"
+											: "text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
+									}`}>
+									<BarChart3 size={16} />
+								</button>
+							</>
+						) : (
+							/* Para Por Loja: Barras (padrão), Linha, Rosca */
+							<>
+								<button
+									type="button"
+									title="Gráfico de Barras"
+									onClick={() => setTipoVisualizacao("barras")}
+									className={`p-1.5 rounded-lg transition-all ${
+										effectiveTipo === "barras"
+											? "bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-xs"
+											: "text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
+									}`}>
+									<BarChart3 size={16} />
+								</button>
+								<button
+									type="button"
+									title="Gráfico de Linha"
+									onClick={() => setTipoVisualizacao("linha")}
+									className={`p-1.5 rounded-lg transition-all ${
+										effectiveTipo === "linha"
+											? "bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-xs"
+											: "text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
+									}`}>
+									<TrendingUp size={16} />
+								</button>
+								<button
+									type="button"
+									title="Gráfico de Rosca / Distribuição"
+									onClick={() => setTipoVisualizacao("rosca")}
+									className={`p-1.5 rounded-lg transition-all ${
+										effectiveTipo === "rosca"
+											? "bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-xs"
+											: "text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
+									}`}>
+									<PieChart size={16} />
+								</button>
+							</>
 						)}
 					</div>
 
@@ -519,7 +581,7 @@ export default function ControleChart({
 														y={MARGIN.top + innerH + 18}
 														textAnchor="middle"
 														className="text-[9px] font-bold fill-slate-500 dark:fill-slate-400">
-														{cat.label.slice(0, 7)}
+														{cat.label.slice(0, 8)}
 													</text>
 												</g>
 											);
@@ -621,21 +683,37 @@ export default function ControleChart({
 							)}
 
 							{/* RENDERIZAÇÃO: LINHA / ÁREA SUAVE */}
-							{effectiveTipo === "linha" && points.length > 1 && (
+							{effectiveTipo === "linha" && (
 								<>
 									{(() => {
-										const slotW = innerW / (points.length - 1);
+										if (points.length === 0) {
+											return (
+												<text
+													x={MARGIN.left + innerW / 2}
+													y={MARGIN.top + innerH / 2}
+													textAnchor="middle"
+													className="text-xs font-bold fill-slate-400">
+													Sem dados registrados para o período
+												</text>
+											);
+										}
+
+										const slotW = points.length > 1 ? innerW / (points.length - 1) : innerW / 2;
 
 										const getCoords = (key: string) => {
 											return points.map((p: any, i) => {
-												const x = MARGIN.left + i * slotW;
-												const val = Math.max(p[key] || 0, 0);
+												const x = points.length > 1 ? MARGIN.left + i * slotW : MARGIN.left + innerW / 2;
+												const rawVal = modoAgrupamento === "categorias" ? p.valor : p[key];
+												const val = Math.max(rawVal || 0, 0);
 												const y = MARGIN.top + innerH - (val / maxVal) * innerH;
-												return { x, y, val };
+												return { x, y, val, color: p.color };
 											});
 										};
 
 										const makeLinePath = (coords: { x: number; y: number }[]) => {
+											if (coords.length === 1) {
+												return `M ${coords[0].x - 20} ${coords[0].y} L ${coords[0].x + 20} ${coords[0].y}`;
+											}
 											return coords.reduce((acc, curr, i, arr) => {
 												if (i === 0) return `M ${curr.x} ${curr.y}`;
 												const prev = arr[i - 1];
@@ -644,6 +722,73 @@ export default function ControleChart({
 											}, "");
 										};
 
+										// Renderização específica para Por Categoria em Linha
+										if (modoAgrupamento === "categorias") {
+											const catCoords = getCoords("valor");
+											const catPath = makeLinePath(catCoords);
+											const lastX = catCoords[catCoords.length - 1]?.x ?? (MARGIN.left + innerW);
+											const firstX = catCoords[0]?.x ?? MARGIN.left;
+											const catArea = `${catPath} L ${lastX} ${MARGIN.top + innerH} L ${firstX} ${MARGIN.top + innerH} Z`;
+
+											return (
+												<g>
+													{/* Área preenchida com gradiente de custos */}
+													<path d={catArea} fill="url(#gradCustosArea)" />
+
+													{/* Linha contínua */}
+													<path d={catPath} fill="none" stroke="#f43f5e" strokeWidth={2.8} strokeLinecap="round" />
+
+													{/* Pontos com a cor de cada categoria */}
+													{points.map((pt: any, idx) => {
+														const x = catCoords[idx].x;
+														const y = catCoords[idx].y;
+														const isHovered = hoveredIndex === idx;
+
+														return (
+															<g
+																key={idx}
+																onMouseEnter={() => setHoveredIndex(idx)}
+																onMouseLeave={() => setHoveredIndex(null)}
+																className="cursor-pointer">
+																{isHovered && (
+																	<line
+																		x1={x}
+																		y1={MARGIN.top}
+																		x2={x}
+																		y2={MARGIN.top + innerH}
+																		stroke="currentColor"
+																		strokeDasharray="2 2"
+																		className="text-slate-400 dark:text-slate-600"
+																	/>
+																)}
+
+																<circle
+																	cx={x}
+																	cy={y}
+																	r={isHovered ? 6 : 4}
+																	fill={pt.color || "#f43f5e"}
+																	stroke="#ffffff"
+																	strokeWidth={2}
+																	className="transition-all"
+																/>
+
+																<text
+																	x={x}
+																	y={MARGIN.top + innerH + 18}
+																	textAnchor="middle"
+																	className={`text-[9px] ${
+																		isHovered ? "font-black fill-blue-600 dark:fill-blue-400" : "font-semibold fill-slate-500 dark:fill-slate-400"
+																	}`}>
+																	{pt.label.slice(0, 8)}
+																</text>
+															</g>
+														);
+													})}
+												</g>
+											);
+										}
+
+										// Renderização para Evolução Mensal ou Por Loja
 										const fatCoords = getCoords("faturamento");
 										const custCoords = getCoords("custos");
 										const lucCoords = getCoords("lucro");
@@ -652,8 +797,11 @@ export default function ControleChart({
 										const custPath = makeLinePath(custCoords);
 										const lucPath = makeLinePath(lucCoords);
 
-										const fatArea = `${fatPath} L ${MARGIN.left + innerW} ${MARGIN.top + innerH} L ${MARGIN.left} ${MARGIN.top + innerH} Z`;
-										const custArea = `${custPath} L ${MARGIN.left + innerW} ${MARGIN.top + innerH} L ${MARGIN.left} ${MARGIN.top + innerH} Z`;
+										const lastX = fatCoords[fatCoords.length - 1]?.x ?? (MARGIN.left + innerW);
+										const firstX = fatCoords[0]?.x ?? MARGIN.left;
+
+										const fatArea = `${fatPath} L ${lastX} ${MARGIN.top + innerH} L ${firstX} ${MARGIN.top + innerH} Z`;
+										const custArea = `${custPath} L ${lastX} ${MARGIN.top + innerH} L ${firstX} ${MARGIN.top + innerH} Z`;
 
 										return (
 											<g>
@@ -674,7 +822,7 @@ export default function ControleChart({
 
 												{/* Pontos Interativos */}
 												{points.map((pt: any, idx) => {
-													const x = MARGIN.left + idx * slotW;
+													const x = fatCoords[idx].x;
 													const isHovered = hoveredIndex === idx;
 
 													return (

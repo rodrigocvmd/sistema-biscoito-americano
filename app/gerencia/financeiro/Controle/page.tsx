@@ -779,6 +779,7 @@ export default function ControlePage() {
 						totalFaturamento={totalFaturamento}
 						totalCustos={totalCustos}
 						totalLucro={lucroLiquido}
+						isConsolidado={lojaFilter === "todas"}
 					/>
 
 					{/* Atalhos Rápidos por Categorias de Custo */}
