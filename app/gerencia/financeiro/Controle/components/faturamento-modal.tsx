@@ -35,13 +35,13 @@ interface FaturamentoModalProps {
 }
 
 const ITENS_SUGESTOES = [
-	{ nome: "Cookies Tradicionais", precoUnitario: 16.0 },
-	{ nome: "Cookies Especiais / Recheados", precoUnitario: 18.0 },
-	{ nome: "Café Espresso / Bebidas", precoUnitario: 9.0 },
-	{ nome: "Combo 4 Cookies", precoUnitario: 62.0 },
-	{ nome: "Combo 6 Cookies", precoUnitario: 90.0 },
-	{ nome: "Sorvetes / Sobremesas", precoUnitario: 15.0 },
-	{ nome: "Caixa Presente", precoUnitario: 25.0 },
+	{ nome: "Cookies Tradicionais", precoUnitario: 16 },
+	{ nome: "Cookies Especiais / Recheados", precoUnitario: 18 },
+	{ nome: "Café Espresso / Bebidas", precoUnitario: 9 },
+	{ nome: "Combo 4 Cookies", precoUnitario: 62 },
+	{ nome: "Combo 6 Cookies", precoUnitario: 90 },
+	{ nome: "Sorvetes / Sobremesas", precoUnitario: 15 },
+	{ nome: "Caixa Presente", precoUnitario: 25 },
 ];
 
 export default function FaturamentoModal({
@@ -68,7 +68,11 @@ export default function FaturamentoModal({
 				setTipo(editingFaturamento.tipo);
 				setLojaId(editingFaturamento.lojaId);
 				setDataFaturamento(editingFaturamento.data);
-				setValorGeral(editingFaturamento.valorTotal ? String(editingFaturamento.valorTotal).replace(".", ",") : "");
+				setValorGeral(
+					editingFaturamento.valorTotal
+						? String(Math.round(editingFaturamento.valorTotal))
+						: ""
+				);
 				setCanal(
 					editingFaturamento.canal === "ifood" || editingFaturamento.canal === "delivery_proprio"
 						? "delivery"
@@ -78,7 +82,11 @@ export default function FaturamentoModal({
 				setObservacoes(editingFaturamento.observacoes || "");
 				setItens(
 					editingFaturamento.itens && editingFaturamento.itens.length > 0
-						? editingFaturamento.itens
+						? editingFaturamento.itens.map((it) => ({
+								...it,
+								precoUnitario: Math.round(it.precoUnitario),
+								subtotal: Math.round(it.subtotal),
+						  }))
 						: [{ id: "item-1", nome: "", quantidade: 1, precoUnitario: 0, subtotal: 0 }]
 				);
 			} else {
@@ -102,21 +110,22 @@ export default function FaturamentoModal({
 
 	if (!isOpen) return null;
 
-	// Total calculado a partir dos itens discriminados
-	const totalItens = itens.reduce((acc, curr) => acc + (Number(curr.subtotal) || 0), 0);
+	// Total calculado a partir dos itens discriminados (inteiro em reais)
+	const totalItens = itens.reduce((acc, curr) => acc + (Math.round(Number(curr.subtotal)) || 0), 0);
 
 	// Helpers de item
 	const handleAddItem = (sugestao?: { nome: string; precoUnitario: number }) => {
 		const newId = `item-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`;
 		if (sugestao) {
+			const unit = Math.round(sugestao.precoUnitario);
 			setItens((prev) => [
 				...prev,
 				{
 					id: newId,
 					nome: sugestao.nome,
 					quantidade: 1,
-					precoUnitario: sugestao.precoUnitario,
-					subtotal: sugestao.precoUnitario,
+					precoUnitario: unit,
+					subtotal: unit,
 				},
 			]);
 		} else {
@@ -146,13 +155,13 @@ export default function FaturamentoModal({
 				if (field === "nome") {
 					updated.nome = String(val);
 				} else if (field === "quantidade") {
-					const qtd = Math.max(0, Number(val) || 0);
+					const qtd = Math.max(0, Math.floor(Number(val) || 0));
 					updated.quantidade = qtd;
-					updated.subtotal = Number((qtd * updated.precoUnitario).toFixed(2));
+					updated.subtotal = Math.round(qtd * updated.precoUnitario);
 				} else if (field === "precoUnitario") {
-					const preco = Math.max(0, Number(val) || 0);
+					const preco = Math.max(0, Math.round(Number(val) || 0));
 					updated.precoUnitario = preco;
-					updated.subtotal = Number((updated.quantidade * preco).toFixed(2));
+					updated.subtotal = Math.round(updated.quantidade * preco);
 				}
 				return updated;
 			})
@@ -177,14 +186,20 @@ export default function FaturamentoModal({
 		let validItens: FaturamentoItem[] = [];
 
 		if (tipo === "geral") {
-			const cleaned = valorGeral.replace(/\./g, "").replace(",", ".").trim();
-			finalValor = parseFloat(cleaned);
+			const cleaned = valorGeral.replace(/\D/g, "").trim();
+			finalValor = cleaned ? parseInt(cleaned, 10) : 0;
 			if (isNaN(finalValor) || finalValor <= 0) {
 				alert("Por favor, informe um valor de faturamento válido.");
 				return;
 			}
 		} else {
-			validItens = itens.filter((it) => it.nome.trim() && it.subtotal > 0);
+			validItens = itens
+				.filter((it) => it.nome.trim() && it.subtotal > 0)
+				.map((it) => ({
+					...it,
+					precoUnitario: Math.round(it.precoUnitario),
+					subtotal: Math.round(it.subtotal),
+				}));
 			if (validItens.length === 0) {
 				alert("Por favor, adicione pelo menos um item válido com nome e valor.");
 				return;
@@ -201,7 +216,7 @@ export default function FaturamentoModal({
 				data: dataFaturamento,
 				mesReferencia,
 				tipo,
-				valorTotal: finalValor,
+				valorTotal: Math.round(finalValor),
 				canal,
 				descricao: descricao.trim() || "Faturamento",
 				itens: tipo === "discriminado" ? validItens : undefined,
@@ -356,7 +371,9 @@ export default function FaturamentoModal({
 									</span>
 									<CurrencyInput
 										required
-										placeholder="0,00"
+										integerOnly
+										selectAllOnClick
+										placeholder="0"
 										value={valorGeral}
 										onChangeValue={(num, str) => setValorGeral(str)}
 										className="w-full pl-10 pr-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-base font-black text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
@@ -425,7 +442,9 @@ export default function FaturamentoModal({
 										</div>
 										<div className="w-24">
 											<CurrencyInput
-												placeholder="0,00"
+												integerOnly
+												selectAllOnClick
+												placeholder="0"
 												value={item.precoUnitario || 0}
 												onChangeValue={(num) => handleUpdateItem(item.id, "precoUnitario", num)}
 												className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1.5 text-xs text-right font-bold text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-emerald-500"
@@ -433,7 +452,7 @@ export default function FaturamentoModal({
 										</div>
 										<div className="w-24 text-right pr-1">
 											<span className="text-xs font-black text-emerald-600 dark:text-emerald-400">
-												R$ {(item.subtotal || 0).toFixed(2)}
+												R$ {Math.round(item.subtotal || 0).toLocaleString("pt-BR")}
 											</span>
 										</div>
 										<button
@@ -452,7 +471,7 @@ export default function FaturamentoModal({
 									Total Somado dos Itens:
 								</span>
 								<span className="text-base font-black text-emerald-700 dark:text-emerald-300">
-									R$ {totalItens.toFixed(2)}
+									R$ {Math.round(totalItens).toLocaleString("pt-BR")}
 								</span>
 							</div>
 						</div>

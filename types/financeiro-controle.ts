@@ -212,7 +212,7 @@ export interface FaturamentoFinanceiro {
 	updatedAt?: any;
 }
 
-export type PeriodoModo = "mes" | "mes_anterior" | "7dias" | "30dias" | "ano" | "custom" | "todos";
+export type PeriodoModo = "mes" | "ano" | "mes_anterior" | "7dias" | "30dias" | "custom" | "todos";
 
 export type ChartTipoVisualizacao = "barras" | "linha" | "rosca";
-export type ChartModoAgrupamento = "temporal" | "categorias" | "lojas";
+export type ChartModoAgrupamento = "lojas" | "mensal" | "categorias" | "temporal";

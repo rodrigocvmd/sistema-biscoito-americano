@@ -9,6 +9,8 @@ import {
 	Tag,
 	CheckCircle2,
 	FileText,
+	Plus,
+	Trash2,
 } from "lucide-react";
 import {
 	CustoFinanceiro,
@@ -41,6 +43,8 @@ export default function CustoModal({
 	const [categoria, setCategoria] = useState<CategoriaCusto>(defaultCategoria);
 	const [lojaId, setLojaId] = useState<StoreIdWithGeral>(defaultLoja);
 	const [dataCusto, setDataCusto] = useState("");
+	const [multiDatasEnabled, setMultiDatasEnabled] = useState(false);
+	const [multiDatas, setMultiDatas] = useState<string[]>([]);
 	const [descricao, setDescricao] = useState("");
 	const [valor, setValor] = useState("");
 	const [metodoPagamento, setMetodoPagamento] = useState<MetodoPagamento>("pix");
@@ -54,8 +58,12 @@ export default function CustoModal({
 				setCategoria(editingCusto.categoria);
 				setLojaId(editingCusto.lojaId);
 				setDataCusto(editingCusto.data);
+				setMultiDatasEnabled(false);
+				setMultiDatas([]);
 				setDescricao(editingCusto.descricao);
-				setValor(editingCusto.valor ? String(editingCusto.valor).replace(".", ",") : "");
+				setValor(
+					editingCusto.valor ? String(Math.round(editingCusto.valor)) : ""
+				);
 				setMetodoPagamento(editingCusto.metodoPagamento || "pix");
 				setStatus(editingCusto.status || "pago");
 				setObservacoes(editingCusto.observacoes || "");
@@ -69,6 +77,8 @@ export default function CustoModal({
 				setCategoria(defaultCategoria);
 				setLojaId(defaultLoja);
 				setDataCusto(todayStr);
+				setMultiDatasEnabled(false);
+				setMultiDatas([todayStr, ""]);
 				setDescricao("");
 				setValor("");
 				setMetodoPagamento("pix");
@@ -85,18 +95,54 @@ export default function CustoModal({
 	const handleSubmit = async (e: React.FormEvent) => {
 		e.preventDefault();
 
-		if (!dataCusto) {
-			alert("O dia do custo é obrigatório.");
-			return;
-		}
-
 		const defaultDesc = catConfig?.label || "Custo";
 		const finalDescricao = descricao.trim() || defaultDesc;
 
-		const cleanedVal = valor.replace(/\./g, "").replace(",", ".").trim();
-		const valNum = parseFloat(cleanedVal);
+		const cleanedVal = valor.replace(/\D/g, "").trim();
+		const valNum = cleanedVal ? parseInt(cleanedVal, 10) : 0;
 		if (isNaN(valNum) || valNum <= 0) {
 			alert("Por favor, insira um valor monetário válido maior que zero.");
+			return;
+		}
+
+		if (multiDatasEnabled && !editingCusto) {
+			const filledDates = multiDatas.map((d) => d.trim()).filter(Boolean);
+			if (filledDates.length < 2) {
+				alert("Por favor, selecione 2 ou mais datas para realizar o lançamento múltiplo.");
+				return;
+			}
+			if (multiDatas.some((d) => !d.trim())) {
+				alert("Por favor, preencha todas as datas adicionadas ou remova as linhas vazias.");
+				return;
+			}
+
+			setIsSubmitting(true);
+			try {
+				for (const d of filledDates) {
+					await onSave({
+						categoria,
+						lojaId,
+						descricao: finalDescricao,
+						valor: Math.round(valNum),
+						data: d,
+						mesReferencia: d.slice(0, 7),
+						metodoPagamento,
+						status,
+						observacoes: observacoes.trim() || undefined,
+					});
+				}
+				onClose();
+			} catch (error) {
+				console.error("Erro ao salvar custos:", error);
+				alert("Erro ao salvar lançamentos de custo.");
+			} finally {
+				setIsSubmitting(false);
+			}
+			return;
+		}
+
+		if (!dataCusto) {
+			alert("O dia do custo é obrigatório.");
 			return;
 		}
 
@@ -108,7 +154,7 @@ export default function CustoModal({
 				categoria,
 				lojaId,
 				descricao: finalDescricao,
-				valor: valNum,
+				valor: Math.round(valNum),
 				data: dataCusto,
 				mesReferencia,
 				metodoPagamento,
@@ -183,43 +229,141 @@ export default function CustoModal({
 						</div>
 					</div>
 
-					{/* Linha: Data (Obrigatória) e Loja */}
-					<div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-						<div>
-							<label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5 flex items-center justify-between">
-								<span>
-									Dia do Custo <span className="text-rose-500">*</span>
-								</span>
-								<span className="text-[10px] text-amber-600 dark:text-amber-400 font-semibold">
-									Obrigatório
+					{/* Checkbox para múltiplas datas */}
+					{!editingCusto && (
+						<div className="flex items-center justify-between p-2.5 bg-blue-50/60 dark:bg-blue-950/30 rounded-xl border border-blue-200/80 dark:border-blue-900/50">
+							<label className="flex items-center gap-2.5 cursor-pointer select-none">
+								<input
+									type="checkbox"
+									checked={multiDatasEnabled}
+									onChange={(e) => {
+										const checked = e.target.checked;
+										setMultiDatasEnabled(checked);
+										if (checked && multiDatas.length < 2) {
+											setMultiDatas(dataCusto ? [dataCusto, ""] : ["", ""]);
+										}
+									}}
+									className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 border-slate-300 dark:border-slate-700 cursor-pointer"
+								/>
+								<span className="text-xs font-bold text-blue-900 dark:text-blue-200">
+									Lançar em datas diversas (mesmo custo em múltiplas datas)
 								</span>
 							</label>
-							<div className="relative">
-								<DateInputBR
-									required
-									value={dataCusto}
-									onChangeDate={(iso) => setDataCusto(iso)}
-									className="w-full bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs font-black text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
-								/>
+							{multiDatasEnabled && (
+								<span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-blue-200 dark:bg-blue-900 text-blue-800 dark:text-blue-200">
+									Mínimo 2 datas
+								</span>
+							)}
+						</div>
+					)}
+
+					{multiDatasEnabled && !editingCusto ? (
+						<>
+							{/* Linha: Unidade / Loja */}
+							<div>
+								<label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+									Unidade / Loja
+								</label>
+								<select
+									value={lojaId}
+									onChange={(e) => setLojaId(e.target.value as StoreIdWithGeral)}
+									className="w-full bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500">
+									<option value="geral">Geral / Matriz (Todas as Lojas)</option>
+									<option value="lago">Lago</option>
+									<option value="terraco">Terraço</option>
+									<option value="conjunto">Conjunto</option>
+									<option value="noroeste">Noroeste</option>
+								</select>
+							</div>
+
+							{/* Bloco de Múltiplas Datas */}
+							<div className="bg-slate-50 dark:bg-slate-800/40 p-3.5 rounded-2xl border border-slate-200/80 dark:border-slate-800 space-y-3">
+								<div className="flex items-center justify-between">
+									<label className="block text-xs font-black text-slate-700 dark:text-slate-300">
+										Datas de Lançamento <span className="text-rose-500">*</span>
+										<span className="ml-2 text-[10px] text-slate-500 dark:text-slate-400 font-semibold">
+											({multiDatas.filter(Boolean).length} data(s) preenchida(s))
+										</span>
+									</label>
+									<button
+										type="button"
+										onClick={() => setMultiDatas((prev) => [...prev, ""])}
+										className="text-xs font-bold text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1">
+										<Plus size={14} /> Adicionar data
+									</button>
+								</div>
+
+								<div className="space-y-2">
+									{multiDatas.map((dt, idx) => (
+										<div key={idx} className="flex items-center gap-2">
+											<span className="text-xs font-bold text-slate-400 w-5 text-right">{idx + 1}.</span>
+											<div className="flex-1">
+												<DateInputBR
+													required
+													value={dt}
+													onChangeDate={(iso) => {
+														setMultiDatas((prev) => {
+															const updated = [...prev];
+															updated[idx] = iso;
+															return updated;
+														});
+													}}
+													className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs font-bold text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+												/>
+											</div>
+											{multiDatas.length > 2 && (
+												<button
+													type="button"
+													onClick={() => setMultiDatas((prev) => prev.filter((_, i) => i !== idx))}
+													className="p-1.5 text-slate-400 hover:text-rose-500 rounded-lg transition-colors"
+													title="Remover data">
+													<Trash2 size={16} />
+												</button>
+											)}
+										</div>
+									))}
+								</div>
+							</div>
+						</>
+					) : (
+						/* Linha: Data (Obrigatória) e Loja */
+						<div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+							<div>
+								<label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5 flex items-center justify-between">
+									<span>
+										Dia do Custo <span className="text-rose-500">*</span>
+									</span>
+									<span className="text-[10px] text-amber-600 dark:text-amber-400 font-semibold">
+										Obrigatório
+									</span>
+								</label>
+								<div className="relative">
+									<DateInputBR
+										required
+										value={dataCusto}
+										onChangeDate={(iso) => setDataCusto(iso)}
+										className="w-full bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs font-black text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+									/>
+								</div>
+							</div>
+
+							<div>
+								<label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+									Unidade / Loja
+								</label>
+								<select
+									value={lojaId}
+									onChange={(e) => setLojaId(e.target.value as StoreIdWithGeral)}
+									className="w-full bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500">
+									<option value="geral">Geral / Matriz (Todas as Lojas)</option>
+									<option value="lago">Lago</option>
+									<option value="terraco">Terraço</option>
+									<option value="conjunto">Conjunto</option>
+									<option value="noroeste">Noroeste</option>
+								</select>
 							</div>
 						</div>
-
-						<div>
-							<label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
-								Unidade / Loja
-							</label>
-							<select
-								value={lojaId}
-								onChange={(e) => setLojaId(e.target.value as StoreIdWithGeral)}
-								className="w-full bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500">
-								<option value="geral">Geral / Matriz (Todas as Lojas)</option>
-								<option value="lago">Lago</option>
-								<option value="terraco">Terraço</option>
-								<option value="conjunto">Conjunto</option>
-								<option value="noroeste">Noroeste</option>
-							</select>
-						</div>
-					</div>
+					)}
 
 					{/* Descrição do Custo */}
 					<div>
@@ -249,7 +393,9 @@ export default function CustoModal({
 							</span>
 							<CurrencyInput
 								required
-								placeholder="0,00"
+								integerOnly
+								selectAllOnClick
+								placeholder="0"
 								value={valor}
 								onChangeValue={(num, str) => setValor(str)}
 								className="w-full pl-10 pr-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-base font-black text-rose-600 dark:text-rose-400 focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500"
@@ -285,7 +431,13 @@ export default function CustoModal({
 							disabled={isSubmitting}
 							className="px-5 py-2.5 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 hover:bg-slate-800 dark:hover:bg-slate-100 text-xs font-black tracking-wide shadow-md transition-all flex items-center gap-1.5 disabled:opacity-50">
 							<CheckCircle2 size={16} />
-							{isSubmitting ? "Gravando..." : editingCusto ? "Salvar Alterações" : "Gravar Custo"}
+							{isSubmitting
+								? "Gravando..."
+								: editingCusto
+								? "Salvar Alterações"
+								: multiDatasEnabled
+								? `Gravar Custos (${multiDatas.filter(Boolean).length} datas)`
+								: "Gravar Custo"}
 						</button>
 					</div>
 				</form>

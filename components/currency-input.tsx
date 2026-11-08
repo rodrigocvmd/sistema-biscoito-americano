@@ -7,21 +7,36 @@ export interface CurrencyInputProps
 	value: string | number;
 	onChangeValue: (numericValue: number, formattedString: string) => void;
 	prefix?: string;
+	integerOnly?: boolean;
+	selectAllOnClick?: boolean;
 }
 
 /**
- * Converte qualquer valor (number ou string) em string formatada "0,00"
+ * Converte qualquer valor (number ou string) em string formatada "0,00" ou "0" se integerOnly
  */
-export function formatCurrencyValue(val: number | string): string {
-	if (val === "" || val === undefined || val === null) return "0,00";
+export function formatCurrencyValue(val: number | string, integerOnly = false): string {
+	if (val === "" || val === undefined || val === null) return integerOnly ? "0" : "0,00";
 	let num: number;
 	if (typeof val === "number") {
 		num = isNaN(val) ? 0 : val;
+		if (integerOnly) {
+			num = Math.round(num);
+		}
 	} else {
 		// Se já vier formatado ou como string numérica
 		const digits = val.replace(/\D/g, "");
-		if (!digits) return "0,00";
-		num = parseInt(digits, 10) / 100;
+		if (!digits) return integerOnly ? "0" : "0,00";
+		if (integerOnly) {
+			num = parseInt(digits, 10);
+		} else {
+			num = parseInt(digits, 10) / 100;
+		}
+	}
+	if (integerOnly) {
+		return num.toLocaleString("pt-BR", {
+			minimumFractionDigits: 0,
+			maximumFractionDigits: 0,
+		});
 	}
 	return num.toLocaleString("pt-BR", {
 		minimumFractionDigits: 2,
@@ -30,28 +45,49 @@ export function formatCurrencyValue(val: number | string): string {
 }
 
 /**
- * Input monetário estilo ATM / Caixa Eletrônico (máscara progressiva da direita para a esquerda):
- * - User digita 1 -> 0,01
- * - User digita 5 -> 0,15
- * - User digita 9 -> 1,59
+ * Input monetário estilo ATM / Caixa Eletrônico:
+ * - integerOnly = false: máscara progressiva de centavos (1 -> 0,01 -> 0,15 -> 1,59)
+ * - integerOnly = true: valor inteiro em reais, sem centavos (1 -> 1 -> 15 -> 150 -> 1.500)
  */
 export const CurrencyInput = forwardRef<HTMLInputElement, CurrencyInputProps>(
-	({ value, onChangeValue, prefix, className = "", onFocus, onClick, ...props }, ref) => {
-		const formattedDisplay = formatCurrencyValue(value);
+	(
+		{
+			value,
+			onChangeValue,
+			prefix,
+			integerOnly = false,
+			selectAllOnClick = false,
+			className = "",
+			onFocus,
+			onClick,
+			...props
+		},
+		ref
+	) => {
+		const formattedDisplay = formatCurrencyValue(value, integerOnly);
 
 		const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
 			const raw = e.target.value;
 			const digits = raw.replace(/\D/g, "");
 			if (!digits) {
-				onChangeValue(0, "0,00");
+				onChangeValue(0, integerOnly ? "0" : "0,00");
 				return;
 			}
-			const numeric = parseInt(digits, 10) / 100;
-			const formatted = numeric.toLocaleString("pt-BR", {
-				minimumFractionDigits: 2,
-				maximumFractionDigits: 2,
-			});
-			onChangeValue(numeric, formatted);
+			if (integerOnly) {
+				const numeric = parseInt(digits, 10);
+				const formatted = numeric.toLocaleString("pt-BR", {
+					minimumFractionDigits: 0,
+					maximumFractionDigits: 0,
+				});
+				onChangeValue(numeric, formatted);
+			} else {
+				const numeric = parseInt(digits, 10) / 100;
+				const formatted = numeric.toLocaleString("pt-BR", {
+					minimumFractionDigits: 2,
+					maximumFractionDigits: 2,
+				});
+				onChangeValue(numeric, formatted);
+			}
 		};
 
 		const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -68,27 +104,54 @@ export const CurrencyInput = forwardRef<HTMLInputElement, CurrencyInputProps>(
 				return;
 			}
 
+			// Se todo o texto estiver selecionado e o usuário apertar Backspace ou Delete
+			const input = e.currentTarget;
+			const isAllSelected =
+				input.selectionStart === 0 &&
+				input.selectionEnd !== null &&
+				input.selectionEnd === input.value.length;
+
+			if (isAllSelected && (e.key === "Backspace" || e.key === "Delete")) {
+				e.preventDefault();
+				onChangeValue(0, integerOnly ? "0" : "0,00");
+				return;
+			}
+
 			if (e.key === "Backspace") {
 				e.preventDefault();
-				const currentStr = typeof value === "number" ? (value * 100).toFixed(0) : String(value ?? "");
+				const currentStr =
+					typeof value === "number"
+						? integerOnly
+							? Math.round(value).toFixed(0)
+							: (value * 100).toFixed(0)
+						: String(value ?? "");
 				const digits = currentStr.replace(/\D/g, "");
 				if (digits.length <= 1) {
-					onChangeValue(0, "0,00");
+					onChangeValue(0, integerOnly ? "0" : "0,00");
 					return;
 				}
 				const newDigits = digits.slice(0, -1);
-				const numeric = parseInt(newDigits, 10) / 100;
-				const formatted = numeric.toLocaleString("pt-BR", {
-					minimumFractionDigits: 2,
-					maximumFractionDigits: 2,
-				});
-				onChangeValue(numeric, formatted);
+				if (integerOnly) {
+					const numeric = parseInt(newDigits, 10);
+					const formatted = numeric.toLocaleString("pt-BR", {
+						minimumFractionDigits: 0,
+						maximumFractionDigits: 0,
+					});
+					onChangeValue(numeric, formatted);
+				} else {
+					const numeric = parseInt(newDigits, 10) / 100;
+					const formatted = numeric.toLocaleString("pt-BR", {
+						minimumFractionDigits: 2,
+						maximumFractionDigits: 2,
+					});
+					onChangeValue(numeric, formatted);
+				}
 				return;
 			}
 
 			if (e.key === "Delete") {
 				e.preventDefault();
-				onChangeValue(0, "0,00");
+				onChangeValue(0, integerOnly ? "0" : "0,00");
 				return;
 			}
 
@@ -108,15 +171,22 @@ export const CurrencyInput = forwardRef<HTMLInputElement, CurrencyInputProps>(
 				onChange={handleChange}
 				onKeyDown={handleKeyDown}
 				onFocus={(e) => {
-					// Posiciona o cursor no final
-					const len = e.target.value.length;
-					e.target.setSelectionRange(len, len);
+					if (selectAllOnClick) {
+						e.target.select();
+					} else {
+						const len = e.target.value.length;
+						e.target.setSelectionRange(len, len);
+					}
 					if (onFocus) onFocus(e);
 				}}
 				onClick={(e) => {
-					const input = e.currentTarget;
-					const len = input.value.length;
-					input.setSelectionRange(len, len);
+					if (selectAllOnClick) {
+						e.currentTarget.select();
+					} else {
+						const inputEl = e.currentTarget;
+						const len = inputEl.value.length;
+						inputEl.setSelectionRange(len, len);
+					}
 					if (onClick) onClick(e);
 				}}
 				className={className}

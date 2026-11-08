@@ -48,7 +48,6 @@ import {
 import ControleChart from "./components/controle-chart";
 import FaturamentoModal from "./components/faturamento-modal";
 import FaturamentoDetalhesModal from "./components/faturamento-detalhes-modal";
-import { DateInputBR } from "@/components/date-input-br";
 import CustoModal from "./components/custo-modal";
 import FaturamentoTable from "./components/faturamento-table";
 import CustosTable from "./components/custos-table";
@@ -91,8 +90,6 @@ export default function ControlePage() {
 		const month = String(now.getMonth() + 1).padStart(2, "0");
 		return `${year}-${month}`;
 	});
-	const [customStartDate, setCustomStartDate] = useState("");
-	const [customEndDate, setCustomEndDate] = useState("");
 	const [lojaFilter, setLojaFilter] = useState<string>("todas");
 
 	// Aba ativa de visualização interna
@@ -125,11 +122,25 @@ export default function ControlePage() {
 		};
 	}, []);
 
-	// Navegação de Mês
+	// Navegação de Mês e Ano
 	const [ano, mes] = useMemo(() => {
 		const parts = mesAnoStr.split("-");
 		return [parseInt(parts[0], 10), parseInt(parts[1], 10)];
 	}, [mesAnoStr]);
+
+	const currentYear = useMemo(() => new Date().getFullYear(), []);
+	const currentMonth = useMemo(() => new Date().getMonth() + 1, []);
+
+	// Mês máximo a considerar para o ano selecionado no modo Ano Todo:
+	// "ao ano todo (de janeiro até o mês anterior ao atual)"
+	const maxMonthForAno = useMemo(() => {
+		if (ano === currentYear) {
+			return Math.max(1, currentMonth - 1);
+		} else if (ano < currentYear) {
+			return 12;
+		}
+		return 0; // ano futuro
+	}, [ano, currentYear, currentMonth]);
 
 	const handlePrevMonth = () => {
 		let newMes = mes - 1;
@@ -161,87 +172,45 @@ export default function ControlePage() {
 
 	// 1. Filtragem de Faturamento por Período e Loja
 	const filteredFaturamentos = useMemo(() => {
-		const now = new Date();
-		const todayStr = now.toISOString().slice(0, 10);
-
 		return faturamentos.filter((fat) => {
 			// Loja
 			if (lojaFilter !== "todas" && fat.lojaId !== lojaFilter) return false;
 
-			// Período
+			const ref = fat.mesReferencia || (fat.data ? fat.data.slice(0, 7) : "");
+
+			// Período: Mês específico ou Ano todo (de janeiro até o mês anterior ao atual)
 			if (periodMode === "mes") {
-				if (fat.mesReferencia !== mesAnoStr) return false;
-			} else if (periodMode === "mes_anterior") {
-				let prevM = mes - 1;
-				let prevY = ano;
-				if (prevM < 1) {
-					prevM = 12;
-					prevY -= 1;
-				}
-				const target = `${prevY}-${String(prevM).padStart(2, "0")}`;
-				if (fat.mesReferencia !== target) return false;
-			} else if (periodMode === "7dias") {
-				const d = new Date();
-				d.setDate(d.getDate() - 7);
-				const limit = d.toISOString().slice(0, 10);
-				if (fat.data < limit || fat.data > todayStr) return false;
-			} else if (periodMode === "30dias") {
-				const d = new Date();
-				d.setDate(d.getDate() - 30);
-				const limit = d.toISOString().slice(0, 10);
-				if (fat.data < limit || fat.data > todayStr) return false;
+				if (ref !== mesAnoStr) return false;
 			} else if (periodMode === "ano") {
-				if (!fat.data.startsWith(`${ano}-`)) return false;
-			} else if (periodMode === "custom") {
-				if (customStartDate && fat.data < customStartDate) return false;
-				if (customEndDate && fat.data > customEndDate) return false;
+				if (!ref.startsWith(`${ano}-`)) return false;
+				const m = parseInt(ref.split("-")[1], 10);
+				if (isNaN(m) || m < 1 || m > maxMonthForAno) return false;
 			}
 
 			return true;
 		});
-	}, [faturamentos, lojaFilter, periodMode, mesAnoStr, ano, mes, customStartDate, customEndDate]);
+	}, [faturamentos, lojaFilter, periodMode, mesAnoStr, ano, maxMonthForAno]);
 
 	// 2. Filtragem de Custos por Período e Loja
 	const filteredCustos = useMemo(() => {
-		const now = new Date();
-		const todayStr = now.toISOString().slice(0, 10);
-
 		return custos.filter((c) => {
 			// Loja
 			if (lojaFilter !== "todas" && c.lojaId !== lojaFilter) return false;
 
-			// Período
+			const ref = c.mesReferencia || (c.data ? c.data.slice(0, 7) : "");
+
+			// Período: Mês específico ou Ano todo (de janeiro até o mês anterior ao atual)
 			if (periodMode === "mes") {
-				if (c.mesReferencia !== mesAnoStr) return false;
-			} else if (periodMode === "mes_anterior") {
-				let prevM = mes - 1;
-				let prevY = ano;
-				if (prevM < 1) {
-					prevM = 12;
-					prevY -= 1;
-				}
-				const target = `${prevY}-${String(prevM).padStart(2, "0")}`;
-				if (c.mesReferencia !== target) return false;
-			} else if (periodMode === "7dias") {
-				const d = new Date();
-				d.setDate(d.getDate() - 7);
-				const limit = d.toISOString().slice(0, 10);
-				if (c.data < limit || c.data > todayStr) return false;
-			} else if (periodMode === "30dias") {
-				const d = new Date();
-				d.setDate(d.getDate() - 30);
-				const limit = d.toISOString().slice(0, 10);
-				if (c.data < limit || c.data > todayStr) return false;
+				if (ref !== mesAnoStr) return false;
 			} else if (periodMode === "ano") {
-				if (!c.data.startsWith(`${ano}-`)) return false;
-			} else if (periodMode === "custom") {
-				if (customStartDate && c.data < customStartDate) return false;
-				if (customEndDate && c.data > customEndDate) return false;
+				if (!ref.startsWith(`${ano}-`)) return false;
+				const m = parseInt(ref.split("-")[1], 10);
+				if (isNaN(m) || m < 1 || m > maxMonthForAno) return false;
 			}
 
 			return true;
 		});
-	}, [custos, lojaFilter, periodMode, mesAnoStr, ano, mes, customStartDate, customEndDate]);
+	}, [custos, lojaFilter, periodMode, mesAnoStr, ano, maxMonthForAno]);
 
 	// 3. Totais Consolidados do Período
 	const totalFaturamento = useMemo(() => {
@@ -257,53 +226,49 @@ export default function ControlePage() {
 	const percentCustoSobreFat = totalFaturamento > 0 ? (totalCustos / totalFaturamento) * 100 : 0;
 
 	// 4. Dados Preparados para os Gráficos
-	// A) Temporal (dia a dia)
-	const temporalData = useMemo(() => {
-		// Mapa por data
-		const dateMap: Record<string, { faturamento: number; custos: number }> = {};
+	// A) Evolução Mensal (mês a mês no ano selecionado)
+	const mensalData = useMemo(() => {
+		const MES_ABREV = [
+			"Jan", "Fev", "Mar", "Abr", "Mai", "Jun",
+			"Jul", "Ago", "Set", "Out", "Nov", "Dez"
+		];
 
-		filteredFaturamentos.forEach((f) => {
-			if (!dateMap[f.data]) dateMap[f.data] = { faturamento: 0, custos: 0 };
-			dateMap[f.data].faturamento += f.valorTotal || 0;
-		});
+		const endMonth = periodMode === "ano"
+			? maxMonthForAno
+			: Math.max(mes, maxMonthForAno, 1);
 
-		filteredCustos.forEach((c) => {
-			if (!dateMap[c.data]) dateMap[c.data] = { faturamento: 0, custos: 0 };
-			dateMap[c.data].custos += c.valor || 0;
-		});
+		const list = [];
+		for (let m = 1; m <= endMonth; m++) {
+			const mStr = `${ano}-${String(m).padStart(2, "0")}`;
 
-		const sortedDates = Object.keys(dateMap).sort();
+			const fatMes = faturamentos
+				.filter((f) => {
+					if (lojaFilter !== "todas" && f.lojaId !== lojaFilter) return false;
+					const ref = f.mesReferencia || (f.data ? f.data.slice(0, 7) : "");
+					return ref === mStr;
+				})
+				.reduce((acc, curr) => acc + (curr.valorTotal || 0), 0);
 
-		// Se tiver menos de 2 datas, preenche dias do mês para visualização elegante
-		if (sortedDates.length <= 1 && periodMode === "mes") {
-			const totalDays = new Date(ano, mes, 0).getDate();
-			const list = [];
-			for (let day = 1; day <= totalDays; day++) {
-				const dStr = `${ano}-${String(mes).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
-				const entry = dateMap[dStr] || { faturamento: 0, custos: 0 };
-				list.push({
-					label: `${String(day).padStart(2, "0")}/${String(mes).padStart(2, "0")}`,
-					fullDate: dStr,
-					faturamento: entry.faturamento,
-					custos: entry.custos,
-					lucro: entry.faturamento - entry.custos,
-				});
-			}
-			return list;
+			const custMes = custos
+				.filter((c) => {
+					if (lojaFilter !== "todas" && c.lojaId !== lojaFilter) return false;
+					const ref = c.mesReferencia || (c.data ? c.data.slice(0, 7) : "");
+					return ref === mStr;
+				})
+				.reduce((acc, curr) => acc + (curr.valor || 0), 0);
+
+			list.push({
+				mesKey: mStr,
+				label: MES_ABREV[m - 1],
+				nomeMes: `${MESES[m - 1]} / ${ano}`,
+				faturamento: fatMes,
+				custos: custMes,
+				lucro: fatMes - custMes,
+			});
 		}
 
-		return sortedDates.map((dStr) => {
-			const [, m, d] = dStr.split("-");
-			const entry = dateMap[dStr];
-			return {
-				label: `${d}/${m}`,
-				fullDate: dStr,
-				faturamento: entry.faturamento,
-				custos: entry.custos,
-				lucro: entry.faturamento - entry.custos,
-			};
-		});
-	}, [filteredFaturamentos, filteredCustos, periodMode, ano, mes]);
+		return list;
+	}, [periodMode, maxMonthForAno, mes, ano, faturamentos, custos, lojaFilter]);
 
 	// B) Dados por Categoria de Custo
 	const categoriaData = useMemo(() => {
@@ -452,7 +417,7 @@ export default function ControlePage() {
 							onClick={handleOpenNewFat}
 							className="px-4 py-2.5 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black tracking-wide shadow-md shadow-emerald-600/20 transition-all flex items-center gap-1.5 active:scale-95">
 							<Plus size={16} />
-							<span>+ Novo Faturamento</span>
+							<span>Novo Faturamento</span>
 						</button>
 
 						<button
@@ -460,7 +425,7 @@ export default function ControlePage() {
 							onClick={() => handleOpenNewCusto()}
 							className="px-4 py-2.5 rounded-2xl bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-slate-100 text-white dark:text-slate-900 text-xs font-black tracking-wide shadow-md transition-all flex items-center gap-1.5 active:scale-95">
 							<Plus size={16} />
-							<span>+ Novo Custo</span>
+							<span>Novo Custo</span>
 						</button>
 					</div>
 				</div>
@@ -480,7 +445,7 @@ export default function ControlePage() {
 									? "bg-blue-600 text-white shadow-xs font-black"
 									: "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700"
 							}`}>
-							Geral (Consolidado)
+							Consolidado
 						</button>
 						{(["lago", "terraco", "conjunto", "noroeste"] as const).map((sId) => (
 							<button
@@ -497,92 +462,144 @@ export default function ControlePage() {
 						))}
 					</div>
 
-					{/* Filtro de Período */}
+					{/* Filtro de Período: Apenas Mês Específico ou Ano Todo (de janeiro até o mês anterior ao atual) */}
 					<div className="flex items-center gap-2 flex-wrap">
+						{/* Seletor de Modo */}
 						<div className="flex items-center bg-slate-100 dark:bg-slate-800/80 p-1 rounded-xl text-xs font-bold">
 							<button
 								type="button"
 								onClick={() => setPeriodMode("mes")}
-								className={`px-2.5 py-1 rounded-lg transition-all ${
+								className={`px-3 py-1.5 rounded-lg transition-all ${
 									periodMode === "mes"
 										? "bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-xs font-black"
 										: "text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
 								}`}>
-								Mês
-							</button>
-							<button
-								type="button"
-								onClick={() => setPeriodMode("30dias")}
-								className={`px-2.5 py-1 rounded-lg transition-all ${
-									periodMode === "30dias"
-										? "bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-xs font-black"
-										: "text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
-								}`}>
-								Últimos 30d
+								Mês Específico
 							</button>
 							<button
 								type="button"
 								onClick={() => setPeriodMode("ano")}
-								className={`px-2.5 py-1 rounded-lg transition-all ${
+								className={`px-3 py-1.5 rounded-lg transition-all ${
 									periodMode === "ano"
 										? "bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-xs font-black"
 										: "text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
 								}`}>
-								Ano {ano}
-							</button>
-							<button
-								type="button"
-								onClick={() => setPeriodMode("custom")}
-								className={`px-2.5 py-1 rounded-lg transition-all ${
-									periodMode === "custom"
-										? "bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-xs font-black"
-										: "text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
-								}`}>
-								Personalizado
+								Ano Todo
 							</button>
 						</div>
 
-						{/* Navegador Mês a Mês */}
+						{/* Navegador e Seleção: Mês Específico */}
 						{periodMode === "mes" && (
-							<div className="flex items-center bg-slate-100 dark:bg-slate-800/80 p-1 rounded-xl">
-								<button
-									type="button"
-									onClick={handlePrevMonth}
-									className="p-1 rounded-lg hover:bg-white dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition-colors">
-									<ChevronLeft size={16} />
-								</button>
+							<div className="flex items-center gap-1.5">
+								<div className="flex items-center bg-slate-100 dark:bg-slate-800/80 p-1 rounded-xl">
+									<button
+										type="button"
+										onClick={handlePrevMonth}
+										title="Mês Anterior"
+										className="p-1 rounded-lg hover:bg-white dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition-colors">
+										<ChevronLeft size={16} />
+									</button>
+
+									{/* Seleção do Mês */}
+									<select
+										value={mes}
+										aria-label="Selecionar mês"
+										onChange={(e) => {
+											const newMes = parseInt(e.target.value, 10);
+											setMesAnoStr(`${ano}-${String(newMes).padStart(2, "0")}`);
+										}}
+										className="bg-transparent text-xs font-black text-slate-800 dark:text-slate-200 border-none outline-hidden cursor-pointer px-1 py-0.5">
+										{MESES.map((nome, idx) => (
+											<option key={idx + 1} value={idx + 1} className="dark:bg-slate-900">
+												{nome}
+											</option>
+										))}
+									</select>
+
+									<span className="text-slate-400 text-xs font-semibold">/</span>
+
+									{/* Seleção do Ano */}
+									<select
+										value={ano}
+										aria-label="Selecionar ano"
+										onChange={(e) => {
+											const newAno = parseInt(e.target.value, 10);
+											setMesAnoStr(`${newAno}-${String(mes).padStart(2, "0")}`);
+										}}
+										className="bg-transparent text-xs font-black text-slate-800 dark:text-slate-200 border-none outline-hidden cursor-pointer px-1 py-0.5">
+										{[2024, 2025, 2026, 2027, 2028].map((y) => (
+											<option key={y} value={y} className="dark:bg-slate-900">
+												{y}
+											</option>
+										))}
+									</select>
+
+									<button
+										type="button"
+										onClick={handleNextMonth}
+										title="Próximo Mês"
+										className="p-1 rounded-lg hover:bg-white dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition-colors">
+										<ChevronRight size={16} />
+									</button>
+								</div>
+
 								<button
 									type="button"
 									onClick={handleCurrentMonth}
-									className="px-2.5 py-0.5 text-xs font-black text-slate-800 dark:text-slate-200 hover:underline">
-									{MESES[mes - 1]} / {ano}
-								</button>
-								<button
-									type="button"
-									onClick={handleNextMonth}
-									className="p-1 rounded-lg hover:bg-white dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition-colors">
-									<ChevronRight size={16} />
+									className="px-2.5 py-1.5 rounded-xl text-[11px] font-bold bg-slate-100 hover:bg-slate-200 dark:bg-slate-800/80 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition-all">
+									Mês Atual
 								</button>
 							</div>
 						)}
 
-						{/* Custom Range */}
-						{periodMode === "custom" && (
-							<div className="flex items-center gap-2 text-xs">
-								<div className="w-36">
-									<DateInputBR
-										value={customStartDate}
-										onChangeDate={(iso) => setCustomStartDate(iso)}
-										className="px-2 py-1 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-semibold"
-									/>
+						{/* Navegador e Indicador: Ano Todo (de janeiro até o mês anterior ao atual) */}
+						{periodMode === "ano" && (
+							<div className="flex items-center gap-1.5">
+								<div className="flex items-center bg-slate-100 dark:bg-slate-800/80 p-1 rounded-xl">
+									<button
+										type="button"
+										onClick={() => setMesAnoStr(`${ano - 1}-${String(mes).padStart(2, "0")}`)}
+										title="Ano Anterior"
+										className="p-1 rounded-lg hover:bg-white dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition-colors">
+										<ChevronLeft size={16} />
+									</button>
+
+									<select
+										value={ano}
+										aria-label="Selecionar ano"
+										onChange={(e) => {
+											const newAno = parseInt(e.target.value, 10);
+											setMesAnoStr(`${newAno}-${String(mes).padStart(2, "0")}`);
+										}}
+										className="bg-transparent text-xs font-black text-slate-800 dark:text-slate-200 border-none outline-hidden cursor-pointer px-2 py-0.5">
+										{[2024, 2025, 2026, 2027, 2028].map((y) => (
+											<option key={y} value={y} className="dark:bg-slate-900">
+												{y}
+											</option>
+										))}
+									</select>
+
+									<button
+										type="button"
+										onClick={() => setMesAnoStr(`${ano + 1}-${String(mes).padStart(2, "0")}`)}
+										title="Próximo Ano"
+										className="p-1 rounded-lg hover:bg-white dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition-colors">
+										<ChevronRight size={16} />
+									</button>
 								</div>
-								<span className="text-slate-400">até</span>
-								<div className="w-36">
-									<DateInputBR
-										value={customEndDate}
-										onChangeDate={(iso) => setCustomEndDate(iso)}
-										className="px-2 py-1 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-semibold"
-									/>
+
+								{/* Indicador do período anual coberto */}
+								<div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 text-xs font-bold border border-blue-100 dark:border-blue-900/50">
+									<span>
+										{ano === currentYear
+											? `Jan a ${MESES[maxMonthForAno - 1] || "Jan"}`
+											: `Jan a Dez`}
+									</span>
+									{ano === currentYear && (
+										<span className="text-[10px] text-blue-500 dark:text-blue-400 font-normal hidden sm:inline">
+											(até mês anterior)
+										</span>
+									)}
 								</div>
 							</div>
 						)}
@@ -711,7 +728,7 @@ export default function ControlePage() {
 							: "text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
 					}`}>
 					<BarChart3 size={15} />
-					<span>Dashboard & Gráficos</span>
+					<span>Gráficos</span>
 				</button>
 
 				<button
@@ -756,7 +773,7 @@ export default function ControlePage() {
 				<div className="space-y-6">
 					{/* Gráfico Configurável */}
 					<ControleChart
-						temporalData={temporalData}
+						mensalData={mensalData}
 						categoriaData={categoriaData}
 						lojaData={lojaData}
 						totalFaturamento={totalFaturamento}

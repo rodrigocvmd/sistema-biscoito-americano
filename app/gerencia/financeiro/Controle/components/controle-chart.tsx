@@ -5,27 +5,23 @@ import {
 	BarChart3,
 	TrendingUp,
 	PieChart,
-	Sliders,
-	Eye,
-	Check,
 } from "lucide-react";
 import {
 	ChartTipoVisualizacao,
 	ChartModoAgrupamento,
 	CategoriaCusto,
-	CATEGORIAS_CUSTO_CONFIG,
-	STORE_NAMES_EXTENDED,
 } from "@/types/financeiro-controle";
 
-interface DataPointTemporal {
-	label: string; // Ex: "15/10" ou "Seg"
-	fullDate: string; // "2026-10-15"
+export interface DataPointMensal {
+	mesKey: string; // Ex: "2026-01"
+	label: string; // Ex: "Jan"
+	nomeMes: string; // Ex: "Janeiro / 2026"
 	faturamento: number;
 	custos: number;
 	lucro: number;
 }
 
-interface DataPointCategoria {
+export interface DataPointCategoria {
 	categoria: CategoriaCusto;
 	label: string;
 	valor: number;
@@ -33,7 +29,7 @@ interface DataPointCategoria {
 	color: string;
 }
 
-interface DataPointLoja {
+export interface DataPointLoja {
 	lojaId: string;
 	nome: string;
 	faturamento: number;
@@ -42,7 +38,7 @@ interface DataPointLoja {
 }
 
 interface ControleChartProps {
-	temporalData: DataPointTemporal[];
+	mensalData: DataPointMensal[];
 	categoriaData: DataPointCategoria[];
 	lojaData: DataPointLoja[];
 	totalFaturamento: number;
@@ -64,17 +60,25 @@ const formatCompactCurrency = (val: number) => {
 	return `R$ ${Math.round(val)}`;
 };
 
+const STORE_COLORS: Record<string, string> = {
+	lago: "#3b82f6",
+	terraco: "#10b981",
+	conjunto: "#f59e0b",
+	noroeste: "#8b5cf6",
+	geral: "#64748b",
+};
+
 export default function ControleChart({
-	temporalData,
+	mensalData,
 	categoriaData,
 	lojaData,
 	totalFaturamento,
 	totalCustos,
 	totalLucro,
 }: ControleChartProps) {
-	// Configurações do gráfico controladas pelo usuário
+	// Padrão: "Por Loja"
+	const [modoAgrupamento, setModoAgrupamento] = useState<ChartModoAgrupamento>("lojas");
 	const [tipoVisualizacao, setTipoVisualizacao] = useState<ChartTipoVisualizacao>("barras");
-	const [modoAgrupamento, setModoAgrupamento] = useState<ChartModoAgrupamento>("temporal");
 	const [showFaturamento, setShowFaturamento] = useState(true);
 	const [showCustos, setShowCustos] = useState(true);
 	const [showLucro, setShowLucro] = useState(false);
@@ -89,10 +93,13 @@ export default function ControleChart({
 	const innerW = SVG_WIDTH - MARGIN.left - MARGIN.right;
 	const innerH = SVG_HEIGHT - MARGIN.top - MARGIN.bottom;
 
-	// Se mudar para modo categorias e o tipo for linha, ajusta para rosca ou barras
+	// Ajusta tipo de visualização conforme o modo selecionado
 	const effectiveTipo = useMemo(() => {
 		if (modoAgrupamento === "categorias" && tipoVisualizacao === "linha") {
 			return "rosca";
+		}
+		if (modoAgrupamento === "mensal" && tipoVisualizacao === "rosca") {
+			return "barras";
 		}
 		return tipoVisualizacao;
 	}, [modoAgrupamento, tipoVisualizacao]);
@@ -100,27 +107,57 @@ export default function ControleChart({
 	// Dados e escala conforme o modo
 	const { maxVal, points } = useMemo(() => {
 		let max = 100;
-		if (modoAgrupamento === "temporal") {
-			temporalData.forEach((d) => {
-				if (showFaturamento && d.faturamento > max) max = d.faturamento;
-				if (showCustos && d.custos > max) max = d.custos;
-				if (showLucro && d.lucro > max) max = d.lucro;
-			});
-			return { maxVal: max * 1.15, points: temporalData };
-		} else if (modoAgrupamento === "lojas") {
+		if (modoAgrupamento === "lojas") {
 			lojaData.forEach((d) => {
 				if (showFaturamento && d.faturamento > max) max = d.faturamento;
 				if (showCustos && d.custos > max) max = d.custos;
 				if (showLucro && d.lucro > max) max = d.lucro;
 			});
 			return { maxVal: max * 1.15, points: lojaData };
+		} else if (modoAgrupamento === "mensal") {
+			mensalData.forEach((d) => {
+				if (showFaturamento && d.faturamento > max) max = d.faturamento;
+				if (showCustos && d.custos > max) max = d.custos;
+				if (showLucro && d.lucro > max) max = d.lucro;
+			});
+			return { maxVal: max * 1.15, points: mensalData };
 		} else {
 			categoriaData.forEach((d) => {
 				if (d.valor > max) max = d.valor;
 			});
 			return { maxVal: max * 1.15, points: categoriaData };
 		}
-	}, [modoAgrupamento, temporalData, lojaData, categoriaData, showFaturamento, showCustos, showLucro]);
+	}, [modoAgrupamento, lojaData, mensalData, categoriaData, showFaturamento, showCustos, showLucro]);
+
+	// Dados para o modo Rosca (Por Categoria ou Por Loja)
+	const donutItems = useMemo(() => {
+		if (modoAgrupamento === "lojas") {
+			const totalFat = lojaData.reduce((acc, l) => acc + l.faturamento, 0);
+			return lojaData
+				.filter((l) => l.faturamento > 0)
+				.map((l) => ({
+					key: l.lojaId,
+					label: l.nome,
+					valor: l.faturamento,
+					percent: totalFat > 0 ? (l.faturamento / totalFat) * 100 : 0,
+					color: STORE_COLORS[l.lojaId] || "#64748b",
+					sublabel: "do faturamento",
+				}));
+		} else {
+			return categoriaData.map((c) => ({
+				key: c.categoria,
+				label: c.label,
+				valor: c.valor,
+				percent: c.percent,
+				color: c.color,
+				sublabel: "dos custos",
+			}));
+		}
+	}, [modoAgrupamento, lojaData, categoriaData]);
+
+	const donutTotal = useMemo(() => {
+		return modoAgrupamento === "lojas" ? totalFaturamento : totalCustos;
+	}, [modoAgrupamento, totalFaturamento, totalCustos]);
 
 	// Linhas da grade Y
 	const yTicks = useMemo(() => {
@@ -147,23 +184,33 @@ export default function ControleChart({
 						</h3>
 					</div>
 					<p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-						Personalize a visualização temporal, composição de despesas e comparativos por loja
+						Comparativos por loja, evolução mensal consolidada e composição de despesas
 					</p>
 				</div>
 
 				{/* Botões de Configuração */}
 				<div className="flex flex-wrap items-center gap-2.5">
-					{/* Agrupamento / Dimensão */}
+					{/* Agrupamento: Por Loja (Padrão), Evolução Mensal, Por Categoria */}
 					<div className="flex items-center bg-slate-100 dark:bg-slate-800/80 p-1 rounded-xl text-xs font-bold">
 						<button
 							type="button"
-							onClick={() => setModoAgrupamento("temporal")}
+							onClick={() => setModoAgrupamento("lojas")}
 							className={`px-3 py-1.5 rounded-lg transition-all ${
-								modoAgrupamento === "temporal"
+								modoAgrupamento === "lojas"
 									? "bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-xs font-black"
 									: "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200"
 							}`}>
-							Evolução Diária
+							Por Loja
+						</button>
+						<button
+							type="button"
+							onClick={() => setModoAgrupamento("mensal")}
+							className={`px-3 py-1.5 rounded-lg transition-all ${
+								modoAgrupamento === "mensal"
+									? "bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-xs font-black"
+									: "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200"
+							}`}>
+							Evolução Mensal
 						</button>
 						<button
 							type="button"
@@ -174,16 +221,6 @@ export default function ControleChart({
 									: "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200"
 							}`}>
 							Por Categoria
-						</button>
-						<button
-							type="button"
-							onClick={() => setModoAgrupamento("lojas")}
-							className={`px-3 py-1.5 rounded-lg transition-all ${
-								modoAgrupamento === "lojas"
-									? "bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-xs font-black"
-									: "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200"
-							}`}>
-							Por Loja
 						</button>
 					</div>
 
@@ -209,24 +246,26 @@ export default function ControleChart({
 									effectiveTipo === "linha"
 										? "bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-xs"
 										: "text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
-								}`}>
+							}`}>
 								<TrendingUp size={16} />
 							</button>
 						)}
-						<button
-							type="button"
-							title="Gráfico de Rosca / Distribuição"
-							onClick={() => setTipoVisualizacao("rosca")}
-							className={`p-1.5 rounded-lg transition-all ${
-								effectiveTipo === "rosca"
-									? "bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-xs"
-									: "text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
+						{modoAgrupamento !== "mensal" && (
+							<button
+								type="button"
+								title="Gráfico de Rosca / Distribuição"
+								onClick={() => setTipoVisualizacao("rosca")}
+								className={`p-1.5 rounded-lg transition-all ${
+									effectiveTipo === "rosca"
+										? "bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-xs"
+										: "text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
 							}`}>
-							<PieChart size={16} />
-						</button>
+								<PieChart size={16} />
+							</button>
+						)}
 					</div>
 
-					{/* Toggles de Séries (Apenas quando não for modo categorias puro) */}
+					{/* Toggles de Séries (Apenas quando não for modo categorias) */}
 					{modoAgrupamento !== "categorias" && (
 						<div className="hidden sm:flex items-center gap-1.5 text-[11px] font-bold text-slate-600 dark:text-slate-400 bg-slate-50 dark:bg-slate-800/40 px-2 py-1 rounded-xl border border-slate-200/60 dark:border-slate-800">
 							<button
@@ -275,7 +314,7 @@ export default function ControleChart({
 						{/* Donut Chart SVG */}
 						<div className="relative w-64 h-64 shrink-0 flex items-center justify-center">
 							<svg width={256} height={256} viewBox="0 0 256 256" className="transform -rotate-90">
-								{categoriaData.length === 0 ? (
+								{donutItems.length === 0 ? (
 									<circle
 										cx={128}
 										cy={128}
@@ -292,21 +331,21 @@ export default function ControleChart({
 										const strokeW = 34;
 										const circumference = 2 * Math.PI * radius;
 
-										return categoriaData.map((cat, idx) => {
-											const strokeDasharray = `${(cat.percent / 100) * circumference} ${circumference}`;
+										return donutItems.map((item, idx) => {
+											const strokeDasharray = `${(item.percent / 100) * circumference} ${circumference}`;
 											const strokeDashoffset = -((currentAngle / 360) * circumference);
-											currentAngle += (cat.percent / 100) * 360;
+											currentAngle += (item.percent / 100) * 360;
 
 											const isHovered = hoveredIndex === idx;
 
 											return (
 												<circle
-													key={cat.categoria}
+													key={item.key}
 													cx={128}
 													cy={128}
 													r={radius}
 													fill="none"
-													stroke={cat.color}
+													stroke={item.color}
 													strokeWidth={isHovered ? strokeW + 6 : strokeW}
 													strokeDasharray={strokeDasharray}
 													strokeDashoffset={strokeDashoffset}
@@ -324,35 +363,41 @@ export default function ControleChart({
 							{/* Centro do Donut com Totais */}
 							<div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-center p-4">
 								<span className="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
-									{hoveredIndex !== null && categoriaData[hoveredIndex]
-										? categoriaData[hoveredIndex].label
+									{hoveredIndex !== null && donutItems[hoveredIndex]
+										? donutItems[hoveredIndex].label
+										: modoAgrupamento === "lojas"
+										? "Faturamento Total"
 										: "Custos Totais"}
 								</span>
 								<span className="text-lg md:text-xl font-black text-slate-900 dark:text-slate-100 mt-0.5">
-									{hoveredIndex !== null && categoriaData[hoveredIndex]
-										? formatCurrency(categoriaData[hoveredIndex].valor)
-										: formatCurrency(totalCustos)}
+									{hoveredIndex !== null && donutItems[hoveredIndex]
+										? formatCurrency(donutItems[hoveredIndex].valor)
+										: formatCurrency(donutTotal)}
 								</span>
-								<span className="text-xs font-semibold text-rose-600 dark:text-rose-400 mt-0.5">
-									{hoveredIndex !== null && categoriaData[hoveredIndex]
-										? `${categoriaData[hoveredIndex].percent.toFixed(1)}% do total`
-										: `${categoriaData.length} categorias`}
+								<span className={`text-xs font-semibold mt-0.5 ${
+									modoAgrupamento === "lojas"
+										? "text-blue-600 dark:text-blue-400"
+										: "text-rose-600 dark:text-rose-400"
+								}`}>
+									{hoveredIndex !== null && donutItems[hoveredIndex]
+										? `${donutItems[hoveredIndex].percent.toFixed(1)}% ${donutItems[hoveredIndex].sublabel}`
+										: `${donutItems.length} ${modoAgrupamento === "lojas" ? "unidades" : "categorias"}`}
 								</span>
 							</div>
 						</div>
 
 						{/* Legenda Detalhada em Grid */}
 						<div className="flex-1 w-full max-w-xl grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-							{categoriaData.length === 0 ? (
+							{donutItems.length === 0 ? (
 								<p className="text-sm text-slate-400 col-span-2 text-center py-6">
-									Nenhum custo cadastrado para o período selecionado.
+									Nenhum dado registrado para o período selecionado.
 								</p>
 							) : (
-								categoriaData.map((cat, idx) => {
+								donutItems.map((item, idx) => {
 									const isHovered = hoveredIndex === idx;
 									return (
 										<div
-											key={cat.categoria}
+											key={item.key}
 											onMouseEnter={() => setHoveredIndex(idx)}
 											onMouseLeave={() => setHoveredIndex(null)}
 											className={`flex items-center justify-between p-2.5 rounded-xl border transition-all cursor-pointer ${
@@ -363,19 +408,19 @@ export default function ControleChart({
 											<div className="flex items-center gap-2.5 min-w-0">
 												<span
 													className="w-3.5 h-3.5 rounded-md shrink-0"
-													style={{ backgroundColor: cat.color }}
+													style={{ backgroundColor: item.color }}
 												/>
 												<div className="truncate">
 													<p className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate">
-														{cat.label}
+														{item.label}
 													</p>
 													<p className="text-[10px] text-slate-400 dark:text-slate-500">
-														{cat.percent.toFixed(1)}% dos custos
+														{item.percent.toFixed(1)}% {item.sublabel}
 													</p>
 												</div>
 											</div>
 											<span className="text-xs font-black text-slate-900 dark:text-slate-100 shrink-0 ml-2">
-												{formatCurrency(cat.valor)}
+												{formatCurrency(item.valor)}
 											</span>
 										</div>
 									);
@@ -480,11 +525,11 @@ export default function ControleChart({
 											);
 										})
 									) : (
-										/* Barras Temporais ou por Loja */
+										/* Barras por Loja ou Evolução Mensal */
 										points.map((pt: any, idx) => {
 											const slotW = innerW / Math.max(points.length, 1);
 											const activeSeriesCount = (showFaturamento ? 1 : 0) + (showCustos ? 1 : 0) + (showLucro ? 1 : 0);
-											const barW = Math.min(22, (slotW * 0.75) / Math.max(activeSeriesCount, 1));
+											const barW = Math.min(26, (slotW * 0.75) / Math.max(activeSeriesCount, 1));
 											const totalBarsW = barW * activeSeriesCount + (activeSeriesCount - 1) * 2;
 											const startX = MARGIN.left + idx * slotW + (slotW - totalBarsW) / 2;
 											const isHovered = hoveredIndex === idx;
@@ -675,16 +720,14 @@ export default function ControleChart({
 																/>
 															)}
 
-															{/* Labels no eixo X (mostra espaçado se muitos) */}
-															{(points.length <= 15 || idx % Math.ceil(points.length / 10) === 0) && (
-																<text
-																	x={x}
-																	y={MARGIN.top + innerH + 18}
-																	textAnchor="middle"
-																	className="text-[10px] font-semibold fill-slate-500 dark:fill-slate-400">
-																	{modoAgrupamento === "lojas" ? pt.nome : pt.label}
-																</text>
-															)}
+															{/* Labels no eixo X */}
+															<text
+																x={x}
+																y={MARGIN.top + innerH + 18}
+																textAnchor="middle"
+																className="text-[10px] font-semibold fill-slate-500 dark:fill-slate-400">
+																{modoAgrupamento === "lojas" ? pt.nome : pt.label}
+															</text>
 														</g>
 													);
 												})}
@@ -709,7 +752,7 @@ export default function ControleChart({
 											? pt.label
 											: modoAgrupamento === "lojas"
 											? pt.nome
-											: pt.fullDate || pt.label;
+											: pt.nomeMes || pt.label;
 
 									return (
 										<g transform={`translate(${tooltipX}, ${tooltipY})`} className="pointer-events-none">
