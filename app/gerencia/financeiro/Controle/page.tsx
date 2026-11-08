@@ -636,7 +636,7 @@ export default function ControlePage() {
 			</div>
 
 			{/* KPI Cards: Resumo Executivo Minimalista e Completo */}
-			<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+			<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
 				{/* 1. Faturamento Total */}
 				<div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-5 shadow-sm space-y-3 transition-colors">
 					<div className="flex items-center justify-between">
@@ -719,30 +719,7 @@ export default function ControlePage() {
 					</div>
 				</div>
 
-				{/* 4. Top Custo / Distribuição */}
-				<div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-5 shadow-sm space-y-3 transition-colors">
-					<div className="flex items-center justify-between">
-						<span className="text-xs font-bold text-slate-500 dark:text-slate-400">
-							Maior Despesa
-						</span>
-						<span className="p-2 rounded-xl bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400">
-							<PieChart size={16} />
-						</span>
-					</div>
-					<div>
-						<h2 className="text-xl font-black text-slate-900 dark:text-slate-100 truncate">
-							{topCusto ? topCusto.label : "Sem Custos"}
-						</h2>
-						<div className="flex items-center gap-2 mt-1">
-							<span className="text-xs font-black text-amber-600 dark:text-amber-400">
-								{topCusto ? formatCurrency(topCusto.valor) : "R$ 0,00"}
-							</span>
-							<span className="text-[11px] text-slate-400">
-								{topCusto ? `(${topCusto.percent.toFixed(1)}% dos custos)` : ""}
-							</span>
-						</div>
-					</div>
-				</div>
+				
 			</div>
 
 			{/* Sub-abas de Visualização do Controle */}
@@ -799,17 +776,6 @@ export default function ControlePage() {
 			{/* Conteúdo Conforme a Sub-Aba Ativa */}
 			{activeSubTab === "dashboard" && (
 				<div className="space-y-6">
-					{/* Gráfico Configurável */}
-					<ControleChart
-						mensalData={mensalData}
-						categoriaData={categoriaData}
-						lojaData={lojaData}
-						totalFaturamento={totalFaturamento}
-						totalCustos={totalCustos}
-						totalLucro={lucroLiquido}
-						isConsolidado={lojaFilter === "todas"}
-					/>
-
 					{/* Visão de Tabela / Calendário: Custos Diários por Categoria */}
 					<ControleCalendarioCustos
 						custos={custos}
@@ -830,6 +796,17 @@ export default function ControlePage() {
 						onDeleteFaturamento={handleDeleteFat}
 						onChangeMesAno={(newMesAno) => setMesAnoStr(newMesAno)}
 						onChangeLoja={(newLoja) => setLojaFilter(newLoja)}
+					/>
+
+					{/* Gráfico Configurável */}
+					<ControleChart
+						mensalData={mensalData}
+						categoriaData={categoriaData}
+						lojaData={lojaData}
+						totalFaturamento={totalFaturamento}
+						totalCustos={totalCustos}
+						totalLucro={lucroLiquido}
+						isConsolidado={lojaFilter === "todas"}
 					/>
 
 					{/* Atalhos Rápidos por Categorias de Custo */}

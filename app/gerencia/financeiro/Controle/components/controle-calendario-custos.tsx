@@ -405,21 +405,45 @@ export default function ControleCalendarioCustos({
 		});
 	};
 
-	const handleTriggerNovoCusto = (cat?: CategoriaCusto) => {
-		if (!selectedDayInfo) return;
+	const handleCellCustoClick = (d: number, catKey: CategoriaCusto) => {
+		const cellData = custoMatrix[catKey]?.[d];
+		const items = cellData?.items || [];
+		const diaIso = `${ano}-${String(mes).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
 		const targetLoja: StoreIdWithGeral =
 			localLoja === "todas" ? "geral" : (localLoja as StoreIdWithGeral);
-		const chosenCat = cat || selectedDayInfo.categoriaPre;
-		onSelectDiaParaCusto(selectedDayInfo.diaIso, targetLoja, chosenCat);
-		setSelectedDayInfo(null);
+
+		if (items.length === 1 && onEditCusto) {
+			// Se já existe exatamente 1 custo nesta célula, abre para edição dele
+			onEditCusto(items[0]);
+		} else if (items.length > 1) {
+			// Se houver múltiplos custos nesta mesma categoria/dia, abre o modal do dia pré-filtrando a categoria
+			handleOpenDayModal(d, catKey);
+		} else {
+			// Se não houver nenhum, abre diretamente o modal de lançamento de custo para esta categoria e dia
+			onSelectDiaParaCusto(diaIso, targetLoja, catKey);
+		}
 	};
 
-	const handleTriggerNovoFaturamento = () => {
-		if (!selectedDayInfo) return;
+	const handleCellFaturamentoClick = (d: number) => {
+		const diaIso = `${ano}-${String(mes).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
 		const targetLoja: StoreIdWithGeral =
 			localLoja === "todas" ? "geral" : (localLoja as StoreIdWithGeral);
-		onSelectDiaParaFaturamento(selectedDayInfo.diaIso, targetLoja);
-		setSelectedDayInfo(null);
+
+		const dayFats = monthFaturamentos.filter((f) => {
+			if (f.data) return f.data === diaIso;
+			return d === 1;
+		});
+
+		if (dayFats.length === 1 && onEditFaturamento) {
+			// Se já existe 1 faturamento, abre detalhes/edição dele
+			onEditFaturamento(dayFats[0]);
+		} else if (dayFats.length > 1) {
+			// Se houver mais de 1, abre o modal do dia para o usuário escolher
+			handleOpenDayModal(d);
+		} else {
+			// Se não houver, abre diretamente o modal de novo faturamento para o dia
+			onSelectDiaParaFaturamento(diaIso, targetLoja);
+		}
 	};
 
 	// Itens do dia selecionado
@@ -732,11 +756,11 @@ export default function ControleCalendarioCustos({
 										return (
 											<td
 												key={d}
-												onClick={() => handleOpenDayModal(d, catKey)}
+												onClick={() => handleCellCustoClick(d, catKey)}
 												onMouseEnter={() => setHoveredCell({ rowKey: catKey, colDay: d })}
 												title={`${cfg.label} no Dia ${String(d).padStart(2, "0")}: ${
 													val > 0 ? formatCurrency(val) : "Nenhum custo"
-												} (Clique para lançar ou ver detalhes)`}
+												} (Clique para lançar ou editar custo)`}
 												className={`border-r border-slate-100 dark:border-slate-800 p-1.5 text-center cursor-pointer transition-all duration-150 ${
 													isIntersected
 														? "bg-blue-200/90 dark:bg-blue-900/80 ring-2 ring-inset ring-blue-500 scale-[1.03] shadow-xs z-10"
@@ -879,9 +903,9 @@ export default function ControleCalendarioCustos({
 								return (
 									<td
 										key={d}
-										onClick={() => handleOpenDayModal(d)}
+										onClick={() => handleCellFaturamentoClick(d)}
 										onMouseEnter={() => setHoveredCell({ rowKey: "faturamento", colDay: d })}
-										title={`Faturamento no Dia ${d}: ${formatCurrency(val)}`}
+										title={`Faturamento no Dia ${d}: ${formatCurrency(val)} (Clique para abrir faturamento)`}
 										className={`border-r border-b border-slate-200/80 dark:border-slate-800 p-1.5 text-center cursor-pointer transition-colors duration-150 ${
 											isIntersected
 												? "bg-blue-300/90 dark:bg-blue-800/90 ring-2 ring-inset ring-blue-500 scale-[1.03]"
@@ -1045,7 +1069,17 @@ export default function ControleCalendarioCustos({
 									{/* Botão Novo Custo (Laranja Pastel) */}
 									<button
 										type="button"
-										onClick={() => handleTriggerNovoCusto()}
+										onClick={() => {
+											if (!selectedDayInfo) return;
+											const targetLoja: StoreIdWithGeral =
+												localLoja === "todas" ? "geral" : (localLoja as StoreIdWithGeral);
+											onSelectDiaParaCusto(
+												selectedDayInfo.diaIso,
+												targetLoja,
+												selectedDayInfo.categoriaPre
+											);
+											setSelectedDayInfo(null);
+										}}
 										className="p-3.5 rounded-2xl bg-orange-300 hover:bg-orange-400 dark:bg-orange-400 dark:hover:bg-orange-300 text-orange-950 font-black text-xs tracking-wide shadow-md shadow-orange-300/30 transition-all flex items-center justify-center gap-2 active:scale-95 text-center">
 										<Plus size={16} />
 										<span>
@@ -1058,7 +1092,13 @@ export default function ControleCalendarioCustos({
 									{/* Botão Novo Faturamento (Esmeralda) */}
 									<button
 										type="button"
-										onClick={handleTriggerNovoFaturamento}
+										onClick={() => {
+											if (!selectedDayInfo) return;
+											const targetLoja: StoreIdWithGeral =
+												localLoja === "todas" ? "geral" : (localLoja as StoreIdWithGeral);
+											onSelectDiaParaFaturamento(selectedDayInfo.diaIso, targetLoja);
+											setSelectedDayInfo(null);
+										}}
 										className="p-3.5 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs tracking-wide shadow-md shadow-emerald-600/20 transition-all flex items-center justify-center gap-2 active:scale-95 text-center">
 										<Plus size={16} />
 										<span>Novo Faturamento</span>
