@@ -48,6 +48,7 @@ import {
 import ControleChart from "./components/controle-chart";
 import FaturamentoModal from "./components/faturamento-modal";
 import FaturamentoDetalhesModal from "./components/faturamento-detalhes-modal";
+import { DateInputBR } from "@/components/date-input-br";
 import CustoModal from "./components/custo-modal";
 import FaturamentoTable from "./components/faturamento-table";
 import CustosTable from "./components/custos-table";
@@ -577,20 +578,22 @@ export default function ControlePage() {
 
 						{/* Custom Range */}
 						{periodMode === "custom" && (
-							<div className="flex items-center gap-1.5 text-xs">
-								<input
-									type="date"
-									value={customStartDate}
-									onChange={(e) => setCustomStartDate(e.target.value)}
-									className="px-2 py-1 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-semibold"
-								/>
+							<div className="flex items-center gap-2 text-xs">
+								<div className="w-36">
+									<DateInputBR
+										value={customStartDate}
+										onChangeDate={(iso) => setCustomStartDate(iso)}
+										className="px-2 py-1 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-semibold"
+									/>
+								</div>
 								<span className="text-slate-400">até</span>
-								<input
-									type="date"
-									value={customEndDate}
-									onChange={(e) => setCustomEndDate(e.target.value)}
-									className="px-2 py-1 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-semibold"
-								/>
+								<div className="w-36">
+									<DateInputBR
+										value={customEndDate}
+										onChangeDate={(iso) => setCustomEndDate(iso)}
+										className="px-2 py-1 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-semibold"
+									/>
+								</div>
 							</div>
 						)}
 					</div>
@@ -871,7 +874,7 @@ export default function ControlePage() {
 												{fat.descricao || (fat.tipo === "discriminado" ? "Venda Discriminada" : "Faturamento")}
 											</p>
 											<span className="text-[10px] text-slate-400">
-												{fat.data} • {STORE_NAMES_EXTENDED[fat.lojaId] || fat.lojaId}
+												{fat.data ? fat.data.split("-").reverse().join("/") : "-"} • {STORE_NAMES_EXTENDED[fat.lojaId] || fat.lojaId}
 											</span>
 										</div>
 										<span className="text-xs font-black text-emerald-600 dark:text-emerald-400">
@@ -922,7 +925,7 @@ export default function ControlePage() {
 													{custo.descricao}
 												</p>
 												<span className="text-[10px] text-slate-400">
-													Dia: {custo.data} • {cfg?.label} • {STORE_NAMES_EXTENDED[custo.lojaId] || custo.lojaId}
+													Dia: {custo.data ? custo.data.split("-").reverse().join("/") : "-"} • {cfg?.label} • {STORE_NAMES_EXTENDED[custo.lojaId] || custo.lojaId}
 												</span>
 											</div>
 											<span className="text-xs font-black text-rose-600 dark:text-rose-400">

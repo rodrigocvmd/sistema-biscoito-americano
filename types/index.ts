@@ -133,20 +133,34 @@ export const formatDate = (date: Date | null) => {
 	const d = new Date(date);
 	const day = String(d.getDate()).padStart(2, "0");
 	const month = String(d.getMonth() + 1).padStart(2, "0");
+	const year = d.getFullYear();
 	const hours = String(d.getHours()).padStart(2, "0");
 	const minutes = String(d.getMinutes()).padStart(2, "0");
 
-	return `${day}/${month} - ${hours}:${minutes}`;
+	return `${day}/${month}/${year} - ${hours}:${minutes}`;
 };
 
-// Padronização apenas de data
+// Padronização apenas de data (dd/mm/aaaa)
 export const formatOnlyDate = (date: Date | null) => {
 	if (!date) return "n/a";
 	const d = new Date(date);
 	const day = String(d.getDate()).padStart(2, "0");
 	const month = String(d.getMonth() + 1).padStart(2, "0");
+	const year = d.getFullYear();
 
-	return `${day}/${month}`;
+	return `${day}/${month}/${year}`;
+};
+
+// Formata string ISO ou "YYYY-MM-DD" para "DD/MM/AAAA"
+export const formatDateStringBR = (dateStr?: string | null): string => {
+	if (!dateStr) return "-";
+	const clean = dateStr.split("T")[0];
+	const parts = clean.split("-");
+	if (parts.length === 3) {
+		const [y, m, d] = parts;
+		return `${d.padStart(2, "0")}/${m.padStart(2, "0")}/${y}`;
+	}
+	return dateStr;
 };
 
 export interface SupplyOrder {

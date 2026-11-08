@@ -41,6 +41,8 @@ import {
 	Tag,
 	ArrowUpDown,
 } from "lucide-react";
+import { CurrencyInput } from "@/components/currency-input";
+import { DateInputBR } from "@/components/date-input-br";
 
 const MESES = [
 	"Janeiro",
@@ -409,19 +411,21 @@ export default function PessoalPage() {
 					{/* Período Customizado */}
 					{periodMode === "custom" && (
 						<div className="flex items-center gap-2 flex-wrap">
-							<input
-								type="date"
-								value={customStartDate}
-								onChange={(e) => setCustomStartDate(e.target.value)}
-								className="px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-800 dark:text-slate-200"
-							/>
+							<div className="w-36">
+								<DateInputBR
+									value={customStartDate}
+									onChangeDate={(iso) => setCustomStartDate(iso)}
+									className="px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-800 dark:text-slate-200"
+								/>
+							</div>
 							<span className="text-xs text-slate-400 font-bold">até</span>
-							<input
-								type="date"
-								value={customEndDate}
-								onChange={(e) => setCustomEndDate(e.target.value)}
-								className="px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-800 dark:text-slate-200"
-							/>
+							<div className="w-36">
+								<DateInputBR
+									value={customEndDate}
+									onChangeDate={(iso) => setCustomEndDate(iso)}
+									className="px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs font-bold text-slate-800 dark:text-slate-200"
+								/>
+							</div>
 						</div>
 					)}
 				</div>
@@ -736,13 +740,10 @@ export default function PessoalPage() {
 										<span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 font-black text-sm">
 											R$
 										</span>
-										<input
-											type="text"
+										<CurrencyInput
 											required
 											value={formValor}
-											onChange={(e) => setFormValor(e.target.value)}
-											onFocus={handleSelectAll}
-											onClick={handleSelectAll}
+											onChangeValue={(num, str) => setFormValor(str)}
 											placeholder="0,00"
 											className="w-full pl-10 pr-4 py-3 rounded-2xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm font-black text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
 										/>
@@ -753,11 +754,10 @@ export default function PessoalPage() {
 									<label className="text-xs font-black uppercase tracking-wider text-slate-400 dark:text-slate-500">
 										Data do Gasto *
 									</label>
-									<input
-										type="date"
+									<DateInputBR
 										required
 										value={formDataGasto}
-										onChange={(e) => setFormDataGasto(e.target.value)}
+										onChangeDate={(iso) => setFormDataGasto(iso)}
 										className="w-full px-4 py-3 rounded-2xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-sm font-bold text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
 									/>
 								</div>

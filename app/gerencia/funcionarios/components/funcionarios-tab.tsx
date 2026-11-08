@@ -31,6 +31,8 @@ import {
 	Users,
 	Calendar,
 } from "lucide-react";
+import { CurrencyInput } from "@/components/currency-input";
+import { DateInputBR } from "@/components/date-input-br";
 
 interface FuncionariosTabProps {
 	funcionarios: Funcionario[];
@@ -689,10 +691,9 @@ export default function FuncionariosTab({
 									<label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
 										Data de Admissão
 									</label>
-									<input
-										type="date"
+									<DateInputBR
 										value={formData.dataAdmissao}
-										onChange={(e) => setFormData({ ...formData, dataAdmissao: e.target.value })}
+										onChangeDate={(iso) => setFormData({ ...formData, dataAdmissao: iso })}
 										className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
 									/>
 								</div>
@@ -716,12 +717,10 @@ export default function FuncionariosTab({
 									<label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
 										Salário Base (R$)
 									</label>
-									<input
-										type="number"
-										step="0.01"
+									<CurrencyInput
 										value={formData.salarioBase}
-										onChange={(e) => setFormData({ ...formData, salarioBase: e.target.value })}
-										placeholder="Ex: 1600.00"
+										onChangeValue={(num, str) => setFormData({ ...formData, salarioBase: String(num) })}
+										placeholder="0,00"
 										className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
 									/>
 								</div>
@@ -731,12 +730,10 @@ export default function FuncionariosTab({
 									<label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
 										Vale-Transporte (R$)
 									</label>
-									<input
-										type="number"
-										step="0.01"
+									<CurrencyInput
 										value={formData.valeTransporte}
-										onChange={(e) => setFormData({ ...formData, valeTransporte: e.target.value })}
-										placeholder="Ex: 220.00"
+										onChangeValue={(num, str) => setFormData({ ...formData, valeTransporte: String(num) })}
+										placeholder="0,00"
 										className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
 									/>
 								</div>
@@ -879,13 +876,11 @@ export default function FuncionariosTab({
 									<label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
 										Valor (R$) *
 									</label>
-									<input
-										type="number"
-										step="0.01"
+									<CurrencyInput
 										required
 										value={costFormData.valor}
-										onChange={(e) => setCostFormData({ ...costFormData, valor: e.target.value })}
-										placeholder="0.00"
+										onChangeValue={(num, str) => setCostFormData({ ...costFormData, valor: String(num) })}
+										placeholder="0,00"
 										className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-blue-500"
 									/>
 								</div>
@@ -894,11 +889,10 @@ export default function FuncionariosTab({
 									<label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
 										Data do Fato *
 									</label>
-									<input
-										type="date"
+									<DateInputBR
 										required
 										value={costFormData.data}
-										onChange={(e) => setCostFormData({ ...costFormData, data: e.target.value })}
+										onChangeDate={(iso) => setCostFormData({ ...costFormData, data: iso })}
 										className="w-full px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
 									/>
 								</div>

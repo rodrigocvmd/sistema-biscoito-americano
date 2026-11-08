@@ -23,6 +23,8 @@ import {
 	STORE_NAMES_EXTENDED,
 	StoreIdWithGeral,
 } from "@/types/financeiro-controle";
+import { CurrencyInput } from "@/components/currency-input";
+import { DateInputBR } from "@/components/date-input-br";
 
 interface FaturamentoModalProps {
 	isOpen: boolean;
@@ -314,11 +316,10 @@ export default function FaturamentoModal({
 							<label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
 								Data da Venda <span className="text-rose-500">*</span>
 							</label>
-							<input
-								type="date"
+							<DateInputBR
 								required
 								value={dataFaturamento}
-								onChange={(e) => setDataFaturamento(e.target.value)}
+								onChangeDate={(iso) => setDataFaturamento(iso)}
 								className="w-full bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs font-bold text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
 							/>
 						</div>
@@ -351,14 +352,11 @@ export default function FaturamentoModal({
 									<span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm font-black text-slate-400">
 										R$
 									</span>
-									<input
-										type="text"
-										inputMode="decimal"
+									<CurrencyInput
 										required
 										placeholder="0,00"
 										value={valorGeral}
-										onFocus={(e) => e.target.select()}
-										onChange={(e) => setValorGeral(e.target.value)}
+										onChangeValue={(num, str) => setValorGeral(str)}
 										className="w-full pl-10 pr-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-base font-black text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
 									/>
 								</div>
@@ -437,13 +435,10 @@ export default function FaturamentoModal({
 											/>
 										</div>
 										<div className="w-24">
-											<input
-												type="number"
-												step="0.01"
-												min="0"
-												placeholder="R$ Unit"
-												value={item.precoUnitario || ""}
-												onChange={(e) => handleUpdateItem(item.id, "precoUnitario", e.target.value)}
+											<CurrencyInput
+												placeholder="0,00"
+												value={item.precoUnitario || 0}
+												onChangeValue={(num) => handleUpdateItem(item.id, "precoUnitario", num)}
 												className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-2 py-1.5 text-xs text-right font-bold text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-emerald-500"
 											/>
 										</div>

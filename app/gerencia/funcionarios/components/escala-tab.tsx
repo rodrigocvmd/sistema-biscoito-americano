@@ -37,6 +37,7 @@ import {
 	List,
 } from "lucide-react";
 import TimeInput24h from "./time-input-24h";
+import { DateInputBR } from "@/components/date-input-br";
 
 interface EscalaTabProps {
 	escalas: EscalaItem[];
@@ -1589,12 +1590,11 @@ export default function EscalaTab({
 								<label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
 									3. Primeiro Dia de Trabalho no Mês *
 								</label>
-								<input
-									type="date"
+								<DateInputBR
 									required
 									value={autoFormData.primeiroDiaTrabalho}
-									onChange={(e) =>
-										setAutoFormData({ ...autoFormData, primeiroDiaTrabalho: e.target.value })
+									onChangeDate={(iso) =>
+										setAutoFormData({ ...autoFormData, primeiroDiaTrabalho: iso })
 									}
 									className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 font-semibold"
 								/>
@@ -1734,11 +1734,10 @@ export default function EscalaTab({
 								<label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
 									Data da Escala *
 								</label>
-								<input
-									type="date"
+								<DateInputBR
 									required
 									value={formData.data}
-									onChange={(e) => setFormData({ ...formData, data: e.target.value })}
+									onChangeDate={(iso) => setFormData({ ...formData, data: iso })}
 									className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-900 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
 								/>
 							</div>

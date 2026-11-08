@@ -27,6 +27,7 @@ import {
 	AlertTriangle,
 	Tag,
 } from "lucide-react";
+import { CurrencyInput } from "@/components/currency-input";
 
 interface CostItemConfig {
 	id: string;
@@ -394,12 +395,9 @@ export default function CalculadoraPage() {
 								<span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-black text-xl">
 									R$
 								</span>
-								<input
-									type="text"
+								<CurrencyInput
 									value={saleValueInput}
-									onChange={(e) => setSaleValueInput(e.target.value)}
-									onFocus={handleSelectAll}
-									onClick={handleSelectAll}
+									onChangeValue={(num, str) => setSaleValueInput(str)}
 									placeholder="0,00"
 									className="w-full pl-13 pr-4 py-4 rounded-2xl bg-slate-50 dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 focus:border-blue-600 dark:focus:border-blue-500 focus:outline-none text-2xl md:text-3xl font-black text-slate-800 dark:text-slate-100 transition-all shadow-inner"
 								/>
@@ -554,15 +552,24 @@ export default function CalculadoraPage() {
 												<span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs font-bold">
 													{subsidyType === "fixed" ? "R$" : "%"}
 												</span>
-												<input
-													type="text"
-													value={subsidyValueInput}
-													onChange={(e) => setSubsidyValueInput(e.target.value)}
-													onFocus={handleSelectAll}
-													onClick={handleSelectAll}
-													placeholder={subsidyType === "fixed" ? "0,00" : "0"}
-													className="w-full pl-9 pr-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs font-black text-purple-700 dark:text-purple-300"
-												/>
+												{subsidyType === "fixed" ? (
+													<CurrencyInput
+														value={subsidyValueInput}
+														onChangeValue={(num, str) => setSubsidyValueInput(str)}
+														placeholder="0,00"
+														className="w-full pl-9 pr-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs font-black text-purple-700 dark:text-purple-300"
+													/>
+												) : (
+													<input
+														type="text"
+														value={subsidyValueInput}
+														onChange={(e) => setSubsidyValueInput(e.target.value)}
+														onFocus={handleSelectAll}
+														onClick={handleSelectAll}
+														placeholder="0"
+														className="w-full pl-9 pr-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs font-black text-purple-700 dark:text-purple-300"
+													/>
+												)}
 											</div>
 										</div>
 									</div>
@@ -613,15 +620,24 @@ export default function CalculadoraPage() {
 									</select>
 								</div>
 								<div className="sm:col-span-3">
-									<input
-										type="text"
-										value={newCostValue}
-										onChange={(e) => setNewCostValue(e.target.value)}
-										onFocus={handleSelectAll}
-										onClick={handleSelectAll}
-										placeholder={newCostType === "fixed" ? "Valor R$" : "Alíquota %"}
-										className="w-full px-3 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-black text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-									/>
+									{newCostType === "fixed" ? (
+										<CurrencyInput
+											value={newCostValue}
+											onChangeValue={(num, str) => setNewCostValue(str)}
+											placeholder="0,00"
+											className="w-full px-3 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-black text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+										/>
+									) : (
+										<input
+											type="text"
+											value={newCostValue}
+											onChange={(e) => setNewCostValue(e.target.value)}
+											onFocus={handleSelectAll}
+											onClick={handleSelectAll}
+											placeholder="Alíquota %"
+											className="w-full px-3 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-black text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+										/>
+									)}
 								</div>
 							</div>
 
