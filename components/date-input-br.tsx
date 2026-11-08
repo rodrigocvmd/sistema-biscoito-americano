@@ -131,6 +131,14 @@ export const DateInputBR = forwardRef<HTMLInputElement, DateInputBRProps>(
 					value={textValue}
 					onChange={handleTextChange}
 					onBlur={handleBlur}
+					onClick={(e) => {
+						e.currentTarget.select();
+						props.onClick?.(e);
+					}}
+					onFocus={(e) => {
+						e.currentTarget.select();
+						props.onFocus?.(e);
+					}}
 					required={required}
 					className={`${className} pr-10`}
 				/>

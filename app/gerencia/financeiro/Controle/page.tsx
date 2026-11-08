@@ -423,7 +423,7 @@ export default function ControlePage() {
 						<button
 							type="button"
 							onClick={() => handleOpenNewCusto()}
-							className="px-4 py-2.5 rounded-2xl bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-slate-100 text-white dark:text-slate-900 text-xs font-black tracking-wide shadow-md transition-all flex items-center gap-1.5 active:scale-95">
+							className="px-4 py-2.5 rounded-2xl bg-orange-300 hover:bg-orange-400 dark:bg-orange-400 dark:hover:bg-orange-300 text-orange-950 text-xs font-black tracking-wide shadow-md shadow-orange-300/30 transition-all flex items-center gap-1.5 active:scale-95">
 							<Plus size={16} />
 							<span>Novo Custo</span>
 						</button>
@@ -999,6 +999,7 @@ export default function ControlePage() {
 				onSave={handleSaveFat}
 				editingFaturamento={editingFat}
 				defaultLoja={lojaFilter !== "todas" ? (lojaFilter as StoreIdWithGeral) : "geral"}
+				defaultData={periodMode === "mes" ? `${mesAnoStr}-01` : undefined}
 			/>
 
 			<FaturamentoDetalhesModal
@@ -1017,6 +1018,7 @@ export default function ControlePage() {
 				editingCusto={editingCusto}
 				defaultCategoria={defaultCategoriaCusto}
 				defaultLoja={lojaFilter !== "todas" ? (lojaFilter as StoreIdWithGeral) : "geral"}
+				defaultData={periodMode === "mes" ? `${mesAnoStr}-01` : undefined}
 			/>
 		</div>
 	);

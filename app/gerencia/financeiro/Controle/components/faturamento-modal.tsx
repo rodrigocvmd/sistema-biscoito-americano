@@ -32,6 +32,7 @@ interface FaturamentoModalProps {
 	onSave: (data: Omit<FaturamentoFinanceiro, "id" | "createdAt" | "updatedAt">) => Promise<void>;
 	editingFaturamento?: FaturamentoFinanceiro | null;
 	defaultLoja?: StoreIdWithGeral;
+	defaultData?: string;
 }
 
 const ITENS_SUGESTOES = [
@@ -50,6 +51,7 @@ export default function FaturamentoModal({
 	onSave,
 	editingFaturamento,
 	defaultLoja = "geral",
+	defaultData,
 }: FaturamentoModalProps) {
 	const [tipo, setTipo] = useState<"geral" | "discriminado">("geral");
 	const [lojaId, setLojaId] = useState<StoreIdWithGeral>(defaultLoja);
@@ -98,7 +100,7 @@ export default function FaturamentoModal({
 
 				setTipo("geral");
 				setLojaId(defaultLoja);
-				setDataFaturamento(todayStr);
+				setDataFaturamento(defaultData || todayStr);
 				setValorGeral("");
 				setCanal("geral");
 				setDescricao("");
@@ -106,7 +108,7 @@ export default function FaturamentoModal({
 				setItens([{ id: "item-1", nome: "", quantidade: 1, precoUnitario: 0, subtotal: 0 }]);
 			}
 		}
-	}, [isOpen, editingFaturamento, defaultLoja]);
+	}, [isOpen, editingFaturamento, defaultLoja, defaultData]);
 
 	if (!isOpen) return null;
 
@@ -333,12 +335,13 @@ export default function FaturamentoModal({
 
 						<div>
 							<label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
-								Data da Venda <span className="text-rose-500">*</span>
+								Data do Faturamento<span className="text-rose-500">*</span>
 							</label>
 							<DateInputBR
 								required
 								value={dataFaturamento}
 								onChangeDate={(iso) => setDataFaturamento(iso)}
+								onClick={(e) => e.currentTarget.select()}
 								className="w-full bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs font-bold text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
 							/>
 						</div>

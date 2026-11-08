@@ -30,6 +30,7 @@ interface CustoModalProps {
 	editingCusto?: CustoFinanceiro | null;
 	defaultCategoria?: CategoriaCusto;
 	defaultLoja?: StoreIdWithGeral;
+	defaultData?: string;
 }
 
 export default function CustoModal({
@@ -39,6 +40,7 @@ export default function CustoModal({
 	editingCusto,
 	defaultCategoria = "cookies",
 	defaultLoja = "geral",
+	defaultData,
 }: CustoModalProps) {
 	const [categoria, setCategoria] = useState<CategoriaCusto>(defaultCategoria);
 	const [lojaId, setLojaId] = useState<StoreIdWithGeral>(defaultLoja);
@@ -73,12 +75,13 @@ export default function CustoModal({
 				const month = String(now.getMonth() + 1).padStart(2, "0");
 				const day = String(now.getDate()).padStart(2, "0");
 				const todayStr = `${year}-${month}-${day}`;
+				const initialDate = defaultData || todayStr;
 
 				setCategoria(defaultCategoria);
 				setLojaId(defaultLoja);
-				setDataCusto(todayStr);
+				setDataCusto(initialDate);
 				setMultiDatasEnabled(false);
-				setMultiDatas([todayStr, ""]);
+				setMultiDatas([initialDate, ""]);
 				setDescricao("");
 				setValor("");
 				setMetodoPagamento("pix");
@@ -86,7 +89,7 @@ export default function CustoModal({
 				setObservacoes("");
 			}
 		}
-	}, [isOpen, editingCusto, defaultCategoria, defaultLoja]);
+	}, [isOpen, editingCusto, defaultCategoria, defaultLoja, defaultData]);
 
 	if (!isOpen) return null;
 
@@ -308,6 +311,7 @@ export default function CustoModal({
 															return updated;
 														});
 													}}
+													onClick={(e) => e.currentTarget.select()}
 													className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs font-bold text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
 												/>
 											</div>
@@ -331,7 +335,7 @@ export default function CustoModal({
 							<div>
 								<label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5 flex items-center justify-between">
 									<span>
-										Dia do Custo <span className="text-rose-500">*</span>
+										Data do Custo <span className="text-rose-500">*</span>
 									</span>
 									<span className="text-[10px] text-amber-600 dark:text-amber-400 font-semibold">
 										Obrigatório
@@ -342,6 +346,7 @@ export default function CustoModal({
 										required
 										value={dataCusto}
 										onChangeDate={(iso) => setDataCusto(iso)}
+										onClick={(e) => e.currentTarget.select()}
 										className="w-full bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs font-black text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
 									/>
 								</div>
