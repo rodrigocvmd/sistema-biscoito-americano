@@ -124,13 +124,22 @@ export default function ControleChart({
 
 	const handleSelectCategorias = () => {
 		setModoAgrupamento("categorias");
-		setTipoVisualizacao("linha");
+		setTipoVisualizacao("barras");
 	};
 
 	// Ajusta tipo de visualização conforme o modo selecionado
 	const effectiveTipo = useMemo(() => {
-		if ((modoAgrupamento === "mensal" || modoAgrupamento === "categorias") && tipoVisualizacao === "rosca") {
-			return "linha";
+		if (modoAgrupamento === "lojas") {
+			if (tipoVisualizacao === "rosca") return "barras";
+			return tipoVisualizacao;
+		}
+		if (modoAgrupamento === "mensal") {
+			if (tipoVisualizacao === "rosca") return "linha";
+			return tipoVisualizacao;
+		}
+		if (modoAgrupamento === "categorias") {
+			if (tipoVisualizacao === "linha") return "barras";
+			return tipoVisualizacao;
 		}
 		return tipoVisualizacao;
 	}, [modoAgrupamento, tipoVisualizacao]);
@@ -261,8 +270,36 @@ export default function ControleChart({
 
 					{/* Tipo de Gráfico */}
 					<div className="flex items-center bg-slate-100 dark:bg-slate-800/80 p-1 rounded-xl text-xs">
-						{/* Para Evolução Mensal e Por Categoria: Linha (padrão) e Barras */}
-						{modoAgrupamento !== "lojas" ? (
+						{/* Por Loja: Barras (default) e Linhas */}
+						{modoAgrupamento === "lojas" && (
+							<>
+								<button
+									type="button"
+									title="Gráfico de Barras"
+									onClick={() => setTipoVisualizacao("barras")}
+									className={`p-1.5 rounded-lg transition-all ${
+										effectiveTipo === "barras"
+											? "bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-xs"
+											: "text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
+									}`}>
+									<BarChart3 size={16} />
+								</button>
+								<button
+									type="button"
+									title="Gráfico de Linha"
+									onClick={() => setTipoVisualizacao("linha")}
+									className={`p-1.5 rounded-lg transition-all ${
+										effectiveTipo === "linha"
+											? "bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-xs"
+											: "text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
+									}`}>
+									<TrendingUp size={16} />
+								</button>
+							</>
+						)}
+
+						{/* Evolução Mensal: Linha (default) e Barras */}
+						{modoAgrupamento === "mensal" && (
 							<>
 								<button
 									type="button"
@@ -287,8 +324,10 @@ export default function ControleChart({
 									<BarChart3 size={16} />
 								</button>
 							</>
-						) : (
-							/* Para Por Loja: Barras (padrão), Linha, Rosca */
+						)}
+
+						{/* Por Categoria: Barras (default) e Pizza */}
+						{modoAgrupamento === "categorias" && (
 							<>
 								<button
 									type="button"
@@ -303,18 +342,7 @@ export default function ControleChart({
 								</button>
 								<button
 									type="button"
-									title="Gráfico de Linha"
-									onClick={() => setTipoVisualizacao("linha")}
-									className={`p-1.5 rounded-lg transition-all ${
-										effectiveTipo === "linha"
-											? "bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-xs"
-											: "text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
-									}`}>
-									<TrendingUp size={16} />
-								</button>
-								<button
-									type="button"
-									title="Gráfico de Rosca / Distribuição"
+									title="Gráfico de Pizza / Distribuição"
 									onClick={() => setTipoVisualizacao("rosca")}
 									className={`p-1.5 rounded-lg transition-all ${
 										effectiveTipo === "rosca"
