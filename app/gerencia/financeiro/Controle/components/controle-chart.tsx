@@ -55,10 +55,29 @@ const formatCurrency = (val: number) => {
 	}).format(val || 0);
 };
 
-const formatCompactCurrency = (val: number) => {
-	if (Math.abs(val) >= 1000000) return `R$ ${(val / 1000000).toFixed(1)}M`;
-	if (Math.abs(val) >= 1000) return `R$ ${(val / 1000).toFixed(1)}k`;
-	return `R$ ${Math.round(val)}`;
+const formatTickCurrency = (val: number) => {
+	if (val === 0) return "R$ 0";
+	return `R$ ${val.toLocaleString("pt-BR")}`;
+};
+
+const formatElementValue = (val: number) => {
+	if (!val || val === 0) return "R$ 0";
+	const abs = Math.abs(val);
+	if (abs >= 1_000_000) {
+		const formatted = (val / 1_000_000).toLocaleString("pt-BR", {
+			minimumFractionDigits: 0,
+			maximumFractionDigits: 1,
+		});
+		return `R$ ${formatted}M`;
+	}
+	if (abs >= 1_000) {
+		const formatted = (val / 1_000).toLocaleString("pt-BR", {
+			minimumFractionDigits: 0,
+			maximumFractionDigits: 1,
+		});
+		return `R$ ${formatted}k`;
+	}
+	return `R$ ${Math.round(val).toLocaleString("pt-BR")}`;
 };
 
 const STORE_COLORS: Record<string, string> = {
@@ -96,7 +115,7 @@ export default function ControleChart({
 	// Dimensões do SVG
 	const SVG_WIDTH = 780;
 	const SVG_HEIGHT = 300;
-	const MARGIN = { top: 25, right: 30, bottom: 45, left: 65 };
+	const MARGIN = { top: 25, right: 30, bottom: 45, left: 74 };
 	const innerW = SVG_WIDTH - MARGIN.left - MARGIN.right;
 	const innerH = SVG_HEIGHT - MARGIN.top - MARGIN.bottom;
 
@@ -145,28 +164,59 @@ export default function ControleChart({
 	}, [modoAgrupamento, tipoVisualizacao]);
 
 	// Dados e escala conforme o modo
-	const { maxVal, points } = useMemo(() => {
-		let max = 100;
+	const { maxVal, stepVal, points } = useMemo(() => {
+		let rawMax = 0;
 		if (modoAgrupamento === "lojas") {
 			lojaData.forEach((d) => {
-				if (showFaturamento && d.faturamento > max) max = d.faturamento;
-				if (showCustos && d.custos > max) max = d.custos;
-				if (showLucro && d.lucro > max) max = d.lucro;
+				if (showFaturamento && d.faturamento > rawMax) rawMax = d.faturamento;
+				if (showCustos && d.custos > rawMax) rawMax = d.custos;
+				if (showLucro && d.lucro > rawMax) rawMax = d.lucro;
 			});
-			return { maxVal: max * 1.15, points: lojaData };
 		} else if (modoAgrupamento === "mensal") {
 			mensalData.forEach((d) => {
-				if (showFaturamento && d.faturamento > max) max = d.faturamento;
-				if (showCustos && d.custos > max) max = d.custos;
-				if (showLucro && d.lucro > max) max = d.lucro;
+				if (showFaturamento && d.faturamento > rawMax) rawMax = d.faturamento;
+				if (showCustos && d.custos > rawMax) rawMax = d.custos;
+				if (showLucro && d.lucro > rawMax) rawMax = d.lucro;
 			});
-			return { maxVal: max * 1.15, points: mensalData };
 		} else {
 			categoriaData.forEach((d) => {
-				if (d.valor > max) max = d.valor;
+				if (d.valor > rawMax) rawMax = d.valor;
 			});
-			return { maxVal: max * 1.15, points: categoriaData };
 		}
+
+		if (rawMax <= 0) rawMax = 5000;
+
+		// Intervalos de números redondos de 5.000 em 5.000 (ou múltiplos redondos à medida que os valores crescem)
+		let step = 5000;
+		if (rawMax > 500000) {
+			step = 100000;
+		} else if (rawMax > 250000) {
+			step = 50000;
+		} else if (rawMax > 100000) {
+			step = 25000;
+		} else if (rawMax > 50000) {
+			step = 10000;
+		} else {
+			step = 5000;
+		}
+
+		// Topo da escala em número redondo múltiplo exato do step, com respiro visual
+		let targetMax = Math.ceil(rawMax / step) * step;
+		if (rawMax >= targetMax * 0.92) {
+			targetMax += step;
+		}
+		if (targetMax < step) {
+			targetMax = step;
+		}
+
+		const pts =
+			modoAgrupamento === "lojas"
+				? lojaData
+				: modoAgrupamento === "mensal"
+				? mensalData
+				: categoriaData;
+
+		return { maxVal: targetMax, stepVal: step, points: pts };
 	}, [modoAgrupamento, lojaData, mensalData, categoriaData, showFaturamento, showCustos, showLucro]);
 
 	// Dados para o modo Rosca (Por Loja)
@@ -199,16 +249,15 @@ export default function ControleChart({
 		return modoAgrupamento === "lojas" ? totalFaturamento : totalCustos;
 	}, [modoAgrupamento, totalFaturamento, totalCustos]);
 
-	// Linhas da grade Y
+	// Linhas da grade Y em intervalos de números redondos (0, 5.000, 10.000, 15.000, 20.000, 25.000...)
 	const yTicks = useMemo(() => {
-		const count = 4;
-		const step = maxVal / count;
-		return Array.from({ length: count + 1 }, (_, i) => {
-			const val = i * step;
+		const ticks = [];
+		for (let val = 0; val <= maxVal; val += stepVal) {
 			const y = MARGIN.top + innerH - (val / maxVal) * innerH;
-			return { val, y };
-		});
-	}, [maxVal, innerH, MARGIN.top]);
+			ticks.push({ val, y });
+		}
+		return ticks;
+	}, [maxVal, stepVal, innerH, MARGIN.top]);
 
 	return (
 		<div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-5 md:p-6 shadow-sm space-y-5 transition-colors">
@@ -450,6 +499,38 @@ export default function ControleChart({
 								)}
 							</svg>
 
+							{/* Valores no próprio elemento (dentro da fatia da pizza) */}
+							<svg viewBox="0 0 256 256" className="absolute inset-0 w-full h-full pointer-events-none">
+								{(() => {
+									let currentAngle = 0;
+									const radius = 85;
+									return donutItems.map((item) => {
+										const sweepAngle = (item.percent / 100) * 360;
+										const midAngle = currentAngle + sweepAngle / 2;
+										currentAngle += sweepAngle;
+
+										// Exibe o valor dentro da fatia quando tem tamanho suficiente para legibilidade
+										if (item.percent < 4.5 || item.valor <= 0) return null;
+
+										const rad = ((midAngle - 90) * Math.PI) / 180;
+										const x = 128 + radius * Math.cos(rad);
+										const y = 128 + radius * Math.sin(rad);
+
+										return (
+											<text
+												key={item.key}
+												x={x}
+												y={y}
+												textAnchor="middle"
+												dominantBaseline="central"
+												className="text-[10px] font-black fill-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.85)] select-none">
+												{formatElementValue(item.valor)}
+											</text>
+										);
+									});
+								})()}
+							</svg>
+
 							{/* Centro do Donut com Totais */}
 							<div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-center p-4">
 								<span className="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
@@ -543,7 +624,7 @@ export default function ControleChart({
 								</linearGradient>
 							</defs>
 
-							{/* Linhas de Grade Horizontais */}
+							{/* Linhas de Grade Horizontais com números redondos */}
 							{yTicks.map((tick, i) => (
 								<g key={i}>
 									<line
@@ -552,28 +633,22 @@ export default function ControleChart({
 										x2={MARGIN.left + innerW}
 										y2={tick.y}
 										stroke="currentColor"
-										strokeDasharray="3 3"
-										className="text-slate-200 dark:text-slate-800"
+										strokeDasharray={tick.val === 0 ? "none" : "3 3"}
+										className={
+											tick.val === 0
+												? "text-slate-300 dark:text-slate-700"
+												: "text-slate-200 dark:text-slate-800"
+										}
 									/>
 									<text
 										x={MARGIN.left - 8}
 										y={tick.y + 4}
 										textAnchor="end"
 										className="text-[10px] font-semibold fill-slate-400 dark:fill-slate-500">
-										{formatCompactCurrency(tick.val)}
+										{formatTickCurrency(tick.val)}
 									</text>
 								</g>
 							))}
-
-							{/* Eixo Base X */}
-							<line
-								x1={MARGIN.left}
-								y1={MARGIN.top + innerH}
-								x2={MARGIN.left + innerW}
-								y2={MARGIN.top + innerH}
-								stroke="currentColor"
-								className="text-slate-300 dark:text-slate-700"
-							/>
 
 							{/* RENDERIZAÇÃO: BARRAS */}
 							{effectiveTipo === "barras" && (
@@ -604,6 +679,16 @@ export default function ControleChart({
 														opacity={hoveredIndex === null || isHovered ? 1 : 0.45}
 														className="transition-all duration-200"
 													/>
+													{/* Valor acima da barra */}
+													{cat.valor > 0 && (
+														<text
+															x={x + barW / 2}
+															y={y - 5}
+															textAnchor="middle"
+															className="text-[9px] font-bold fill-slate-700 dark:fill-slate-300 select-none">
+															{formatElementValue(cat.valor)}
+														</text>
+													)}
 													<text
 														x={x + barW / 2}
 														y={MARGIN.top + innerH + 18}
@@ -664,6 +749,16 @@ export default function ControleChart({
 															className="transition-all duration-200"
 														/>
 													)}
+													{/* Valor acima da barra Faturamento */}
+													{showFaturamento && (pt.faturamento || 0) > 0 && (
+														<text
+															x={currentX + barW / 2}
+															y={MARGIN.top + innerH - fatH - 5}
+															textAnchor="middle"
+															className="text-[8px] sm:text-[9px] font-bold fill-emerald-600 dark:fill-emerald-400 select-none">
+															{formatElementValue(pt.faturamento)}
+														</text>
+													)}
 
 													{/* Barra Custos */}
 													{showCustos && (
@@ -678,6 +773,16 @@ export default function ControleChart({
 															className="transition-all duration-200"
 														/>
 													)}
+													{/* Valor acima da barra Custos */}
+													{showCustos && (pt.custos || 0) > 0 && (
+														<text
+															x={currentX + (showFaturamento ? barW + 2 : 0) + barW / 2}
+															y={MARGIN.top + innerH - custH - 5}
+															textAnchor="middle"
+															className="text-[8px] sm:text-[9px] font-bold fill-rose-600 dark:fill-rose-400 select-none">
+															{formatElementValue(pt.custos)}
+														</text>
+													)}
 
 													{/* Barra Lucro */}
 													{showLucro && (
@@ -691,6 +796,16 @@ export default function ControleChart({
 															opacity={hoveredIndex === null || isHovered ? 1 : 0.45}
 															className="transition-all duration-200"
 														/>
+													)}
+													{/* Valor acima da barra Lucro */}
+													{showLucro && (pt.lucro || 0) > 0 && (
+														<text
+															x={currentX + (showFaturamento ? barW + 2 : 0) + (showCustos ? barW + 2 : 0) + barW / 2}
+															y={MARGIN.top + innerH - lucH - 5}
+															textAnchor="middle"
+															className="text-[8px] sm:text-[9px] font-bold fill-blue-600 dark:fill-blue-400 select-none">
+															{formatElementValue(pt.lucro)}
+														</text>
 													)}
 
 													{/* Label X */}
@@ -800,6 +915,17 @@ export default function ControleChart({
 																	className="transition-all"
 																/>
 
+																{/* Valor acima do ponto */}
+																{pt.valor > 0 && (
+																	<text
+																		x={x}
+																		y={y - 8}
+																		textAnchor="middle"
+																		className="text-[9px] font-bold fill-rose-600 dark:fill-rose-400 select-none">
+																		{formatElementValue(pt.valor)}
+																	</text>
+																)}
+
 																<text
 																	x={x}
 																	y={MARGIN.top + innerH + 18}
@@ -853,6 +979,15 @@ export default function ControleChart({
 													const x = fatCoords[idx].x;
 													const isHovered = hoveredIndex === idx;
 
+													const fatY = fatCoords[idx].y;
+													const custY = custCoords[idx].y;
+													const lucY = lucCoords[idx].y;
+
+													// Se Faturamento e Custos estiverem com valores muito próximos, afasta em X para ambos ficarem acima do ponto sem sobrepor
+													const isFatCustClose = showFaturamento && showCustos && Math.abs(fatY - custY) < 14;
+													const fatLabelX = isFatCustClose ? x - 13 : x;
+													const custLabelX = isFatCustClose ? x + 13 : x;
+
 													return (
 														<g
 															key={idx}
@@ -872,28 +1007,74 @@ export default function ControleChart({
 																/>
 															)}
 
-															{/* Bolinhas */}
+															{/* Bolinhas e valores nos pontos */}
 															{showFaturamento && (
-																<circle
-																	cx={fatCoords[idx].x}
-																	cy={fatCoords[idx].y}
-																	r={isHovered ? 5.5 : 3.5}
-																	fill="#10b981"
-																	stroke="#ffffff"
-																	strokeWidth={2}
-																	className="transition-all"
-																/>
+																<>
+																	<circle
+																		cx={fatCoords[idx].x}
+																		cy={fatCoords[idx].y}
+																		r={isHovered ? 5.5 : 3.5}
+																		fill="#10b981"
+																		stroke="#ffffff"
+																		strokeWidth={2}
+																		className="transition-all"
+																	/>
+																	{(pt.faturamento || 0) > 0 && (
+																		<text
+																			x={fatLabelX}
+																			y={fatY - 7}
+																			textAnchor="middle"
+																			className="text-[8px] sm:text-[9px] font-bold fill-emerald-600 dark:fill-emerald-400 select-none">
+																			{formatElementValue(pt.faturamento)}
+																		</text>
+																	)}
+																</>
 															)}
+
 															{showCustos && (
-																<circle
-																	cx={custCoords[idx].x}
-																	cy={custCoords[idx].y}
-																	r={isHovered ? 5.5 : 3.5}
-																	fill="#f43f5e"
-																	stroke="#ffffff"
-																	strokeWidth={2}
-																	className="transition-all"
-																/>
+																<>
+																	<circle
+																		cx={custCoords[idx].x}
+																		cy={custCoords[idx].y}
+																		r={isHovered ? 5.5 : 3.5}
+																		fill="#f43f5e"
+																		stroke="#ffffff"
+																		strokeWidth={2}
+																		className="transition-all"
+																	/>
+																	{(pt.custos || 0) > 0 && (
+																		<text
+																			x={custLabelX}
+																			y={custY - 7}
+																			textAnchor="middle"
+																			className="text-[8px] sm:text-[9px] font-bold fill-rose-600 dark:fill-rose-400 select-none">
+																			{formatElementValue(pt.custos)}
+																		</text>
+																	)}
+																</>
+															)}
+
+															{showLucro && (
+																<>
+																	<circle
+																		cx={lucCoords[idx].x}
+																		cy={lucCoords[idx].y}
+																		r={isHovered ? 5.5 : 3.5}
+																		fill="#3b82f6"
+																		stroke="#ffffff"
+																		strokeWidth={2}
+																		className="transition-all"
+																	/>
+																	{(pt.lucro || 0) > 0 && (
+																		<text
+																			x={x}
+																			y={lucY - 7}
+																			textAnchor="middle"
+																			className="text-[8px] sm:text-[9px] font-bold fill-blue-600 dark:fill-blue-400 select-none">
+																			{formatElementValue(pt.lucro)}
+																		</text>
+																	)}
+																</>
 															)}
 
 															{/* Labels no eixo X */}
