@@ -46,6 +46,7 @@ import {
 } from "@/lib/financeiro-controle-service";
 
 import ControleChart from "./components/controle-chart";
+import ControleCalendarioCustos from "./components/controle-calendario-custos";
 import FaturamentoModal from "./components/faturamento-modal";
 import FaturamentoDetalhesModal from "./components/faturamento-detalhes-modal";
 import CustoModal from "./components/custo-modal";
@@ -105,6 +106,10 @@ export default function ControlePage() {
 	const [isCustoModalOpen, setIsCustoModalOpen] = useState(false);
 	const [editingCusto, setEditingCusto] = useState<CustoFinanceiro | null>(null);
 	const [defaultCategoriaCusto, setDefaultCategoriaCusto] = useState<CategoriaCusto>("cookies");
+
+	// Data e Loja dinâmicas para inicialização dos modais
+	const [modalDefaultData, setModalDefaultData] = useState<string | undefined>(undefined);
+	const [modalDefaultLoja, setModalDefaultLoja] = useState<StoreIdWithGeral>("geral");
 
 	// Inscrição em Tempo Real (Firestore)
 	useEffect(() => {
@@ -338,12 +343,35 @@ export default function ControlePage() {
 	// Handlers de Ação
 	const handleOpenNewFat = () => {
 		setEditingFat(null);
+		setModalDefaultLoja(lojaFilter !== "todas" ? (lojaFilter as StoreIdWithGeral) : "geral");
+		setModalDefaultData(periodMode === "mes" ? `${mesAnoStr}-01` : undefined);
+		setIsFatModalOpen(true);
+	};
+
+	const handleOpenNewFatComDia = (diaIso: string, loja: StoreIdWithGeral) => {
+		setEditingFat(null);
+		setModalDefaultLoja(loja);
+		setModalDefaultData(diaIso);
 		setIsFatModalOpen(true);
 	};
 
 	const handleOpenNewCusto = (categoria?: CategoriaCusto) => {
 		setEditingCusto(null);
 		if (categoria) setDefaultCategoriaCusto(categoria);
+		setModalDefaultLoja(lojaFilter !== "todas" ? (lojaFilter as StoreIdWithGeral) : "geral");
+		setModalDefaultData(periodMode === "mes" ? `${mesAnoStr}-01` : undefined);
+		setIsCustoModalOpen(true);
+	};
+
+	const handleOpenNewCustoComDia = (
+		diaIso: string,
+		loja: StoreIdWithGeral,
+		categoria?: CategoriaCusto
+	) => {
+		setEditingCusto(null);
+		if (categoria) setDefaultCategoriaCusto(categoria);
+		setModalDefaultLoja(loja);
+		setModalDefaultData(diaIso);
 		setIsCustoModalOpen(true);
 	};
 
@@ -782,6 +810,26 @@ export default function ControlePage() {
 						isConsolidado={lojaFilter === "todas"}
 					/>
 
+					{/* Visão de Tabela / Calendário: Custos Diários por Categoria */}
+					<ControleCalendarioCustos
+						custos={custos}
+						faturamentos={faturamentos}
+						currentMesAno={mesAnoStr}
+						currentLoja={lojaFilter}
+						onSelectDiaParaCusto={handleOpenNewCustoComDia}
+						onSelectDiaParaFaturamento={handleOpenNewFatComDia}
+						onEditCusto={(item) => {
+							setEditingCusto(item);
+							setIsCustoModalOpen(true);
+						}}
+						onEditFaturamento={(item) => {
+							setSelectedFatDetalhes(item);
+							setIsFatDetalhesOpen(true);
+						}}
+						onChangeMesAno={(newMesAno) => setMesAnoStr(newMesAno)}
+						onChangeLoja={(newLoja) => setLojaFilter(newLoja)}
+					/>
+
 					{/* Atalhos Rápidos por Categorias de Custo */}
 					<div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-5 md:p-6 shadow-sm space-y-4 transition-colors">
 						<div className="flex items-center justify-between">
@@ -999,8 +1047,8 @@ export default function ControlePage() {
 				onClose={() => setIsFatModalOpen(false)}
 				onSave={handleSaveFat}
 				editingFaturamento={editingFat}
-				defaultLoja={lojaFilter !== "todas" ? (lojaFilter as StoreIdWithGeral) : "geral"}
-				defaultData={periodMode === "mes" ? `${mesAnoStr}-01` : undefined}
+				defaultLoja={modalDefaultLoja}
+				defaultData={modalDefaultData}
 			/>
 
 			<FaturamentoDetalhesModal
@@ -1018,8 +1066,8 @@ export default function ControlePage() {
 				onSave={handleSaveCusto}
 				editingCusto={editingCusto}
 				defaultCategoria={defaultCategoriaCusto}
-				defaultLoja={lojaFilter !== "todas" ? (lojaFilter as StoreIdWithGeral) : "geral"}
-				defaultData={periodMode === "mes" ? `${mesAnoStr}-01` : undefined}
+				defaultLoja={modalDefaultLoja}
+				defaultData={modalDefaultData}
 			/>
 		</div>
 	);
