@@ -5,11 +5,17 @@ import {
 	BarChart3,
 	TrendingUp,
 	PieChart,
+	Store,
+	ChevronLeft,
+	ChevronRight,
 } from "lucide-react";
 import {
 	ChartTipoVisualizacao,
 	ChartModoAgrupamento,
 	CategoriaCusto,
+	StoreIdWithGeral,
+	STORE_NAMES_EXTENDED,
+	PeriodoModo,
 } from "@/types/financeiro-controle";
 
 export interface DataPointMensal {
@@ -45,7 +51,28 @@ interface ControleChartProps {
 	totalCustos: number;
 	totalLucro: number;
 	isConsolidado?: boolean;
+	currentMesAno?: string;
+	currentLoja?: string;
+	periodMode?: PeriodoModo;
+	onChangeMesAno?: (mesAno: string) => void;
+	onChangeLoja?: (loja: string) => void;
+	onChangePeriodMode?: (mode: PeriodoModo) => void;
 }
+
+const MESES = [
+	"Janeiro",
+	"Fevereiro",
+	"Março",
+	"Abril",
+	"Maio",
+	"Junho",
+	"Julho",
+	"Agosto",
+	"Setembro",
+	"Outubro",
+	"Novembro",
+	"Dezembro",
+];
 
 const formatCurrency = (val: number) => {
 	return new Intl.NumberFormat("pt-BR", {
@@ -96,7 +123,47 @@ export default function ControleChart({
 	totalCustos,
 	totalLucro,
 	isConsolidado = true,
+	currentMesAno,
+	currentLoja,
+	periodMode = "mes",
+	onChangeMesAno,
+	onChangeLoja,
+	onChangePeriodMode,
 }: ControleChartProps) {
+	// Filtros de Loja e Período sincronizados
+	const activeLoja = currentLoja ?? (isConsolidado ? "todas" : "lago");
+	const activeMesAno = currentMesAno ?? "2026-01";
+
+	const [ano, mes] = useMemo(() => {
+		const parts = activeMesAno.split("-");
+		return [parseInt(parts[0], 10) || 2026, parseInt(parts[1], 10) || 1];
+	}, [activeMesAno]);
+
+	const handlePrevMonth = () => {
+		let newMes = mes - 1;
+		let newAno = ano;
+		if (newMes < 1) {
+			newMes = 12;
+			newAno -= 1;
+		}
+		onChangeMesAno?.(`${newAno}-${String(newMes).padStart(2, "0")}`);
+	};
+
+	const handleNextMonth = () => {
+		let newMes = mes + 1;
+		let newAno = ano;
+		if (newMes > 12) {
+			newMes = 1;
+			newAno += 1;
+		}
+		onChangeMesAno?.(`${newAno}-${String(newMes).padStart(2, "0")}`);
+	};
+
+	const now = new Date();
+	const currentYear = now.getFullYear();
+	const currentMonth = now.getMonth() + 1;
+	const maxMonthForAno = Math.max(1, currentMonth - 1);
+
 	// Padrão: "Por Loja" (apenas quando consolidado) ou "Evolução Mensal"
 	const [modoAgrupamento, setModoAgrupamento] = useState<ChartModoAgrupamento>(() => {
 		return isConsolidado ? "lojas" : "mensal";
@@ -262,187 +329,364 @@ export default function ControleChart({
 	return (
 		<div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-5 md:p-6 shadow-sm space-y-5 transition-colors">
 			{/* Cabeçalho de Controle e Configuração do Gráfico */}
-			<div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-4 border-b border-slate-100 dark:border-slate-800">
-				<div>
-					<div className="flex items-center gap-2">
-						<span className="p-2 rounded-xl bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400">
-							<BarChart3 size={18} />
-						</span>
-						<h3 className="text-base md:text-lg font-black text-slate-900 dark:text-slate-100 tracking-tight">
-							Análise Visual & Gráficos
-						</h3>
+			<div className="flex flex-col gap-4 pb-4 border-b border-slate-100 dark:border-slate-800">
+				{/* Linha Superior: Título à esquerda e Controles de Visualização / Agrupamento / Séries à direita */}
+				<div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+					<div>
+						<div className="flex items-center gap-2">
+							<span className="p-2 rounded-xl bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400">
+								<BarChart3 size={18} />
+							</span>
+							<h3 className="text-base md:text-lg font-black text-slate-900 dark:text-slate-100 tracking-tight">
+								Análise Visual & Gráficos
+							</h3>
+						</div>
+						<p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+							{isConsolidado
+								? "Comparativos por loja, evolução mensal consolidada e composição de despesas"
+								: "Evolução mensal da unidade e composição de despesas por categoria"}
+						</p>
 					</div>
-					<p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-						{isConsolidado
-							? "Comparativos por loja, evolução mensal consolidada e composição de despesas"
-							: "Evolução mensal da unidade e composição de despesas por categoria"}
-					</p>
-				</div>
 
-				{/* Botões de Configuração */}
-				<div className="flex flex-wrap items-center gap-2.5">
-					{/* Agrupamento: Por Loja (apenas no consolidado), Evolução Mensal, Por Categoria */}
-					<div className="flex items-center bg-slate-100 dark:bg-slate-800/80 p-1 rounded-xl text-xs font-bold">
-						{isConsolidado && (
+					{/* Botões de Configuração do Gráfico: Agrupamento, Tipo e Séries */}
+					<div className="flex flex-wrap items-center gap-2.5">
+						{/* Agrupamento: Por Loja (apenas no consolidado), Evolução Mensal, Por Categoria */}
+						<div className="flex items-center bg-slate-100 dark:bg-slate-800/80 p-1 rounded-xl text-xs font-bold">
+							{isConsolidado && (
+								<button
+									type="button"
+									onClick={handleSelectLojas}
+									className={`px-3 py-1.5 rounded-lg transition-all ${
+										modoAgrupamento === "lojas"
+											? "bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-xs font-black"
+											: "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200"
+									}`}>
+									Por Loja
+								</button>
+							)}
 							<button
 								type="button"
-								onClick={handleSelectLojas}
+								onClick={handleSelectMensal}
 								className={`px-3 py-1.5 rounded-lg transition-all ${
-									modoAgrupamento === "lojas"
+									modoAgrupamento === "mensal"
 										? "bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-xs font-black"
 										: "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200"
 								}`}>
-								Por Loja
-							</button>
-						)}
-						<button
-							type="button"
-							onClick={handleSelectMensal}
-							className={`px-3 py-1.5 rounded-lg transition-all ${
-								modoAgrupamento === "mensal"
-									? "bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-xs font-black"
-									: "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200"
-							}`}>
-							Evolução Mensal
-						</button>
-						<button
-							type="button"
-							onClick={handleSelectCategorias}
-							className={`px-3 py-1.5 rounded-lg transition-all ${
-								modoAgrupamento === "categorias"
-									? "bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-xs font-black"
-									: "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200"
-							}`}>
-							Por Categoria
-						</button>
-					</div>
-
-					{/* Tipo de Gráfico */}
-					<div className="flex items-center bg-slate-100 dark:bg-slate-800/80 p-1 rounded-xl text-xs">
-						{/* Por Loja: Barras (default) e Linhas */}
-						{modoAgrupamento === "lojas" && (
-							<>
-								<button
-									type="button"
-									title="Gráfico de Barras"
-									onClick={() => setTipoVisualizacao("barras")}
-									className={`p-1.5 rounded-lg transition-all ${
-										effectiveTipo === "barras"
-											? "bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-xs"
-											: "text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
-									}`}>
-									<BarChart3 size={16} />
-								</button>
-								<button
-									type="button"
-									title="Gráfico de Linha"
-									onClick={() => setTipoVisualizacao("linha")}
-									className={`p-1.5 rounded-lg transition-all ${
-										effectiveTipo === "linha"
-											? "bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-xs"
-											: "text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
-									}`}>
-									<TrendingUp size={16} />
-								</button>
-							</>
-						)}
-
-						{/* Evolução Mensal: Linha (default) e Barras */}
-						{modoAgrupamento === "mensal" && (
-							<>
-								<button
-									type="button"
-									title="Gráfico de Linha"
-									onClick={() => setTipoVisualizacao("linha")}
-									className={`p-1.5 rounded-lg transition-all ${
-										effectiveTipo === "linha"
-											? "bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-xs"
-											: "text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
-									}`}>
-									<TrendingUp size={16} />
-								</button>
-								<button
-									type="button"
-									title="Gráfico de Barras"
-									onClick={() => setTipoVisualizacao("barras")}
-									className={`p-1.5 rounded-lg transition-all ${
-										effectiveTipo === "barras"
-											? "bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-xs"
-											: "text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
-									}`}>
-									<BarChart3 size={16} />
-								</button>
-							</>
-						)}
-
-						{/* Por Categoria: Barras (default) e Pizza */}
-						{modoAgrupamento === "categorias" && (
-							<>
-								<button
-									type="button"
-									title="Gráfico de Barras"
-									onClick={() => setTipoVisualizacao("barras")}
-									className={`p-1.5 rounded-lg transition-all ${
-										effectiveTipo === "barras"
-											? "bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-xs"
-											: "text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
-									}`}>
-									<BarChart3 size={16} />
-								</button>
-								<button
-									type="button"
-									title="Gráfico de Pizza / Distribuição"
-									onClick={() => setTipoVisualizacao("rosca")}
-									className={`p-1.5 rounded-lg transition-all ${
-										effectiveTipo === "rosca"
-											? "bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-xs"
-											: "text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
-									}`}>
-									<PieChart size={16} />
-								</button>
-							</>
-						)}
-					</div>
-
-					{/* Toggles de Séries (Apenas quando não for modo categorias) */}
-					{modoAgrupamento !== "categorias" && (
-						<div className="hidden sm:flex items-center gap-1.5 text-[11px] font-bold text-slate-600 dark:text-slate-400 bg-slate-50 dark:bg-slate-800/40 px-2 py-1 rounded-xl border border-slate-200/60 dark:border-slate-800">
-							<button
-								type="button"
-								onClick={() => setShowFaturamento(!showFaturamento)}
-								className={`flex items-center gap-1 px-2 py-1 rounded-lg transition-all ${
-									showFaturamento
-										? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 font-black"
-										: "opacity-40 hover:opacity-80"
-								}`}>
-								<span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" />
-								Faturamento
+								Evolução Mensal
 							</button>
 							<button
 								type="button"
-								onClick={() => setShowCustos(!showCustos)}
-								className={`flex items-center gap-1 px-2 py-1 rounded-lg transition-all ${
-									showCustos
-										? "bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300 font-black"
-										: "opacity-40 hover:opacity-80"
+								onClick={handleSelectCategorias}
+								className={`px-3 py-1.5 rounded-lg transition-all ${
+									modoAgrupamento === "categorias"
+										? "bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-xs font-black"
+										: "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200"
 								}`}>
-								<span className="w-2 h-2 rounded-full bg-rose-500 inline-block" />
-								Custos
-							</button>
-							<button
-								type="button"
-								onClick={() => setShowLucro(!showLucro)}
-								className={`flex items-center gap-1 px-2 py-1 rounded-lg transition-all ${
-									showLucro
-										? "bg-blue-100 text-blue-800 dark:bg-blue-950/60 dark:text-blue-300 font-black"
-										: "opacity-40 hover:opacity-80"
-								}`}>
-								<span className="w-2 h-2 rounded-full bg-blue-500 inline-block" />
-								Lucro
+								Por Categoria
 							</button>
 						</div>
-					)}
+
+						{/* Tipo de Gráfico */}
+						<div className="flex items-center bg-slate-100 dark:bg-slate-800/80 p-1 rounded-xl text-xs">
+							{/* Por Loja: Barras (default) e Linhas */}
+							{modoAgrupamento === "lojas" && (
+								<>
+									<button
+										type="button"
+										title="Gráfico de Barras"
+										onClick={() => setTipoVisualizacao("barras")}
+										className={`p-1.5 rounded-lg transition-all ${
+											effectiveTipo === "barras"
+												? "bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-xs"
+												: "text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
+										}`}>
+										<BarChart3 size={16} />
+									</button>
+									<button
+										type="button"
+										title="Gráfico de Linha"
+										onClick={() => setTipoVisualizacao("linha")}
+										className={`p-1.5 rounded-lg transition-all ${
+											effectiveTipo === "linha"
+												? "bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-xs"
+												: "text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
+										}`}>
+										<TrendingUp size={16} />
+									</button>
+								</>
+							)}
+
+							{/* Evolução Mensal: Linha (default) e Barras */}
+							{modoAgrupamento === "mensal" && (
+								<>
+									<button
+										type="button"
+										title="Gráfico de Linha"
+										onClick={() => setTipoVisualizacao("linha")}
+										className={`p-1.5 rounded-lg transition-all ${
+											effectiveTipo === "linha"
+												? "bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-xs"
+												: "text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
+										}`}>
+										<TrendingUp size={16} />
+									</button>
+									<button
+										type="button"
+										title="Gráfico de Barras"
+										onClick={() => setTipoVisualizacao("barras")}
+										className={`p-1.5 rounded-lg transition-all ${
+											effectiveTipo === "barras"
+												? "bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-xs"
+												: "text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
+										}`}>
+										<BarChart3 size={16} />
+									</button>
+								</>
+							)}
+
+							{/* Por Categoria: Barras (default) e Pizza */}
+							{modoAgrupamento === "categorias" && (
+								<>
+									<button
+										type="button"
+										title="Gráfico de Barras"
+										onClick={() => setTipoVisualizacao("barras")}
+										className={`p-1.5 rounded-lg transition-all ${
+											effectiveTipo === "barras"
+												? "bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-xs"
+												: "text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
+										}`}>
+										<BarChart3 size={16} />
+									</button>
+									<button
+										type="button"
+										title="Gráfico de Pizza / Distribuição"
+										onClick={() => setTipoVisualizacao("rosca")}
+										className={`p-1.5 rounded-lg transition-all ${
+											effectiveTipo === "rosca"
+												? "bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-xs"
+												: "text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
+										}`}>
+										<PieChart size={16} />
+									</button>
+								</>
+							)}
+						</div>
+
+						{/* Toggles de Séries (Apenas quando não for modo categorias) */}
+						{modoAgrupamento !== "categorias" && (
+							<div className="flex items-center gap-1.5 text-[11px] font-bold text-slate-600 dark:text-slate-400 bg-slate-50 dark:bg-slate-800/40 px-2 py-1 rounded-xl border border-slate-200/60 dark:border-slate-800">
+								<button
+									type="button"
+									onClick={() => setShowFaturamento(!showFaturamento)}
+									className={`flex items-center gap-1 px-2 py-1 rounded-lg transition-all ${
+										showFaturamento
+											? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 font-black"
+											: "opacity-40 hover:opacity-80"
+									}`}>
+									<span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" />
+									Faturamento
+								</button>
+								<button
+									type="button"
+									onClick={() => setShowCustos(!showCustos)}
+									className={`flex items-center gap-1 px-2 py-1 rounded-lg transition-all ${
+										showCustos
+											? "bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300 font-black"
+											: "opacity-40 hover:opacity-80"
+									}`}>
+									<span className="w-2 h-2 rounded-full bg-rose-500 inline-block" />
+									Custos
+								</button>
+								<button
+									type="button"
+									onClick={() => setShowLucro(!showLucro)}
+									className={`flex items-center gap-1 px-2 py-1 rounded-lg transition-all ${
+										showLucro
+											? "bg-blue-100 text-blue-800 dark:bg-blue-950/60 dark:text-blue-300 font-black"
+											: "opacity-40 hover:opacity-80"
+									}`}>
+									<span className="w-2 h-2 rounded-full bg-blue-500 inline-block" />
+									Lucro
+								</button>
+							</div>
+						)}
+					</div>
 				</div>
+
+				{/* Controles de Filtro Idênticos: Abas de Troca de Loja, Nome no Centro e Seletor de Período/Mês */}
+				{onChangeLoja && onChangeMesAno && (
+					<div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pt-2 border-t border-slate-100 dark:border-slate-800">
+						{/* Abas de Seleção de Loja */}
+						<div className="flex items-center gap-1.5 p-1.5 bg-slate-100 dark:bg-slate-800/90 rounded-2xl border border-slate-200/80 dark:border-slate-700/80 overflow-x-auto scrollbar-none shadow-xs shrink-0">
+							<button
+								type="button"
+								onClick={() => onChangeLoja("todas")}
+								className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-black whitespace-nowrap transition-all duration-200 flex items-center gap-1.5 ${
+									activeLoja === "todas"
+										? "bg-blue-600 text-white shadow-md shadow-blue-500/25 scale-[1.02]"
+										: "text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-white/60 dark:hover:bg-slate-700/60"
+								}`}>
+								<Store size={15} />
+								<span>Consolidado</span>
+							</button>
+							{(["lago", "terraco", "conjunto", "noroeste"] as const).map((sId) => (
+								<button
+									key={sId}
+									type="button"
+									onClick={() => onChangeLoja(sId)}
+									className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-black whitespace-nowrap transition-all duration-200 flex items-center gap-1.5 ${
+										activeLoja === sId
+											? "bg-blue-600 text-white shadow-md shadow-blue-500/25 scale-[1.02]"
+											: "text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-white/60 dark:hover:bg-slate-700/60"
+									}`}>
+									<span>{STORE_NAMES_EXTENDED[sId]}</span>
+								</button>
+							))}
+						</div>
+
+						{/* Nome da Loja (ou Consolidado) no Centro */}
+						<div className="flex-1 flex justify-center items-center py-1">
+							<span className="text-xl sm:text-2xl md:text-3xl font-black text-slate-900 dark:text-slate-100 tracking-tight text-center">
+								{activeLoja === "todas"
+									? "Consolidado"
+									: STORE_NAMES_EXTENDED[activeLoja as StoreIdWithGeral] || activeLoja}
+							</span>
+						</div>
+
+						{/* Controles de Período: Seletor Mês Específico / Ano Todo e Data */}
+						<div className="flex items-center gap-2 flex-wrap shrink-0 justify-end">
+							{/* Seletor de Modo: Mês Específico vs Ano Todo */}
+							<div className="flex items-center bg-slate-100 dark:bg-slate-800/90 p-1 rounded-2xl border border-slate-200/80 dark:border-slate-700/80 text-xs font-bold shadow-xs">
+								<button
+									type="button"
+									onClick={() => onChangePeriodMode?.("mes")}
+									className={`px-3 py-1.5 rounded-xl transition-all ${
+										periodMode === "mes"
+											? "bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-xs font-black"
+											: "text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
+									}`}>
+									Mês Específico
+								</button>
+								<button
+									type="button"
+									onClick={() => onChangePeriodMode?.("ano")}
+									className={`px-3 py-1.5 rounded-xl transition-all ${
+										periodMode === "ano"
+											? "bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-xs font-black"
+											: "text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
+									}`}>
+									Ano Todo
+								</button>
+							</div>
+
+							{/* Navegador e Seleção: Mês Específico */}
+							{periodMode === "mes" && (
+								<div className="flex items-center bg-slate-100 dark:bg-slate-800/90 p-1.5 rounded-2xl border border-slate-200/80 dark:border-slate-700/80 shadow-xs">
+									<button
+										type="button"
+										onClick={handlePrevMonth}
+										title="Mês Anterior"
+										className="p-2 rounded-xl hover:bg-white dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 transition-colors active:scale-95">
+										<ChevronLeft size={18} />
+									</button>
+
+									<select
+										value={mes}
+										aria-label="Selecionar mês do gráfico"
+										onChange={(e) => {
+											const newMes = parseInt(e.target.value, 10);
+											onChangeMesAno?.(`${ano}-${String(newMes).padStart(2, "0")}`);
+										}}
+										className="bg-transparent text-sm font-black text-slate-900 dark:text-slate-100 border-none outline-hidden cursor-pointer px-2 py-1 hover:text-blue-600 transition-colors">
+										{MESES.map((nome, idx) => (
+											<option key={idx + 1} value={idx + 1} className="dark:bg-slate-900">
+												{nome}
+											</option>
+										))}
+									</select>
+
+									<span className="text-slate-400 font-bold text-sm">/</span>
+
+									<select
+										value={ano}
+										aria-label="Selecionar ano do gráfico"
+										onChange={(e) => {
+											const newAno = parseInt(e.target.value, 10);
+											onChangeMesAno?.(`${newAno}-${String(mes).padStart(2, "0")}`);
+										}}
+										className="bg-transparent text-sm font-black text-slate-900 dark:text-slate-100 border-none outline-hidden cursor-pointer px-2 py-1 hover:text-blue-600 transition-colors">
+										{[2024, 2025, 2026, 2027, 2028].map((y) => (
+											<option key={y} value={y} className="dark:bg-slate-900">
+												{y}
+											</option>
+										))}
+									</select>
+
+									<button
+										type="button"
+										onClick={handleNextMonth}
+										title="Próximo Mês"
+										className="p-2 rounded-xl hover:bg-white dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 transition-colors active:scale-95">
+										<ChevronRight size={18} />
+									</button>
+								</div>
+							)}
+
+							{/* Navegador e Indicador: Ano Todo */}
+							{periodMode === "ano" && (
+								<div className="flex items-center gap-2">
+									<div className="flex items-center bg-slate-100 dark:bg-slate-800/90 p-1.5 rounded-2xl border border-slate-200/80 dark:border-slate-700/80 shadow-xs">
+										<button
+											type="button"
+											onClick={() => onChangeMesAno?.(`${ano - 1}-${String(mes).padStart(2, "0")}`)}
+											title="Ano Anterior"
+											className="p-2 rounded-xl hover:bg-white dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 transition-colors active:scale-95">
+											<ChevronLeft size={18} />
+										</button>
+
+										<select
+											value={ano}
+											aria-label="Selecionar ano do gráfico"
+											onChange={(e) => {
+												const newAno = parseInt(e.target.value, 10);
+												onChangeMesAno?.(`${newAno}-${String(mes).padStart(2, "0")}`);
+											}}
+											className="bg-transparent text-sm font-black text-slate-900 dark:text-slate-100 border-none outline-hidden cursor-pointer px-2 py-1 hover:text-blue-600 transition-colors">
+											{[2024, 2025, 2026, 2027, 2028].map((y) => (
+												<option key={y} value={y} className="dark:bg-slate-900">
+													{y}
+												</option>
+											))}
+										</select>
+
+										<button
+											type="button"
+											onClick={() => onChangeMesAno?.(`${ano + 1}-${String(mes).padStart(2, "0")}`)}
+											title="Próximo Ano"
+											className="p-2 rounded-xl hover:bg-white dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 transition-colors active:scale-95">
+											<ChevronRight size={18} />
+										</button>
+									</div>
+
+									{/* Indicador do período anual coberto */}
+									<div className="flex items-center gap-1.5 px-3 py-2 rounded-2xl bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 text-xs font-bold border border-blue-100 dark:border-blue-900/50">
+										<span>
+											{ano === currentYear
+												? `Jan a ${MESES[maxMonthForAno - 1] || "Jan"}`
+												: `Jan a Dez`}
+										</span>
+										{ano === currentYear && (
+											<span className="text-[10px] text-blue-500 dark:text-blue-400 font-normal hidden sm:inline">
+												(até mês anterior)
+											</span>
+										)}
+									</div>
+								</div>
+							)}
+						</div>
+					</div>
+				)}
 			</div>
 
 			{/* Área de Renderização dos Gráficos */}

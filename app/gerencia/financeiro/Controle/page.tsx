@@ -515,6 +515,12 @@ export default function ControlePage() {
 						totalCustos={totalCustos}
 						totalLucro={lucroLiquido}
 						isConsolidado={lojaFilter === "todas"}
+						currentMesAno={mesAnoStr}
+						currentLoja={lojaFilter}
+						periodMode={periodMode}
+						onChangeMesAno={(newMesAno) => setMesAnoStr(newMesAno)}
+						onChangeLoja={(newLoja) => setLojaFilter(newLoja)}
+						onChangePeriodMode={(mode) => setPeriodMode(mode)}
 					/>
 
 					{/* Atalhos Rápidos por Categorias de Custo */}
