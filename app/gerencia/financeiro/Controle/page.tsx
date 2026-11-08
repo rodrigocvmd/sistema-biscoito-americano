@@ -419,309 +419,6 @@ export default function ControlePage() {
 
 	return (
 		<div className="space-y-6 pb-12">
-			{/* Cabeçalho da Página */}
-			<div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-5 md:p-7 shadow-sm transition-colors">
-				<div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-					<div>
-						<div className="flex items-center gap-2.5">
-							<span className="p-2.5 rounded-2xl bg-blue-600 text-white shadow-md shadow-blue-500/20">
-								<Sliders size={22} />
-							</span>
-							<div>
-								<h1 className="text-xl md:text-2xl font-black text-slate-900 dark:text-slate-100 tracking-tight">
-									Controle Financeiro
-								</h1>
-								<p className="text-xs text-slate-500 dark:text-slate-400">
-									Faturamento, custos detalhados por categoria e análise DRE
-								</p>
-							</div>
-						</div>
-					</div>
-
-					{/* Botões de Ação Rápida */}
-					<div className="flex items-center gap-2.5 flex-wrap">
-						<button
-							type="button"
-							onClick={handleOpenNewFat}
-							className="px-4 py-2.5 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black tracking-wide shadow-md shadow-emerald-600/20 transition-all flex items-center gap-1.5 active:scale-95">
-							<Plus size={16} />
-							<span>Novo Faturamento</span>
-						</button>
-
-						<button
-							type="button"
-							onClick={() => handleOpenNewCusto()}
-							className="px-4 py-2.5 rounded-2xl bg-orange-300 hover:bg-orange-400 dark:bg-orange-400 dark:hover:bg-orange-300 text-orange-950 text-xs font-black tracking-wide shadow-md shadow-orange-300/30 transition-all flex items-center gap-1.5 active:scale-95">
-							<Plus size={16} />
-							<span>Novo Custo</span>
-						</button>
-					</div>
-				</div>
-
-				{/* Barra de Filtros Globais: Loja & Período */}
-				<div className="mt-6 pt-5 border-t border-slate-100 dark:border-slate-800 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-					{/* Filtro de Loja */}
-					<div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0 scrollbar-none">
-						<span className="text-xs font-bold text-slate-400 mr-1 flex items-center gap-1 shrink-0">
-							<Store size={14} /> Loja:
-						</span>
-						<button
-							type="button"
-							onClick={() => setLojaFilter("todas")}
-							className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all ${
-								lojaFilter === "todas"
-									? "bg-blue-600 text-white shadow-xs font-black"
-									: "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700"
-							}`}>
-							Consolidado
-						</button>
-						{(["lago", "terraco", "conjunto", "noroeste"] as const).map((sId) => (
-							<button
-								key={sId}
-								type="button"
-								onClick={() => setLojaFilter(sId)}
-								className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all ${
-									lojaFilter === sId
-										? "bg-blue-600 text-white shadow-xs font-black"
-										: "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700"
-								}`}>
-								{STORE_NAMES_EXTENDED[sId]}
-							</button>
-						))}
-					</div>
-
-					{/* Filtro de Período: Apenas Mês Específico ou Ano Todo (de janeiro até o mês anterior ao atual) */}
-					<div className="flex items-center gap-2 flex-wrap">
-						{/* Seletor de Modo */}
-						<div className="flex items-center bg-slate-100 dark:bg-slate-800/80 p-1 rounded-xl text-xs font-bold">
-							<button
-								type="button"
-								onClick={() => setPeriodMode("mes")}
-								className={`px-3 py-1.5 rounded-lg transition-all ${
-									periodMode === "mes"
-										? "bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-xs font-black"
-										: "text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
-								}`}>
-								Mês Específico
-							</button>
-							<button
-								type="button"
-								onClick={() => setPeriodMode("ano")}
-								className={`px-3 py-1.5 rounded-lg transition-all ${
-									periodMode === "ano"
-										? "bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-xs font-black"
-										: "text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
-								}`}>
-								Ano Todo
-							</button>
-						</div>
-
-						{/* Navegador e Seleção: Mês Específico */}
-						{periodMode === "mes" && (
-							<div className="flex items-center gap-1.5">
-								<div className="flex items-center bg-slate-100 dark:bg-slate-800/80 p-1 rounded-xl">
-									<button
-										type="button"
-										onClick={handlePrevMonth}
-										title="Mês Anterior"
-										className="p-1 rounded-lg hover:bg-white dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition-colors">
-										<ChevronLeft size={16} />
-									</button>
-
-									{/* Seleção do Mês */}
-									<select
-										value={mes}
-										aria-label="Selecionar mês"
-										onChange={(e) => {
-											const newMes = parseInt(e.target.value, 10);
-											setMesAnoStr(`${ano}-${String(newMes).padStart(2, "0")}`);
-										}}
-										className="bg-transparent text-xs font-black text-slate-800 dark:text-slate-200 border-none outline-hidden cursor-pointer px-1 py-0.5">
-										{MESES.map((nome, idx) => (
-											<option key={idx + 1} value={idx + 1} className="dark:bg-slate-900">
-												{nome}
-											</option>
-										))}
-									</select>
-
-									<span className="text-slate-400 text-xs font-semibold">/</span>
-
-									{/* Seleção do Ano */}
-									<select
-										value={ano}
-										aria-label="Selecionar ano"
-										onChange={(e) => {
-											const newAno = parseInt(e.target.value, 10);
-											setMesAnoStr(`${newAno}-${String(mes).padStart(2, "0")}`);
-										}}
-										className="bg-transparent text-xs font-black text-slate-800 dark:text-slate-200 border-none outline-hidden cursor-pointer px-1 py-0.5">
-										{[2024, 2025, 2026, 2027, 2028].map((y) => (
-											<option key={y} value={y} className="dark:bg-slate-900">
-												{y}
-											</option>
-										))}
-									</select>
-
-									<button
-										type="button"
-										onClick={handleNextMonth}
-										title="Próximo Mês"
-										className="p-1 rounded-lg hover:bg-white dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition-colors">
-										<ChevronRight size={16} />
-									</button>
-								</div>
-
-								<button
-									type="button"
-									onClick={handleCurrentMonth}
-									className="px-2.5 py-1.5 rounded-xl text-[11px] font-bold bg-slate-100 hover:bg-slate-200 dark:bg-slate-800/80 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition-all">
-									Mês Atual
-								</button>
-							</div>
-						)}
-
-						{/* Navegador e Indicador: Ano Todo (de janeiro até o mês anterior ao atual) */}
-						{periodMode === "ano" && (
-							<div className="flex items-center gap-1.5">
-								<div className="flex items-center bg-slate-100 dark:bg-slate-800/80 p-1 rounded-xl">
-									<button
-										type="button"
-										onClick={() => setMesAnoStr(`${ano - 1}-${String(mes).padStart(2, "0")}`)}
-										title="Ano Anterior"
-										className="p-1 rounded-lg hover:bg-white dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition-colors">
-										<ChevronLeft size={16} />
-									</button>
-
-									<select
-										value={ano}
-										aria-label="Selecionar ano"
-										onChange={(e) => {
-											const newAno = parseInt(e.target.value, 10);
-											setMesAnoStr(`${newAno}-${String(mes).padStart(2, "0")}`);
-										}}
-										className="bg-transparent text-xs font-black text-slate-800 dark:text-slate-200 border-none outline-hidden cursor-pointer px-2 py-0.5">
-										{[2024, 2025, 2026, 2027, 2028].map((y) => (
-											<option key={y} value={y} className="dark:bg-slate-900">
-												{y}
-											</option>
-										))}
-									</select>
-
-									<button
-										type="button"
-										onClick={() => setMesAnoStr(`${ano + 1}-${String(mes).padStart(2, "0")}`)}
-										title="Próximo Ano"
-										className="p-1 rounded-lg hover:bg-white dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition-colors">
-										<ChevronRight size={16} />
-									</button>
-								</div>
-
-								{/* Indicador do período anual coberto */}
-								<div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 text-xs font-bold border border-blue-100 dark:border-blue-900/50">
-									<span>
-										{ano === currentYear
-											? `Jan a ${MESES[maxMonthForAno - 1] || "Jan"}`
-											: `Jan a Dez`}
-									</span>
-									{ano === currentYear && (
-										<span className="text-[10px] text-blue-500 dark:text-blue-400 font-normal hidden sm:inline">
-											(até mês anterior)
-										</span>
-									)}
-								</div>
-							</div>
-						)}
-					</div>
-				</div>
-			</div>
-
-			{/* KPI Cards: Resumo Executivo Minimalista e Completo */}
-			<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-				{/* 1. Faturamento Total */}
-				<div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-5 shadow-sm space-y-3 transition-colors">
-					<div className="flex items-center justify-between">
-						<span className="text-xs font-bold text-slate-500 dark:text-slate-400">
-							Faturamento Bruto
-						</span>
-						<span className="p-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400">
-							<TrendingUp size={16} />
-						</span>
-					</div>
-					<div>
-						<h2 className="text-2xl font-black text-slate-900 dark:text-slate-100 tracking-tight">
-							{formatCurrency(totalFaturamento)}
-						</h2>
-						<div className="flex items-center gap-2 mt-1">
-							<span className="inline-flex items-center gap-0.5 text-[11px] font-bold text-emerald-600 dark:text-emerald-400">
-								<ArrowUpRight size={12} /> {filteredFaturamentos.length} registros
-							</span>
-							<span className="text-[11px] text-slate-400">no período</span>
-						</div>
-					</div>
-				</div>
-
-				{/* 2. Custos Totais */}
-				<div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-5 shadow-sm space-y-3 transition-colors">
-					<div className="flex items-center justify-between">
-						<span className="text-xs font-bold text-slate-500 dark:text-slate-400">
-							Custos & Despesas
-						</span>
-						<span className="p-2 rounded-xl bg-rose-50 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400">
-							<TrendingDown size={16} />
-						</span>
-					</div>
-					<div>
-						<h2 className="text-2xl font-black text-rose-600 dark:text-rose-400 tracking-tight">
-							{formatCurrency(totalCustos)}
-						</h2>
-						<div className="flex items-center gap-2 mt-1">
-							<span className="inline-flex items-center gap-0.5 text-[11px] font-bold text-rose-600 dark:text-rose-400">
-								{percentCustoSobreFat.toFixed(1)}% do faturamento
-							</span>
-							<span className="text-[11px] text-slate-400">({filteredCustos.length} lançamentos)</span>
-						</div>
-					</div>
-				</div>
-
-				{/* 3. Lucro Líquido Operacional */}
-				<div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-5 shadow-sm space-y-3 transition-colors">
-					<div className="flex items-center justify-between">
-						<span className="text-xs font-bold text-slate-500 dark:text-slate-400">
-							Resultado Líquido
-						</span>
-						<span
-							className={`p-2 rounded-xl ${
-								lucroLiquido >= 0
-									? "bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400"
-									: "bg-red-50 dark:bg-red-950/60 text-red-600 dark:text-red-400"
-							}`}>
-							<Percent size={16} />
-						</span>
-					</div>
-					<div>
-						<h2
-							className={`text-2xl font-black tracking-tight ${
-								lucroLiquido >= 0 ? "text-blue-600 dark:text-blue-400" : "text-red-600 dark:text-red-400"
-							}`}>
-							{formatCurrency(lucroLiquido)}
-						</h2>
-						<div className="flex items-center gap-2 mt-1">
-							<span
-								className={`inline-flex items-center gap-0.5 text-[11px] font-black ${
-									lucroLiquido >= 0 ? "text-blue-600 dark:text-blue-400" : "text-red-600 dark:text-red-400"
-								}`}>
-								Margem: {margemLiquida.toFixed(1)}%
-							</span>
-							<span className="text-[11px] text-slate-400">
-								{lucroLiquido >= 0 ? "Operação Superavitária" : "Déficit no Período"}
-							</span>
-						</div>
-					</div>
-				</div>
-
-				
-			</div>
-
 			{/* Sub-abas de Visualização do Controle */}
 			<div className="flex items-center gap-2 border-b border-slate-200 dark:border-slate-800 pb-2 overflow-x-auto">
 				<button
@@ -733,7 +430,7 @@ export default function ControlePage() {
 							: "text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
 					}`}>
 					<BarChart3 size={15} />
-					<span>Gráficos</span>
+					<span>Lançamentos</span>
 				</button>
 
 				<button
@@ -776,12 +473,23 @@ export default function ControlePage() {
 			{/* Conteúdo Conforme a Sub-Aba Ativa */}
 			{activeSubTab === "dashboard" && (
 				<div className="space-y-6">
-					{/* Visão de Tabela / Calendário: Custos Diários por Categoria */}
+					{/* Visão de Tabela / Calendário: Custos Diários por Categoria com Controle Financeiro Unificado */}
 					<ControleCalendarioCustos
 						custos={custos}
 						faturamentos={faturamentos}
 						currentMesAno={mesAnoStr}
 						currentLoja={lojaFilter}
+						periodMode={periodMode}
+						totalFaturamento={totalFaturamento}
+						totalCustos={totalCustos}
+						lucroLiquido={lucroLiquido}
+						margemLiquida={margemLiquida}
+						percentCustoSobreFat={percentCustoSobreFat}
+						faturamentosCount={filteredFaturamentos.length}
+						custosCount={filteredCustos.length}
+						onNovoFaturamento={handleOpenNewFat}
+						onNovoCusto={handleOpenNewCusto}
+						onChangePeriodMode={(mode) => setPeriodMode(mode)}
 						onSelectDiaParaCusto={handleOpenNewCustoComDia}
 						onSelectDiaParaFaturamento={handleOpenNewFatComDia}
 						onEditCusto={(item) => {
