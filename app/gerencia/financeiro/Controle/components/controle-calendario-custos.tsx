@@ -438,46 +438,25 @@ export default function ControleCalendarioCustos({
 		<div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-5 md:p-6 shadow-sm space-y-5 transition-colors">
 			{/* Cabeçalho do Calendário / Tabela */}
 			<div className="flex flex-col gap-5 pb-5 border-b border-slate-100 dark:border-slate-800">
-				{/* Linha Superior: Título e Identificação de Loja em Alta Evidência */}
-				<div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+				{/* Título */}
+				<div className="flex items-center gap-2.5">
+					<span className="p-2.5 rounded-2xl bg-orange-100 dark:bg-orange-950/60 text-orange-600 dark:text-orange-400 shadow-xs">
+						<CalendarIcon size={20} />
+					</span>
 					<div>
-						<div className="flex items-center gap-2.5">
-							<span className="p-2.5 rounded-2xl bg-orange-100 dark:bg-orange-950/60 text-orange-600 dark:text-orange-400 shadow-xs">
-								<CalendarIcon size={20} />
-							</span>
-							<div>
-								<h3 className="text-lg md:text-xl font-black text-slate-900 dark:text-slate-100 tracking-tight">
-									Custos Diários por Categoria
-								</h3>
-								<p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-									Calendário analítico de despesas por dia do mês com somatório e lançamentos rápidos
-								</p>
-							</div>
-						</div>
-					</div>
-
-					{/* Destaque Maior: Loja Atual em Exibição */}
-					<div className="flex items-center gap-3 bg-gradient-to-r from-blue-500/10 via-indigo-500/10 to-blue-500/10 dark:from-blue-950/50 dark:via-indigo-950/50 dark:to-blue-950/50 border-2 border-blue-500/30 dark:border-blue-400/30 px-4 py-2.5 rounded-2xl shadow-xs shrink-0">
-						<span className="p-2 rounded-xl bg-blue-600 text-white shadow-sm">
-							<Store size={18} />
-						</span>
-						<div>
-							<span className="text-[10px] uppercase font-black tracking-wider text-blue-600 dark:text-blue-400 block leading-none">
-								Visualizando Dados de
-							</span>
-							<span className="text-base font-black text-slate-900 dark:text-slate-100 leading-tight block mt-0.5">
-								{localLoja === "todas"
-									? "Consolidado (Todas as Lojas)"
-									: `Loja ${STORE_NAMES_EXTENDED[localLoja as StoreIdWithGeral] || localLoja}`}
-							</span>
-						</div>
+						<h3 className="text-lg md:text-xl font-black text-slate-900 dark:text-slate-100 tracking-tight">
+							Custos Diários por Categoria
+						</h3>
+						<p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+							Calendário analítico de despesas por dia do mês com somatório e lançamentos rápidos
+						</p>
 					</div>
 				</div>
 
-				{/* Controles de Filtro: Abas de Troca de Loja e Seletor de Mês Maiores e Destacados */}
-				<div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4 pt-1">
-					{/* Abas de Seleção de Loja (Maiores e mais destacadas) */}
-					<div className="flex items-center gap-1.5 p-1.5 bg-slate-100 dark:bg-slate-800/90 rounded-2xl border border-slate-200/80 dark:border-slate-700/80 overflow-x-auto shadow-xs">
+				{/* Controles de Filtro: Abas de Troca de Loja, Nome no Centro e Seletor de Mês */}
+				<div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pt-1">
+					{/* Abas de Seleção de Loja */}
+					<div className="flex items-center gap-1.5 p-1.5 bg-slate-100 dark:bg-slate-800/90 rounded-2xl border border-slate-200/80 dark:border-slate-700/80 overflow-x-auto scrollbar-none shadow-xs shrink-0">
 						<button
 							type="button"
 							onClick={() => handleSetLoja("todas")}
@@ -504,8 +483,17 @@ export default function ControleCalendarioCustos({
 						))}
 					</div>
 
-					{/* Navegação e Seleção de Mês/Ano (Maior e com mais destaque) */}
-					<div className="flex items-center gap-2.5 flex-wrap">
+					{/* No centro e no topo, entre a seleção da loja e a seleção do mês: nome da loja (ou consolidado) selecionada como uma string simples, mas grande */}
+					<div className="flex-1 flex justify-center items-center py-1">
+						<span className="text-xl sm:text-2xl md:text-3xl font-black text-slate-900 dark:text-slate-100 tracking-tight text-center">
+							{localLoja === "todas"
+								? "Consolidado"
+								: STORE_NAMES_EXTENDED[localLoja as StoreIdWithGeral] || localLoja}
+						</span>
+					</div>
+
+					{/* Navegação e Seleção de Mês/Ano */}
+					<div className="flex items-center gap-2.5 shrink-0 justify-end">
 						<div className="flex items-center bg-slate-100 dark:bg-slate-800/90 p-1.5 rounded-2xl border border-slate-200/80 dark:border-slate-700/80 shadow-xs">
 							<button
 								type="button"
@@ -555,15 +543,6 @@ export default function ControleCalendarioCustos({
 								<ChevronRight size={18} />
 							</button>
 						</div>
-
-						{todayIso.startsWith(localMesAno) && (
-							<button
-								type="button"
-								onClick={scrollToToday}
-								className="px-3.5 py-2 rounded-2xl text-xs font-black bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300 border-2 border-blue-200 dark:border-blue-800/80 hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-all shadow-xs">
-								Ir para Hoje
-							</button>
-						)}
 					</div>
 				</div>
 			</div>
@@ -644,17 +623,12 @@ export default function ControleCalendarioCustos({
 							{/* Coluna 1 Fixa: Tipo de Custo */}
 							<th
 								onMouseEnter={() => setHoveredCell((prev) => ({ ...prev, colDay: null }))}
-								className={`sticky left-0 top-0 z-40 backdrop-blur-xs border-r border-b border-slate-200 dark:border-slate-700/80 min-w-[180px] max-w-[180px] p-3 text-xs font-black shadow-[2px_0_4px_-1px_rgba(0,0,0,0.06)] transition-colors duration-150 ${
+								className={`sticky left-0 top-0 z-40 border-r border-b border-slate-200 dark:border-slate-800 min-w-[150px] sm:min-w-[180px] max-w-[150px] sm:max-w-[180px] p-3 text-sm font-black shadow-[2px_0_4px_-1px_rgba(0,0,0,0.06)] transition-colors duration-150 ${
 									hoveredCell.rowKey !== null
-										? "bg-blue-100/80 dark:bg-blue-900/50 text-blue-900 dark:text-blue-100 ring-1 ring-inset ring-blue-400/40"
-										: "bg-slate-100 dark:bg-slate-800/90 text-slate-700 dark:text-slate-300"
+										? "bg-blue-100 dark:bg-slate-800 text-blue-900 dark:text-blue-100 ring-1 ring-inset ring-blue-400/40"
+										: "bg-slate-100 dark:bg-slate-900 text-slate-900 dark:text-slate-100"
 								}`}>
-								<div className="flex items-center justify-between">
-									<span>Tipo de Custo</span>
-									<span className="text-[10px] font-normal text-slate-400">
-										{MESES[mes - 1]?.slice(0, 3)}/{ano}
-									</span>
-								</div>
+								<span>Tipo de Custo</span>
 							</th>
 
 							{/* Colunas dos Dias do Mês */}
@@ -672,7 +646,7 @@ export default function ControleCalendarioCustos({
 										onClick={() => handleOpenDayModal(d)}
 										onMouseEnter={() => setHoveredCell((prev) => ({ ...prev, colDay: d }))}
 										title={`Clique para lançar no Dia ${String(d).padStart(2, "0")}/${String(mes).padStart(2, "0")}`}
-										className={`border-r border-b border-slate-200 dark:border-slate-700/80 min-w-[76px] w-[76px] p-2 text-center cursor-pointer group transition-all duration-150 ${
+										className={`border-r border-b border-slate-200 dark:border-slate-700/80 min-w-[70px] w-[70px] sm:min-w-[76px] sm:w-[76px] p-2 text-center cursor-pointer group transition-all duration-150 ${
 											isColHovered
 												? "bg-blue-200/70 dark:bg-blue-900/60 ring-2 ring-inset ring-blue-400/50 text-blue-950 dark:text-blue-50"
 												: isToday
@@ -706,7 +680,7 @@ export default function ControleCalendarioCustos({
 							})}
 
 							{/* Coluna Fixa à Direita: Total Mês */}
-							<th className="sticky right-0 top-0 z-40 bg-slate-100 dark:bg-slate-800/90 backdrop-blur-xs border-l border-b border-slate-200 dark:border-slate-700/80 min-w-[110px] p-3 text-right font-black shadow-[-2px_0_4px_-1px_rgba(0,0,0,0.06)] text-slate-900 dark:text-slate-100">
+							<th className="sticky right-0 top-0 z-40 bg-slate-100 dark:bg-slate-900 border-l border-b border-slate-200 dark:border-slate-800 min-w-[100px] sm:min-w-[110px] p-3 text-right text-sm font-black shadow-[-2px_0_4px_-1px_rgba(0,0,0,0.06)] text-slate-900 dark:text-slate-100">
 								Total Mês
 							</th>
 						</tr>
@@ -732,18 +706,12 @@ export default function ControleCalendarioCustos({
 										onMouseEnter={() => setHoveredCell({ rowKey: catKey, colDay: null })}
 										className={`sticky left-0 z-20 border-r border-slate-200 dark:border-slate-800 p-2.5 shadow-[2px_0_4px_-1px_rgba(0,0,0,0.04)] transition-colors duration-150 ${
 											isRowHovered
-												? "bg-blue-100/90 dark:bg-blue-900/50 text-blue-900 dark:text-blue-100 ring-1 ring-inset ring-blue-400/40"
-												: "bg-white dark:bg-slate-900"
+												? "bg-blue-100 dark:bg-slate-800 text-blue-900 dark:text-blue-100 ring-1 ring-inset ring-blue-400/40"
+												: "bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100"
 										}`}>
-										<div className="flex items-center gap-2 min-w-0">
-											<span
-												className="w-2.5 h-2.5 rounded-full shrink-0"
-												style={{ backgroundColor: cfg.color }}
-											/>
-											<span className="font-bold text-slate-800 dark:text-slate-200 truncate text-xs">
-												{cfg.label}
-											</span>
-										</div>
+										<span className="font-black text-sm text-slate-900 dark:text-slate-100 truncate block">
+											{cfg.label}
+										</span>
 									</td>
 
 									{/* Colunas dos Dias do Mês */}
@@ -775,11 +743,11 @@ export default function ControleCalendarioCustos({
 												} hover:bg-blue-200/80 dark:hover:bg-blue-900/70 active:scale-95`}>
 												{val > 0 ? (
 													<div className="flex flex-col items-center justify-center">
-														<span className="font-bold text-rose-600 dark:text-rose-400 text-[11px] leading-tight">
+														<span className="font-black text-rose-600 dark:text-rose-400 text-xs leading-tight">
 															{formatCellCurrency(val)}
 														</span>
 														{itemCount > 1 && (
-															<span className="text-[9px] text-slate-400 leading-none">
+															<span className="text-[10px] text-slate-400 leading-none mt-0.5">
 																{itemCount}x
 															</span>
 														)}
@@ -795,9 +763,9 @@ export default function ControleCalendarioCustos({
 
 									{/* Coluna Fixa à Direita: Total da Categoria no Mês */}
 									<td
-										className={`sticky right-0 z-20 border-l border-slate-200 dark:border-slate-800 p-2.5 text-right font-black shadow-[-2px_0_4px_-1px_rgba(0,0,0,0.04)] text-rose-600 dark:text-rose-400 transition-colors duration-150 ${
+										className={`sticky right-0 z-20 border-l border-slate-200 dark:border-slate-800 p-2.5 text-right font-black shadow-[-2px_0_4px_-1px_rgba(0,0,0,0.04)] text-rose-600 dark:text-rose-400 text-xs sm:text-sm transition-colors duration-150 ${
 											isRowHovered
-												? "bg-blue-100/80 dark:bg-blue-950/50"
+												? "bg-blue-100 dark:bg-slate-800"
 												: "bg-white dark:bg-slate-900"
 										}`}>
 										{catMonthTotal > 0 ? formatCurrency(catMonthTotal) : "-"}
@@ -811,20 +779,20 @@ export default function ControleCalendarioCustos({
 					<tfoot className="sticky bottom-0 z-30 border-t-2 border-slate-200 dark:border-slate-800">
 						{/* Linha 1: Total de Custos do Dia */}
 						<tr
-							className={`backdrop-blur-xs font-black transition-colors duration-150 ${
+							className={`font-black transition-colors duration-150 ${
 								hoveredCell.rowKey === "total_custos"
 									? "bg-blue-100/60 dark:bg-blue-950/40"
-									: "bg-slate-50/90 dark:bg-slate-900/90"
+									: "bg-slate-50 dark:bg-slate-900"
 							}`}>
 							<td
 								onMouseEnter={() => setHoveredCell({ rowKey: "total_custos", colDay: null })}
-								className={`sticky left-0 z-40 border-r border-b border-slate-200 dark:border-slate-800 p-2.5 shadow-[2px_0_4px_-1px_rgba(0,0,0,0.06)] text-slate-900 dark:text-slate-100 transition-colors duration-150 ${
+								className={`sticky left-0 z-40 border-r border-b border-slate-200 dark:border-slate-800 p-2.5 shadow-[2px_0_4px_-1px_rgba(0,0,0,0.06)] text-slate-900 dark:text-slate-100 text-sm font-black transition-colors duration-150 ${
 									hoveredCell.rowKey === "total_custos"
-										? "bg-blue-100/95 dark:bg-blue-900/50 ring-1 ring-inset ring-blue-400/40"
-										: "bg-slate-100/95 dark:bg-slate-900/95"
+										? "bg-blue-100 dark:bg-slate-800 ring-1 ring-inset ring-blue-400/40 text-blue-900 dark:text-blue-100"
+										: "bg-slate-100 dark:bg-slate-900 text-slate-900 dark:text-slate-100"
 								}`}>
 								<div className="flex items-center gap-1.5">
-									<Receipt size={13} className="text-rose-500" />
+									<Receipt size={14} className="text-rose-500 shrink-0" />
 									<span>Total Custos</span>
 								</div>
 							</td>
@@ -855,7 +823,7 @@ export default function ControleCalendarioCustos({
 												: "bg-slate-50/40 dark:bg-slate-900/40"
 										} hover:bg-rose-100/60 dark:hover:bg-rose-900/30`}>
 										<span
-											className={`text-[11px] font-black ${
+											className={`text-xs font-black ${
 												val > 0
 													? "text-rose-600 dark:text-rose-400"
 													: "text-slate-300 dark:text-slate-600 font-normal"
@@ -866,10 +834,10 @@ export default function ControleCalendarioCustos({
 								);
 							})}
 
-							<td className={`sticky right-0 z-40 border-l border-b border-slate-200 dark:border-slate-800 p-2.5 text-right font-black shadow-[-2px_0_4px_-1px_rgba(0,0,0,0.06)] text-rose-600 dark:text-rose-400 transition-colors duration-150 ${
+							<td className={`sticky right-0 z-40 border-l border-b border-slate-200 dark:border-slate-800 p-2.5 text-right font-black shadow-[-2px_0_4px_-1px_rgba(0,0,0,0.06)] text-rose-600 dark:text-rose-400 text-xs sm:text-sm transition-colors duration-150 ${
 								hoveredCell.rowKey === "total_custos"
-									? "bg-blue-100/95 dark:bg-blue-950/50"
-									: "bg-slate-100/95 dark:bg-slate-900/95"
+									? "bg-blue-100 dark:bg-slate-800"
+									: "bg-slate-100 dark:bg-slate-900"
 							}`}>
 								{formatCurrency(grandTotals.custos)}
 							</td>
@@ -877,20 +845,20 @@ export default function ControleCalendarioCustos({
 
 						{/* Linha 2: Faturamento do Dia */}
 						<tr
-							className={`backdrop-blur-xs font-black transition-colors duration-150 ${
+							className={`font-black transition-colors duration-150 ${
 								hoveredCell.rowKey === "faturamento"
 									? "bg-blue-100/60 dark:bg-blue-950/40"
-									: "bg-slate-50/90 dark:bg-slate-900/90"
+									: "bg-slate-50 dark:bg-slate-900"
 							}`}>
 							<td
 								onMouseEnter={() => setHoveredCell({ rowKey: "faturamento", colDay: null })}
-								className={`sticky left-0 z-40 border-r border-b border-slate-200 dark:border-slate-800 p-2.5 shadow-[2px_0_4px_-1px_rgba(0,0,0,0.06)] text-slate-900 dark:text-slate-100 transition-colors duration-150 ${
+								className={`sticky left-0 z-40 border-r border-b border-slate-200 dark:border-slate-800 p-2.5 shadow-[2px_0_4px_-1px_rgba(0,0,0,0.06)] text-slate-900 dark:text-slate-100 text-sm font-black transition-colors duration-150 ${
 									hoveredCell.rowKey === "faturamento"
-										? "bg-blue-100/95 dark:bg-blue-900/50 ring-1 ring-inset ring-blue-400/40"
-										: "bg-slate-100/95 dark:bg-slate-900/95"
+										? "bg-blue-100 dark:bg-slate-800 ring-1 ring-inset ring-blue-400/40 text-blue-900 dark:text-blue-100"
+										: "bg-slate-100 dark:bg-slate-900 text-slate-900 dark:text-slate-100"
 								}`}>
 								<div className="flex items-center gap-1.5">
-									<DollarSign size={13} className="text-emerald-500" />
+									<DollarSign size={14} className="text-emerald-500 shrink-0" />
 									<span>Faturamento</span>
 								</div>
 							</td>
@@ -921,7 +889,7 @@ export default function ControleCalendarioCustos({
 												: "bg-slate-50/40 dark:bg-slate-900/40"
 										} hover:bg-emerald-100/60 dark:hover:bg-emerald-900/30`}>
 										<span
-											className={`text-[11px] font-black ${
+											className={`text-xs font-black ${
 												val > 0
 													? "text-emerald-600 dark:text-emerald-400"
 													: "text-slate-300 dark:text-slate-600 font-normal"
@@ -932,10 +900,10 @@ export default function ControleCalendarioCustos({
 								);
 							})}
 
-							<td className={`sticky right-0 z-40 border-l border-b border-slate-200 dark:border-slate-800 p-2.5 text-right font-black shadow-[-2px_0_4px_-1px_rgba(0,0,0,0.06)] text-emerald-600 dark:text-emerald-400 transition-colors duration-150 ${
+							<td className={`sticky right-0 z-40 border-l border-b border-slate-200 dark:border-slate-800 p-2.5 text-right font-black shadow-[-2px_0_4px_-1px_rgba(0,0,0,0.06)] text-emerald-600 dark:text-emerald-400 text-xs sm:text-sm transition-colors duration-150 ${
 								hoveredCell.rowKey === "faturamento"
-									? "bg-blue-100/95 dark:bg-blue-950/50"
-									: "bg-slate-100/95 dark:bg-slate-900/95"
+									? "bg-blue-100 dark:bg-slate-800"
+									: "bg-slate-100 dark:bg-slate-900"
 							}`}>
 								{formatCurrency(grandTotals.faturamento)}
 							</td>
@@ -943,20 +911,20 @@ export default function ControleCalendarioCustos({
 
 						{/* Linha 3: Saldo Diário (Líquido) */}
 						<tr
-							className={`backdrop-blur-xs font-black transition-colors duration-150 ${
+							className={`font-black transition-colors duration-150 ${
 								hoveredCell.rowKey === "saldo_diario"
 									? "bg-blue-100/60 dark:bg-blue-950/40"
-									: "bg-slate-100/80 dark:bg-slate-900/95"
+									: "bg-slate-100 dark:bg-slate-900"
 							}`}>
 							<td
 								onMouseEnter={() => setHoveredCell({ rowKey: "saldo_diario", colDay: null })}
-								className={`sticky left-0 z-40 border-r border-slate-200 dark:border-slate-800 p-2.5 shadow-[2px_0_4px_-1px_rgba(0,0,0,0.06)] text-slate-900 dark:text-slate-100 transition-colors duration-150 ${
+								className={`sticky left-0 z-40 border-r border-slate-200 dark:border-slate-800 p-2.5 shadow-[2px_0_4px_-1px_rgba(0,0,0,0.06)] text-slate-900 dark:text-slate-100 text-sm font-black transition-colors duration-150 ${
 									hoveredCell.rowKey === "saldo_diario"
-										? "bg-blue-200/90 dark:bg-blue-900/60 ring-1 ring-inset ring-blue-400/40"
-										: "bg-slate-150 dark:bg-slate-850"
+										? "bg-blue-100 dark:bg-slate-800 ring-1 ring-inset ring-blue-400/40 text-blue-900 dark:text-blue-100"
+										: "bg-slate-100 dark:bg-slate-900 text-slate-900 dark:text-slate-100"
 								}`}>
 								<div className="flex items-center gap-1.5">
-									<TrendingUp size={13} className="text-blue-500" />
+									<TrendingUp size={14} className="text-blue-500 shrink-0" />
 									<span>Saldo Diário</span>
 								</div>
 							</td>
@@ -992,7 +960,7 @@ export default function ControleCalendarioCustos({
 										} hover:bg-blue-100/50 dark:hover:bg-blue-900/30`}>
 										{hasMov ? (
 											<span
-												className={`text-[11px] font-black ${
+												className={`text-xs font-black ${
 													val >= 0
 														? "text-blue-600 dark:text-blue-400"
 														: "text-red-600 dark:text-red-400"
@@ -1009,10 +977,10 @@ export default function ControleCalendarioCustos({
 							})}
 
 							<td
-								className={`sticky right-0 z-40 border-l border-slate-200 dark:border-slate-800 p-2.5 text-right font-black shadow-[-2px_0_4px_-1px_rgba(0,0,0,0.06)] transition-colors duration-150 ${
+								className={`sticky right-0 z-40 border-l border-slate-200 dark:border-slate-800 p-2.5 text-right font-black text-xs sm:text-sm shadow-[-2px_0_4px_-1px_rgba(0,0,0,0.06)] transition-colors duration-150 ${
 									hoveredCell.rowKey === "saldo_diario"
-										? "bg-blue-100/95 dark:bg-blue-950/50"
-										: "bg-slate-150 dark:bg-slate-850"
+										? "bg-blue-100 dark:bg-slate-800"
+										: "bg-slate-100 dark:bg-slate-900"
 								} ${
 									grandTotals.saldo >= 0
 										? "text-blue-600 dark:text-blue-400"

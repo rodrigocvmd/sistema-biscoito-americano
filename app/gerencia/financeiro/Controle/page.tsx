@@ -1052,10 +1052,18 @@ export default function ControlePage() {
 			/>
 
 			<FaturamentoDetalhesModal
+				isOpen={isFatDetalhesOpen}
 				faturamento={selectedFatDetalhes}
-				onClose={() => setIsFatDetalhesOpen(false)}
+				onClose={() => {
+					setIsFatDetalhesOpen(false);
+					setSelectedFatDetalhes(null);
+				}}
 				onEdit={(item) => {
+					setIsFatDetalhesOpen(false);
+					setSelectedFatDetalhes(null);
 					setEditingFat(item);
+					setModalDefaultLoja(item.lojaId);
+					setModalDefaultData(item.data);
 					setIsFatModalOpen(true);
 				}}
 			/>

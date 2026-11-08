@@ -20,6 +20,7 @@ import {
 
 interface FaturamentoDetalhesModalProps {
 	faturamento: FaturamentoFinanceiro | null;
+	isOpen?: boolean;
 	onClose: () => void;
 	onEdit?: (faturamento: FaturamentoFinanceiro) => void;
 }
@@ -33,10 +34,11 @@ const formatCurrency = (val: number) => {
 
 export default function FaturamentoDetalhesModal({
 	faturamento,
+	isOpen = true,
 	onClose,
 	onEdit,
 }: FaturamentoDetalhesModalProps) {
-	if (!faturamento) return null;
+	if (!isOpen || !faturamento) return null;
 
 	const [year, month, day] = faturamento.data.split("-");
 	const formattedDate = `${day}/${month}/${year}`;

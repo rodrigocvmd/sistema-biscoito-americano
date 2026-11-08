@@ -86,7 +86,7 @@ export const CATEGORIAS_CUSTO_CONFIG: Record<CategoriaCusto, CategoriaCustoMeta>
 	},
 	fundo_promocional: {
 		id: "fundo_promocional",
-		label: "Fundo Promocional",
+		label: "Fundo Prom.",
 		color: "#2563eb", // Blue 600
 		bgLight: "bg-blue-50",
 		borderLight: "border-blue-200",
