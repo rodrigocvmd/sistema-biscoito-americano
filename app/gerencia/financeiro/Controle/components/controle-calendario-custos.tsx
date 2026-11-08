@@ -14,6 +14,7 @@ import {
 	Sparkles,
 	X,
 	Edit2,
+	Trash2,
 	CheckCircle2,
 	TrendingUp,
 	TrendingDown,
@@ -42,7 +43,9 @@ interface ControleCalendarioCustosProps {
 		loja: StoreIdWithGeral
 	) => void;
 	onEditCusto?: (custo: CustoFinanceiro) => void;
+	onDeleteCusto?: (id: string) => void;
 	onEditFaturamento?: (faturamento: FaturamentoFinanceiro) => void;
+	onDeleteFaturamento?: (id: string) => void;
 	onChangeMesAno?: (mesAno: string) => void;
 	onChangeLoja?: (loja: string) => void;
 }
@@ -113,7 +116,9 @@ export default function ControleCalendarioCustos({
 	onSelectDiaParaCusto,
 	onSelectDiaParaFaturamento,
 	onEditCusto,
+	onDeleteCusto,
 	onEditFaturamento,
+	onDeleteFaturamento,
 	onChangeMesAno,
 	onChangeLoja,
 }: ControleCalendarioCustosProps) {
@@ -220,18 +225,18 @@ export default function ControleCalendarioCustos({
 		const mouseX = e.clientX - rect.left;
 		const containerWidth = rect.width;
 
-		// Zona de ativação de 75px nas extremidades
-		const EDGE_ZONE = 75;
+		// Zona de ativação de 90px nas extremidades com aceleração suave
+		const EDGE_ZONE = 90;
 		let speed = 0;
 
 		if (mouseX < EDGE_ZONE && mouseX >= 0) {
-			// Mais perto da borda esquerda = scroll mais rápido (até -14px por frame)
+			// Mais perto da borda esquerda = scroll mais rápido (até -24px por frame)
 			const intensity = 1 - mouseX / EDGE_ZONE;
-			speed = -Math.max(2, intensity * 14);
+			speed = -Math.max(4, intensity * 24);
 		} else if (mouseX > containerWidth - EDGE_ZONE && mouseX <= containerWidth) {
-			// Mais perto da borda direita = scroll mais rápido (até +14px por frame)
+			// Mais perto da borda direita = scroll mais rápido (até +24px por frame)
 			const intensity = 1 - (containerWidth - mouseX) / EDGE_ZONE;
-			speed = Math.max(2, intensity * 14);
+			speed = Math.max(4, intensity * 24);
 		}
 
 		if (speed !== 0) {
@@ -625,7 +630,7 @@ export default function ControleCalendarioCustos({
 								onMouseEnter={() => setHoveredCell((prev) => ({ ...prev, colDay: null }))}
 								className={`sticky left-0 top-0 z-40 border-r border-b border-slate-200 dark:border-slate-800 min-w-[150px] sm:min-w-[180px] max-w-[150px] sm:max-w-[180px] p-3 text-sm font-black shadow-[2px_0_4px_-1px_rgba(0,0,0,0.06)] transition-colors duration-150 ${
 									hoveredCell.rowKey !== null
-										? "bg-blue-100 dark:bg-slate-800 text-blue-900 dark:text-blue-100 ring-1 ring-inset ring-blue-400/40"
+										? "bg-blue-200 dark:bg-blue-900 text-blue-950 dark:text-blue-50 ring-1 ring-inset ring-blue-400/50"
 										: "bg-slate-100 dark:bg-slate-900 text-slate-900 dark:text-slate-100"
 								}`}>
 								<span>Tipo de Custo</span>
@@ -706,7 +711,7 @@ export default function ControleCalendarioCustos({
 										onMouseEnter={() => setHoveredCell({ rowKey: catKey, colDay: null })}
 										className={`sticky left-0 z-20 border-r border-slate-200 dark:border-slate-800 p-2.5 shadow-[2px_0_4px_-1px_rgba(0,0,0,0.04)] transition-colors duration-150 ${
 											isRowHovered
-												? "bg-blue-100 dark:bg-slate-800 text-blue-900 dark:text-blue-100 ring-1 ring-inset ring-blue-400/40"
+												? "bg-blue-200 dark:bg-blue-900 text-blue-950 dark:text-blue-50 ring-1 ring-inset ring-blue-400/50"
 												: "bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100"
 										}`}>
 										<span className="font-black text-sm text-slate-900 dark:text-slate-100 truncate block">
@@ -743,7 +748,7 @@ export default function ControleCalendarioCustos({
 												} hover:bg-blue-200/80 dark:hover:bg-blue-900/70 active:scale-95`}>
 												{val > 0 ? (
 													<div className="flex flex-col items-center justify-center">
-														<span className="font-black text-rose-600 dark:text-rose-400 text-xs leading-tight">
+														<span className="font-black text-slate-900 dark:text-slate-100 text-xs leading-tight">
 															{formatCellCurrency(val)}
 														</span>
 														{itemCount > 1 && (
@@ -763,9 +768,9 @@ export default function ControleCalendarioCustos({
 
 									{/* Coluna Fixa à Direita: Total da Categoria no Mês */}
 									<td
-										className={`sticky right-0 z-20 border-l border-slate-200 dark:border-slate-800 p-2.5 text-right font-black shadow-[-2px_0_4px_-1px_rgba(0,0,0,0.04)] text-rose-600 dark:text-rose-400 text-xs sm:text-sm transition-colors duration-150 ${
+										className={`sticky right-0 z-20 border-l border-slate-200 dark:border-slate-800 p-2.5 text-right font-black shadow-[-2px_0_4px_-1px_rgba(0,0,0,0.04)] text-slate-900 dark:text-slate-100 text-xs sm:text-sm transition-colors duration-150 ${
 											isRowHovered
-												? "bg-blue-100 dark:bg-slate-800"
+												? "bg-blue-200 dark:bg-blue-900"
 												: "bg-white dark:bg-slate-900"
 										}`}>
 										{catMonthTotal > 0 ? formatCurrency(catMonthTotal) : "-"}
@@ -781,14 +786,14 @@ export default function ControleCalendarioCustos({
 						<tr
 							className={`font-black transition-colors duration-150 ${
 								hoveredCell.rowKey === "total_custos"
-									? "bg-blue-100/60 dark:bg-blue-950/40"
+									? "bg-blue-100/70 dark:bg-blue-950/60"
 									: "bg-slate-50 dark:bg-slate-900"
 							}`}>
 							<td
 								onMouseEnter={() => setHoveredCell({ rowKey: "total_custos", colDay: null })}
 								className={`sticky left-0 z-40 border-r border-b border-slate-200 dark:border-slate-800 p-2.5 shadow-[2px_0_4px_-1px_rgba(0,0,0,0.06)] text-slate-900 dark:text-slate-100 text-sm font-black transition-colors duration-150 ${
 									hoveredCell.rowKey === "total_custos"
-										? "bg-blue-100 dark:bg-slate-800 ring-1 ring-inset ring-blue-400/40 text-blue-900 dark:text-blue-100"
+										? "bg-blue-200 dark:bg-blue-900 ring-1 ring-inset ring-blue-400/50 text-blue-950 dark:text-blue-50"
 										: "bg-slate-100 dark:bg-slate-900 text-slate-900 dark:text-slate-100"
 								}`}>
 								<div className="flex items-center gap-1.5">
@@ -813,9 +818,9 @@ export default function ControleCalendarioCustos({
 										title={`Total de custos no Dia ${d}: ${formatCurrency(val)}`}
 										className={`border-r border-b border-slate-200/80 dark:border-slate-800 p-1.5 text-center cursor-pointer transition-colors duration-150 ${
 											isIntersected
-												? "bg-blue-200/90 dark:bg-blue-900/80 ring-2 ring-inset ring-blue-500 scale-[1.03]"
+												? "bg-blue-300/90 dark:bg-blue-800/90 ring-2 ring-inset ring-blue-500 scale-[1.03]"
 												: isRowHovered || isColHovered
-												? "bg-blue-100/60 dark:bg-blue-950/50"
+												? "bg-blue-200/80 dark:bg-blue-900/70"
 												: isToday
 												? "bg-blue-50/80 dark:bg-blue-950/40"
 												: val > 0
@@ -825,7 +830,7 @@ export default function ControleCalendarioCustos({
 										<span
 											className={`text-xs font-black ${
 												val > 0
-													? "text-rose-600 dark:text-rose-400"
+													? "text-slate-900 dark:text-slate-100"
 													: "text-slate-300 dark:text-slate-600 font-normal"
 											}`}>
 											{formatCellCurrency(val)}
@@ -834,9 +839,9 @@ export default function ControleCalendarioCustos({
 								);
 							})}
 
-							<td className={`sticky right-0 z-40 border-l border-b border-slate-200 dark:border-slate-800 p-2.5 text-right font-black shadow-[-2px_0_4px_-1px_rgba(0,0,0,0.06)] text-rose-600 dark:text-rose-400 text-xs sm:text-sm transition-colors duration-150 ${
+							<td className={`sticky right-0 z-40 border-l border-b border-slate-200 dark:border-slate-800 p-2.5 text-right font-black shadow-[-2px_0_4px_-1px_rgba(0,0,0,0.06)] text-slate-900 dark:text-slate-100 text-xs sm:text-sm transition-colors duration-150 ${
 								hoveredCell.rowKey === "total_custos"
-									? "bg-blue-100 dark:bg-slate-800"
+									? "bg-blue-200 dark:bg-blue-900"
 									: "bg-slate-100 dark:bg-slate-900"
 							}`}>
 								{formatCurrency(grandTotals.custos)}
@@ -847,14 +852,14 @@ export default function ControleCalendarioCustos({
 						<tr
 							className={`font-black transition-colors duration-150 ${
 								hoveredCell.rowKey === "faturamento"
-									? "bg-blue-100/60 dark:bg-blue-950/40"
+									? "bg-blue-100/70 dark:bg-blue-950/60"
 									: "bg-slate-50 dark:bg-slate-900"
 							}`}>
 							<td
 								onMouseEnter={() => setHoveredCell({ rowKey: "faturamento", colDay: null })}
 								className={`sticky left-0 z-40 border-r border-b border-slate-200 dark:border-slate-800 p-2.5 shadow-[2px_0_4px_-1px_rgba(0,0,0,0.06)] text-slate-900 dark:text-slate-100 text-sm font-black transition-colors duration-150 ${
 									hoveredCell.rowKey === "faturamento"
-										? "bg-blue-100 dark:bg-slate-800 ring-1 ring-inset ring-blue-400/40 text-blue-900 dark:text-blue-100"
+										? "bg-blue-200 dark:bg-blue-900 ring-1 ring-inset ring-blue-400/50 text-blue-950 dark:text-blue-50"
 										: "bg-slate-100 dark:bg-slate-900 text-slate-900 dark:text-slate-100"
 								}`}>
 								<div className="flex items-center gap-1.5">
@@ -879,9 +884,9 @@ export default function ControleCalendarioCustos({
 										title={`Faturamento no Dia ${d}: ${formatCurrency(val)}`}
 										className={`border-r border-b border-slate-200/80 dark:border-slate-800 p-1.5 text-center cursor-pointer transition-colors duration-150 ${
 											isIntersected
-												? "bg-blue-200/90 dark:bg-blue-900/80 ring-2 ring-inset ring-blue-500 scale-[1.03]"
+												? "bg-blue-300/90 dark:bg-blue-800/90 ring-2 ring-inset ring-blue-500 scale-[1.03]"
 												: isRowHovered || isColHovered
-												? "bg-blue-100/60 dark:bg-blue-950/50"
+												? "bg-blue-200/80 dark:bg-blue-900/70"
 												: isToday
 												? "bg-blue-50/80 dark:bg-blue-950/40"
 												: val > 0
@@ -902,7 +907,7 @@ export default function ControleCalendarioCustos({
 
 							<td className={`sticky right-0 z-40 border-l border-b border-slate-200 dark:border-slate-800 p-2.5 text-right font-black shadow-[-2px_0_4px_-1px_rgba(0,0,0,0.06)] text-emerald-600 dark:text-emerald-400 text-xs sm:text-sm transition-colors duration-150 ${
 								hoveredCell.rowKey === "faturamento"
-									? "bg-blue-100 dark:bg-slate-800"
+									? "bg-blue-200 dark:bg-blue-900"
 									: "bg-slate-100 dark:bg-slate-900"
 							}`}>
 								{formatCurrency(grandTotals.faturamento)}
@@ -913,14 +918,14 @@ export default function ControleCalendarioCustos({
 						<tr
 							className={`font-black transition-colors duration-150 ${
 								hoveredCell.rowKey === "saldo_diario"
-									? "bg-blue-100/60 dark:bg-blue-950/40"
+									? "bg-blue-100/70 dark:bg-blue-950/60"
 									: "bg-slate-100 dark:bg-slate-900"
 							}`}>
 							<td
 								onMouseEnter={() => setHoveredCell({ rowKey: "saldo_diario", colDay: null })}
 								className={`sticky left-0 z-40 border-r border-slate-200 dark:border-slate-800 p-2.5 shadow-[2px_0_4px_-1px_rgba(0,0,0,0.06)] text-slate-900 dark:text-slate-100 text-sm font-black transition-colors duration-150 ${
 									hoveredCell.rowKey === "saldo_diario"
-										? "bg-blue-100 dark:bg-slate-800 ring-1 ring-inset ring-blue-400/40 text-blue-900 dark:text-blue-100"
+										? "bg-blue-200 dark:bg-blue-900 ring-1 ring-inset ring-blue-400/50 text-blue-950 dark:text-blue-50"
 										: "bg-slate-100 dark:bg-slate-900 text-slate-900 dark:text-slate-100"
 								}`}>
 								<div className="flex items-center gap-1.5">
@@ -947,9 +952,9 @@ export default function ControleCalendarioCustos({
 										title={`Saldo no Dia ${d}: ${formatCurrency(val)}`}
 										className={`border-r border-slate-200/80 dark:border-slate-800 p-1.5 text-center cursor-pointer transition-colors duration-150 ${
 											isIntersected
-												? "bg-blue-200/90 dark:bg-blue-900/80 ring-2 ring-inset ring-blue-500 scale-[1.03]"
+												? "bg-blue-300/90 dark:bg-blue-800/90 ring-2 ring-inset ring-blue-500 scale-[1.03]"
 												: isRowHovered || isColHovered
-												? "bg-blue-100/60 dark:bg-blue-950/50"
+												? "bg-blue-200/80 dark:bg-blue-900/70"
 												: isToday
 												? "bg-blue-100/70 dark:bg-blue-950/50"
 												: hasMov
@@ -979,7 +984,7 @@ export default function ControleCalendarioCustos({
 							<td
 								className={`sticky right-0 z-40 border-l border-slate-200 dark:border-slate-800 p-2.5 text-right font-black text-xs sm:text-sm shadow-[-2px_0_4px_-1px_rgba(0,0,0,0.06)] transition-colors duration-150 ${
 									hoveredCell.rowKey === "saldo_diario"
-										? "bg-blue-100 dark:bg-slate-800"
+										? "bg-blue-200 dark:bg-blue-900"
 										: "bg-slate-100 dark:bg-slate-900"
 								} ${
 									grandTotals.saldo >= 0
@@ -1102,14 +1107,35 @@ export default function ControleCalendarioCustos({
 														</span>
 													</div>
 												</div>
-												<div className="flex items-center gap-2 shrink-0">
-													<span className="text-xs font-black text-rose-600 dark:text-rose-400">
+												<div className="flex items-center gap-1.5 shrink-0">
+													<span className="text-xs font-black text-slate-900 dark:text-slate-100">
 														{formatCurrency(custo.valor)}
 													</span>
-													<Edit2
-														size={13}
-														className="text-slate-400 group-hover:text-slate-600 dark:group-hover:text-slate-200 transition-colors"
-													/>
+													<button
+														type="button"
+														title="Editar custo"
+														onClick={(e) => {
+															e.stopPropagation();
+															if (onEditCusto) {
+																onEditCusto(custo);
+																setSelectedDayInfo(null);
+															}
+														}}
+														className="p-1 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors">
+														<Edit2 size={13} />
+													</button>
+													{onDeleteCusto && (
+														<button
+															type="button"
+															title="Excluir custo"
+															onClick={(e) => {
+																e.stopPropagation();
+																onDeleteCusto(custo.id);
+															}}
+															className="p-1 rounded-lg hover:bg-rose-100 dark:hover:bg-rose-900/50 text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 transition-colors">
+															<Trash2 size={13} />
+														</button>
+													)}
 												</div>
 											</div>
 										);
@@ -1159,14 +1185,35 @@ export default function ControleCalendarioCustos({
 													</span>
 												</div>
 											</div>
-											<div className="flex items-center gap-2 shrink-0">
+											<div className="flex items-center gap-1.5 shrink-0">
 												<span className="text-xs font-black text-emerald-600 dark:text-emerald-400">
 													{formatCurrency(fat.valorTotal)}
 												</span>
-												<Edit2
-													size={13}
-													className="text-slate-400 group-hover:text-slate-600 dark:group-hover:text-slate-200 transition-colors"
-												/>
+												<button
+													type="button"
+													title="Editar faturamento"
+													onClick={(e) => {
+														e.stopPropagation();
+														if (onEditFaturamento) {
+															onEditFaturamento(fat);
+															setSelectedDayInfo(null);
+														}
+													}}
+													className="p-1 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors">
+													<Edit2 size={13} />
+												</button>
+												{onDeleteFaturamento && (
+													<button
+														type="button"
+														title="Excluir faturamento"
+														onClick={(e) => {
+															e.stopPropagation();
+															onDeleteFaturamento(fat.id);
+														}}
+														className="p-1 rounded-lg hover:bg-rose-100 dark:hover:bg-rose-900/50 text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 transition-colors">
+														<Trash2 size={13} />
+													</button>
+												)}
 											</div>
 										</div>
 									))}

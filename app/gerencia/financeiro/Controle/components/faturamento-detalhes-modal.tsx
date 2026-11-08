@@ -11,6 +11,7 @@ import {
 	CheckCircle2,
 	Layers,
 	ListOrdered,
+	Trash2,
 } from "lucide-react";
 import {
 	FaturamentoFinanceiro,
@@ -23,6 +24,7 @@ interface FaturamentoDetalhesModalProps {
 	isOpen?: boolean;
 	onClose: () => void;
 	onEdit?: (faturamento: FaturamentoFinanceiro) => void;
+	onDelete?: (id: string) => void;
 }
 
 const formatCurrency = (val: number) => {
@@ -37,6 +39,7 @@ export default function FaturamentoDetalhesModal({
 	isOpen = true,
 	onClose,
 	onEdit,
+	onDelete,
 }: FaturamentoDetalhesModalProps) {
 	if (!isOpen || !faturamento) return null;
 
@@ -204,6 +207,18 @@ export default function FaturamentoDetalhesModal({
 				<div className="px-6 py-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between shrink-0 bg-slate-50/50 dark:bg-slate-900/50">
 					<span className="text-[11px] text-slate-400">ID: {faturamento.id}</span>
 					<div className="flex items-center gap-2">
+						{onDelete && (
+							<button
+								type="button"
+								onClick={() => {
+									onClose();
+									onDelete(faturamento.id);
+								}}
+								className="px-4 py-2 rounded-xl bg-rose-50 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 text-xs font-bold hover:bg-rose-100 dark:hover:bg-rose-900/60 transition-colors flex items-center gap-1.5">
+								<Trash2 size={14} />
+								<span>Excluir</span>
+							</button>
+						)}
 						{onEdit && (
 							<button
 								type="button"

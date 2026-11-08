@@ -27,6 +27,7 @@ interface CustoModalProps {
 	isOpen: boolean;
 	onClose: () => void;
 	onSave: (data: Omit<CustoFinanceiro, "id" | "createdAt" | "updatedAt">) => Promise<void>;
+	onDelete?: (id: string) => Promise<void> | void;
 	editingCusto?: CustoFinanceiro | null;
 	defaultCategoria?: CategoriaCusto;
 	defaultLoja?: StoreIdWithGeral;
@@ -37,6 +38,7 @@ export default function CustoModal({
 	isOpen,
 	onClose,
 	onSave,
+	onDelete,
 	editingCusto,
 	defaultCategoria = "cookies",
 	defaultLoja = "geral",
@@ -423,27 +425,44 @@ export default function CustoModal({
 					</div>
 
 					{/* Botões de Ação */}
-					<div className="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-100 dark:border-slate-800">
-						<button
-							type="button"
-							onClick={onClose}
-							disabled={isSubmitting}
-							className="px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
-							Cancelar
-						</button>
-						<button
-							type="submit"
-							disabled={isSubmitting}
-							className="px-5 py-2.5 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 hover:bg-slate-800 dark:hover:bg-slate-100 text-xs font-black tracking-wide shadow-md transition-all flex items-center gap-1.5 disabled:opacity-50">
-							<CheckCircle2 size={16} />
-							{isSubmitting
-								? "Gravando..."
-								: editingCusto
-								? "Salvar Alterações"
-								: multiDatasEnabled
-								? `Gravar Custos (${multiDatas.filter(Boolean).length} datas)`
-								: "Gravar Custo"}
-						</button>
+					<div className="flex items-center justify-between gap-2.5 pt-3 border-t border-slate-100 dark:border-slate-800">
+						{editingCusto && onDelete ? (
+							<button
+								type="button"
+								onClick={async () => {
+									onClose();
+									await onDelete(editingCusto.id);
+								}}
+								disabled={isSubmitting}
+								className="px-3.5 py-2.5 rounded-xl border border-rose-200 dark:border-rose-900/50 text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 text-xs font-bold transition-colors flex items-center gap-1.5 disabled:opacity-50">
+								<Trash2 size={14} />
+								<span>Excluir</span>
+							</button>
+						) : (
+							<div />
+						)}
+						<div className="flex items-center gap-2.5">
+							<button
+								type="button"
+								onClick={onClose}
+								disabled={isSubmitting}
+								className="px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
+								Cancelar
+							</button>
+							<button
+								type="submit"
+								disabled={isSubmitting}
+								className="px-5 py-2.5 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 hover:bg-slate-800 dark:hover:bg-slate-100 text-xs font-black tracking-wide shadow-md transition-all flex items-center gap-1.5 disabled:opacity-50">
+								<CheckCircle2 size={16} />
+								{isSubmitting
+									? "Gravando..."
+									: editingCusto
+									? "Salvar Alterações"
+									: multiDatasEnabled
+									? `Gravar Custos (${multiDatas.filter(Boolean).length} datas)`
+									: "Gravar Custo"}
+							</button>
+						</div>
 					</div>
 				</form>
 			</div>

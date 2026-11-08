@@ -822,10 +822,12 @@ export default function ControlePage() {
 							setEditingCusto(item);
 							setIsCustoModalOpen(true);
 						}}
+						onDeleteCusto={handleDeleteCusto}
 						onEditFaturamento={(item) => {
 							setSelectedFatDetalhes(item);
 							setIsFatDetalhesOpen(true);
 						}}
+						onDeleteFaturamento={handleDeleteFat}
 						onChangeMesAno={(newMesAno) => setMesAnoStr(newMesAno)}
 						onChangeLoja={(newLoja) => setLojaFilter(newLoja)}
 					/>
@@ -1046,6 +1048,7 @@ export default function ControlePage() {
 				isOpen={isFatModalOpen}
 				onClose={() => setIsFatModalOpen(false)}
 				onSave={handleSaveFat}
+				onDelete={handleDeleteFat}
 				editingFaturamento={editingFat}
 				defaultLoja={modalDefaultLoja}
 				defaultData={modalDefaultData}
@@ -1066,12 +1069,18 @@ export default function ControlePage() {
 					setModalDefaultData(item.data);
 					setIsFatModalOpen(true);
 				}}
+				onDelete={(id) => {
+					setIsFatDetalhesOpen(false);
+					setSelectedFatDetalhes(null);
+					handleDeleteFat(id);
+				}}
 			/>
 
 			<CustoModal
 				isOpen={isCustoModalOpen}
 				onClose={() => setIsCustoModalOpen(false)}
 				onSave={handleSaveCusto}
+				onDelete={handleDeleteCusto}
 				editingCusto={editingCusto}
 				defaultCategoria={defaultCategoriaCusto}
 				defaultLoja={modalDefaultLoja}

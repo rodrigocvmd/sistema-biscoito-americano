@@ -30,6 +30,7 @@ interface FaturamentoModalProps {
 	isOpen: boolean;
 	onClose: () => void;
 	onSave: (data: Omit<FaturamentoFinanceiro, "id" | "createdAt" | "updatedAt">) => Promise<void>;
+	onDelete?: (id: string) => Promise<void> | void;
 	editingFaturamento?: FaturamentoFinanceiro | null;
 	defaultLoja?: StoreIdWithGeral;
 	defaultData?: string;
@@ -49,6 +50,7 @@ export default function FaturamentoModal({
 	isOpen,
 	onClose,
 	onSave,
+	onDelete,
 	editingFaturamento,
 	defaultLoja = "geral",
 	defaultData,
@@ -510,21 +512,38 @@ export default function FaturamentoModal({
 					</div>
 
 					{/* Botões de Ação */}
-					<div className="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-100 dark:border-slate-800">
-						<button
-							type="button"
-							onClick={onClose}
-							disabled={isSubmitting}
-							className="px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
-							Cancelar
-						</button>
-						<button
-							type="submit"
-							disabled={isSubmitting}
-							className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black tracking-wide shadow-md shadow-emerald-600/20 transition-all flex items-center gap-1.5 disabled:opacity-50">
-							<CheckCircle2 size={16} />
-							{isSubmitting ? "Salvando..." : editingFaturamento ? "Salvar Alterações" : "Gravar Faturamento"}
-						</button>
+					<div className="flex items-center justify-between gap-2.5 pt-3 border-t border-slate-100 dark:border-slate-800">
+						{editingFaturamento && onDelete ? (
+							<button
+								type="button"
+								onClick={async () => {
+									onClose();
+									await onDelete(editingFaturamento.id);
+								}}
+								disabled={isSubmitting}
+								className="px-3.5 py-2.5 rounded-xl border border-rose-200 dark:border-rose-900/50 text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 text-xs font-bold transition-colors flex items-center gap-1.5 disabled:opacity-50">
+								<Trash2 size={14} />
+								<span>Excluir</span>
+							</button>
+						) : (
+							<div />
+						)}
+						<div className="flex items-center gap-2.5">
+							<button
+								type="button"
+								onClick={onClose}
+								disabled={isSubmitting}
+								className="px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
+								Cancelar
+							</button>
+							<button
+								type="submit"
+								disabled={isSubmitting}
+								className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black tracking-wide shadow-md shadow-emerald-600/20 transition-all flex items-center gap-1.5 disabled:opacity-50">
+								<CheckCircle2 size={16} />
+								{isSubmitting ? "Salvando..." : editingFaturamento ? "Salvar Alterações" : "Gravar Faturamento"}
+							</button>
+						</div>
 					</div>
 				</form>
 			</div>
