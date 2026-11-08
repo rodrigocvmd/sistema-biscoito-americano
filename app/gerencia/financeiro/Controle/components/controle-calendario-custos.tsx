@@ -687,10 +687,10 @@ export default function ControleCalendarioCustos({
 					</tbody>
 
 					{/* Rodapé da Tabela: Linhas de Somatório Diário */}
-					<tfoot className="sticky bottom-0 z-30 bg-slate-50 dark:bg-slate-900 border-t-2 border-slate-300 dark:border-slate-700">
+					<tfoot className="sticky bottom-0 z-30 border-t-2 border-slate-200 dark:border-slate-800">
 						{/* Linha 1: Total de Custos do Dia */}
-						<tr className="bg-slate-50/95 dark:bg-slate-850/95 backdrop-blur-xs font-black">
-							<td className="sticky left-0 z-40 bg-slate-100 dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700 p-2.5 shadow-[2px_0_4px_-1px_rgba(0,0,0,0.06)] text-slate-900 dark:text-slate-100">
+						<tr className="bg-slate-50/90 dark:bg-slate-900/90 backdrop-blur-xs font-black">
+							<td className="sticky left-0 z-40 bg-slate-100/95 dark:bg-slate-900/95 border-r border-b border-slate-200 dark:border-slate-800 p-2.5 shadow-[2px_0_4px_-1px_rgba(0,0,0,0.06)] text-slate-900 dark:text-slate-100">
 								<div className="flex items-center gap-1.5">
 									<Receipt size={13} className="text-rose-500" />
 									<span>Total Custos</span>
@@ -707,14 +707,18 @@ export default function ControleCalendarioCustos({
 										key={d}
 										onClick={() => handleOpenDayModal(d)}
 										title={`Total de custos no Dia ${d}: ${formatCurrency(val)}`}
-										className={`border-r border-slate-200 dark:border-slate-700 p-1.5 text-center cursor-pointer transition-colors ${
-											isToday ? "bg-blue-100/60 dark:bg-blue-950/40" : ""
-										} hover:bg-blue-100/50 dark:hover:bg-blue-900/30`}>
+										className={`border-r border-b border-slate-200/80 dark:border-slate-800 p-1.5 text-center cursor-pointer transition-colors ${
+											isToday
+												? "bg-blue-50/80 dark:bg-blue-950/40"
+												: val > 0
+												? "bg-rose-50/40 dark:bg-rose-950/20"
+												: "bg-slate-50/40 dark:bg-slate-900/40"
+										} hover:bg-rose-100/60 dark:hover:bg-rose-900/30`}>
 										<span
 											className={`text-[11px] font-black ${
 												val > 0
 													? "text-rose-600 dark:text-rose-400"
-													: "text-slate-300 dark:text-slate-700 font-normal"
+													: "text-slate-300 dark:text-slate-600 font-normal"
 											}`}>
 											{formatCellCurrency(val)}
 										</span>
@@ -722,14 +726,14 @@ export default function ControleCalendarioCustos({
 								);
 							})}
 
-							<td className="sticky right-0 z-40 bg-slate-100 dark:bg-slate-800 border-l border-slate-200 dark:border-slate-700 p-2.5 text-right font-black shadow-[-2px_0_4px_-1px_rgba(0,0,0,0.06)] text-rose-600 dark:text-rose-400">
+							<td className="sticky right-0 z-40 bg-slate-100/95 dark:bg-slate-900/95 border-l border-b border-slate-200 dark:border-slate-800 p-2.5 text-right font-black shadow-[-2px_0_4px_-1px_rgba(0,0,0,0.06)] text-rose-600 dark:text-rose-400">
 								{formatCurrency(grandTotals.custos)}
 							</td>
 						</tr>
 
 						{/* Linha 2: Faturamento do Dia */}
-						<tr className="bg-slate-50/95 dark:bg-slate-850/95 backdrop-blur-xs font-black">
-							<td className="sticky left-0 z-40 bg-slate-100 dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700 p-2.5 shadow-[2px_0_4px_-1px_rgba(0,0,0,0.06)] text-slate-900 dark:text-slate-100">
+						<tr className="bg-slate-50/90 dark:bg-slate-900/90 backdrop-blur-xs font-black">
+							<td className="sticky left-0 z-40 bg-slate-100/95 dark:bg-slate-900/95 border-r border-b border-slate-200 dark:border-slate-800 p-2.5 shadow-[2px_0_4px_-1px_rgba(0,0,0,0.06)] text-slate-900 dark:text-slate-100">
 								<div className="flex items-center gap-1.5">
 									<DollarSign size={13} className="text-emerald-500" />
 									<span>Faturamento</span>
@@ -746,14 +750,18 @@ export default function ControleCalendarioCustos({
 										key={d}
 										onClick={() => handleOpenDayModal(d)}
 										title={`Faturamento no Dia ${d}: ${formatCurrency(val)}`}
-										className={`border-r border-slate-200 dark:border-slate-700 p-1.5 text-center cursor-pointer transition-colors ${
-											isToday ? "bg-blue-100/60 dark:bg-blue-950/40" : ""
-										} hover:bg-blue-100/50 dark:hover:bg-blue-900/30`}>
+										className={`border-r border-b border-slate-200/80 dark:border-slate-800 p-1.5 text-center cursor-pointer transition-colors ${
+											isToday
+												? "bg-blue-50/80 dark:bg-blue-950/40"
+												: val > 0
+												? "bg-emerald-50/40 dark:bg-emerald-950/20"
+												: "bg-slate-50/40 dark:bg-slate-900/40"
+										} hover:bg-emerald-100/60 dark:hover:bg-emerald-900/30`}>
 										<span
 											className={`text-[11px] font-black ${
 												val > 0
 													? "text-emerald-600 dark:text-emerald-400"
-													: "text-slate-300 dark:text-slate-700 font-normal"
+													: "text-slate-300 dark:text-slate-600 font-normal"
 											}`}>
 											{formatCellCurrency(val)}
 										</span>
@@ -761,14 +769,14 @@ export default function ControleCalendarioCustos({
 								);
 							})}
 
-							<td className="sticky right-0 z-40 bg-slate-100 dark:bg-slate-800 border-l border-slate-200 dark:border-slate-700 p-2.5 text-right font-black shadow-[-2px_0_4px_-1px_rgba(0,0,0,0.06)] text-emerald-600 dark:text-emerald-400">
+							<td className="sticky right-0 z-40 bg-slate-100/95 dark:bg-slate-900/95 border-l border-b border-slate-200 dark:border-slate-800 p-2.5 text-right font-black shadow-[-2px_0_4px_-1px_rgba(0,0,0,0.06)] text-emerald-600 dark:text-emerald-400">
 								{formatCurrency(grandTotals.faturamento)}
 							</td>
 						</tr>
 
 						{/* Linha 3: Saldo Diário (Líquido) */}
-						<tr className="bg-slate-100/90 dark:bg-slate-800/90 backdrop-blur-xs font-black">
-							<td className="sticky left-0 z-40 bg-slate-200/90 dark:bg-slate-750 border-r border-slate-200 dark:border-slate-700 p-2.5 shadow-[2px_0_4px_-1px_rgba(0,0,0,0.06)] text-slate-900 dark:text-slate-100">
+						<tr className="bg-slate-100/80 dark:bg-slate-900/95 backdrop-blur-xs font-black">
+							<td className="sticky left-0 z-40 bg-slate-150 dark:bg-slate-850 border-r border-slate-200 dark:border-slate-800 p-2.5 shadow-[2px_0_4px_-1px_rgba(0,0,0,0.06)] text-slate-900 dark:text-slate-100">
 								<div className="flex items-center gap-1.5">
 									<TrendingUp size={13} className="text-blue-500" />
 									<span>Saldo Diário</span>
@@ -787,8 +795,14 @@ export default function ControleCalendarioCustos({
 										key={d}
 										onClick={() => handleOpenDayModal(d)}
 										title={`Saldo no Dia ${d}: ${formatCurrency(val)}`}
-										className={`border-r border-slate-200 dark:border-slate-700 p-1.5 text-center cursor-pointer transition-colors ${
-											isToday ? "bg-blue-100/60 dark:bg-blue-950/40" : ""
+										className={`border-r border-slate-200/80 dark:border-slate-800 p-1.5 text-center cursor-pointer transition-colors ${
+											isToday
+												? "bg-blue-100/70 dark:bg-blue-950/50"
+												: hasMov
+												? val >= 0
+													? "bg-blue-50/40 dark:bg-blue-950/20"
+													: "bg-red-50/40 dark:bg-red-950/20"
+												: "bg-slate-100/40 dark:bg-slate-900/40"
 										} hover:bg-blue-100/50 dark:hover:bg-blue-900/30`}>
 										{hasMov ? (
 											<span
@@ -800,7 +814,7 @@ export default function ControleCalendarioCustos({
 												{formatCellCurrency(val)}
 											</span>
 										) : (
-											<span className="text-slate-300 dark:text-slate-700 font-normal">
+											<span className="text-slate-300 dark:text-slate-600 font-normal">
 												-
 											</span>
 										)}
@@ -809,7 +823,7 @@ export default function ControleCalendarioCustos({
 							})}
 
 							<td
-								className={`sticky right-0 z-40 bg-slate-200/90 dark:bg-slate-750 border-l border-slate-200 dark:border-slate-700 p-2.5 text-right font-black shadow-[-2px_0_4px_-1px_rgba(0,0,0,0.06)] ${
+								className={`sticky right-0 z-40 bg-slate-150 dark:bg-slate-850 border-l border-slate-200 dark:border-slate-800 p-2.5 text-right font-black shadow-[-2px_0_4px_-1px_rgba(0,0,0,0.06)] ${
 									grandTotals.saldo >= 0
 										? "text-blue-600 dark:text-blue-400"
 										: "text-red-600 dark:text-red-400"
