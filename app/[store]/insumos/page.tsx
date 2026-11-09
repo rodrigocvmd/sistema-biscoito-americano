@@ -321,14 +321,14 @@ export default function SuppliesPage({ params }: { params: Promise<{ store: stri
 							<label className="text-xs font-black text-slate-400 dark:text-slate-500 uppercase tracking-wider">
 								Insumo *
 							</label>
-							<label className="inline-flex items-center gap-1.5 cursor-pointer text-xs font-bold text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white select-none">
+							<label className="inline-flex items-center gap-1.5 cursor-pointer text-md font-bold text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white select-none">
 								<input
 									type="checkbox"
 									checked={isCustomSupply}
 									onChange={(e) => setIsCustomSupply(e.target.checked)}
-									className="w-3.5 h-3.5 rounded text-red-600 focus:ring-0 cursor-pointer"
+									className="w-4 h-4 rounded text-red-600 focus:ring-0 cursor-pointer"
 								/>
-								<span>Insumo fora da lista</span>
+								<span>Pedir insumo fora da lista</span>
 							</label>
 						</div>
 						<div className="relative">

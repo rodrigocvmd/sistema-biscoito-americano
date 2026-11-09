@@ -19,6 +19,7 @@ export const INVENTORY_DATA: InventoryCategory[] = [
 			"BUBBLE BLUEBERRY",
 			"FANTA LARANJA",
 			"SODA FRUTAS VERMELHAS",
+			"SODA PINK LEMONADE",
 			"SODA MORANGO",
 			"SODA MAÇÃ VERDE",
 			"SODA CRAMBERRY",
@@ -62,7 +63,7 @@ export const INVENTORY_DATA: InventoryCategory[] = [
 	},
 	{
 		category: "CALDAS",
-		items: ["CALDA DE FRUTAS VERMELHAS", "CALDA DE CARAMELO", "CALDA CHOCOLATE"],
+		items: ["CALDA DE CARAMELO", "CALDA DE FRUTAS DE VERMELHAS", "CALDA DE CHOCOLATE", "CALDA DE PISTACHE"],
 	},
 	{
 		category: "CAFETERIA E MATINAL",
@@ -352,6 +353,16 @@ export const DEFAULT_INSUMOS_CATALOG: InsumoCatalogItem[] = [
 	{
 		id: "soda-frutas-vermelhas",
 		name: "SODA FRUTAS VERMELHAS",
+		category: "BEBIDAS E SODAS",
+		valorBom: "R$ 38,00",
+		valorMaximo: "R$ 48,00",
+		localCompra: "Distribuidora Monin / Atacadão",
+		marca: "Monin / DaVinci",
+		observacoes: "Xarope para soda italiana 700ml / 1L",
+	},
+	{
+		id: "soda-pink-lemonade",
+		name: "SODA PINK LEMONADE",
 		category: "BEBIDAS E SODAS",
 		valorBom: "R$ 38,00",
 		valorMaximo: "R$ 48,00",
@@ -704,18 +715,18 @@ export const DEFAULT_INSUMOS_CATALOG: InsumoCatalogItem[] = [
 
 	// CALDAS
 	{
+		id: "calda-caramelo",
+		name: "CALDA DE CARAMELO",
+		category: "CALDAS",
+		valorBom: "R$ 20,00",
+		valorMaximo: "R$ 30,00",
+		localCompra: "Distribuidora / Atacadão",
+		marca: "Marvi / DaVinci / Monin",
+		observacoes: "Bisnaga de cobertura de caramelo salgado/tradicional",
+	},
+		{
 		id: "calda-de-frutas-vermelhas",
 		name: "CALDA DE FRUTAS VERMELHAS",
-		category: "CALDAS",
-		valorBom: "R$ 22,00",
-		valorMaximo: "R$ 32,00",
-		localCompra: "Distribuidora / Confeitaria",
-		marca: "D'agostini / Homemade / DaVinci",
-		observacoes: "Bisnaga ou pote profissional para cobertura",
-	},
-	{
-		id: "calda-de-caramelo",
-		name: "CALDA DE CARAMELO",
 		category: "CALDAS",
 		valorBom: "R$ 20,00",
 		valorMaximo: "R$ 30,00",
@@ -725,7 +736,17 @@ export const DEFAULT_INSUMOS_CATALOG: InsumoCatalogItem[] = [
 	},
 	{
 		id: "calda-chocolate",
-		name: "CALDA CHOCOLATE",
+		name: "CALDA DE CHOCOLATE",
+		category: "CALDAS",
+		valorBom: "R$ 20,00",
+		valorMaximo: "R$ 30,00",
+		localCompra: "Distribuidora / Atacadão",
+		marca: "Marvi / DaVinci / Hershey's",
+		observacoes: "Bisnaga de cobertura de chocolate",
+	},
+	{
+		id: "calda-pistache",
+		name: "CALDA DE PISTACHE",
 		category: "CALDAS",
 		valorBom: "R$ 20,00",
 		valorMaximo: "R$ 30,00",
