@@ -418,6 +418,15 @@ export default function ControleCalendarioCustos({
 		categoriaPre?: CategoriaCusto;
 	} | null>(null);
 
+	// Modal de Escolha entre Editar Custo Existente ou Inserir Novo Custo
+	const [custoChoiceModal, setCustoChoiceModal] = useState<{
+		item: CustoFinanceiro;
+		diaIso: string;
+		loja: StoreIdWithGeral;
+		categoria: CategoriaCusto;
+		diaNum: number;
+	} | null>(null);
+
 	const handleOpenDayModal = (dayNum: number, cat?: CategoriaCusto) => {
 		const diaIso = `${ano}-${String(mes).padStart(2, "0")}-${String(dayNum).padStart(2, "0")}`;
 		setSelectedDayInfo({
@@ -435,8 +444,14 @@ export default function ControleCalendarioCustos({
 			localLoja === "todas" ? "geral" : (localLoja as StoreIdWithGeral);
 
 		if (items.length === 1 && onEditCusto) {
-			// Se já existe exatamente 1 custo nesta célula, abre para edição dele
-			onEditCusto(items[0]);
+			// Se já existe custo cadastrado, abre opção para escolher entre editar ou inserir novo custo
+			setCustoChoiceModal({
+				item: items[0],
+				diaIso,
+				loja: targetLoja,
+				categoria: catKey,
+				diaNum: d,
+			});
 		} else if (items.length > 1) {
 			// Se houver múltiplos custos nesta mesma categoria/dia, abre o modal do dia pré-filtrando a categoria
 			handleOpenDayModal(d, catKey);
@@ -1434,6 +1449,99 @@ export default function ControleCalendarioCustos({
 								onClick={() => setSelectedDayInfo(null)}
 								className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors">
 								Fechar
+							</button>
+						</div>
+					</div>
+				</div>
+			)}
+
+			{/* Modal de Escolha: Editar Custo Existente ou Inserir Novo Custo */}
+			{custoChoiceModal && (
+				<div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
+					<div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl max-w-md w-full shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
+						{/* Cabeçalho */}
+						<div className="px-6 py-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+							<div className="flex items-center gap-3">
+								<span className="p-2.5 rounded-2xl bg-orange-100 dark:bg-orange-950/60 text-orange-600 dark:text-orange-400">
+									<Receipt size={20} />
+								</span>
+								<div>
+									<h4 className="text-base font-black text-slate-900 dark:text-slate-100">
+										{CATEGORIAS_CUSTO_CONFIG[custoChoiceModal.categoria]?.label || "Custo"}
+									</h4>
+									<p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+										Dia {custoChoiceModal.diaNum} de {MESES[mes - 1]} de {ano}
+									</p>
+								</div>
+							</div>
+							<button
+								type="button"
+								onClick={() => setCustoChoiceModal(null)}
+								className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors">
+								<X size={18} />
+							</button>
+						</div>
+
+						{/* Resumo do custo atual */}
+						<div className="p-6 space-y-4">
+							<div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200/80 dark:border-slate-800 flex items-center justify-between">
+								<div className="truncate mr-3">
+									<span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+										Custo Já Cadastrado
+									</span>
+									<p className="text-xs font-black text-slate-800 dark:text-slate-200 truncate mt-0.5">
+										{custoChoiceModal.item.descricao || "Sem descrição"}
+									</p>
+									<span className="text-[11px] text-slate-500 dark:text-slate-400">
+										Loja: {STORE_NAMES_EXTENDED[custoChoiceModal.item.lojaId] || custoChoiceModal.item.lojaId}
+									</span>
+								</div>
+								<span className="text-sm font-black text-rose-600 dark:text-rose-400 shrink-0">
+									{formatCurrency(custoChoiceModal.item.valor)}
+								</span>
+							</div>
+
+							<p className="text-xs text-slate-600 dark:text-slate-300 font-medium">
+								O que deseja fazer com esta célula?
+							</p>
+
+							{/* Opções de Ação */}
+							<div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+								{/* Opção 1: Editar o Custo Existente */}
+								<button
+									type="button"
+									onClick={() => {
+										const current = custoChoiceModal;
+										setCustoChoiceModal(null);
+										onEditCusto?.(current.item);
+									}}
+									className="p-3.5 rounded-2xl border border-slate-200 dark:border-slate-700 bg-white hover:bg-slate-50 dark:bg-slate-800 dark:hover:bg-slate-700/80 text-slate-900 dark:text-slate-100 font-black text-xs tracking-wide shadow-xs transition-all flex items-center justify-center gap-2 active:scale-95 cursor-pointer">
+									<Edit2 size={16} className="text-blue-600 dark:text-blue-400" />
+									<span>Editar Este Custo</span>
+								</button>
+
+								{/* Opção 2: Inserir Novo Custo */}
+								<button
+									type="button"
+									onClick={() => {
+										const current = custoChoiceModal;
+										setCustoChoiceModal(null);
+										onSelectDiaParaCusto(current.diaIso, current.loja, current.categoria);
+									}}
+									className="p-3.5 rounded-2xl bg-orange-300 hover:bg-orange-400 dark:bg-orange-400 dark:hover:bg-orange-300 text-orange-950 font-black text-xs tracking-wide shadow-md shadow-orange-300/30 transition-all flex items-center justify-center gap-2 active:scale-95 cursor-pointer">
+									<Plus size={16} />
+									<span>Inserir Novo Custo</span>
+								</button>
+							</div>
+						</div>
+
+						{/* Rodapé */}
+						<div className="px-6 py-3 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 flex justify-end">
+							<button
+								type="button"
+								onClick={() => setCustoChoiceModal(null)}
+								className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors">
+								Cancelar
 							</button>
 						</div>
 					</div>

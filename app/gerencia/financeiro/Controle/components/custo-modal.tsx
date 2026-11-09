@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
 	X,
 	DollarSign,
@@ -55,6 +55,7 @@ export default function CustoModal({
 	const [status, setStatus] = useState<"pago" | "pendente">("pago");
 	const [observacoes, setObservacoes] = useState("");
 	const [isSubmitting, setIsSubmitting] = useState(false);
+	const valorInputRef = useRef<HTMLInputElement>(null);
 
 	useEffect(() => {
 		if (isOpen) {
@@ -83,13 +84,21 @@ export default function CustoModal({
 				setLojaId(defaultLoja);
 				setDataCusto(initialDate);
 				setMultiDatasEnabled(false);
-				setMultiDatas([initialDate, ""]);
+				setMultiDatas([initialDate, initialDate]);
 				setDescricao("");
 				setValor("");
 				setMetodoPagamento("pix");
 				setStatus("pago");
 				setObservacoes("");
 			}
+
+			// Focar e selecionar automaticamente o campo de valor financeiro
+			setTimeout(() => {
+				if (valorInputRef.current) {
+					valorInputRef.current.focus();
+					valorInputRef.current.select();
+				}
+			}, 100);
 		}
 	}, [isOpen, editingCusto, defaultCategoria, defaultLoja, defaultData]);
 
@@ -245,7 +254,8 @@ export default function CustoModal({
 										const checked = e.target.checked;
 										setMultiDatasEnabled(checked);
 										if (checked && multiDatas.length < 2) {
-											setMultiDatas(dataCusto ? [dataCusto, ""] : ["", ""]);
+											const baseDate = dataCusto || new Date().toISOString().split("T")[0];
+											setMultiDatas([baseDate, baseDate]);
 										}
 									}}
 									className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 border-slate-300 dark:border-slate-700 cursor-pointer"
@@ -292,7 +302,12 @@ export default function CustoModal({
 									</label>
 									<button
 										type="button"
-										onClick={() => setMultiDatas((prev) => [...prev, ""])}
+										onClick={() => {
+											setMultiDatas((prev) => {
+												const lastDate = prev[prev.length - 1] || dataCusto || "";
+												return [...prev, lastDate];
+											});
+										}}
 										className="text-xs font-bold text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1">
 										<Plus size={14} /> Adicionar data
 									</button>
@@ -399,6 +414,7 @@ export default function CustoModal({
 								R$
 							</span>
 							<CurrencyInput
+								ref={valorInputRef}
 								required
 								integerOnly
 								selectAllOnClick

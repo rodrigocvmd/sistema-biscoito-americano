@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useId } from "react";
+import { useState, useEffect, useId, useRef } from "react";
 import {
 	X,
 	Plus,
@@ -64,6 +64,7 @@ export default function FaturamentoModal({
 	const [observacoes, setObservacoes] = useState("");
 	const [itens, setItens] = useState<FaturamentoItem[]>([]);
 	const [isSubmitting, setIsSubmitting] = useState(false);
+	const valorGeralInputRef = useRef<HTMLInputElement>(null);
 
 	// Preencher estado inicial quando abre ou edita
 	useEffect(() => {
@@ -109,6 +110,14 @@ export default function FaturamentoModal({
 				setObservacoes("");
 				setItens([{ id: "item-1", nome: "", quantidade: 1, precoUnitario: 0, subtotal: 0 }]);
 			}
+
+			// Focar e selecionar automaticamente o campo de valor financeiro
+			setTimeout(() => {
+				if (valorGeralInputRef.current) {
+					valorGeralInputRef.current.focus();
+					valorGeralInputRef.current.select();
+				}
+			}, 100);
 		}
 	}, [isOpen, editingFaturamento, defaultLoja, defaultData]);
 
@@ -375,6 +384,7 @@ export default function FaturamentoModal({
 										R$
 									</span>
 									<CurrencyInput
+										ref={valorGeralInputRef}
 										required
 										integerOnly
 										selectAllOnClick
