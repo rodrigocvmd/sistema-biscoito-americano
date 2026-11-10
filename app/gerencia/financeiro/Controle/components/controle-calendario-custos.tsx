@@ -16,6 +16,9 @@ import {
 	Edit2,
 	Trash2,
 	CheckCircle2,
+	Clock,
+	Paperclip,
+	Link2,
 	TrendingUp,
 	TrendingDown,
 	Percent,
@@ -35,6 +38,7 @@ import {
 	calcularProporcoesMensaisFaturamento,
 	getMonthRef,
 } from "@/lib/financeiro-controle-rateio";
+import { openCustoAnexo } from "@/lib/financeiro-controle-service";
 
 interface ControleCalendarioCustosProps {
 	custos: CustoFinanceiro[];
@@ -60,9 +64,14 @@ interface ControleCalendarioCustosProps {
 	) => void;
 	onSelectDiaParaFaturamento: (
 		diaIso: string,
-		loja: StoreIdWithGeral
+		loja: StoreIdWithGeral,
+		isExtra?: boolean
 	) => void;
 	onEditCusto?: (custo: CustoFinanceiro) => void;
+	onToggleCustoStatus?: (
+		custo: CustoFinanceiro,
+		newStatus: "pago" | "pendente"
+	) => Promise<void> | void;
 	onDeleteCusto?: (id: string) => void;
 	onEditFaturamento?: (faturamento: FaturamentoFinanceiro) => void;
 	onDeleteFaturamento?: (id: string) => void;
@@ -119,13 +128,15 @@ const formatCurrency = (val: number) => {
 
 const formatCellCurrency = (val: number) => {
 	if (!val || val === 0) return "-";
-	if (val >= 100000) {
-		return `R$ ${(val / 1000).toLocaleString("pt-BR", { maximumFractionDigits: 0 })}k`;
+	const abs = Math.abs(val);
+	const sign = val < 0 ? "-" : "";
+	if (abs >= 100000) {
+		return `${sign}R$ ${(abs / 1000).toLocaleString("pt-BR", { maximumFractionDigits: 0 })}k`;
 	}
-	if (val >= 10000) {
-		return `R$ ${(val / 1000).toLocaleString("pt-BR", { maximumFractionDigits: 1 })}k`;
+	if (abs >= 10000) {
+		return `${sign}R$ ${(abs / 1000).toLocaleString("pt-BR", { maximumFractionDigits: 1 })}k`;
 	}
-	return `R$ ${Math.round(val).toLocaleString("pt-BR")}`;
+	return `${sign}R$ ${Math.round(abs).toLocaleString("pt-BR")}`;
 };
 
 export default function ControleCalendarioCustos({
@@ -147,6 +158,7 @@ export default function ControleCalendarioCustos({
 	onSelectDiaParaCusto,
 	onSelectDiaParaFaturamento,
 	onEditCusto,
+	onToggleCustoStatus,
 	onDeleteCusto,
 	onEditFaturamento,
 	onDeleteFaturamento,
@@ -373,6 +385,7 @@ export default function ControleCalendarioCustos({
 		const fats: Record<number, number> = {};
 		const balances: Record<number, number> = {};
 		let extraCosts = 0;
+		let extraFats = 0;
 
 		for (let d = 1; d <= daysInMonth; d++) {
 			costs[d] = 0;
@@ -387,6 +400,10 @@ export default function ControleCalendarioCustos({
 		});
 
 		monthFaturamentos.forEach((f) => {
+			if (f.isExtra) {
+				extraFats += f.valorTotal || 0;
+				return;
+			}
 			let dayNum = 1;
 			if (f.data && f.data.startsWith(localMesAno)) {
 				const dayPart = parseInt(f.data.split("-")[2], 10);
@@ -401,7 +418,9 @@ export default function ControleCalendarioCustos({
 			balances[d] = fats[d] - costs[d];
 		}
 
-		return { costs, fats, balances, extraCosts };
+		const extraBalance = extraFats - extraCosts;
+
+		return { costs, fats, balances, extraCosts, extraFats, extraBalance };
 	}, [daysInMonth, custoMatrix, monthFaturamentos, localMesAno]);
 
 	// 5. Totais do Mês por Categoria (inclui dias 1..daysInMonth + custos extras)
@@ -417,10 +436,10 @@ export default function ControleCalendarioCustos({
 		return totals;
 	}, [custoMatrix, daysInMonth]);
 
-	// 6. Totais Consolidados Gerais do Mês (inclui custos diários + custos extras)
+	// 6. Totais Consolidados Gerais do Mês (inclui custos/faturamentos diários + extras)
 	const grandTotals = useMemo(() => {
 		let totalCost = dailyTotals.extraCosts || 0;
-		let totalFat = 0;
+		let totalFat = dailyTotals.extraFats || 0;
 
 		for (let d = 1; d <= daysInMonth; d++) {
 			totalCost += dailyTotals.costs[d] || 0;
@@ -452,6 +471,26 @@ export default function ControleCalendarioCustos({
 		isExtra?: boolean;
 	} | null>(null);
 
+	// Modal de Escolha para Faturamento Extra
+	const [fatChoiceModal, setFatChoiceModal] = useState<{
+		item: FaturamentoFinanceiro;
+		diaIso: string;
+		loja: StoreIdWithGeral;
+		isExtra?: boolean;
+	} | null>(null);
+
+	const [togglingStatusId, setTogglingStatusId] = useState<string | null>(null);
+
+	const handleToggleStatus = async (custo: CustoFinanceiro, newStatus: "pago" | "pendente") => {
+		if (!onToggleCustoStatus) return;
+		setTogglingStatusId(custo.id);
+		try {
+			await onToggleCustoStatus(custo, newStatus);
+		} finally {
+			setTogglingStatusId(null);
+		}
+	};
+
 	const handleOpenDayModal = (dayNum: number, cat?: CategoriaCusto) => {
 		const diaIso = `${ano}-${String(mes).padStart(2, "0")}-${String(dayNum).padStart(2, "0")}`;
 		setSelectedDayInfo({
@@ -479,7 +518,7 @@ export default function ControleCalendarioCustos({
 			localLoja === "todas" ? "geral" : (localLoja as StoreIdWithGeral);
 
 		if (items.length === 1 && onEditCusto) {
-			// Se já existe custo cadastrado, abre opção para escolher entre editar ou inserir novo custo
+			// Se já existe custo cadastrado, abre opção para escolher entre editar, marcar pago ou inserir novo custo
 			setCustoChoiceModal({
 				item: items[0],
 				diaIso,
@@ -526,6 +565,7 @@ export default function ControleCalendarioCustos({
 			localLoja === "todas" ? "geral" : (localLoja as StoreIdWithGeral);
 
 		const dayFats = monthFaturamentos.filter((f) => {
+			if (f.isExtra) return false;
 			if (f.data) return f.data === diaIso;
 			return d === 1;
 		});
@@ -538,7 +578,28 @@ export default function ControleCalendarioCustos({
 			handleOpenDayModal(d);
 		} else {
 			// Se não houver, abre diretamente o modal de novo faturamento para o dia
-			onSelectDiaParaFaturamento(diaIso, targetLoja);
+			onSelectDiaParaFaturamento(diaIso, targetLoja, false);
+		}
+	};
+
+	const handleCellExtraFaturamentoClick = () => {
+		const diaIso = `${ano}-${String(mes).padStart(2, "0")}-01`;
+		const targetLoja: StoreIdWithGeral =
+			localLoja === "todas" ? "geral" : (localLoja as StoreIdWithGeral);
+
+		const extraFats = monthFaturamentos.filter((f) => !!f.isExtra);
+
+		if (extraFats.length === 1 && onEditFaturamento) {
+			setFatChoiceModal({
+				item: extraFats[0],
+				diaIso,
+				loja: targetLoja,
+				isExtra: true,
+			});
+		} else if (extraFats.length > 1) {
+			handleOpenExtraModal();
+		} else {
+			onSelectDiaParaFaturamento(diaIso, targetLoja, true);
 		}
 	};
 
@@ -556,14 +617,21 @@ export default function ControleCalendarioCustos({
 		}
 		return monthCustos.filter((c) => {
 			if (c.isExtra) return false;
+			if (selectedDayInfo.categoriaPre && c.categoria !== selectedDayInfo.categoriaPre) {
+				return false;
+			}
 			if (c.data) return c.data === selectedDayInfo.diaIso;
 			return selectedDayInfo.dayNum === 1;
 		});
 	}, [selectedDayInfo, monthCustos]);
 
 	const selectedDayFats = useMemo(() => {
-		if (!selectedDayInfo || selectedDayInfo.isExtra) return [];
+		if (!selectedDayInfo) return [];
+		if (selectedDayInfo.isExtra) {
+			return monthFaturamentos.filter((f) => !!f.isExtra);
+		}
 		return monthFaturamentos.filter((f) => {
+			if (f.isExtra) return false;
 			if (f.data) return f.data === selectedDayInfo.diaIso;
 			return selectedDayInfo.dayNum === 1;
 		});
@@ -806,9 +874,9 @@ export default function ControleCalendarioCustos({
 						</h4>
 						<div className="flex items-center gap-2 mt-1">
 							<span className="inline-flex items-center gap-0.5 text-[11px] font-bold text-emerald-600 dark:text-emerald-400">
-								<ArrowUpRight size={12} /> {displayFatCount} registros
+								<ArrowUpRight size={12} /> 	Receita Total
 							</span>
-							<span className="text-[11px] text-slate-400">no período</span>
+							
 						</div>
 					</div>
 				</div>
@@ -831,7 +899,7 @@ export default function ControleCalendarioCustos({
 							<span className="inline-flex items-center gap-0.5 text-[11px] font-bold text-rose-600 dark:text-rose-400">
 								{displayPercentCusto.toFixed(1)}% do faturamento
 							</span>
-							<span className="text-[11px] text-slate-400">({displayCustoCount} lançamentos)</span>
+							
 						</div>
 					</div>
 				</div>
@@ -1021,13 +1089,16 @@ export default function ControleCalendarioCustos({
 									{/* Colunas dos Dias do Mês */}
 									{daysArray.map((d) => {
 										const cellData = custoMatrix[catKey]?.[d];
+										const items = cellData?.items || [];
 										const val = cellData?.total || 0;
-										const itemCount = cellData?.items?.length || 0;
-										const hasRateio = cellData?.items?.some((it) => it.isRateio) ?? false;
+										const itemCount = items.length;
+										const hasUnpaid = items.some((it) => it.status === "pendente");
+										const hasRateio = items.some((it) => it.isRateio) ?? false;
 										const rateioPctTooltip =
-											hasRateio && cellData?.items?.[0]?.rateioPercent !== undefined
-												? ` (Rateio ${cellData.items[0].rateioPercent.toFixed(1).replace(".", ",")}% sobre Matriz)`
+											hasRateio && items[0]?.rateioPercent !== undefined
+												? ` (Rateio ${items[0].rateioPercent.toFixed(1).replace(".", ",")}% sobre Matriz)`
 												: "";
+										const unpaidTooltip = hasUnpaid ? " — Contém custo A Pagar" : "";
 										const diaIso = `${ano}-${String(mes).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
 										const isToday = diaIso === todayIso;
 										const isColHovered = hoveredCell.colDay === d;
@@ -1040,23 +1111,43 @@ export default function ControleCalendarioCustos({
 												onMouseEnter={() => setHoveredCell({ rowKey: catKey, colDay: d })}
 												title={`${cfg.label} no Dia ${String(d).padStart(2, "0")}: ${
 													val > 0 ? formatCurrency(val) : "Nenhum custo"
-												}${rateioPctTooltip} (Clique para lançar ou editar custo)`}
+												}${rateioPctTooltip}${unpaidTooltip} (Clique para lançar ou editar custo)`}
 												className={`border-r border-slate-100 dark:border-slate-800 p-1.5 text-center cursor-pointer transition-all duration-150 ${
-													isIntersected
+													hasUnpaid
+														? isIntersected
+															? "bg-red-200/90 dark:bg-red-900/75 ring-2 ring-inset ring-red-500 scale-[1.03] shadow-xs z-10"
+															: isRowHovered || isColHovered
+															? "bg-red-100/80 dark:bg-red-950/60"
+															: "bg-red-100/55 dark:bg-red-950/35"
+														: isIntersected
 														? "bg-blue-200/90 dark:bg-blue-900/80 ring-2 ring-inset ring-blue-500 scale-[1.03] shadow-xs z-10"
 														: isRowHovered || isColHovered
 														? "bg-blue-100/60 dark:bg-blue-950/45"
 														: isToday
 														? "bg-blue-50/30 dark:bg-blue-950/20"
 														: ""
-												} hover:bg-blue-200/80 dark:hover:bg-blue-900/70 active:scale-95`}>
+												} ${
+													hasUnpaid
+														? "hover:bg-red-200/70 dark:hover:bg-red-900/65"
+														: "hover:bg-blue-200/80 dark:hover:bg-blue-900/70"
+												} active:scale-95`}>
 												{val > 0 ? (
 													<div className="flex flex-col items-center justify-center">
-														<span className="font-black text-slate-900 dark:text-slate-100 text-xs leading-tight">
+														<span
+															className={`font-black text-xs leading-tight ${
+																hasUnpaid
+																	? "text-red-600 dark:text-red-400"
+																	: "text-slate-900 dark:text-slate-100"
+															}`}>
 															{formatCellCurrency(val)}
 														</span>
 														{itemCount > 1 && (
-															<span className="text-[10px] text-slate-400 leading-none mt-0.5">
+															<span
+																className={`text-[10px] leading-none mt-0.5 font-bold ${
+																	hasUnpaid
+																		? "text-red-500/80 dark:text-red-400/80"
+																		: "text-slate-400"
+																}`}>
 																{itemCount}x
 															</span>
 														)}
@@ -1073,13 +1164,16 @@ export default function ControleCalendarioCustos({
 									{/* Coluna Penúltima: Custos Extras da Categoria */}
 									{(() => {
 										const extraData = custoMatrix[catKey]?.extra;
+										const extraItems = extraData?.items || [];
 										const val = extraData?.total || 0;
-										const itemCount = extraData?.items?.length || 0;
-										const hasRateio = extraData?.items?.some((it) => it.isRateio) ?? false;
+										const itemCount = extraItems.length;
+										const hasUnpaid = extraItems.some((it) => it.status === "pendente");
+										const hasRateio = extraItems.some((it) => it.isRateio) ?? false;
 										const rateioPctTooltip =
-											hasRateio && extraData?.items?.[0]?.rateioPercent !== undefined
-												? ` (Rateio ${extraData.items[0].rateioPercent.toFixed(1).replace(".", ",")}% sobre Matriz)`
+											hasRateio && extraItems[0]?.rateioPercent !== undefined
+												? ` (Rateio ${extraItems[0].rateioPercent.toFixed(1).replace(".", ",")}% sobre Matriz)`
 												: "";
+										const unpaidTooltip = hasUnpaid ? " — Contém custo A Pagar" : "";
 										const isColHovered = hoveredCell.colDay === "extra";
 										const isIntersected = isRowHovered && isColHovered;
 
@@ -1089,21 +1183,41 @@ export default function ControleCalendarioCustos({
 												onMouseEnter={() => setHoveredCell({ rowKey: catKey, colDay: "extra" })}
 												title={`${cfg.label} (Custos Extras): ${
 													val > 0 ? formatCurrency(val) : "Nenhum custo extra"
-												}${rateioPctTooltip} (Clique para lançar ou editar custo extra)`}
+												}${rateioPctTooltip}${unpaidTooltip} (Clique para lançar ou editar custo extra)`}
 												className={`border-r border-slate-100 dark:border-slate-800 p-1.5 text-center cursor-pointer transition-all duration-150 ${
-													isIntersected
+													hasUnpaid
+														? isIntersected
+															? "bg-red-200/90 dark:bg-red-900/75 ring-2 ring-inset ring-red-500 scale-[1.03] shadow-xs z-10"
+															: isRowHovered || isColHovered
+															? "bg-red-100/80 dark:bg-red-950/60"
+															: "bg-red-100/55 dark:bg-red-950/35"
+														: isIntersected
 														? "bg-purple-200/90 dark:bg-purple-900/80 ring-2 ring-inset ring-purple-500 scale-[1.03] shadow-xs z-10"
 														: isRowHovered || isColHovered
 														? "bg-purple-100/60 dark:bg-purple-950/45"
 														: "bg-purple-50/20 dark:bg-purple-950/10"
-												} hover:bg-purple-200/80 dark:hover:bg-purple-900/70 active:scale-95`}>
+												} ${
+													hasUnpaid
+														? "hover:bg-red-200/70 dark:hover:bg-red-900/65"
+														: "hover:bg-purple-200/80 dark:hover:bg-purple-900/70"
+												} active:scale-95`}>
 												{val > 0 ? (
 													<div className="flex flex-col items-center justify-center">
-														<span className="font-black text-slate-900 dark:text-slate-100 text-xs leading-tight">
+														<span
+															className={`font-black text-xs leading-tight ${
+																hasUnpaid
+																	? "text-red-600 dark:text-red-400"
+																	: "text-slate-900 dark:text-slate-100"
+															}`}>
 															{formatCellCurrency(val)}
 														</span>
 														{itemCount > 1 && (
-															<span className="text-[10px] text-purple-600 dark:text-purple-400 font-bold leading-none mt-0.5">
+															<span
+																className={`text-[10px] font-bold leading-none mt-0.5 ${
+																	hasUnpaid
+																		? "text-red-500/80 dark:text-red-400/80"
+																		: "text-purple-600 dark:text-purple-400"
+																}`}>
 																{itemCount}x
 															</span>
 														)}
@@ -1132,14 +1246,9 @@ export default function ControleCalendarioCustos({
 					</tbody>
 
 					{/* Rodapé da Tabela: Linhas de Somatório Diário */}
-					<tfoot className="sticky bottom-0 z-30 border-t-2 border-slate-200 dark:border-slate-800">
+					<tfoot className="sticky bottom-0 z-30 border-t-2 border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
 						{/* Linha 1: Total de Custos do Dia */}
-						<tr
-							className={`font-black transition-colors duration-150 ${
-								hoveredCell.rowKey === "total_custos"
-									? "bg-blue-100/70 dark:bg-blue-950/60"
-									: "bg-slate-50 dark:bg-slate-900"
-							}`}>
+						<tr className="font-black bg-white dark:bg-slate-900 transition-colors duration-150">
 							<td
 								onMouseEnter={() => setHoveredCell({ rowKey: "total_custos", colDay: null })}
 								className={`sticky left-0 z-40 border-r border-b border-slate-200 dark:border-slate-800 p-2.5 shadow-[2px_0_4px_-1px_rgba(0,0,0,0.06)] text-slate-900 dark:text-slate-100 text-sm font-black transition-colors duration-150 ${
@@ -1155,8 +1264,6 @@ export default function ControleCalendarioCustos({
 
 							{daysArray.map((d) => {
 								const val = dailyTotals.costs[d] || 0;
-								const diaIso = `${ano}-${String(mes).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
-								const isToday = diaIso === todayIso;
 								const isColHovered = hoveredCell.colDay === d;
 								const isRowHovered = hoveredCell.rowKey === "total_custos";
 								const isIntersected = isRowHovered && isColHovered;
@@ -1169,15 +1276,11 @@ export default function ControleCalendarioCustos({
 										title={`Total de custos no Dia ${d}: ${formatCurrency(val)}`}
 										className={`border-r border-b border-slate-200/80 dark:border-slate-800 p-1.5 text-center cursor-pointer transition-colors duration-150 ${
 											isIntersected
-												? "bg-blue-300/90 dark:bg-blue-800/90 ring-2 ring-inset ring-blue-500 scale-[1.03]"
+												? "bg-blue-200/90 dark:bg-blue-900/80 ring-2 ring-inset ring-blue-500 scale-[1.03]"
 												: isRowHovered || isColHovered
-												? "bg-blue-200/80 dark:bg-blue-900/70"
-												: isToday
-												? "bg-blue-50/80 dark:bg-blue-950/40"
-												: val > 0
-												? "bg-rose-50/40 dark:bg-rose-950/20"
-												: "bg-slate-50/40 dark:bg-slate-900/40"
-										} hover:bg-rose-100/60 dark:hover:bg-rose-900/30`}>
+												? "bg-blue-100/60 dark:bg-blue-950/45"
+												: "bg-white dark:bg-slate-900"
+										} hover:bg-blue-200/80 dark:hover:bg-blue-900/70`}>
 										<span
 											className={`text-xs font-black ${
 												val > 0
@@ -1204,17 +1307,15 @@ export default function ControleCalendarioCustos({
 										title={`Total de Custos Extras no Mês: ${formatCurrency(val)}`}
 										className={`border-r border-b border-slate-200/80 dark:border-slate-800 p-1.5 text-center cursor-pointer transition-colors duration-150 ${
 											isIntersected
-												? "bg-purple-300/90 dark:bg-purple-800/90 ring-2 ring-inset ring-purple-500 scale-[1.03]"
+												? "bg-blue-200/90 dark:bg-blue-900/80 ring-2 ring-inset ring-blue-500 scale-[1.03]"
 												: isRowHovered || isColHovered
-												? "bg-purple-200/80 dark:bg-purple-900/70"
-												: val > 0
-												? "bg-purple-50/40 dark:bg-purple-950/20"
-												: "bg-slate-50/40 dark:bg-slate-900/40"
-										} hover:bg-purple-100/60 dark:hover:bg-purple-900/30`}>
+												? "bg-blue-100/60 dark:bg-blue-950/45"
+												: "bg-white dark:bg-slate-900"
+										} hover:bg-blue-200/80 dark:hover:bg-blue-900/70`}>
 										<span
 											className={`text-xs font-black ${
 												val > 0
-													? "text-purple-900 dark:text-purple-200"
+													? "text-slate-900 dark:text-slate-100"
 													: "text-slate-300 dark:text-slate-600 font-normal"
 											}`}>
 											{formatCellCurrency(val)}
@@ -1223,22 +1324,18 @@ export default function ControleCalendarioCustos({
 								);
 							})()}
 
-							<td className={`sticky right-0 z-40 border-l border-b border-slate-200 dark:border-slate-800 p-2.5 text-right font-black shadow-[-2px_0_4px_-1px_rgba(0,0,0,0.06)] text-slate-900 dark:text-slate-100 text-xs sm:text-sm transition-colors duration-150 ${
-								hoveredCell.rowKey === "total_custos"
-									? "bg-blue-200 dark:bg-blue-900"
-									: "bg-slate-100 dark:bg-slate-900"
-							}`}>
+							<td
+								className={`sticky right-0 z-40 border-l border-b border-slate-200 dark:border-slate-800 p-2.5 text-right font-black shadow-[-2px_0_4px_-1px_rgba(0,0,0,0.06)] text-slate-900 dark:text-slate-100 text-xs sm:text-sm transition-colors duration-150 ${
+									hoveredCell.rowKey === "total_custos"
+										? "bg-blue-200 dark:bg-blue-900"
+										: "bg-white dark:bg-slate-900"
+								}`}>
 								{formatCurrency(grandTotals.custos)}
 							</td>
 						</tr>
 
 						{/* Linha 2: Faturamento do Dia */}
-						<tr
-							className={`font-black transition-colors duration-150 ${
-								hoveredCell.rowKey === "faturamento"
-									? "bg-blue-100/70 dark:bg-blue-950/60"
-									: "bg-slate-50 dark:bg-slate-900"
-							}`}>
+						<tr className="font-black bg-white dark:bg-slate-900 transition-colors duration-150">
 							<td
 								onMouseEnter={() => setHoveredCell({ rowKey: "faturamento", colDay: null })}
 								className={`sticky left-0 z-40 border-r border-b border-slate-200 dark:border-slate-800 p-2.5 shadow-[2px_0_4px_-1px_rgba(0,0,0,0.06)] text-slate-900 dark:text-slate-100 text-sm font-black transition-colors duration-150 ${
@@ -1254,8 +1351,6 @@ export default function ControleCalendarioCustos({
 
 							{daysArray.map((d) => {
 								const val = dailyTotals.fats[d] || 0;
-								const diaIso = `${ano}-${String(mes).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
-								const isToday = diaIso === todayIso;
 								const isColHovered = hoveredCell.colDay === d;
 								const isRowHovered = hoveredCell.rowKey === "faturamento";
 								const isIntersected = isRowHovered && isColHovered;
@@ -1268,19 +1363,15 @@ export default function ControleCalendarioCustos({
 										title={`Faturamento no Dia ${d}: ${formatCurrency(val)} (Clique para abrir faturamento)`}
 										className={`border-r border-b border-slate-200/80 dark:border-slate-800 p-1.5 text-center cursor-pointer transition-colors duration-150 ${
 											isIntersected
-												? "bg-blue-300/90 dark:bg-blue-800/90 ring-2 ring-inset ring-blue-500 scale-[1.03]"
+												? "bg-blue-200/90 dark:bg-blue-900/80 ring-2 ring-inset ring-blue-500 scale-[1.03]"
 												: isRowHovered || isColHovered
-												? "bg-blue-200/80 dark:bg-blue-900/70"
-												: isToday
-												? "bg-blue-50/80 dark:bg-blue-950/40"
-												: val > 0
-												? "bg-emerald-50/40 dark:bg-emerald-950/20"
-												: "bg-slate-50/40 dark:bg-slate-900/40"
-										} hover:bg-emerald-100/60 dark:hover:bg-emerald-900/30`}>
+												? "bg-blue-100/60 dark:bg-blue-950/45"
+												: "bg-white dark:bg-slate-900"
+										} hover:bg-blue-200/80 dark:hover:bg-blue-900/70`}>
 										<span
 											className={`text-xs font-black ${
 												val > 0
-													? "text-emerald-600 dark:text-emerald-400"
+													? "text-blue-600 dark:text-blue-400"
 													: "text-slate-300 dark:text-slate-600 font-normal"
 											}`}>
 											{formatCellCurrency(val)}
@@ -1289,35 +1380,49 @@ export default function ControleCalendarioCustos({
 								);
 							})}
 
-							{/* Coluna Penúltima: Faturamento em Extras (não aplicável) */}
-							<td
-								onMouseEnter={() => setHoveredCell({ rowKey: "faturamento", colDay: "extra" })}
-								className={`border-r border-b border-slate-200/80 dark:border-slate-800 p-1.5 text-center transition-colors duration-150 ${
-									hoveredCell.colDay === "extra" && hoveredCell.rowKey === "faturamento"
-										? "bg-purple-200/80 dark:bg-purple-900/70"
-										: hoveredCell.colDay === "extra" || hoveredCell.rowKey === "faturamento"
-										? "bg-blue-100/50 dark:bg-blue-950/40"
-										: "bg-slate-50/40 dark:bg-slate-900/40"
-								}`}>
-								<span className="text-slate-300 dark:text-slate-600 font-normal">-</span>
-							</td>
+							{/* Coluna Penúltima: Faturamento Extra do Mês */}
+							{(() => {
+								const val = dailyTotals.extraFats || 0;
+								const isColHovered = hoveredCell.colDay === "extra";
+								const isRowHovered = hoveredCell.rowKey === "faturamento";
+								const isIntersected = isRowHovered && isColHovered;
 
-							<td className={`sticky right-0 z-40 border-l border-b border-slate-200 dark:border-slate-800 p-2.5 text-right font-black shadow-[-2px_0_4px_-1px_rgba(0,0,0,0.06)] text-emerald-600 dark:text-emerald-400 text-xs sm:text-sm transition-colors duration-150 ${
-								hoveredCell.rowKey === "faturamento"
-									? "bg-blue-200 dark:bg-blue-900"
-									: "bg-slate-100 dark:bg-slate-900"
-							}`}>
+								return (
+									<td
+										onClick={handleCellExtraFaturamentoClick}
+										onMouseEnter={() => setHoveredCell({ rowKey: "faturamento", colDay: "extra" })}
+										title={`Faturamento Extra no Mês: ${formatCurrency(val)} (Clique para lançar ou gerenciar faturamento extra)`}
+										className={`border-r border-b border-slate-200/80 dark:border-slate-800 p-1.5 text-center cursor-pointer transition-colors duration-150 ${
+											isIntersected
+												? "bg-blue-200/90 dark:bg-blue-900/80 ring-2 ring-inset ring-blue-500 scale-[1.03]"
+												: isRowHovered || isColHovered
+												? "bg-blue-100/60 dark:bg-blue-950/45"
+												: "bg-white dark:bg-slate-900"
+										} hover:bg-blue-200/80 dark:hover:bg-blue-900/70`}>
+										<span
+											className={`text-xs font-black ${
+												val > 0
+													? "text-blue-600 dark:text-blue-400"
+													: "text-slate-300 dark:text-slate-600 font-normal"
+											}`}>
+											{formatCellCurrency(val)}
+										</span>
+									</td>
+								);
+							})()}
+
+							<td
+								className={`sticky right-0 z-40 border-l border-b border-slate-200 dark:border-slate-800 p-2.5 text-right font-black shadow-[-2px_0_4px_-1px_rgba(0,0,0,0.06)] text-blue-600 dark:text-blue-400 text-xs sm:text-sm transition-colors duration-150 ${
+									hoveredCell.rowKey === "faturamento"
+										? "bg-blue-200 dark:bg-blue-900"
+										: "bg-white dark:bg-slate-900"
+								}`}>
 								{formatCurrency(grandTotals.faturamento)}
 							</td>
 						</tr>
 
 						{/* Linha 3: Saldo Diário (Líquido) */}
-						<tr
-							className={`font-black transition-colors duration-150 ${
-								hoveredCell.rowKey === "saldo_diario"
-									? "bg-blue-100/70 dark:bg-blue-950/60"
-									: "bg-slate-100 dark:bg-slate-900"
-							}`}>
+						<tr className="font-black bg-white dark:bg-slate-900 transition-colors duration-150">
 							<td
 								onMouseEnter={() => setHoveredCell({ rowKey: "saldo_diario", colDay: null })}
 								className={`sticky left-0 z-40 border-r border-slate-200 dark:border-slate-800 p-2.5 shadow-[2px_0_4px_-1px_rgba(0,0,0,0.06)] text-slate-900 dark:text-slate-100 text-sm font-black transition-colors duration-150 ${
@@ -1335,8 +1440,6 @@ export default function ControleCalendarioCustos({
 								const val = dailyTotals.balances[d] || 0;
 								const hasMov =
 									(dailyTotals.fats[d] || 0) > 0 || (dailyTotals.costs[d] || 0) > 0;
-								const diaIso = `${ano}-${String(mes).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
-								const isToday = diaIso === todayIso;
 								const isColHovered = hoveredCell.colDay === d;
 								const isRowHovered = hoveredCell.rowKey === "saldo_diario";
 								const isIntersected = isRowHovered && isColHovered;
@@ -1349,22 +1452,16 @@ export default function ControleCalendarioCustos({
 										title={`Saldo no Dia ${d}: ${formatCurrency(val)}`}
 										className={`border-r border-slate-200/80 dark:border-slate-800 p-1.5 text-center cursor-pointer transition-colors duration-150 ${
 											isIntersected
-												? "bg-blue-300/90 dark:bg-blue-800/90 ring-2 ring-inset ring-blue-500 scale-[1.03]"
+												? "bg-blue-200/90 dark:bg-blue-900/80 ring-2 ring-inset ring-blue-500 scale-[1.03]"
 												: isRowHovered || isColHovered
-												? "bg-blue-200/80 dark:bg-blue-900/70"
-												: isToday
-												? "bg-blue-100/70 dark:bg-blue-950/50"
-												: hasMov
-												? val >= 0
-													? "bg-blue-50/40 dark:bg-blue-950/20"
-													: "bg-red-50/40 dark:bg-red-950/20"
-												: "bg-slate-100/40 dark:bg-slate-900/40"
-										} hover:bg-blue-100/50 dark:hover:bg-blue-900/30`}>
-										{hasMov ? (
+												? "bg-blue-100/60 dark:bg-blue-950/45"
+												: "bg-white dark:bg-slate-900"
+										} hover:bg-blue-200/80 dark:hover:bg-blue-900/70`}>
+										{hasMov && val !== 0 ? (
 											<span
 												className={`text-xs font-black ${
-													val >= 0
-														? "text-blue-600 dark:text-blue-400"
+													val > 0
+														? "text-emerald-600 dark:text-emerald-400"
 														: "text-red-600 dark:text-red-400"
 												}`}>
 												{formatCellCurrency(val)}
@@ -1378,9 +1475,11 @@ export default function ControleCalendarioCustos({
 								);
 							})}
 
-							{/* Coluna Penúltima: Impacto dos Custos Extras no Saldo */}
+							{/* Coluna Penúltima: Saldo Extra (Faturamento Extra - Total Custos Extras) */}
 							{(() => {
-								const val = dailyTotals.extraCosts || 0;
+								const val = dailyTotals.extraBalance || 0;
+								const hasMov =
+									(dailyTotals.extraFats || 0) > 0 || (dailyTotals.extraCosts || 0) > 0;
 								const isColHovered = hoveredCell.colDay === "extra";
 								const isRowHovered = hoveredCell.rowKey === "saldo_diario";
 								const isIntersected = isRowHovered && isColHovered;
@@ -1390,22 +1489,25 @@ export default function ControleCalendarioCustos({
 										onClick={() => handleOpenExtraModal()}
 										onMouseEnter={() => setHoveredCell({ rowKey: "saldo_diario", colDay: "extra" })}
 										title={
-											val > 0
-												? `Déficit gerado por Custos Extras: -${formatCurrency(val)}`
-												: "Nenhum custo extra alocado"
+											hasMov
+												? `Saldo Extra no Mês (Faturamento Extra - Custos Extras): ${formatCurrency(val)}`
+												: "Nenhum movimento extra alocado"
 										}
 										className={`border-r border-slate-200/80 dark:border-slate-800 p-1.5 text-center cursor-pointer transition-colors duration-150 ${
 											isIntersected
-												? "bg-purple-300/90 dark:bg-purple-800/90 ring-2 ring-inset ring-purple-500 scale-[1.03]"
+												? "bg-blue-200/90 dark:bg-blue-900/80 ring-2 ring-inset ring-blue-500 scale-[1.03]"
 												: isRowHovered || isColHovered
-												? "bg-purple-200/80 dark:bg-purple-900/70"
-												: val > 0
-												? "bg-red-50/40 dark:bg-red-950/20"
-												: "bg-slate-100/40 dark:bg-slate-900/40"
-										} hover:bg-purple-100/50 dark:hover:bg-purple-900/30`}>
-										{val > 0 ? (
-											<span className="text-xs font-black text-red-600 dark:text-red-400">
-												{formatCellCurrency(-val)}
+												? "bg-blue-100/60 dark:bg-blue-950/45"
+												: "bg-white dark:bg-slate-900"
+										} hover:bg-blue-200/80 dark:hover:bg-blue-900/70`}>
+										{hasMov && val !== 0 ? (
+											<span
+												className={`text-xs font-black ${
+													val > 0
+														? "text-emerald-600 dark:text-emerald-400"
+														: "text-red-600 dark:text-red-400"
+												}`}>
+												{formatCellCurrency(val)}
 											</span>
 										) : (
 											<span className="text-slate-300 dark:text-slate-600 font-normal">-</span>
@@ -1418,11 +1520,13 @@ export default function ControleCalendarioCustos({
 								className={`sticky right-0 z-40 border-l border-slate-200 dark:border-slate-800 p-2.5 text-right font-black text-xs sm:text-sm shadow-[-2px_0_4px_-1px_rgba(0,0,0,0.06)] transition-colors duration-150 ${
 									hoveredCell.rowKey === "saldo_diario"
 										? "bg-blue-200 dark:bg-blue-900"
-										: "bg-slate-100 dark:bg-slate-900"
+										: "bg-white dark:bg-slate-900"
 								} ${
-									grandTotals.saldo >= 0
-										? "text-blue-600 dark:text-blue-400"
-										: "text-red-600 dark:text-red-400"
+									grandTotals.saldo > 0
+										? "text-emerald-600 dark:text-emerald-400"
+										: grandTotals.saldo < 0
+										? "text-red-600 dark:text-red-400"
+										: "text-slate-900 dark:text-slate-100"
 								}`}>
 								{formatCurrency(grandTotals.saldo)}
 							</td>
@@ -1448,7 +1552,7 @@ export default function ControleCalendarioCustos({
 								<div>
 									<h3 className="text-base font-black text-slate-900 dark:text-slate-100">
 										{selectedDayInfo.isExtra
-											? `Custos Extras de ${MESES[mes - 1]} de ${ano}`
+											? `Extras de ${MESES[mes - 1]} de ${ano}`
 											: `Dia ${String(selectedDayInfo.dayNum).padStart(2, "0")} de ${MESES[mes - 1]} de ${ano}`}
 									</h3>
 									<div className="flex items-center gap-2 mt-0.5">
@@ -1483,31 +1587,47 @@ export default function ControleCalendarioCustos({
 							{/* Botões de Ação para Adicionar */}
 							<div>
 								<span className="text-xs font-black text-slate-400 uppercase tracking-wider block mb-2.5">
-									{selectedDayInfo.isExtra ? "Lançar Custo Extra" : "Lançar para este dia"}
+									{selectedDayInfo.isExtra ? "Lançar Extra no Mês" : "Lançar para este dia"}
 								</span>
 								{selectedDayInfo.isExtra ? (
-									<button
-										type="button"
-										onClick={() => {
-											if (!selectedDayInfo) return;
-											const targetLoja: StoreIdWithGeral =
-												localLoja === "todas" ? "geral" : (localLoja as StoreIdWithGeral);
-											onSelectDiaParaCusto(
-												selectedDayInfo.diaIso,
-												targetLoja,
-												selectedDayInfo.categoriaPre,
-												true
-											);
-											setSelectedDayInfo(null);
-										}}
-										className="w-full p-3.5 rounded-2xl bg-purple-600 hover:bg-purple-700 text-white font-black text-xs tracking-wide shadow-md shadow-purple-600/20 transition-all flex items-center justify-center gap-2 active:scale-95 text-center cursor-pointer">
-										<Plus size={16} />
-										<span>
-											{selectedDayInfo.categoriaPre
-												? `+ Novo Custo Extra (${CATEGORIAS_CUSTO_CONFIG[selectedDayInfo.categoriaPre]?.label})`
-												: "+ Novo Custo Extra"}
-										</span>
-									</button>
+									<div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+										<button
+											type="button"
+											onClick={() => {
+												if (!selectedDayInfo) return;
+												const targetLoja: StoreIdWithGeral =
+													localLoja === "todas" ? "geral" : (localLoja as StoreIdWithGeral);
+												onSelectDiaParaCusto(
+													selectedDayInfo.diaIso,
+													targetLoja,
+													selectedDayInfo.categoriaPre,
+													true
+												);
+												setSelectedDayInfo(null);
+											}}
+											className="p-3.5 rounded-2xl bg-purple-600 hover:bg-purple-700 text-white font-black text-xs tracking-wide shadow-md shadow-purple-600/20 transition-all flex items-center justify-center gap-2 active:scale-95 text-center cursor-pointer">
+											<Plus size={16} />
+											<span>
+												{selectedDayInfo.categoriaPre
+													? `Novo Custo Extra (${CATEGORIAS_CUSTO_CONFIG[selectedDayInfo.categoriaPre]?.label})`
+													: "Novo Custo Extra"}
+											</span>
+										</button>
+
+										<button
+											type="button"
+											onClick={() => {
+												if (!selectedDayInfo) return;
+												const targetLoja: StoreIdWithGeral =
+													localLoja === "todas" ? "geral" : (localLoja as StoreIdWithGeral);
+												onSelectDiaParaFaturamento(selectedDayInfo.diaIso, targetLoja, true);
+												setSelectedDayInfo(null);
+											}}
+											className="p-3.5 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs tracking-wide shadow-md shadow-emerald-600/20 transition-all flex items-center justify-center gap-2 active:scale-95 text-center cursor-pointer">
+											<Plus size={16} />
+											<span>Novo Faturamento Extra</span>
+										</button>
+									</div>
 								) : (
 									<div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
 										{/* Botão Novo Custo (Laranja Pastel) */}
@@ -1541,7 +1661,7 @@ export default function ControleCalendarioCustos({
 												if (!selectedDayInfo) return;
 												const targetLoja: StoreIdWithGeral =
 													localLoja === "todas" ? "geral" : (localLoja as StoreIdWithGeral);
-												onSelectDiaParaFaturamento(selectedDayInfo.diaIso, targetLoja);
+												onSelectDiaParaFaturamento(selectedDayInfo.diaIso, targetLoja, false);
 												setSelectedDayInfo(null);
 											}}
 											className="p-3.5 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs tracking-wide shadow-md shadow-emerald-600/20 transition-all flex items-center justify-center gap-2 active:scale-95 text-center cursor-pointer">
@@ -1554,12 +1674,33 @@ export default function ControleCalendarioCustos({
 
 							{/* Lista de Custos Registrados no Dia ou Extras */}
 							<div>
-								<div className="flex items-center justify-between mb-2">
-									<span className="text-xs font-black text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
-										<Receipt size={14} className="text-rose-500" />
-										{selectedDayInfo.isExtra ? "Custos Extras Registrados" : "Custos no Dia"} ({selectedDayCustos.length})
-									</span>
-									<span className="text-xs font-black text-rose-600 dark:text-rose-400">
+								<div className="flex items-center justify-between gap-2 mb-2">
+									<div className="flex items-center gap-2 flex-wrap">
+										<span className="text-xs font-black text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+											<Receipt size={14} className="text-rose-500" />
+											{selectedDayInfo.isExtra
+												? selectedDayInfo.categoriaPre
+													? `Custos Extras (${CATEGORIAS_CUSTO_CONFIG[selectedDayInfo.categoriaPre]?.label})`
+													: "Custos Extras Registrados"
+												: selectedDayInfo.categoriaPre
+												? `Custos de ${CATEGORIAS_CUSTO_CONFIG[selectedDayInfo.categoriaPre]?.label}`
+												: "Custos no Dia"}{" "}
+											({selectedDayCustos.length})
+										</span>
+										{selectedDayInfo.categoriaPre && (
+											<button
+												type="button"
+												onClick={() =>
+													setSelectedDayInfo((prev) =>
+														prev ? { ...prev, categoriaPre: undefined } : prev
+													)
+												}
+												className="text-[10px] font-bold text-blue-600 dark:text-blue-400 hover:underline">
+												Ver todos
+											</button>
+										)}
+									</div>
+									<span className="text-xs font-black text-rose-600 dark:text-rose-400 shrink-0">
 										{formatCurrency(
 											selectedDayCustos.reduce((acc, c) => acc + (c.valor || 0), 0)
 										)}
@@ -1570,6 +1711,9 @@ export default function ControleCalendarioCustos({
 									{selectedDayCustos.map((custo) => {
 										const cfg = CATEGORIAS_CUSTO_CONFIG[custo.categoria];
 										const originalCusto = custos.find((raw) => raw.id === custo.id) || custo;
+										const isUnpaid = custo.status === "pendente";
+										const anexosCount = custo.anexos?.length || 0;
+
 										return (
 											<div
 												key={custo.id}
@@ -1579,31 +1723,121 @@ export default function ControleCalendarioCustos({
 														setSelectedDayInfo(null);
 													}
 												}}
-												className="p-2.5 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-800/40 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors flex items-center justify-between cursor-pointer group">
+												className={`p-2.5 rounded-xl border transition-colors flex items-center justify-between gap-2 cursor-pointer group ${
+													isUnpaid
+														? "border-red-200 dark:border-red-900/60 bg-red-50/70 dark:bg-red-950/30 hover:bg-red-100/70 dark:hover:bg-red-950/50"
+														: "border-slate-200/80 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-800/40 hover:bg-slate-100 dark:hover:bg-slate-800"
+												}`}>
 												<div className="flex items-center gap-2 min-w-0">
 													<span
 														className="w-2.5 h-2.5 rounded-full shrink-0"
 														style={{ backgroundColor: cfg?.color || "#64748b" }}
 													/>
-													<div className="truncate">
-														<p className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate">
-															{custo.descricao}
-														</p>
-														<span className="text-[10px] text-slate-400 block truncate">
-															{cfg?.label} • {STORE_NAMES_EXTENDED[custo.lojaId] || custo.lojaId}
+													<div className="min-w-0">
+														<div className="flex items-center gap-1.5 flex-wrap">
+															<p
+																className={`text-xs font-bold truncate ${
+																	isUnpaid
+																		? "text-red-700 dark:text-red-300"
+																		: "text-slate-800 dark:text-slate-200"
+																}`}>
+																{custo.descricao}
+															</p>
+															{onToggleCustoStatus ? (
+																<button
+																	type="button"
+																	disabled={togglingStatusId === custo.id}
+																	title={
+																		isUnpaid
+																			? "Clique para marcar como Pago"
+																			: "Clique para marcar como A Pagar"
+																	}
+																	onClick={(e) => {
+																		e.stopPropagation();
+																		handleToggleStatus(
+																			originalCusto,
+																			isUnpaid ? "pago" : "pendente"
+																		);
+																	}}
+																	className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] font-black transition-colors shrink-0 ${
+																		isUnpaid
+																			? "bg-red-100 dark:bg-red-900/60 text-red-700 dark:text-red-300 hover:bg-emerald-100 hover:text-emerald-700 dark:hover:bg-emerald-900/60 dark:hover:text-emerald-300"
+																			: "bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 hover:bg-red-100 hover:text-red-700"
+																	}`}>
+																	{isUnpaid ? (
+																		<>
+																			<Clock size={10} />
+																			<span>A Pagar • Pagar</span>
+																		</>
+																	) : (
+																		<>
+																			<CheckCircle2 size={10} />
+																			<span>Pago</span>
+																		</>
+																	)}
+																</button>
+															) : (
+																<span
+																	className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] font-black shrink-0 ${
+																		isUnpaid
+																			? "bg-red-100 dark:bg-red-900/60 text-red-700 dark:text-red-300"
+																			: "bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300"
+																	}`}>
+																	{isUnpaid ? "A Pagar" : "Pago"}
+																</span>
+															)}
+														</div>
+														<div className="flex items-center gap-1.5 flex-wrap text-[10px] text-slate-400 mt-0.5">
+															<span className="truncate">
+																{cfg?.label} • {STORE_NAMES_EXTENDED[custo.lojaId] || custo.lojaId}
+															</span>
 															{custo.isExtra && (
-																<span className="ml-1 px-1.5 py-0.2 rounded bg-purple-100 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 font-bold">
+																<span className="px-1.5 py-0.2 rounded bg-purple-100 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 font-bold">
 																	Extra
 																</span>
 															)}
 															{custo.isRateio && custo.rateioPercent !== undefined && (
-																<> • Rateio {custo.rateioPercent.toFixed(1).replace(".", ",")}% (Total: {formatCurrency(custo.valorOriginal || 0)})</>
+																<span>
+																	• Rateio {custo.rateioPercent.toFixed(1).replace(".", ",")}% (Total: {formatCurrency(custo.valorOriginal || 0)})
+																</span>
 															)}
-														</span>
+															{anexosCount > 0 && (
+																<button
+																	type="button"
+																	onClick={(e) => {
+																		e.stopPropagation();
+																		if (custo.anexos?.[0]) {
+																			openCustoAnexo(custo.anexos[0]);
+																		}
+																	}}
+																	title="Abrir anexo"
+																	className="inline-flex items-center gap-0.5 text-blue-600 dark:text-blue-400 font-bold hover:underline">
+																	<Paperclip size={10} />
+																	<span>{anexosCount}</span>
+																</button>
+															)}
+															{custo.link && (
+																<a
+																	href={custo.link}
+																	target="_blank"
+																	rel="noopener noreferrer"
+																	onClick={(e) => e.stopPropagation()}
+																	title={custo.link}
+																	className="inline-flex items-center gap-0.5 text-blue-600 dark:text-blue-400 font-bold hover:underline">
+																	<Link2 size={10} />
+																	<span>Link</span>
+																</a>
+															)}
+														</div>
 													</div>
 												</div>
 												<div className="flex items-center gap-1.5 shrink-0">
-													<span className="text-xs font-black text-slate-900 dark:text-slate-100">
+													<span
+														className={`text-xs font-black ${
+															isUnpaid
+																? "text-red-600 dark:text-red-400"
+																: "text-slate-900 dark:text-slate-100"
+														}`}>
 														{formatCurrency(custo.valor)}
 													</span>
 													<button
@@ -1646,15 +1880,18 @@ export default function ControleCalendarioCustos({
 								</div>
 							</div>
 
-							{/* Lista de Faturamentos Registrados no Dia (Apenas em dias, não em extras) */}
-							{!selectedDayInfo.isExtra && (
+							{/* Lista de Faturamentos Registrados no Dia ou Faturamentos Extras */}
+							{(!selectedDayInfo.isExtra || !selectedDayInfo.categoriaPre) && (
 								<div>
 									<div className="flex items-center justify-between mb-2">
 										<span className="text-xs font-black text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
-											<DollarSign size={14} className="text-emerald-500" />
-											Faturamentos no Dia ({selectedDayFats.length})
+											<DollarSign size={14} className="text-blue-500" />
+											{selectedDayInfo.isExtra
+												? "Faturamentos Extras Registrados"
+												: "Faturamentos no Dia"}{" "}
+											({selectedDayFats.length})
 										</span>
-										<span className="text-xs font-black text-emerald-600 dark:text-emerald-400">
+										<span className="text-xs font-black text-blue-600 dark:text-blue-400">
 											{formatCurrency(
 												selectedDayFats.reduce((acc, f) => acc + (f.valorTotal || 0), 0)
 											)}
@@ -1673,18 +1910,28 @@ export default function ControleCalendarioCustos({
 												}}
 												className="p-2.5 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-800/40 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors flex items-center justify-between cursor-pointer group">
 												<div className="flex items-center gap-2 min-w-0">
-													<span className="w-2.5 h-2.5 rounded-full bg-emerald-500 shrink-0" />
+													<span className="w-2.5 h-2.5 rounded-full bg-blue-500 shrink-0" />
 													<div className="truncate">
 														<p className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate">
-															{fat.descricao || (fat.tipo === "discriminado" ? "Venda Discriminada" : "Faturamento Geral")}
+															{fat.descricao ||
+																(fat.tipo === "discriminado"
+																	? "Venda Discriminada"
+																	: fat.isExtra
+																	? "Faturamento Extra"
+																	: "Faturamento Geral")}
 														</p>
 														<span className="text-[10px] text-slate-400">
 															{STORE_NAMES_EXTENDED[fat.lojaId] || fat.lojaId}
+															{fat.isExtra && (
+																<span className="ml-1 px-1.5 py-0.2 rounded bg-purple-100 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 font-bold">
+																	Extra
+																</span>
+															)}
 														</span>
 													</div>
 												</div>
 												<div className="flex items-center gap-1.5 shrink-0">
-													<span className="text-xs font-black text-emerald-600 dark:text-emerald-400">
+													<span className="text-xs font-black text-blue-600 dark:text-blue-400">
 														{formatCurrency(fat.valorTotal)}
 													</span>
 													<button
@@ -1718,7 +1965,9 @@ export default function ControleCalendarioCustos({
 
 										{selectedDayFats.length === 0 && (
 											<p className="text-xs text-slate-400 italic py-2 text-center bg-slate-50/50 dark:bg-slate-800/20 rounded-xl border border-dashed border-slate-200 dark:border-slate-800">
-												Nenhum faturamento registrado neste dia.
+												{selectedDayInfo.isExtra
+													? "Nenhum faturamento extra registrado neste mês."
+													: "Nenhum faturamento registrado neste dia."}
 											</p>
 										)}
 									</div>
@@ -1739,7 +1988,7 @@ export default function ControleCalendarioCustos({
 				</div>
 			)}
 
-			{/* Modal de Escolha: Editar Custo Existente ou Inserir Novo Custo */}
+			{/* Modal de Escolha: Editar Custo Existente, Marcar como Pago ou Inserir Novo Custo */}
 			{custoChoiceModal && (
 				<div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
 					<div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl max-w-md w-full shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
@@ -1774,12 +2023,35 @@ export default function ControleCalendarioCustos({
 
 						{/* Resumo do custo atual */}
 						<div className="p-6 space-y-4">
-							<div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200/80 dark:border-slate-800 flex items-center justify-between gap-3">
-								<div className="truncate">
-									<span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
-										{custoChoiceModal.isExtra ? "Custo Extra Cadastrado" : "Custo Já Cadastrado"}
-									</span>
-									<p className="text-xs font-black text-slate-800 dark:text-slate-200 truncate mt-0.5">
+							<div
+								className={`p-3.5 rounded-2xl border flex items-center justify-between gap-3 ${
+									custoChoiceModal.item.status === "pendente"
+										? "bg-red-50/70 dark:bg-red-950/30 border-red-200/80 dark:border-red-900/50"
+										: "bg-slate-50 dark:bg-slate-800/50 border-slate-200/80 dark:border-slate-800"
+								}`}>
+								<div className="min-w-0">
+									<div className="flex items-center gap-1.5 flex-wrap">
+										<span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+											{custoChoiceModal.isExtra ? "Custo Extra Cadastrado" : "Custo Já Cadastrado"}
+										</span>
+										<span
+											className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] font-black ${
+												custoChoiceModal.item.status === "pendente"
+													? "bg-red-100 dark:bg-red-900/60 text-red-700 dark:text-red-300"
+													: "bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300"
+											}`}>
+											{custoChoiceModal.item.status === "pendente" ? (
+												<>
+													<Clock size={10} /> A Pagar
+												</>
+											) : (
+												<>
+													<CheckCircle2 size={10} /> Pago
+												</>
+											)}
+										</span>
+									</div>
+									<p className="text-xs font-black text-slate-800 dark:text-slate-200 truncate mt-1">
 										{custoChoiceModal.item.descricao || "Sem descrição"}
 									</p>
 									<span className="text-[11px] text-slate-500 dark:text-slate-400 block">
@@ -1791,14 +2063,84 @@ export default function ControleCalendarioCustos({
 											{formatCurrency(custoChoiceModal.item.valorOriginal || 0)}
 										</span>
 									)}
+									{((custoChoiceModal.item.anexos?.length || 0) > 0 || custoChoiceModal.item.link) && (
+										<div className="flex items-center gap-2 mt-1.5 flex-wrap">
+											{custoChoiceModal.item.anexos?.map((ax) => (
+												<button
+													key={ax.id}
+													type="button"
+													onClick={() => openCustoAnexo(ax)}
+													className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 text-[10px] font-bold hover:underline">
+													<Paperclip size={10} />
+													<span className="max-w-[140px] truncate">{ax.nome}</span>
+												</button>
+											))}
+											{custoChoiceModal.item.link && (
+												<a
+													href={custoChoiceModal.item.link}
+													target="_blank"
+													rel="noopener noreferrer"
+													className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 text-[10px] font-bold hover:underline">
+													<Link2 size={10} />
+													<span>Abrir link</span>
+												</a>
+											)}
+										</div>
+									)}
 								</div>
-								<span className="text-sm font-black text-rose-600 dark:text-rose-400 shrink-0">
+								<span
+									className={`text-sm font-black shrink-0 ${
+										custoChoiceModal.item.status === "pendente"
+											? "text-red-600 dark:text-red-400"
+											: "text-rose-600 dark:text-rose-400"
+									}`}>
 									{formatCurrency(custoChoiceModal.item.valor)}
 								</span>
 							</div>
 
+							{/* Botão rápido para marcar como Pago / A Pagar */}
+							{onToggleCustoStatus && (
+								<button
+									type="button"
+									disabled={togglingStatusId === custoChoiceModal.item.id}
+									onClick={async () => {
+										const current = custoChoiceModal;
+										const originalCusto =
+											custos.find((raw) => raw.id === current.item.id) || current.item;
+										const nextStatus =
+											current.item.status === "pendente" ? "pago" : "pendente";
+										await handleToggleStatus(originalCusto, nextStatus);
+										setCustoChoiceModal(null);
+									}}
+									className={`w-full p-3 rounded-2xl font-black text-xs tracking-wide transition-all flex items-center justify-center gap-2 active:scale-95 cursor-pointer disabled:opacity-50 ${
+										custoChoiceModal.item.status === "pendente"
+											? "bg-emerald-600 hover:bg-emerald-700 text-white shadow-md shadow-emerald-600/20"
+											: "bg-red-50 hover:bg-red-100 dark:bg-red-950/40 dark:hover:bg-red-950/60 border border-red-200 dark:border-red-900/50 text-red-700 dark:text-red-300"
+									}`}>
+									{custoChoiceModal.item.status === "pendente" ? (
+										<>
+											<CheckCircle2 size={16} />
+											<span>
+												{togglingStatusId === custoChoiceModal.item.id
+													? "Atualizando..."
+													: "Marcar como Pago"}
+											</span>
+										</>
+									) : (
+										<>
+											<Clock size={16} />
+											<span>
+												{togglingStatusId === custoChoiceModal.item.id
+													? "Atualizando..."
+													: "Marcar como A Pagar"}
+											</span>
+										</>
+									)}
+								</button>
+							)}
+
 							<p className="text-xs text-slate-600 dark:text-slate-300 font-medium">
-								O que deseja fazer com esta célula?
+								Ou escolha outra ação para esta célula:
 							</p>
 
 							{/* Opções de Ação */}
@@ -1844,6 +2186,93 @@ export default function ControleCalendarioCustos({
 							<button
 								type="button"
 								onClick={() => setCustoChoiceModal(null)}
+								className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors">
+								Cancelar
+							</button>
+						</div>
+					</div>
+				</div>
+			)}
+
+			{/* Modal de Escolha: Editar Faturamento Extra Existente ou Inserir Novo Faturamento Extra */}
+			{fatChoiceModal && (
+				<div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
+					<div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl max-w-md w-full shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
+						<div className="px-6 py-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+							<div className="flex items-center gap-3">
+								<span className="p-2.5 rounded-2xl bg-purple-100 dark:bg-purple-950/60 text-purple-600 dark:text-purple-400">
+									<DollarSign size={20} />
+								</span>
+								<div>
+									<h4 className="text-base font-black text-slate-900 dark:text-slate-100">
+										Faturamento Extra
+									</h4>
+									<p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+										{MESES[mes - 1]} de {ano} • Coluna Extra
+									</p>
+								</div>
+							</div>
+							<button
+								type="button"
+								onClick={() => setFatChoiceModal(null)}
+								className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors">
+								<X size={18} />
+							</button>
+						</div>
+
+						<div className="p-6 space-y-4">
+							<div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200/80 dark:border-slate-800 flex items-center justify-between gap-3">
+								<div className="min-w-0">
+									<span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+										Faturamento Extra Cadastrado
+									</span>
+									<p className="text-xs font-black text-slate-800 dark:text-slate-200 truncate mt-0.5">
+										{fatChoiceModal.item.descricao || "Faturamento Extra"}
+									</p>
+									<span className="text-[11px] text-slate-500 dark:text-slate-400 block">
+										Loja: {STORE_NAMES_EXTENDED[fatChoiceModal.item.lojaId] || fatChoiceModal.item.lojaId}
+									</span>
+								</div>
+								<span className="text-sm font-black text-blue-600 dark:text-blue-400 shrink-0">
+									{formatCurrency(fatChoiceModal.item.valorTotal)}
+								</span>
+							</div>
+
+							<p className="text-xs text-slate-600 dark:text-slate-300 font-medium">
+								O que deseja fazer com esta célula?
+							</p>
+
+							<div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+								<button
+									type="button"
+									onClick={() => {
+										const current = fatChoiceModal;
+										setFatChoiceModal(null);
+										onEditFaturamento?.(current.item);
+									}}
+									className="p-3.5 rounded-2xl border border-slate-200 dark:border-slate-700 bg-white hover:bg-slate-50 dark:bg-slate-800 dark:hover:bg-slate-700/80 text-slate-900 dark:text-slate-100 font-black text-xs tracking-wide shadow-xs transition-all flex items-center justify-center gap-2 active:scale-95 cursor-pointer">
+									<Edit2 size={16} className="text-blue-600 dark:text-blue-400" />
+									<span>Ver / Editar Este</span>
+								</button>
+
+								<button
+									type="button"
+									onClick={() => {
+										const current = fatChoiceModal;
+										setFatChoiceModal(null);
+										onSelectDiaParaFaturamento(current.diaIso, current.loja, true);
+									}}
+									className="p-3.5 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs tracking-wide shadow-md shadow-emerald-600/20 transition-all flex items-center justify-center gap-2 active:scale-95 cursor-pointer">
+									<Plus size={16} />
+									<span>Inserir Novo Extra</span>
+								</button>
+							</div>
+						</div>
+
+						<div className="px-6 py-3 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 flex justify-end">
+							<button
+								type="button"
+								onClick={() => setFatChoiceModal(null)}
 								className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors">
 								Cancelar
 							</button>

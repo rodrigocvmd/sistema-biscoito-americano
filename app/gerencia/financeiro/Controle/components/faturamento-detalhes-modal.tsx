@@ -43,8 +43,15 @@ export default function FaturamentoDetalhesModal({
 }: FaturamentoDetalhesModalProps) {
 	if (!isOpen || !faturamento) return null;
 
-	const [year, month, day] = faturamento.data.split("-");
-	const formattedDate = `${day}/${month}/${year}`;
+	const hasValidDate = Boolean(faturamento.data && /^\d{4}-\d{2}-\d{2}$/.test(faturamento.data));
+	let formattedDate = "Sem dia específico";
+	if (hasValidDate) {
+		const [year, month, day] = faturamento.data.split("-");
+		formattedDate = `${day}/${month}/${year}`;
+	} else if (faturamento.mesReferencia && faturamento.mesReferencia.includes("-")) {
+		const [refYear, refMonth] = faturamento.mesReferencia.split("-");
+		formattedDate = `Extra • ${refMonth}/${refYear}`;
+	}
 
 	return (
 		<div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-3 md:p-4 overflow-y-auto animate-in fade-in duration-200">

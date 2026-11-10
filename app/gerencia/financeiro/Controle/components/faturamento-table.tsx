@@ -141,8 +141,15 @@ export default function FaturamentoTable({
 							</tr>
 						) : (
 							filteredList.map((fat) => {
-								const [ano, mes, dia] = fat.data.split("-");
-								const dataFormatada = `${dia}/${mes}/${ano}`;
+								const hasValidDate = Boolean(fat.data && /^\d{4}-\d{2}-\d{2}$/.test(fat.data));
+								let dataFormatada = "Extra";
+								if (hasValidDate) {
+									const [ano, mes, dia] = fat.data.split("-");
+									dataFormatada = `${dia}/${mes}/${ano}`;
+								} else if (fat.mesReferencia && fat.mesReferencia.includes("-")) {
+									const [refAno, refMes] = fat.mesReferencia.split("-");
+									dataFormatada = `${refMes}/${refAno}`;
+								}
 
 								return (
 									<tr
@@ -150,7 +157,14 @@ export default function FaturamentoTable({
 										className="hover:bg-slate-50/70 dark:hover:bg-slate-800/30 transition-colors">
 										{/* Data */}
 										<td className="py-3 px-4 font-black text-slate-900 dark:text-slate-100 whitespace-nowrap">
-											{dataFormatada}
+											<div className="flex items-center gap-1.5">
+												<span>{dataFormatada}</span>
+												{fat.isExtra && (
+													<span className="px-1.5 py-0.5 rounded-md text-[9px] font-black uppercase tracking-wider bg-purple-100 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800">
+														Extra
+													</span>
+												)}
+											</div>
 										</td>
 
 										{/* Loja */}

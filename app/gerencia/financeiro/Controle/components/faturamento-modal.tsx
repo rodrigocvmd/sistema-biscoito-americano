@@ -28,6 +28,8 @@ import {
 import { CurrencyInput } from "@/components/currency-input";
 import { DateInputBR } from "@/components/date-input-br";
 
+export type ExtraFieldMode = "forbidden" | "required" | "optional";
+
 interface FaturamentoModalProps {
 	isOpen: boolean;
 	onClose: () => void;
@@ -36,7 +38,24 @@ interface FaturamentoModalProps {
 	editingFaturamento?: FaturamentoFinanceiro | null;
 	defaultLoja?: StoreIdWithGeral;
 	defaultData?: string;
+	defaultIsExtra?: boolean;
+	extraMode?: ExtraFieldMode;
 }
+
+const MESES = [
+	"Janeiro",
+	"Fevereiro",
+	"Março",
+	"Abril",
+	"Maio",
+	"Junho",
+	"Julho",
+	"Agosto",
+	"Setembro",
+	"Outubro",
+	"Novembro",
+	"Dezembro",
+];
 
 const ITENS_SUGESTOES = [
 	{ nome: "Cookies Tradicionais", precoUnitario: 16 },
@@ -56,12 +75,25 @@ export default function FaturamentoModal({
 	editingFaturamento,
 	defaultLoja = "geral",
 	defaultData,
+	defaultIsExtra = false,
+	extraMode,
 }: FaturamentoModalProps) {
+	const resolvedExtraMode: ExtraFieldMode = editingFaturamento
+		? editingFaturamento.isExtra
+			? "required"
+			: "forbidden"
+		: extraMode ?? (defaultIsExtra ? "required" : "optional");
+
 	const [tipo, setTipo] = useState<"geral" | "discriminado">("geral");
 	const [lojaId, setLojaId] = useState<StoreIdWithGeral | "">(
 		isSpecificStoreId(defaultLoja) ? defaultLoja : ""
 	);
+	const [isExtra, setIsExtra] = useState(
+		resolvedExtraMode === "required" ? true : resolvedExtraMode === "forbidden" ? false : defaultIsExtra
+	);
 	const [dataFaturamento, setDataFaturamento] = useState("");
+	const [extraMes, setExtraMes] = useState<number>(() => new Date().getMonth() + 1);
+	const [extraAno, setExtraAno] = useState<number>(() => new Date().getFullYear());
 	const [valorGeral, setValorGeral] = useState("");
 	const [canal, setCanal] = useState<CanalVenda>("geral");
 	const [descricao, setDescricao] = useState("");
@@ -73,7 +105,17 @@ export default function FaturamentoModal({
 	// Preencher estado inicial quando abre ou edita
 	useEffect(() => {
 		if (isOpen) {
+			const now = new Date();
+			const currentYear = now.getFullYear();
+			const currentMonth = now.getMonth() + 1;
+
 			if (editingFaturamento) {
+				const mesRefStr =
+					editingFaturamento.mesReferencia ||
+					(editingFaturamento.data ? editingFaturamento.data.slice(0, 7) : "") ||
+					`${currentYear}-${String(currentMonth).padStart(2, "0")}`;
+				const [refAno, refMes] = mesRefStr.split("-").map((p) => parseInt(p, 10));
+
 				setTipo(editingFaturamento.tipo);
 				setLojaId(
 					isSpecificStoreId(editingFaturamento.lojaId)
@@ -82,7 +124,10 @@ export default function FaturamentoModal({
 						? defaultLoja
 						: ""
 				);
-				setDataFaturamento(editingFaturamento.data);
+				setIsExtra(!!editingFaturamento.isExtra);
+				setDataFaturamento(editingFaturamento.data || `${mesRefStr}-01`);
+				setExtraAno(!isNaN(refAno) ? refAno : currentYear);
+				setExtraMes(!isNaN(refMes) && refMes >= 1 && refMes <= 12 ? refMes : currentMonth);
 				setValorGeral(
 					editingFaturamento.valorTotal
 						? String(Math.round(editingFaturamento.valorTotal))
@@ -105,15 +150,27 @@ export default function FaturamentoModal({
 						: [{ id: "item-1", nome: "", quantidade: 1, precoUnitario: 0, subtotal: 0 }]
 				);
 			} else {
-				const now = new Date();
 				const year = now.getFullYear();
 				const month = String(now.getMonth() + 1).padStart(2, "0");
 				const day = String(now.getDate()).padStart(2, "0");
 				const todayStr = `${year}-${month}-${day}`;
+				const initialDate = defaultData || todayStr;
+				const mesRefStr = initialDate.slice(0, 7);
+				const [refAno, refMes] = mesRefStr.split("-").map((p) => parseInt(p, 10));
+
+				const initialExtra =
+					resolvedExtraMode === "required"
+						? true
+						: resolvedExtraMode === "forbidden"
+						? false
+						: !!defaultIsExtra;
 
 				setTipo("geral");
 				setLojaId(isSpecificStoreId(defaultLoja) ? defaultLoja : "");
-				setDataFaturamento(defaultData || todayStr);
+				setIsExtra(initialExtra);
+				setDataFaturamento(initialDate);
+				setExtraAno(!isNaN(refAno) ? refAno : year);
+				setExtraMes(!isNaN(refMes) && refMes >= 1 && refMes <= 12 ? refMes : currentMonth);
 				setValorGeral("");
 				setCanal("geral");
 				setDescricao("");
@@ -129,7 +186,8 @@ export default function FaturamentoModal({
 				}
 			}, 100);
 		}
-	}, [isOpen, editingFaturamento, defaultLoja, defaultData]);
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [isOpen, editingFaturamento, defaultLoja, defaultData, defaultIsExtra, extraMode]);
 
 	if (!isOpen) return null;
 
@@ -204,7 +262,7 @@ export default function FaturamentoModal({
 			alert("Por favor, selecione uma loja específica (Lago, Terraço, Conjunto ou Noroeste).");
 			return;
 		}
-		if (!dataFaturamento) {
+		if (!isExtra && !dataFaturamento) {
 			alert("Por favor, informe a data do faturamento.");
 			return;
 		}
@@ -234,20 +292,24 @@ export default function FaturamentoModal({
 			finalValor = validItens.reduce((acc, curr) => acc + curr.subtotal, 0);
 		}
 
-		const mesReferencia = dataFaturamento.slice(0, 7);
+		const finalData = isExtra ? "" : dataFaturamento;
+		const mesReferencia = isExtra
+			? `${extraAno}-${String(extraMes).padStart(2, "0")}`
+			: dataFaturamento.slice(0, 7);
 
 		setIsSubmitting(true);
 		try {
 			await onSave({
 				lojaId,
-				data: dataFaturamento,
+				data: finalData,
 				mesReferencia,
 				tipo,
 				valorTotal: Math.round(finalValor),
 				canal,
-				descricao: descricao.trim() || "Faturamento",
+				descricao: descricao.trim() || (isExtra ? "Faturamento Extra" : "Faturamento"),
 				itens: tipo === "discriminado" ? validItens : undefined,
-				observacoes: observacoes.trim() || undefined,
+				observacoes: editingFaturamento ? observacoes.trim() : observacoes.trim() || undefined,
+				isExtra: isExtra ? true : undefined,
 			});
 			onClose();
 		} catch (error) {
@@ -272,7 +334,9 @@ export default function FaturamentoModal({
 								{editingFaturamento ? "Editar Lançamento de Faturamento" : "Novo Lançamento de Faturamento"}
 							</h3>
 							<p className="text-xs text-slate-500 dark:text-slate-400">
-								Informe vendas diárias com valor único consolidado ou discriminado por itens
+								{isExtra
+									? "Faturamento extra do mês (sem dia específico, alocado na coluna Extras)"
+									: "Informe vendas diárias com valor único consolidado ou discriminado por itens"}
 							</p>
 						</div>
 					</div>
@@ -338,7 +402,40 @@ export default function FaturamentoModal({
 						</div>
 					</div>
 
-					{/* Linha 1: Loja, Data e Canal */}
+					{/* Faixa / Opção de Faturamento Extra do Mês */}
+					{resolvedExtraMode === "required" && (
+						<div className="flex items-center justify-between gap-2 p-2.5 bg-purple-50/70 dark:bg-purple-950/30 rounded-xl border border-purple-200/80 dark:border-purple-900/50">
+							<span className="text-xs font-bold text-purple-900 dark:text-purple-200">
+								Lançamento de Faturamento Extra do Mês (alocado na coluna Extras)
+							</span>
+							<span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-purple-200 dark:bg-purple-900 text-purple-800 dark:text-purple-200 shrink-0">
+								Coluna Extra
+							</span>
+						</div>
+					)}
+
+					{resolvedExtraMode === "optional" && (
+						<div className="flex items-center justify-between p-2.5 bg-purple-50/60 dark:bg-purple-950/30 rounded-xl border border-purple-200/80 dark:border-purple-900/50">
+							<label className="flex items-center gap-2.5 cursor-pointer select-none">
+								<input
+									type="checkbox"
+									checked={isExtra}
+									onChange={(e) => setIsExtra(e.target.checked)}
+									className="w-4 h-4 rounded text-purple-600 focus:ring-purple-500 border-slate-300 dark:border-slate-700 cursor-pointer"
+								/>
+								<span className="text-xs font-bold text-purple-900 dark:text-purple-200">
+									Faturamento Extra do Mês (alocado na coluna Extras)
+								</span>
+							</label>
+							{isExtra && (
+								<span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-purple-200 dark:bg-purple-900 text-purple-800 dark:text-purple-200">
+									Coluna Extra
+								</span>
+							)}
+						</div>
+					)}
+
+					{/* Linha 1: Loja, Data (ou Mês de Referência quando Extra) e Canal */}
 					<div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
 						<div>
 							<label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
@@ -362,18 +459,55 @@ export default function FaturamentoModal({
 							</div>
 						</div>
 
-						<div>
-							<label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
-								Data do Faturamento<span className="text-rose-500">*</span>
-							</label>
-							<DateInputBR
-								required
-								value={dataFaturamento}
-								onChangeDate={(iso) => setDataFaturamento(iso)}
-								onClick={(e) => e.currentTarget.select()}
-								className="w-full bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs font-bold text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
-							/>
-						</div>
+						{isExtra ? (
+							<div>
+								<label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5 flex items-center justify-between">
+									<span>
+										Mês de Referência <span className="text-rose-500">*</span>
+									</span>
+									<span className="text-[10px] text-purple-600 dark:text-purple-400 font-semibold">
+										Sem dia
+									</span>
+								</label>
+								<div className="grid grid-cols-3 gap-1.5">
+									<select
+										value={extraMes}
+										aria-label="Mês de referência do faturamento extra"
+										onChange={(e) => setExtraMes(parseInt(e.target.value, 10))}
+										className="col-span-2 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl px-2 py-2.5 text-xs font-bold text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500">
+										{MESES.map((nome, idx) => (
+											<option key={idx + 1} value={idx + 1}>
+												{nome}
+											</option>
+										))}
+									</select>
+									<select
+										value={extraAno}
+										aria-label="Ano de referência do faturamento extra"
+										onChange={(e) => setExtraAno(parseInt(e.target.value, 10))}
+										className="bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl px-1.5 py-2.5 text-xs font-bold text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500">
+										{[2024, 2025, 2026, 2027, 2028].map((y) => (
+											<option key={y} value={y}>
+												{y}
+											</option>
+										))}
+									</select>
+								</div>
+							</div>
+						) : (
+							<div>
+								<label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+									Data do Faturamento<span className="text-rose-500">*</span>
+								</label>
+								<DateInputBR
+									required
+									value={dataFaturamento}
+									onChangeDate={(iso) => setDataFaturamento(iso)}
+									onClick={(e) => e.currentTarget.select()}
+									className="w-full bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs font-bold text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
+								/>
+							</div>
+						)}
 
 						<div>
 							<label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">

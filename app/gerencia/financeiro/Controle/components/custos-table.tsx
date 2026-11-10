@@ -13,6 +13,8 @@ import {
 	CreditCard,
 	CheckCircle2,
 	Clock,
+	Paperclip,
+	Link2,
 } from "lucide-react";
 import {
 	CustoFinanceiro,
@@ -22,11 +24,13 @@ import {
 	STORE_NAMES_EXTENDED,
 	StoreIdWithGeral,
 } from "@/types/financeiro-controle";
+import { openCustoAnexo } from "@/lib/financeiro-controle-service";
 
 interface CustosTableProps {
 	custos: CustoComRateio[];
 	onEdit: (item: CustoComRateio) => void;
 	onDelete: (id: string) => void;
+	onToggleStatus?: (item: CustoComRateio, newStatus: "pago" | "pendente") => Promise<void> | void;
 }
 
 const formatCurrency = (val: number) => {
@@ -38,7 +42,7 @@ const formatCurrency = (val: number) => {
 
 const DIAS_SEMANA_ABREV = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
 
-export default function CustosTable({ custos, onEdit, onDelete }: CustosTableProps) {
+export default function CustosTable({ custos, onEdit, onDelete, onToggleStatus }: CustosTableProps) {
 	const [searchTerm, setSearchTerm] = useState("");
 	const [categoriaFilter, setCategoriaFilter] = useState<string>("all");
 	const [statusFilter, setStatusFilter] = useState<string>("all");
@@ -74,7 +78,7 @@ export default function CustosTable({ custos, onEdit, onDelete }: CustosTablePro
 						Lançamentos de Custos & Despesas ({filteredList.length})
 					</h3>
 					<p className="text-xs text-slate-500 dark:text-slate-400">
-						Listagem com dia do custo obrigatório, categoria e formas de liquidação
+						Listagem com dia do custo (ou extra do mês), categoria, situação de pagamento e anexos
 					</p>
 				</div>
 
@@ -110,8 +114,8 @@ export default function CustosTable({ custos, onEdit, onDelete }: CustosTablePro
 						onChange={(e) => setStatusFilter(e.target.value)}
 						className="bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl px-2.5 py-1.5 text-xs font-bold text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-rose-500/20">
 						<option value="all">Todos os Status</option>
-						<option value="pago">Liquidado (Pago)</option>
-						<option value="pendente">Pendente</option>
+						<option value="pendente">A Pagar</option>
+						<option value="pago">Pago</option>
 					</select>
 				</div>
 			</div>
@@ -140,12 +144,22 @@ export default function CustosTable({ custos, onEdit, onDelete }: CustosTablePro
 							</tr>
 						) : (
 							filteredList.map((custo) => {
-								const [ano, mes, dia] = custo.data.split("-");
-								const dateObj = new Date(parseInt(ano, 10), parseInt(mes, 10) - 1, parseInt(dia, 10));
-								const diaSemana = DIAS_SEMANA_ABREV[dateObj.getDay()];
-								const dataFormatada = `${dia}/${mes}/${ano}`;
+								const hasValidDate = Boolean(custo.data && /^\d{4}-\d{2}-\d{2}$/.test(custo.data));
+								let dataFormatada = "Extra";
+								let diaSemana = "Sem dia específico";
+
+								if (hasValidDate) {
+									const [ano, mes, dia] = custo.data.split("-");
+									const dateObj = new Date(parseInt(ano, 10), parseInt(mes, 10) - 1, parseInt(dia, 10));
+									diaSemana = DIAS_SEMANA_ABREV[dateObj.getDay()] || "";
+									dataFormatada = `${dia}/${mes}/${ano}`;
+								} else if (custo.mesReferencia && custo.mesReferencia.includes("-")) {
+									const [refAno, refMes] = custo.mesReferencia.split("-");
+									dataFormatada = `${refMes}/${refAno}`;
+								}
 
 								const catConfig = CATEGORIAS_CUSTO_CONFIG[custo.categoria];
+								const isUnpaid = custo.status === "pendente";
 
 								return (
 									<tr
@@ -195,12 +209,38 @@ export default function CustosTable({ custos, onEdit, onDelete }: CustosTablePro
 										</td>
 
 										{/* Descrição */}
-										<td className="py-3 px-3 text-slate-800 dark:text-slate-200 font-semibold max-w-xs truncate">
-											<span>{custo.descricao}</span>
+										<td className="py-3 px-3 text-slate-800 dark:text-slate-200 font-semibold max-w-xs">
+											<span className="block truncate">{custo.descricao}</span>
 											{custo.observacoes && (
 												<span className="block text-[10px] text-slate-400 font-normal truncate">
 													{custo.observacoes}
 												</span>
+											)}
+											{((custo.anexos && custo.anexos.length > 0) || custo.link) && (
+												<div className="flex items-center gap-2 mt-1 flex-wrap">
+													{custo.anexos?.map((ax) => (
+														<button
+															key={ax.id}
+															type="button"
+															onClick={() => openCustoAnexo(ax)}
+															title={`Abrir ${ax.nome}`}
+															className="inline-flex items-center gap-1 text-[10px] font-bold text-blue-600 dark:text-blue-400 hover:underline">
+															<Paperclip size={10} />
+															<span className="max-w-[110px] truncate">{ax.nome}</span>
+														</button>
+													))}
+													{custo.link && (
+														<a
+															href={custo.link}
+															target="_blank"
+															rel="noopener noreferrer"
+															title={custo.link}
+															className="inline-flex items-center gap-1 text-[10px] font-bold text-blue-600 dark:text-blue-400 hover:underline">
+															<Link2 size={10} />
+															<span>Link</span>
+														</a>
+													)}
+												</div>
 											)}
 										</td>
 
@@ -211,13 +251,39 @@ export default function CustosTable({ custos, onEdit, onDelete }: CustosTablePro
 
 										{/* Situação */}
 										<td className="py-3 px-3 whitespace-nowrap">
-											{custo.status === "pendente" ? (
-												<span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300">
-													<Clock size={11} /> Pendente
+											{onToggleStatus ? (
+												<button
+													type="button"
+													onClick={() =>
+														onToggleStatus(custo, isUnpaid ? "pago" : "pendente")
+													}
+													title={
+														isUnpaid
+															? "Clique para marcar como Pago"
+															: "Clique para marcar como A Pagar"
+													}
+													className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold transition-colors cursor-pointer ${
+														isUnpaid
+															? "bg-red-100 text-red-700 dark:bg-red-950/60 dark:text-red-300 hover:bg-emerald-100 hover:text-emerald-700"
+															: "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 hover:bg-red-100 hover:text-red-700"
+													}`}>
+													{isUnpaid ? (
+														<>
+															<Clock size={11} /> A Pagar
+														</>
+													) : (
+														<>
+															<CheckCircle2 size={11} /> Pago
+														</>
+													)}
+												</button>
+											) : isUnpaid ? (
+												<span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-red-100 text-red-700 dark:bg-red-950/60 dark:text-red-300">
+													<Clock size={11} /> A Pagar
 												</span>
 											) : (
 												<span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300">
-													<CheckCircle2 size={11} /> Liquidado
+													<CheckCircle2 size={11} /> Pago
 												</span>
 											)}
 										</td>

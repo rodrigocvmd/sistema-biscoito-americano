@@ -180,18 +180,31 @@ export const CATEGORIAS_CUSTO_CONFIG: Record<CategoriaCusto, CategoriaCustoMeta>
 
 export type MetodoPagamento = "pix" | "boleto" | "cartao" | "dinheiro" | "debito" | "outro";
 
+export interface CustoAnexo {
+	id: string;
+	nome: string;
+	tipo: string;
+	tamanho: number;
+	url?: string;
+	storagePath?: string;
+	anexoDocId?: string;
+	uploadedAt: string;
+}
+
 export interface CustoFinanceiro {
 	id: string;
 	lojaId: StoreIdWithGeral;
 	categoria: CategoriaCusto;
 	descricao: string;
 	valor: number;
-	data: string; // YYYY-MM-DD - Dia do custo (OBRIGATÓRIO)
+	data: string; // YYYY-MM-DD (vazio quando isExtra === true)
 	mesReferencia: string; // YYYY-MM
 	metodoPagamento?: MetodoPagamento;
 	status?: "pago" | "pendente";
 	observacoes?: string;
 	comprovanteUrl?: string;
+	anexos?: CustoAnexo[];
+	link?: string;
 	isExtra?: boolean;
 	createdAt?: any;
 	updatedAt?: any;
@@ -227,7 +240,7 @@ export const CANAL_VENDA_CONFIG: Record<CanalVenda, { label: string; badge: stri
 export interface FaturamentoFinanceiro {
 	id: string;
 	lojaId: StoreIdWithGeral;
-	data: string; // YYYY-MM-DD
+	data: string; // YYYY-MM-DD (vazio quando isExtra === true)
 	mesReferencia: string; // YYYY-MM
 	tipo: "geral" | "discriminado";
 	valorTotal: number;
@@ -235,6 +248,7 @@ export interface FaturamentoFinanceiro {
 	descricao?: string;
 	itens?: FaturamentoItem[];
 	observacoes?: string;
+	isExtra?: boolean;
 	createdAt?: any;
 	updatedAt?: any;
 }

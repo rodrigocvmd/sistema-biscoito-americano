@@ -119,6 +119,9 @@ export default function ControlePage() {
 	const [modalDefaultData, setModalDefaultData] = useState<string | undefined>(undefined);
 	const [modalDefaultLoja, setModalDefaultLoja] = useState<StoreIdWithGeral>("geral");
 	const [modalDefaultIsExtra, setModalDefaultIsExtra] = useState(false);
+	const [custoModalExtraMode, setCustoModalExtraMode] = useState<"forbidden" | "required" | "optional">("optional");
+	const [fatModalDefaultIsExtra, setFatModalDefaultIsExtra] = useState(false);
+	const [fatModalExtraMode, setFatModalExtraMode] = useState<"forbidden" | "required" | "optional">("optional");
 
 	// Inscrição em Tempo Real (Firestore)
 	useEffect(() => {
@@ -377,13 +380,21 @@ export default function ControlePage() {
 		setEditingFat(null);
 		setModalDefaultLoja(lojaFilter !== "todas" ? (lojaFilter as StoreIdWithGeral) : "geral");
 		setModalDefaultData(periodMode === "mes" ? `${mesAnoStr}-01` : undefined);
+		setFatModalDefaultIsExtra(false);
+		setFatModalExtraMode("optional");
 		setIsFatModalOpen(true);
 	};
 
-	const handleOpenNewFatComDia = (diaIso: string, loja: StoreIdWithGeral) => {
+	const handleOpenNewFatComDia = (
+		diaIso: string,
+		loja: StoreIdWithGeral,
+		isExtra?: boolean
+	) => {
 		setEditingFat(null);
 		setModalDefaultLoja(loja);
 		setModalDefaultData(diaIso);
+		setFatModalDefaultIsExtra(!!isExtra);
+		setFatModalExtraMode(isExtra ? "required" : "forbidden");
 		setIsFatModalOpen(true);
 	};
 
@@ -393,6 +404,7 @@ export default function ControlePage() {
 		setModalDefaultLoja(lojaFilter !== "todas" ? (lojaFilter as StoreIdWithGeral) : "geral");
 		setModalDefaultData(periodMode === "mes" ? `${mesAnoStr}-01` : undefined);
 		setModalDefaultIsExtra(!!isExtra);
+		setCustoModalExtraMode(isExtra ? "required" : "optional");
 		setIsCustoModalOpen(true);
 	};
 
@@ -407,6 +419,7 @@ export default function ControlePage() {
 		setModalDefaultLoja(loja);
 		setModalDefaultData(diaIso);
 		setModalDefaultIsExtra(!!isExtra);
+		setCustoModalExtraMode(isExtra ? "required" : "forbidden");
 		setIsCustoModalOpen(true);
 	};
 
@@ -414,7 +427,21 @@ export default function ControlePage() {
 		// Sempre busca o registro original do Firestore para nunca gravar valor proporcional no lugar do valor integral
 		const rawCusto = custos.find((raw) => raw.id === item.id) || item;
 		setEditingCusto(rawCusto);
+		setModalDefaultIsExtra(!!rawCusto.isExtra);
+		setCustoModalExtraMode(rawCusto.isExtra ? "required" : "forbidden");
 		setIsCustoModalOpen(true);
+	};
+
+	const handleToggleCustoStatus = async (
+		custo: CustoFinanceiro,
+		newStatus: "pago" | "pendente"
+	) => {
+		try {
+			await updateCusto(custo.id, { status: newStatus });
+		} catch (err) {
+			console.error("Erro ao atualizar situação do custo:", err);
+			alert("Não foi possível atualizar a situação do pagamento.");
+		}
 	};
 
 	const handleSaveFat = async (
@@ -504,7 +531,7 @@ export default function ControlePage() {
 							: "text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
 					}`}>
 					<DollarSign size={15} />
-					<span>Faturamento ({filteredFaturamentos.length})</span>
+					<span>Faturamento</span>
 				</button>
 
 				<button
@@ -516,7 +543,7 @@ export default function ControlePage() {
 							: "text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
 					}`}>
 					<Receipt size={15} />
-					<span>Custos & Despesas ({filteredCustos.length})</span>
+					<span>Custos & Despesas</span>
 				</button>
 
 				
@@ -545,6 +572,7 @@ export default function ControlePage() {
 						onSelectDiaParaCusto={handleOpenNewCustoComDia}
 						onSelectDiaParaFaturamento={handleOpenNewFatComDia}
 						onEditCusto={handleOpenEditCusto}
+						onToggleCustoStatus={handleToggleCustoStatus}
 						onDeleteCusto={handleDeleteCusto}
 						onEditFaturamento={(item) => {
 							setSelectedFatDetalhes(item);
@@ -584,6 +612,8 @@ export default function ControlePage() {
 					}}
 					onEdit={(item) => {
 						setEditingFat(item);
+						setFatModalDefaultIsExtra(!!item.isExtra);
+						setFatModalExtraMode(item.isExtra ? "required" : "forbidden");
 						setIsFatModalOpen(true);
 					}}
 					onDelete={handleDeleteFat}
@@ -596,6 +626,7 @@ export default function ControlePage() {
 					custos={filteredCustos}
 					onEdit={handleOpenEditCusto}
 					onDelete={handleDeleteCusto}
+					onToggleStatus={handleToggleCustoStatus}
 				/>
 			)}
 
@@ -620,6 +651,8 @@ export default function ControlePage() {
 				editingFaturamento={editingFat}
 				defaultLoja={modalDefaultLoja}
 				defaultData={modalDefaultData}
+				defaultIsExtra={fatModalDefaultIsExtra}
+				extraMode={fatModalExtraMode}
 			/>
 
 			<FaturamentoDetalhesModal
@@ -634,7 +667,9 @@ export default function ControlePage() {
 					setSelectedFatDetalhes(null);
 					setEditingFat(item);
 					setModalDefaultLoja(item.lojaId);
-					setModalDefaultData(item.data);
+					setModalDefaultData(item.data || (item.mesReferencia ? `${item.mesReferencia}-01` : undefined));
+					setFatModalDefaultIsExtra(!!item.isExtra);
+					setFatModalExtraMode(item.isExtra ? "required" : "forbidden");
 					setIsFatModalOpen(true);
 				}}
 				onDelete={(id) => {
@@ -654,6 +689,7 @@ export default function ControlePage() {
 				defaultLoja={modalDefaultLoja}
 				defaultData={modalDefaultData}
 				defaultIsExtra={modalDefaultIsExtra}
+				extraMode={custoModalExtraMode}
 			/>
 		</div>
 	);
