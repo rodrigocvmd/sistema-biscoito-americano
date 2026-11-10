@@ -192,6 +192,7 @@ export interface CustoFinanceiro {
 	status?: "pago" | "pendente";
 	observacoes?: string;
 	comprovanteUrl?: string;
+	isExtra?: boolean;
 	createdAt?: any;
 	updatedAt?: any;
 }

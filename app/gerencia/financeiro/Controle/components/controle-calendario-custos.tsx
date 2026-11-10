@@ -55,7 +55,8 @@ interface ControleCalendarioCustosProps {
 	onSelectDiaParaCusto: (
 		diaIso: string,
 		loja: StoreIdWithGeral,
-		categoria?: CategoriaCusto
+		categoria?: CategoriaCusto,
+		isExtra?: boolean
 	) => void;
 	onSelectDiaParaFaturamento: (
 		diaIso: string,
@@ -232,7 +233,7 @@ export default function ControleCalendarioCustos({
 	// Estado para hover cruzado (linha e coluna)
 	const [hoveredCell, setHoveredCell] = useState<{
 		rowKey: string | null;
-		colDay: number | null;
+		colDay: number | "extra" | null;
 	}>({ rowKey: null, colDay: null });
 
 	// Auto-scroll suave com mouse nas bordas esquerda/direita da tabela
@@ -316,22 +317,39 @@ export default function ControleCalendarioCustos({
 		});
 	}, [faturamentos, localLoja, localMesAno]);
 
-	// 3. Matriz de Custos por Categoria e Dia
+	// 3. Matriz de Custos por Categoria, Dia e Coluna de Extras
 	// custoMatrix[categoria][day] = { total: number, items: CustoComRateio[] }
+	// custoMatrix[categoria].extra = { total: number, items: CustoComRateio[] }
 	const custoMatrix = useMemo(() => {
 		const matrix: Record<
 			CategoriaCusto,
-			Record<number, { total: number; items: CustoComRateio[] }>
+			Record<number, { total: number; items: CustoComRateio[] }> & {
+				extra: { total: number; items: CustoComRateio[] };
+			}
 		> = {} as any;
 
 		CATEGORIAS_ORDEM.forEach((cat) => {
-			matrix[cat] = {};
+			matrix[cat] = {
+				extra: { total: 0, items: [] },
+			} as any;
 			for (let d = 1; d <= daysInMonth; d++) {
 				matrix[cat][d] = { total: 0, items: [] };
 			}
 		});
 
 		monthCustos.forEach((c) => {
+			const catKey: CategoriaCusto = CATEGORIAS_ORDEM.includes(c.categoria)
+				? c.categoria
+				: "outros";
+
+			if (c.isExtra) {
+				if (matrix[catKey]?.extra) {
+					matrix[catKey].extra.total += c.valor || 0;
+					matrix[catKey].extra.items.push(c);
+				}
+				return;
+			}
+
 			let dayNum = 1;
 			if (c.data && c.data.startsWith(localMesAno)) {
 				const dayPart = parseInt(c.data.split("-")[2], 10);
@@ -339,10 +357,6 @@ export default function ControleCalendarioCustos({
 					dayNum = dayPart;
 				}
 			}
-
-			const catKey: CategoriaCusto = CATEGORIAS_ORDEM.includes(c.categoria)
-				? c.categoria
-				: "outros";
 
 			if (matrix[catKey] && matrix[catKey][dayNum]) {
 				matrix[catKey][dayNum].total += c.valor || 0;
@@ -353,11 +367,12 @@ export default function ControleCalendarioCustos({
 		return matrix;
 	}, [monthCustos, daysInMonth, localMesAno]);
 
-	// 4. Totais por Dia (Custos, Faturamento e Saldo)
+	// 4. Totais por Dia e Coluna de Extras (Custos, Faturamento e Saldo)
 	const dailyTotals = useMemo(() => {
 		const costs: Record<number, number> = {};
 		const fats: Record<number, number> = {};
 		const balances: Record<number, number> = {};
+		let extraCosts = 0;
 
 		for (let d = 1; d <= daysInMonth; d++) {
 			costs[d] = 0;
@@ -368,6 +383,7 @@ export default function ControleCalendarioCustos({
 			for (let d = 1; d <= daysInMonth; d++) {
 				costs[d] += custoMatrix[cat]?.[d]?.total || 0;
 			}
+			extraCosts += custoMatrix[cat]?.extra?.total || 0;
 		});
 
 		monthFaturamentos.forEach((f) => {
@@ -385,14 +401,14 @@ export default function ControleCalendarioCustos({
 			balances[d] = fats[d] - costs[d];
 		}
 
-		return { costs, fats, balances };
+		return { costs, fats, balances, extraCosts };
 	}, [daysInMonth, custoMatrix, monthFaturamentos, localMesAno]);
 
-	// 5. Totais do Mês por Categoria
+	// 5. Totais do Mês por Categoria (inclui dias 1..daysInMonth + custos extras)
 	const categoryMonthTotals = useMemo(() => {
 		const totals: Record<CategoriaCusto, number> = {} as any;
 		CATEGORIAS_ORDEM.forEach((cat) => {
-			let sum = 0;
+			let sum = custoMatrix[cat]?.extra?.total || 0;
 			for (let d = 1; d <= daysInMonth; d++) {
 				sum += custoMatrix[cat]?.[d]?.total || 0;
 			}
@@ -401,9 +417,9 @@ export default function ControleCalendarioCustos({
 		return totals;
 	}, [custoMatrix, daysInMonth]);
 
-	// 6. Totais Consolidados Gerais do Mês
+	// 6. Totais Consolidados Gerais do Mês (inclui custos diários + custos extras)
 	const grandTotals = useMemo(() => {
-		let totalCost = 0;
+		let totalCost = dailyTotals.extraCosts || 0;
 		let totalFat = 0;
 
 		for (let d = 1; d <= daysInMonth; d++) {
@@ -418,11 +434,12 @@ export default function ControleCalendarioCustos({
 		};
 	}, [dailyTotals, daysInMonth]);
 
-	// Modal de Lançamento / Detalhes de um Dia Específico
+	// Modal de Lançamento / Detalhes de um Dia Específico ou Coluna de Extras
 	const [selectedDayInfo, setSelectedDayInfo] = useState<{
-		dayNum: number;
+		dayNum?: number;
 		diaIso: string;
 		categoriaPre?: CategoriaCusto;
+		isExtra?: boolean;
 	} | null>(null);
 
 	// Modal de Escolha entre Editar Custo Existente ou Inserir Novo Custo
@@ -432,6 +449,7 @@ export default function ControleCalendarioCustos({
 		loja: StoreIdWithGeral;
 		categoria: CategoriaCusto;
 		diaNum: number;
+		isExtra?: boolean;
 	} | null>(null);
 
 	const handleOpenDayModal = (dayNum: number, cat?: CategoriaCusto) => {
@@ -440,6 +458,16 @@ export default function ControleCalendarioCustos({
 			dayNum,
 			diaIso,
 			categoriaPre: cat,
+			isExtra: false,
+		});
+	};
+
+	const handleOpenExtraModal = (cat?: CategoriaCusto) => {
+		const diaIso = `${ano}-${String(mes).padStart(2, "0")}-01`;
+		setSelectedDayInfo({
+			diaIso,
+			categoriaPre: cat,
+			isExtra: true,
 		});
 	};
 
@@ -458,13 +486,37 @@ export default function ControleCalendarioCustos({
 				loja: targetLoja,
 				categoria: catKey,
 				diaNum: d,
+				isExtra: false,
 			});
 		} else if (items.length > 1) {
 			// Se houver múltiplos custos nesta mesma categoria/dia, abre o modal do dia pré-filtrando a categoria
 			handleOpenDayModal(d, catKey);
 		} else {
 			// Se não houver nenhum, abre diretamente o modal de lançamento de custo para esta categoria e dia
-			onSelectDiaParaCusto(diaIso, targetLoja, catKey);
+			onSelectDiaParaCusto(diaIso, targetLoja, catKey, false);
+		}
+	};
+
+	const handleCellExtraCustoClick = (catKey: CategoriaCusto) => {
+		const extraData = custoMatrix[catKey]?.extra;
+		const items = extraData?.items || [];
+		const diaIso = `${ano}-${String(mes).padStart(2, "0")}-01`;
+		const targetLoja: StoreIdWithGeral =
+			localLoja === "todas" ? "geral" : (localLoja as StoreIdWithGeral);
+
+		if (items.length === 1 && onEditCusto) {
+			setCustoChoiceModal({
+				item: items[0],
+				diaIso,
+				loja: targetLoja,
+				categoria: catKey,
+				diaNum: 0,
+				isExtra: true,
+			});
+		} else if (items.length > 1) {
+			handleOpenExtraModal(catKey);
+		} else {
+			onSelectDiaParaCusto(diaIso, targetLoja, catKey, true);
 		}
 	};
 
@@ -490,17 +542,27 @@ export default function ControleCalendarioCustos({
 		}
 	};
 
-	// Itens do dia selecionado
+	// Itens do dia selecionado ou da coluna de extras
 	const selectedDayCustos = useMemo(() => {
 		if (!selectedDayInfo) return [];
+		if (selectedDayInfo.isExtra) {
+			return monthCustos.filter((c) => {
+				if (!c.isExtra) return false;
+				if (selectedDayInfo.categoriaPre && c.categoria !== selectedDayInfo.categoriaPre) {
+					return false;
+				}
+				return true;
+			});
+		}
 		return monthCustos.filter((c) => {
+			if (c.isExtra) return false;
 			if (c.data) return c.data === selectedDayInfo.diaIso;
 			return selectedDayInfo.dayNum === 1;
 		});
 	}, [selectedDayInfo, monthCustos]);
 
 	const selectedDayFats = useMemo(() => {
-		if (!selectedDayInfo) return [];
+		if (!selectedDayInfo || selectedDayInfo.isExtra) return [];
 		return monthFaturamentos.filter((f) => {
 			if (f.data) return f.data === selectedDayInfo.diaIso;
 			return selectedDayInfo.dayNum === 1;
@@ -883,6 +945,44 @@ export default function ControleCalendarioCustos({
 								);
 							})}
 
+							{/* Coluna Penúltima: Custos Extras */}
+							{(() => {
+								const isColHovered = hoveredCell.colDay === "extra";
+								return (
+									<th
+										onClick={() => handleOpenExtraModal()}
+										onMouseEnter={() => setHoveredCell((prev) => ({ ...prev, colDay: "extra" }))}
+										title={`Custos Extras de ${MESES[mes - 1]}/${ano} (Clique para gerenciar ou lançar)`}
+										className={`border-r border-b border-slate-200 dark:border-slate-700/80 min-w-[76px] w-[76px] sm:min-w-[84px] sm:w-[84px] p-2 text-center cursor-pointer group transition-all duration-150 ${
+											isColHovered
+												? "bg-purple-200/70 dark:bg-purple-900/60 ring-2 ring-inset ring-purple-400/50 text-purple-950 dark:text-purple-50"
+												: "bg-purple-50/50 dark:bg-purple-950/30 text-purple-900 dark:text-purple-200"
+										} hover:bg-purple-100 dark:hover:bg-purple-900/50`}>
+										<div className="flex flex-col items-center justify-center">
+											<span
+												className={`text-[9px] uppercase font-bold tracking-wider transition-colors ${
+													isColHovered
+														? "text-purple-700 dark:text-purple-300"
+														: "text-purple-500 dark:text-purple-400"
+												}`}>
+												Extra
+											</span>
+											<span
+												className={`text-xs font-black px-1.5 py-0.5 rounded-lg transition-all ${
+													isColHovered
+														? "text-purple-900 dark:text-purple-100 scale-105"
+														: "text-purple-950 dark:text-purple-200"
+												}`}>
+												Extras
+											</span>
+											<span className="text-[9px] font-black text-purple-600 dark:text-purple-400 opacity-0 group-hover:opacity-100 transition-opacity mt-0.5 flex items-center gap-0.5">
+												<Plus size={10} /> Lançar
+											</span>
+										</div>
+									</th>
+								);
+							})()}
+
 							{/* Coluna Fixa à Direita: Total Mês */}
 							<th className="sticky right-0 top-0 z-40 bg-slate-100 dark:bg-slate-900 border-l border-b border-slate-200 dark:border-slate-800 min-w-[100px] sm:min-w-[110px] p-3 text-right text-sm font-black shadow-[-2px_0_4px_-1px_rgba(0,0,0,0.06)] text-slate-900 dark:text-slate-100">
 								Total Mês
@@ -970,6 +1070,53 @@ export default function ControleCalendarioCustos({
 										);
 									})}
 
+									{/* Coluna Penúltima: Custos Extras da Categoria */}
+									{(() => {
+										const extraData = custoMatrix[catKey]?.extra;
+										const val = extraData?.total || 0;
+										const itemCount = extraData?.items?.length || 0;
+										const hasRateio = extraData?.items?.some((it) => it.isRateio) ?? false;
+										const rateioPctTooltip =
+											hasRateio && extraData?.items?.[0]?.rateioPercent !== undefined
+												? ` (Rateio ${extraData.items[0].rateioPercent.toFixed(1).replace(".", ",")}% sobre Matriz)`
+												: "";
+										const isColHovered = hoveredCell.colDay === "extra";
+										const isIntersected = isRowHovered && isColHovered;
+
+										return (
+											<td
+												onClick={() => handleCellExtraCustoClick(catKey)}
+												onMouseEnter={() => setHoveredCell({ rowKey: catKey, colDay: "extra" })}
+												title={`${cfg.label} (Custos Extras): ${
+													val > 0 ? formatCurrency(val) : "Nenhum custo extra"
+												}${rateioPctTooltip} (Clique para lançar ou editar custo extra)`}
+												className={`border-r border-slate-100 dark:border-slate-800 p-1.5 text-center cursor-pointer transition-all duration-150 ${
+													isIntersected
+														? "bg-purple-200/90 dark:bg-purple-900/80 ring-2 ring-inset ring-purple-500 scale-[1.03] shadow-xs z-10"
+														: isRowHovered || isColHovered
+														? "bg-purple-100/60 dark:bg-purple-950/45"
+														: "bg-purple-50/20 dark:bg-purple-950/10"
+												} hover:bg-purple-200/80 dark:hover:bg-purple-900/70 active:scale-95`}>
+												{val > 0 ? (
+													<div className="flex flex-col items-center justify-center">
+														<span className="font-black text-slate-900 dark:text-slate-100 text-xs leading-tight">
+															{formatCellCurrency(val)}
+														</span>
+														{itemCount > 1 && (
+															<span className="text-[10px] text-purple-600 dark:text-purple-400 font-bold leading-none mt-0.5">
+																{itemCount}x
+															</span>
+														)}
+													</div>
+												) : (
+													<span className="text-slate-300 dark:text-slate-700 font-light hover:text-purple-500">
+														-
+													</span>
+												)}
+											</td>
+										);
+									})()}
+
 									{/* Coluna Fixa à Direita: Total da Categoria no Mês */}
 									<td
 										className={`sticky right-0 z-20 border-l border-slate-200 dark:border-slate-800 p-2.5 text-right font-black shadow-[-2px_0_4px_-1px_rgba(0,0,0,0.04)] text-slate-900 dark:text-slate-100 text-xs sm:text-sm transition-colors duration-150 ${
@@ -1043,6 +1190,39 @@ export default function ControleCalendarioCustos({
 								);
 							})}
 
+							{/* Coluna Penúltima: Total Custos Extras */}
+							{(() => {
+								const val = dailyTotals.extraCosts || 0;
+								const isColHovered = hoveredCell.colDay === "extra";
+								const isRowHovered = hoveredCell.rowKey === "total_custos";
+								const isIntersected = isRowHovered && isColHovered;
+
+								return (
+									<td
+										onClick={() => handleOpenExtraModal()}
+										onMouseEnter={() => setHoveredCell({ rowKey: "total_custos", colDay: "extra" })}
+										title={`Total de Custos Extras no Mês: ${formatCurrency(val)}`}
+										className={`border-r border-b border-slate-200/80 dark:border-slate-800 p-1.5 text-center cursor-pointer transition-colors duration-150 ${
+											isIntersected
+												? "bg-purple-300/90 dark:bg-purple-800/90 ring-2 ring-inset ring-purple-500 scale-[1.03]"
+												: isRowHovered || isColHovered
+												? "bg-purple-200/80 dark:bg-purple-900/70"
+												: val > 0
+												? "bg-purple-50/40 dark:bg-purple-950/20"
+												: "bg-slate-50/40 dark:bg-slate-900/40"
+										} hover:bg-purple-100/60 dark:hover:bg-purple-900/30`}>
+										<span
+											className={`text-xs font-black ${
+												val > 0
+													? "text-purple-900 dark:text-purple-200"
+													: "text-slate-300 dark:text-slate-600 font-normal"
+											}`}>
+											{formatCellCurrency(val)}
+										</span>
+									</td>
+								);
+							})()}
+
 							<td className={`sticky right-0 z-40 border-l border-b border-slate-200 dark:border-slate-800 p-2.5 text-right font-black shadow-[-2px_0_4px_-1px_rgba(0,0,0,0.06)] text-slate-900 dark:text-slate-100 text-xs sm:text-sm transition-colors duration-150 ${
 								hoveredCell.rowKey === "total_custos"
 									? "bg-blue-200 dark:bg-blue-900"
@@ -1108,6 +1288,19 @@ export default function ControleCalendarioCustos({
 									</td>
 								);
 							})}
+
+							{/* Coluna Penúltima: Faturamento em Extras (não aplicável) */}
+							<td
+								onMouseEnter={() => setHoveredCell({ rowKey: "faturamento", colDay: "extra" })}
+								className={`border-r border-b border-slate-200/80 dark:border-slate-800 p-1.5 text-center transition-colors duration-150 ${
+									hoveredCell.colDay === "extra" && hoveredCell.rowKey === "faturamento"
+										? "bg-purple-200/80 dark:bg-purple-900/70"
+										: hoveredCell.colDay === "extra" || hoveredCell.rowKey === "faturamento"
+										? "bg-blue-100/50 dark:bg-blue-950/40"
+										: "bg-slate-50/40 dark:bg-slate-900/40"
+								}`}>
+								<span className="text-slate-300 dark:text-slate-600 font-normal">-</span>
+							</td>
 
 							<td className={`sticky right-0 z-40 border-l border-b border-slate-200 dark:border-slate-800 p-2.5 text-right font-black shadow-[-2px_0_4px_-1px_rgba(0,0,0,0.06)] text-emerald-600 dark:text-emerald-400 text-xs sm:text-sm transition-colors duration-150 ${
 								hoveredCell.rowKey === "faturamento"
@@ -1185,6 +1378,42 @@ export default function ControleCalendarioCustos({
 								);
 							})}
 
+							{/* Coluna Penúltima: Impacto dos Custos Extras no Saldo */}
+							{(() => {
+								const val = dailyTotals.extraCosts || 0;
+								const isColHovered = hoveredCell.colDay === "extra";
+								const isRowHovered = hoveredCell.rowKey === "saldo_diario";
+								const isIntersected = isRowHovered && isColHovered;
+
+								return (
+									<td
+										onClick={() => handleOpenExtraModal()}
+										onMouseEnter={() => setHoveredCell({ rowKey: "saldo_diario", colDay: "extra" })}
+										title={
+											val > 0
+												? `Déficit gerado por Custos Extras: -${formatCurrency(val)}`
+												: "Nenhum custo extra alocado"
+										}
+										className={`border-r border-slate-200/80 dark:border-slate-800 p-1.5 text-center cursor-pointer transition-colors duration-150 ${
+											isIntersected
+												? "bg-purple-300/90 dark:bg-purple-800/90 ring-2 ring-inset ring-purple-500 scale-[1.03]"
+												: isRowHovered || isColHovered
+												? "bg-purple-200/80 dark:bg-purple-900/70"
+												: val > 0
+												? "bg-red-50/40 dark:bg-red-950/20"
+												: "bg-slate-100/40 dark:bg-slate-900/40"
+										} hover:bg-purple-100/50 dark:hover:bg-purple-900/30`}>
+										{val > 0 ? (
+											<span className="text-xs font-black text-red-600 dark:text-red-400">
+												{formatCellCurrency(-val)}
+											</span>
+										) : (
+											<span className="text-slate-300 dark:text-slate-600 font-normal">-</span>
+										)}
+									</td>
+								);
+							})()}
+
 							<td
 								className={`sticky right-0 z-40 border-l border-slate-200 dark:border-slate-800 p-2.5 text-right font-black text-xs sm:text-sm shadow-[-2px_0_4px_-1px_rgba(0,0,0,0.06)] transition-colors duration-150 ${
 									hoveredCell.rowKey === "saldo_diario"
@@ -1206,20 +1435,31 @@ export default function ControleCalendarioCustos({
 			{selectedDayInfo && (
 				<div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-3 md:p-4 animate-in fade-in duration-200">
 					<div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl w-full max-w-lg shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
-						{/* Header do Dia */}
+						{/* Header do Dia ou Extras */}
 						<div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50/70 dark:bg-slate-900/60">
 							<div className="flex items-center gap-2.5">
-								<span className="p-2.5 rounded-2xl bg-blue-600 text-white shadow-md shadow-blue-500/20">
+								<span className={`p-2.5 rounded-2xl text-white shadow-md ${
+									selectedDayInfo.isExtra
+										? "bg-purple-600 shadow-purple-500/20"
+										: "bg-blue-600 shadow-blue-500/20"
+								}`}>
 									<CalendarIcon size={20} />
 								</span>
 								<div>
 									<h3 className="text-base font-black text-slate-900 dark:text-slate-100">
-										Dia {String(selectedDayInfo.dayNum).padStart(2, "0")} de{" "}
-										{MESES[mes - 1]} de {ano}
+										{selectedDayInfo.isExtra
+											? `Custos Extras de ${MESES[mes - 1]} de ${ano}`
+											: `Dia ${String(selectedDayInfo.dayNum).padStart(2, "0")} de ${MESES[mes - 1]} de ${ano}`}
 									</h3>
 									<div className="flex items-center gap-2 mt-0.5">
-										<span className="text-xs font-bold text-slate-500 dark:text-slate-400">
-											{DIAS_SEMANA_EXTENSO[new Date(ano, mes - 1, selectedDayInfo.dayNum).getDay()]}
+										<span className={`text-xs font-bold ${
+											selectedDayInfo.isExtra
+												? "text-purple-600 dark:text-purple-400 font-black uppercase tracking-wider text-[10px]"
+												: "text-slate-500 dark:text-slate-400"
+										}`}>
+											{selectedDayInfo.isExtra
+												? "Coluna de Extras do Mês"
+												: DIAS_SEMANA_EXTENSO[new Date(ano, mes - 1, selectedDayInfo.dayNum || 1).getDay()]}
 										</span>
 										<span className="text-xs text-slate-300 dark:text-slate-600">•</span>
 										<span className="text-xs font-black text-blue-600 dark:text-blue-400">
@@ -1243,10 +1483,9 @@ export default function ControleCalendarioCustos({
 							{/* Botões de Ação para Adicionar */}
 							<div>
 								<span className="text-xs font-black text-slate-400 uppercase tracking-wider block mb-2.5">
-									Lançar para este dia
+									{selectedDayInfo.isExtra ? "Lançar Custo Extra" : "Lançar para este dia"}
 								</span>
-								<div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-									{/* Botão Novo Custo (Laranja Pastel) */}
+								{selectedDayInfo.isExtra ? (
 									<button
 										type="button"
 										onClick={() => {
@@ -1256,42 +1495,69 @@ export default function ControleCalendarioCustos({
 											onSelectDiaParaCusto(
 												selectedDayInfo.diaIso,
 												targetLoja,
-												selectedDayInfo.categoriaPre
+												selectedDayInfo.categoriaPre,
+												true
 											);
 											setSelectedDayInfo(null);
 										}}
-										className="p-3.5 rounded-2xl bg-orange-300 hover:bg-orange-400 dark:bg-orange-400 dark:hover:bg-orange-300 text-orange-950 font-black text-xs tracking-wide shadow-md shadow-orange-300/30 transition-all flex items-center justify-center gap-2 active:scale-95 text-center">
+										className="w-full p-3.5 rounded-2xl bg-purple-600 hover:bg-purple-700 text-white font-black text-xs tracking-wide shadow-md shadow-purple-600/20 transition-all flex items-center justify-center gap-2 active:scale-95 text-center cursor-pointer">
 										<Plus size={16} />
 										<span>
 											{selectedDayInfo.categoriaPre
-												? `Novo Custo (${CATEGORIAS_CUSTO_CONFIG[selectedDayInfo.categoriaPre]?.label})`
-												: "Novo Custo"}
+												? `+ Novo Custo Extra (${CATEGORIAS_CUSTO_CONFIG[selectedDayInfo.categoriaPre]?.label})`
+												: "+ Novo Custo Extra"}
 										</span>
 									</button>
+								) : (
+									<div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+										{/* Botão Novo Custo (Laranja Pastel) */}
+										<button
+											type="button"
+											onClick={() => {
+												if (!selectedDayInfo) return;
+												const targetLoja: StoreIdWithGeral =
+													localLoja === "todas" ? "geral" : (localLoja as StoreIdWithGeral);
+												onSelectDiaParaCusto(
+													selectedDayInfo.diaIso,
+													targetLoja,
+													selectedDayInfo.categoriaPre,
+													false
+												);
+												setSelectedDayInfo(null);
+											}}
+											className="p-3.5 rounded-2xl bg-orange-300 hover:bg-orange-400 dark:bg-orange-400 dark:hover:bg-orange-300 text-orange-950 font-black text-xs tracking-wide shadow-md shadow-orange-300/30 transition-all flex items-center justify-center gap-2 active:scale-95 text-center cursor-pointer">
+											<Plus size={16} />
+											<span>
+												{selectedDayInfo.categoriaPre
+													? `Novo Custo (${CATEGORIAS_CUSTO_CONFIG[selectedDayInfo.categoriaPre]?.label})`
+													: "Novo Custo"}
+											</span>
+										</button>
 
-									{/* Botão Novo Faturamento (Esmeralda) */}
-									<button
-										type="button"
-										onClick={() => {
-											if (!selectedDayInfo) return;
-											const targetLoja: StoreIdWithGeral =
-												localLoja === "todas" ? "geral" : (localLoja as StoreIdWithGeral);
-											onSelectDiaParaFaturamento(selectedDayInfo.diaIso, targetLoja);
-											setSelectedDayInfo(null);
-										}}
-										className="p-3.5 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs tracking-wide shadow-md shadow-emerald-600/20 transition-all flex items-center justify-center gap-2 active:scale-95 text-center">
-										<Plus size={16} />
-										<span>Novo Faturamento</span>
-									</button>
-								</div>
+										{/* Botão Novo Faturamento (Esmeralda) */}
+										<button
+											type="button"
+											onClick={() => {
+												if (!selectedDayInfo) return;
+												const targetLoja: StoreIdWithGeral =
+													localLoja === "todas" ? "geral" : (localLoja as StoreIdWithGeral);
+												onSelectDiaParaFaturamento(selectedDayInfo.diaIso, targetLoja);
+												setSelectedDayInfo(null);
+											}}
+											className="p-3.5 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs tracking-wide shadow-md shadow-emerald-600/20 transition-all flex items-center justify-center gap-2 active:scale-95 text-center cursor-pointer">
+											<Plus size={16} />
+											<span>Novo Faturamento</span>
+										</button>
+									</div>
+								)}
 							</div>
 
-							{/* Lista de Custos Registrados no Dia */}
+							{/* Lista de Custos Registrados no Dia ou Extras */}
 							<div>
 								<div className="flex items-center justify-between mb-2">
 									<span className="text-xs font-black text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
 										<Receipt size={14} className="text-rose-500" />
-										Custos no Dia ({selectedDayCustos.length})
+										{selectedDayInfo.isExtra ? "Custos Extras Registrados" : "Custos no Dia"} ({selectedDayCustos.length})
 									</span>
 									<span className="text-xs font-black text-rose-600 dark:text-rose-400">
 										{formatCurrency(
@@ -1325,6 +1591,11 @@ export default function ControleCalendarioCustos({
 														</p>
 														<span className="text-[10px] text-slate-400 block truncate">
 															{cfg?.label} • {STORE_NAMES_EXTENDED[custo.lojaId] || custo.lojaId}
+															{custo.isExtra && (
+																<span className="ml-1 px-1.5 py-0.2 rounded bg-purple-100 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 font-bold">
+																	Extra
+																</span>
+															)}
 															{custo.isRateio && custo.rateioPercent !== undefined && (
 																<> • Rateio {custo.rateioPercent.toFixed(1).replace(".", ",")}% (Total: {formatCurrency(custo.valorOriginal || 0)})</>
 															)}
@@ -1367,88 +1638,92 @@ export default function ControleCalendarioCustos({
 
 									{selectedDayCustos.length === 0 && (
 										<p className="text-xs text-slate-400 italic py-2 text-center bg-slate-50/50 dark:bg-slate-800/20 rounded-xl border border-dashed border-slate-200 dark:border-slate-800">
-											Nenhum custo registrado neste dia.
+											{selectedDayInfo.isExtra
+												? "Nenhum custo extra registrado neste mês."
+												: "Nenhum custo registrado neste dia."}
 										</p>
 									)}
 								</div>
 							</div>
 
-							{/* Lista de Faturamentos Registrados no Dia */}
-							<div>
-								<div className="flex items-center justify-between mb-2">
-									<span className="text-xs font-black text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
-										<DollarSign size={14} className="text-emerald-500" />
-										Faturamentos no Dia ({selectedDayFats.length})
-									</span>
-									<span className="text-xs font-black text-emerald-600 dark:text-emerald-400">
-										{formatCurrency(
-											selectedDayFats.reduce((acc, f) => acc + (f.valorTotal || 0), 0)
-										)}
-									</span>
-								</div>
+							{/* Lista de Faturamentos Registrados no Dia (Apenas em dias, não em extras) */}
+							{!selectedDayInfo.isExtra && (
+								<div>
+									<div className="flex items-center justify-between mb-2">
+										<span className="text-xs font-black text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+											<DollarSign size={14} className="text-emerald-500" />
+											Faturamentos no Dia ({selectedDayFats.length})
+										</span>
+										<span className="text-xs font-black text-emerald-600 dark:text-emerald-400">
+											{formatCurrency(
+												selectedDayFats.reduce((acc, f) => acc + (f.valorTotal || 0), 0)
+											)}
+										</span>
+									</div>
 
-								<div className="space-y-2">
-									{selectedDayFats.map((fat) => (
-										<div
-											key={fat.id}
-											onClick={() => {
-												if (onEditFaturamento) {
-													onEditFaturamento(fat);
-													setSelectedDayInfo(null);
-												}
-											}}
-											className="p-2.5 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-800/40 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors flex items-center justify-between cursor-pointer group">
-											<div className="flex items-center gap-2 min-w-0">
-												<span className="w-2.5 h-2.5 rounded-full bg-emerald-500 shrink-0" />
-												<div className="truncate">
-													<p className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate">
-														{fat.descricao || (fat.tipo === "discriminado" ? "Venda Discriminada" : "Faturamento Geral")}
-													</p>
-													<span className="text-[10px] text-slate-400">
-														{STORE_NAMES_EXTENDED[fat.lojaId] || fat.lojaId}
-													</span>
+									<div className="space-y-2">
+										{selectedDayFats.map((fat) => (
+											<div
+												key={fat.id}
+												onClick={() => {
+													if (onEditFaturamento) {
+														onEditFaturamento(fat);
+														setSelectedDayInfo(null);
+													}
+												}}
+												className="p-2.5 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-800/40 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors flex items-center justify-between cursor-pointer group">
+												<div className="flex items-center gap-2 min-w-0">
+													<span className="w-2.5 h-2.5 rounded-full bg-emerald-500 shrink-0" />
+													<div className="truncate">
+														<p className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate">
+															{fat.descricao || (fat.tipo === "discriminado" ? "Venda Discriminada" : "Faturamento Geral")}
+														</p>
+														<span className="text-[10px] text-slate-400">
+															{STORE_NAMES_EXTENDED[fat.lojaId] || fat.lojaId}
+														</span>
+													</div>
 												</div>
-											</div>
-											<div className="flex items-center gap-1.5 shrink-0">
-												<span className="text-xs font-black text-emerald-600 dark:text-emerald-400">
-													{formatCurrency(fat.valorTotal)}
-												</span>
-												<button
-													type="button"
-													title="Editar faturamento"
-													onClick={(e) => {
-														e.stopPropagation();
-														if (onEditFaturamento) {
-															onEditFaturamento(fat);
-															setSelectedDayInfo(null);
-														}
-													}}
-													className="p-1 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors">
-													<Edit2 size={13} />
-												</button>
-												{onDeleteFaturamento && (
+												<div className="flex items-center gap-1.5 shrink-0">
+													<span className="text-xs font-black text-emerald-600 dark:text-emerald-400">
+														{formatCurrency(fat.valorTotal)}
+													</span>
 													<button
 														type="button"
-														title="Excluir faturamento"
+														title="Editar faturamento"
 														onClick={(e) => {
 															e.stopPropagation();
-															onDeleteFaturamento(fat.id);
+															if (onEditFaturamento) {
+																onEditFaturamento(fat);
+																setSelectedDayInfo(null);
+															}
 														}}
-														className="p-1 rounded-lg hover:bg-rose-100 dark:hover:bg-rose-900/50 text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 transition-colors">
-														<Trash2 size={13} />
+														className="p-1 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors">
+														<Edit2 size={13} />
 													</button>
-												)}
+													{onDeleteFaturamento && (
+														<button
+															type="button"
+															title="Excluir faturamento"
+															onClick={(e) => {
+																e.stopPropagation();
+																onDeleteFaturamento(fat.id);
+															}}
+															className="p-1 rounded-lg hover:bg-rose-100 dark:hover:bg-rose-900/50 text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 transition-colors">
+															<Trash2 size={13} />
+														</button>
+													)}
+												</div>
 											</div>
-										</div>
-									))}
+										))}
 
-									{selectedDayFats.length === 0 && (
-										<p className="text-xs text-slate-400 italic py-2 text-center bg-slate-50/50 dark:bg-slate-800/20 rounded-xl border border-dashed border-slate-200 dark:border-slate-800">
-											Nenhum faturamento registrado neste dia.
-										</p>
-									)}
+										{selectedDayFats.length === 0 && (
+											<p className="text-xs text-slate-400 italic py-2 text-center bg-slate-50/50 dark:bg-slate-800/20 rounded-xl border border-dashed border-slate-200 dark:border-slate-800">
+												Nenhum faturamento registrado neste dia.
+											</p>
+										)}
+									</div>
 								</div>
-							</div>
+							)}
 						</div>
 
 						{/* Footer com botão de Fechar */}
@@ -1471,7 +1746,11 @@ export default function ControleCalendarioCustos({
 						{/* Cabeçalho */}
 						<div className="px-6 py-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
 							<div className="flex items-center gap-3">
-								<span className="p-2.5 rounded-2xl bg-orange-100 dark:bg-orange-950/60 text-orange-600 dark:text-orange-400">
+								<span className={`p-2.5 rounded-2xl ${
+									custoChoiceModal.isExtra
+										? "bg-purple-100 dark:bg-purple-950/60 text-purple-600 dark:text-purple-400"
+										: "bg-orange-100 dark:bg-orange-950/60 text-orange-600 dark:text-orange-400"
+								}`}>
 									<Receipt size={20} />
 								</span>
 								<div>
@@ -1479,7 +1758,9 @@ export default function ControleCalendarioCustos({
 										{CATEGORIAS_CUSTO_CONFIG[custoChoiceModal.categoria]?.label || "Custo"}
 									</h4>
 									<p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-										Dia {custoChoiceModal.diaNum} de {MESES[mes - 1]} de {ano}
+										{custoChoiceModal.isExtra
+											? `Custos Extras de ${MESES[mes - 1]} de ${ano}`
+											: `Dia ${custoChoiceModal.diaNum} de ${MESES[mes - 1]} de ${ano}`}
 									</p>
 								</div>
 							</div>
@@ -1496,7 +1777,7 @@ export default function ControleCalendarioCustos({
 							<div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200/80 dark:border-slate-800 flex items-center justify-between gap-3">
 								<div className="truncate">
 									<span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
-										Custo Já Cadastrado
+										{custoChoiceModal.isExtra ? "Custo Extra Cadastrado" : "Custo Já Cadastrado"}
 									</span>
 									<p className="text-xs font-black text-slate-800 dark:text-slate-200 truncate mt-0.5">
 										{custoChoiceModal.item.descricao || "Sem descrição"}
@@ -1545,11 +1826,15 @@ export default function ControleCalendarioCustos({
 									onClick={() => {
 										const current = custoChoiceModal;
 										setCustoChoiceModal(null);
-										onSelectDiaParaCusto(current.diaIso, current.loja, current.categoria);
+										onSelectDiaParaCusto(current.diaIso, current.loja, current.categoria, current.isExtra);
 									}}
-									className="p-3.5 rounded-2xl bg-orange-300 hover:bg-orange-400 dark:bg-orange-400 dark:hover:bg-orange-300 text-orange-950 font-black text-xs tracking-wide shadow-md shadow-orange-300/30 transition-all flex items-center justify-center gap-2 active:scale-95 cursor-pointer">
+									className={`p-3.5 rounded-2xl font-black text-xs tracking-wide shadow-md transition-all flex items-center justify-center gap-2 active:scale-95 cursor-pointer ${
+										custoChoiceModal.isExtra
+											? "bg-purple-600 hover:bg-purple-700 text-white shadow-purple-600/20"
+											: "bg-orange-300 hover:bg-orange-400 dark:bg-orange-400 dark:hover:bg-orange-300 text-orange-950 shadow-orange-300/30"
+									}`}>
 									<Plus size={16} />
-									<span>Inserir Novo Custo</span>
+									<span>{custoChoiceModal.isExtra ? "Inserir Novo Custo Extra" : "Inserir Novo Custo"}</span>
 								</button>
 							</div>
 						</div>

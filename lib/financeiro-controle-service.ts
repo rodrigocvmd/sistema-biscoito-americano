@@ -232,6 +232,7 @@ export const updateCusto = async (
 		}
 	}
 	if (data.valor !== undefined) rawPayload.valor = Number(data.valor) || 0;
+	if (data.isExtra !== undefined) rawPayload.isExtra = Boolean(data.isExtra);
 	const payload = sanitizeData(rawPayload);
 	return await updateDoc(ref, payload);
 };

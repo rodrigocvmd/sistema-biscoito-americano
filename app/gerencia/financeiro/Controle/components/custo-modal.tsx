@@ -35,6 +35,7 @@ interface CustoModalProps {
 	defaultCategoria?: CategoriaCusto;
 	defaultLoja?: StoreIdWithGeral;
 	defaultData?: string;
+	defaultIsExtra?: boolean;
 }
 
 export default function CustoModal({
@@ -46,6 +47,7 @@ export default function CustoModal({
 	defaultCategoria = "cookies",
 	defaultLoja = "geral",
 	defaultData,
+	defaultIsExtra = false,
 }: CustoModalProps) {
 	const [categoria, setCategoria] = useState<CategoriaCusto>(defaultCategoria);
 	const [lojaId, setLojaId] = useState<StoreIdWithGeral | "">(
@@ -55,6 +57,7 @@ export default function CustoModal({
 			? defaultLoja
 			: ""
 	);
+	const [isExtra, setIsExtra] = useState(defaultIsExtra);
 	const [dataCusto, setDataCusto] = useState("");
 	const [multiDatasEnabled, setMultiDatasEnabled] = useState(false);
 	const [multiDatas, setMultiDatas] = useState<string[]>([]);
@@ -82,6 +85,7 @@ export default function CustoModal({
 
 				setCategoria(initCat);
 				setLojaId(isGeneralOnlyCostCategory(initCat) ? "geral" : specLoja);
+				setIsExtra(!!editingCusto.isExtra);
 				setDataCusto(editingCusto.data);
 				setMultiDatasEnabled(false);
 				setMultiDatas([]);
@@ -104,6 +108,7 @@ export default function CustoModal({
 
 				setCategoria(defaultCategoria);
 				setLojaId(isGeneralOnlyCostCategory(defaultCategoria) ? "geral" : specLoja);
+				setIsExtra(defaultIsExtra);
 				setDataCusto(initialDate);
 				setMultiDatasEnabled(false);
 				setMultiDatas([initialDate, initialDate]);
@@ -188,6 +193,7 @@ export default function CustoModal({
 						metodoPagamento,
 						status,
 						observacoes: observacoes.trim() || undefined,
+						isExtra: isExtra ? true : undefined,
 					});
 				}
 				onClose();
@@ -219,6 +225,7 @@ export default function CustoModal({
 				metodoPagamento,
 				status,
 				observacoes: observacoes.trim() || undefined,
+				isExtra: isExtra ? true : undefined,
 			});
 			onClose();
 		} catch (error) {
@@ -288,8 +295,33 @@ export default function CustoModal({
 						</div>
 					</div>
 
+					{/* Opção para Custo Extra do Mês */}
+					<div className="flex items-center justify-between p-2.5 bg-purple-50/60 dark:bg-purple-950/30 rounded-xl border border-purple-200/80 dark:border-purple-900/50">
+						<label className="flex items-center gap-2.5 cursor-pointer select-none">
+							<input
+								type="checkbox"
+								checked={isExtra}
+								onChange={(e) => {
+									setIsExtra(e.target.checked);
+									if (e.target.checked) {
+										setMultiDatasEnabled(false);
+									}
+								}}
+								className="w-4 h-4 rounded text-purple-600 focus:ring-purple-500 border-slate-300 dark:border-slate-700 cursor-pointer"
+							/>
+							<span className="text-xs font-bold text-purple-900 dark:text-purple-200">
+								Custo Extra do Mês (alocado na coluna Extras)
+							</span>
+						</label>
+						{isExtra && (
+							<span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-purple-200 dark:bg-purple-900 text-purple-800 dark:text-purple-200">
+								Coluna Extra
+							</span>
+						)}
+					</div>
+
 					{/* Checkbox para múltiplas datas */}
-					{!editingCusto && (
+					{!editingCusto && !isExtra && (
 						<div className="flex items-center justify-between p-2.5 bg-blue-50/60 dark:bg-blue-950/30 rounded-xl border border-blue-200/80 dark:border-blue-900/50">
 							<label className="flex items-center gap-2.5 cursor-pointer select-none">
 								<input

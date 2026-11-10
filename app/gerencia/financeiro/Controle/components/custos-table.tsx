@@ -153,9 +153,16 @@ export default function CustosTable({ custos, onEdit, onDelete }: CustosTablePro
 										className="hover:bg-slate-50/70 dark:hover:bg-slate-800/30 transition-colors">
 										{/* Dia do Custo */}
 										<td className="py-3 px-4 whitespace-nowrap">
-											<span className="font-black text-slate-900 dark:text-slate-100 block">
-												{dataFormatada}
-											</span>
+											<div className="flex items-center gap-1.5">
+												<span className="font-black text-slate-900 dark:text-slate-100 block">
+													{dataFormatada}
+												</span>
+												{custo.isExtra && (
+													<span className="px-1.5 py-0.5 rounded-md text-[9px] font-black uppercase tracking-wider bg-purple-100 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800">
+														Extra
+													</span>
+												)}
+											</div>
 											<span className="text-[10px] text-slate-400 font-bold">
 												{diaSemana}
 											</span>

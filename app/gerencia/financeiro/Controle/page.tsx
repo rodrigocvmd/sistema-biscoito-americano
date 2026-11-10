@@ -118,6 +118,7 @@ export default function ControlePage() {
 	// Data e Loja dinâmicas para inicialização dos modais
 	const [modalDefaultData, setModalDefaultData] = useState<string | undefined>(undefined);
 	const [modalDefaultLoja, setModalDefaultLoja] = useState<StoreIdWithGeral>("geral");
+	const [modalDefaultIsExtra, setModalDefaultIsExtra] = useState(false);
 
 	// Inscrição em Tempo Real (Firestore)
 	useEffect(() => {
@@ -386,23 +387,26 @@ export default function ControlePage() {
 		setIsFatModalOpen(true);
 	};
 
-	const handleOpenNewCusto = (categoria?: CategoriaCusto) => {
+	const handleOpenNewCusto = (categoria?: CategoriaCusto, isExtra?: boolean) => {
 		setEditingCusto(null);
 		if (categoria) setDefaultCategoriaCusto(categoria);
 		setModalDefaultLoja(lojaFilter !== "todas" ? (lojaFilter as StoreIdWithGeral) : "geral");
 		setModalDefaultData(periodMode === "mes" ? `${mesAnoStr}-01` : undefined);
+		setModalDefaultIsExtra(!!isExtra);
 		setIsCustoModalOpen(true);
 	};
 
 	const handleOpenNewCustoComDia = (
 		diaIso: string,
 		loja: StoreIdWithGeral,
-		categoria?: CategoriaCusto
+		categoria?: CategoriaCusto,
+		isExtra?: boolean
 	) => {
 		setEditingCusto(null);
 		if (categoria) setDefaultCategoriaCusto(categoria);
 		setModalDefaultLoja(loja);
 		setModalDefaultData(diaIso);
+		setModalDefaultIsExtra(!!isExtra);
 		setIsCustoModalOpen(true);
 	};
 
@@ -649,6 +653,7 @@ export default function ControlePage() {
 				defaultCategoria={defaultCategoriaCusto}
 				defaultLoja={modalDefaultLoja}
 				defaultData={modalDefaultData}
+				defaultIsExtra={modalDefaultIsExtra}
 			/>
 		</div>
 	);
