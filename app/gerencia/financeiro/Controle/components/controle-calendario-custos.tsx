@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import {
 	CustoFinanceiro,
+	CustoComRateio,
 	FaturamentoFinanceiro,
 	CategoriaCusto,
 	CATEGORIAS_CUSTO_CONFIG,
@@ -29,6 +30,11 @@ import {
 	StoreIdWithGeral,
 	PeriodoModo,
 } from "@/types/financeiro-controle";
+import {
+	apportionCustosForStore,
+	calcularProporcoesMensaisFaturamento,
+	getMonthRef,
+} from "@/lib/financeiro-controle-rateio";
 
 interface ControleCalendarioCustosProps {
 	custos: CustoFinanceiro[];
@@ -291,30 +297,31 @@ export default function ControleCalendarioCustos({
 		}
 	};
 
-	// 1. Filtragem dos Custos para o Mês e Loja
+	// 0. Proporções mensais do faturamento entre as 4 lojas específicas (para rateio de Cookies e Insumos)
+	const proporcoesMensais = useMemo(() => {
+		return calcularProporcoesMensaisFaturamento(faturamentos);
+	}, [faturamentos]);
+
+	// 1. Filtragem e Rateio Proporcional dos Custos para o Mês e Loja
 	const monthCustos = useMemo(() => {
-		return custos.filter((c) => {
-			if (localLoja !== "todas" && c.lojaId !== localLoja) return false;
-			const ref = c.mesReferencia || (c.data ? c.data.slice(0, 7) : "");
-			return ref === localMesAno;
-		});
-	}, [custos, localLoja, localMesAno]);
+		const custosDoMes = custos.filter((c) => getMonthRef(c) === localMesAno);
+		return apportionCustosForStore(custosDoMes, localLoja, proporcoesMensais);
+	}, [custos, localLoja, localMesAno, proporcoesMensais]);
 
 	// 2. Filtragem dos Faturamentos para o Mês e Loja
 	const monthFaturamentos = useMemo(() => {
 		return faturamentos.filter((f) => {
 			if (localLoja !== "todas" && f.lojaId !== localLoja) return false;
-			const ref = f.mesReferencia || (f.data ? f.data.slice(0, 7) : "");
-			return ref === localMesAno;
+			return getMonthRef(f) === localMesAno;
 		});
 	}, [faturamentos, localLoja, localMesAno]);
 
 	// 3. Matriz de Custos por Categoria e Dia
-	// custoMatrix[categoria][day] = { total: number, items: CustoFinanceiro[] }
+	// custoMatrix[categoria][day] = { total: number, items: CustoComRateio[] }
 	const custoMatrix = useMemo(() => {
 		const matrix: Record<
 			CategoriaCusto,
-			Record<number, { total: number; items: CustoFinanceiro[] }>
+			Record<number, { total: number; items: CustoComRateio[] }>
 		> = {} as any;
 
 		CATEGORIAS_ORDEM.forEach((cat) => {
@@ -420,7 +427,7 @@ export default function ControleCalendarioCustos({
 
 	// Modal de Escolha entre Editar Custo Existente ou Inserir Novo Custo
 	const [custoChoiceModal, setCustoChoiceModal] = useState<{
-		item: CustoFinanceiro;
+		item: CustoComRateio;
 		diaIso: string;
 		loja: StoreIdWithGeral;
 		categoria: CategoriaCusto;
@@ -521,11 +528,8 @@ export default function ControleCalendarioCustos({
 						</span>
 						<div>
 							<h3 className="text-lg md:text-xl font-black text-slate-900 dark:text-slate-100 tracking-tight">
-								Custos Diários por Categoria
+								Painel de Faturamento e Custos 
 							</h3>
-							<p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-								Calendário analítico de despesas por dia do mês com somatório e lançamentos rápidos
-							</p>
 						</div>
 					</div>
 
@@ -614,7 +618,7 @@ export default function ControleCalendarioCustos({
 										? "bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-xs font-black"
 										: "text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
 								}`}>
-								Ano Todo
+								Ano
 							</button>
 						</div>
 
@@ -714,11 +718,7 @@ export default function ControleCalendarioCustos({
 											? `Jan a ${MESES[maxMonthForAno - 1] || "Jan"}`
 											: `Jan a Dez`}
 									</span>
-									{ano === currentYear && (
-										<span className="text-[10px] text-blue-500 dark:text-blue-400 font-normal hidden sm:inline">
-											(até mês anterior)
-										</span>
-									)}
+									{ano === currentYear}
 								</div>
 							</div>
 						)}
@@ -923,6 +923,11 @@ export default function ControleCalendarioCustos({
 										const cellData = custoMatrix[catKey]?.[d];
 										const val = cellData?.total || 0;
 										const itemCount = cellData?.items?.length || 0;
+										const hasRateio = cellData?.items?.some((it) => it.isRateio) ?? false;
+										const rateioPctTooltip =
+											hasRateio && cellData?.items?.[0]?.rateioPercent !== undefined
+												? ` (Rateio ${cellData.items[0].rateioPercent.toFixed(1).replace(".", ",")}% sobre Matriz)`
+												: "";
 										const diaIso = `${ano}-${String(mes).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
 										const isToday = diaIso === todayIso;
 										const isColHovered = hoveredCell.colDay === d;
@@ -935,7 +940,7 @@ export default function ControleCalendarioCustos({
 												onMouseEnter={() => setHoveredCell({ rowKey: catKey, colDay: d })}
 												title={`${cfg.label} no Dia ${String(d).padStart(2, "0")}: ${
 													val > 0 ? formatCurrency(val) : "Nenhum custo"
-												} (Clique para lançar ou editar custo)`}
+												}${rateioPctTooltip} (Clique para lançar ou editar custo)`}
 												className={`border-r border-slate-100 dark:border-slate-800 p-1.5 text-center cursor-pointer transition-all duration-150 ${
 													isIntersected
 														? "bg-blue-200/90 dark:bg-blue-900/80 ring-2 ring-inset ring-blue-500 scale-[1.03] shadow-xs z-10"
@@ -1298,12 +1303,13 @@ export default function ControleCalendarioCustos({
 								<div className="space-y-2">
 									{selectedDayCustos.map((custo) => {
 										const cfg = CATEGORIAS_CUSTO_CONFIG[custo.categoria];
+										const originalCusto = custos.find((raw) => raw.id === custo.id) || custo;
 										return (
 											<div
 												key={custo.id}
 												onClick={() => {
 													if (onEditCusto) {
-														onEditCusto(custo);
+														onEditCusto(originalCusto);
 														setSelectedDayInfo(null);
 													}
 												}}
@@ -1317,8 +1323,11 @@ export default function ControleCalendarioCustos({
 														<p className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate">
 															{custo.descricao}
 														</p>
-														<span className="text-[10px] text-slate-400">
+														<span className="text-[10px] text-slate-400 block truncate">
 															{cfg?.label} • {STORE_NAMES_EXTENDED[custo.lojaId] || custo.lojaId}
+															{custo.isRateio && custo.rateioPercent !== undefined && (
+																<> • Rateio {custo.rateioPercent.toFixed(1).replace(".", ",")}% (Total: {formatCurrency(custo.valorOriginal || 0)})</>
+															)}
 														</span>
 													</div>
 												</div>
@@ -1332,7 +1341,7 @@ export default function ControleCalendarioCustos({
 														onClick={(e) => {
 															e.stopPropagation();
 															if (onEditCusto) {
-																onEditCusto(custo);
+																onEditCusto(originalCusto);
 																setSelectedDayInfo(null);
 															}
 														}}
@@ -1484,17 +1493,23 @@ export default function ControleCalendarioCustos({
 
 						{/* Resumo do custo atual */}
 						<div className="p-6 space-y-4">
-							<div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200/80 dark:border-slate-800 flex items-center justify-between">
-								<div className="truncate mr-3">
+							<div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200/80 dark:border-slate-800 flex items-center justify-between gap-3">
+								<div className="truncate">
 									<span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
 										Custo Já Cadastrado
 									</span>
 									<p className="text-xs font-black text-slate-800 dark:text-slate-200 truncate mt-0.5">
 										{custoChoiceModal.item.descricao || "Sem descrição"}
 									</p>
-									<span className="text-[11px] text-slate-500 dark:text-slate-400">
+									<span className="text-[11px] text-slate-500 dark:text-slate-400 block">
 										Loja: {STORE_NAMES_EXTENDED[custoChoiceModal.item.lojaId] || custoChoiceModal.item.lojaId}
 									</span>
+									{custoChoiceModal.item.isRateio && custoChoiceModal.item.rateioPercent !== undefined && (
+										<span className="inline-block mt-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300">
+											Rateio {custoChoiceModal.item.rateioPercent.toFixed(1).replace(".", ",")}% de{" "}
+											{formatCurrency(custoChoiceModal.item.valorOriginal || 0)}
+										</span>
+									)}
 								</div>
 								<span className="text-sm font-black text-rose-600 dark:text-rose-400 shrink-0">
 									{formatCurrency(custoChoiceModal.item.valor)}
@@ -1512,12 +1527,16 @@ export default function ControleCalendarioCustos({
 									type="button"
 									onClick={() => {
 										const current = custoChoiceModal;
+										const originalCusto =
+											custos.find((raw) => raw.id === current.item.id) || current.item;
 										setCustoChoiceModal(null);
-										onEditCusto?.(current.item);
+										onEditCusto?.(originalCusto);
 									}}
 									className="p-3.5 rounded-2xl border border-slate-200 dark:border-slate-700 bg-white hover:bg-slate-50 dark:bg-slate-800 dark:hover:bg-slate-700/80 text-slate-900 dark:text-slate-100 font-black text-xs tracking-wide shadow-xs transition-all flex items-center justify-center gap-2 active:scale-95 cursor-pointer">
 									<Edit2 size={16} className="text-blue-600 dark:text-blue-400" />
-									<span>Editar Este Custo</span>
+									<span>
+										{custoChoiceModal.item.isRateio ? "Editar Custo Geral" : "Editar Este Custo"}
+									</span>
 								</button>
 
 								{/* Opção 2: Inserir Novo Custo */}

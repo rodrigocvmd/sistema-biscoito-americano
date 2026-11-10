@@ -27,12 +27,15 @@ import {
 } from "lucide-react";
 import {
 	CustoFinanceiro,
+	CustoComRateio,
 	FaturamentoFinanceiro,
 	CategoriaCusto,
 	CATEGORIAS_CUSTO_CONFIG,
 	STORE_NAMES_EXTENDED,
 	StoreIdWithGeral,
 	PeriodoModo,
+	SPECIFIC_STORE_IDS,
+	isGeneralOnlyCostCategory,
 } from "@/types/financeiro-controle";
 import {
 	subscribeFaturamentos,
@@ -44,6 +47,11 @@ import {
 	updateCusto,
 	deleteCusto,
 } from "@/lib/financeiro-controle-service";
+import {
+	calcularProporcoesMensaisFaturamento,
+	apportionCustosForStore,
+	getMonthRef,
+} from "@/lib/financeiro-controle-rateio";
 
 import ControleChart from "./components/controle-chart";
 import ControleCalendarioCustos from "./components/controle-calendario-custos";
@@ -175,47 +183,51 @@ export default function ControlePage() {
 		setPeriodMode("mes");
 	};
 
-	// 1. Filtragem de Faturamento por Período e Loja
-	const filteredFaturamentos = useMemo(() => {
+	// 0. Proporções mensais do faturamento entre as 4 lojas específicas (base do rateio de Cookies e Insumos)
+	const proporcoesMensais = useMemo(() => {
+		return calcularProporcoesMensaisFaturamento(faturamentos);
+	}, [faturamentos]);
+
+	// 1. Filtragem por Período (antes da filtragem por loja)
+	const periodFaturamentos = useMemo(() => {
 		return faturamentos.filter((fat) => {
-			// Loja
-			if (lojaFilter !== "todas" && fat.lojaId !== lojaFilter) return false;
-
-			const ref = fat.mesReferencia || (fat.data ? fat.data.slice(0, 7) : "");
-
-			// Período: Mês específico ou Ano todo (de janeiro até o mês anterior ao atual)
+			const ref = getMonthRef(fat);
 			if (periodMode === "mes") {
-				if (ref !== mesAnoStr) return false;
-			} else if (periodMode === "ano") {
+				return ref === mesAnoStr;
+			}
+			if (periodMode === "ano") {
 				if (!ref.startsWith(`${ano}-`)) return false;
 				const m = parseInt(ref.split("-")[1], 10);
-				if (isNaN(m) || m < 1 || m > maxMonthForAno) return false;
+				return !isNaN(m) && m >= 1 && m <= maxMonthForAno;
 			}
-
 			return true;
 		});
-	}, [faturamentos, lojaFilter, periodMode, mesAnoStr, ano, maxMonthForAno]);
+	}, [faturamentos, periodMode, mesAnoStr, ano, maxMonthForAno]);
 
-	// 2. Filtragem de Custos por Período e Loja
-	const filteredCustos = useMemo(() => {
+	const periodCustos = useMemo(() => {
 		return custos.filter((c) => {
-			// Loja
-			if (lojaFilter !== "todas" && c.lojaId !== lojaFilter) return false;
-
-			const ref = c.mesReferencia || (c.data ? c.data.slice(0, 7) : "");
-
-			// Período: Mês específico ou Ano todo (de janeiro até o mês anterior ao atual)
+			const ref = getMonthRef(c);
 			if (periodMode === "mes") {
-				if (ref !== mesAnoStr) return false;
-			} else if (periodMode === "ano") {
+				return ref === mesAnoStr;
+			}
+			if (periodMode === "ano") {
 				if (!ref.startsWith(`${ano}-`)) return false;
 				const m = parseInt(ref.split("-")[1], 10);
-				if (isNaN(m) || m < 1 || m > maxMonthForAno) return false;
+				return !isNaN(m) && m >= 1 && m <= maxMonthForAno;
 			}
-
 			return true;
 		});
-	}, [custos, lojaFilter, periodMode, mesAnoStr, ano, maxMonthForAno]);
+	}, [custos, periodMode, mesAnoStr, ano, maxMonthForAno]);
+
+	// 2. Filtragem Final por Loja (com Rateio Proporcional de Cookies e Insumos)
+	const filteredFaturamentos = useMemo(() => {
+		if (lojaFilter === "todas") return periodFaturamentos;
+		return periodFaturamentos.filter((fat) => fat.lojaId === lojaFilter);
+	}, [periodFaturamentos, lojaFilter]);
+
+	const filteredCustos: CustoComRateio[] = useMemo(() => {
+		return apportionCustosForStore(periodCustos, lojaFilter, proporcoesMensais);
+	}, [periodCustos, lojaFilter, proporcoesMensais]);
 
 	// 3. Totais Consolidados do Período
 	const totalFaturamento = useMemo(() => {
@@ -249,18 +261,16 @@ export default function ControlePage() {
 			const fatMes = faturamentos
 				.filter((f) => {
 					if (lojaFilter !== "todas" && f.lojaId !== lojaFilter) return false;
-					const ref = f.mesReferencia || (f.data ? f.data.slice(0, 7) : "");
-					return ref === mStr;
+					return getMonthRef(f) === mStr;
 				})
 				.reduce((acc, curr) => acc + (curr.valorTotal || 0), 0);
 
-			const custMes = custos
-				.filter((c) => {
-					if (lojaFilter !== "todas" && c.lojaId !== lojaFilter) return false;
-					const ref = c.mesReferencia || (c.data ? c.data.slice(0, 7) : "");
-					return ref === mStr;
-				})
-				.reduce((acc, curr) => acc + (curr.valor || 0), 0);
+			const custosDoMes = custos.filter((c) => getMonthRef(c) === mStr);
+			const custMes = apportionCustosForStore(
+				custosDoMes,
+				lojaFilter,
+				proporcoesMensais
+			).reduce((acc, curr) => acc + (curr.valor || 0), 0);
 
 			list.push({
 				mesKey: mStr,
@@ -273,7 +283,7 @@ export default function ControlePage() {
 		}
 
 		return list;
-	}, [periodMode, maxMonthForAno, mes, ano, faturamentos, custos, lojaFilter]);
+	}, [periodMode, maxMonthForAno, mes, ano, faturamentos, custos, lojaFilter, proporcoesMensais]);
 
 	// B) Dados por Categoria de Custo
 	const categoriaData = useMemo(() => {
@@ -316,26 +326,47 @@ export default function ControlePage() {
 		return list;
 	}, [filteredCustos, totalCustos]);
 
-	// C) Dados por Loja
+	// C) Dados por Loja (com rateio proporcional de Cookies e Insumos para cada loja específica)
 	const lojaData = useMemo(() => {
-		const lojasKeys: StoreIdWithGeral[] = ["lago", "terraco", "conjunto", "noroeste", "geral"];
-		return lojasKeys.map((lojaKey) => {
-			const fat = filteredFaturamentos
+		const storeEntries = SPECIFIC_STORE_IDS.map((lojaKey) => {
+			const fat = periodFaturamentos
 				.filter((f) => f.lojaId === lojaKey)
 				.reduce((acc, curr) => acc + (curr.valorTotal || 0), 0);
-			const cust = filteredCustos
-				.filter((c) => c.lojaId === lojaKey)
-				.reduce((acc, curr) => acc + (curr.valor || 0), 0);
+			const cust = apportionCustosForStore(
+				periodCustos,
+				lojaKey,
+				proporcoesMensais
+			).reduce((acc, curr) => acc + (curr.valor || 0), 0);
 
 			return {
-				lojaId: lojaKey,
+				lojaId: lojaKey as string,
 				nome: STORE_NAMES_EXTENDED[lojaKey] || lojaKey,
 				faturamento: fat,
 				custos: cust,
 				lucro: fat - cust,
 			};
 		});
-	}, [filteredFaturamentos, filteredCustos]);
+
+		// Incluir residual "geral" somente caso existam valores ainda não rateados (ex: mês com faturamento total zerado ou histórico legado)
+		const totalPeriodoCustos = periodCustos.reduce((acc, curr) => acc + (curr.valor || 0), 0);
+		const totalCustos4Lojas = storeEntries.reduce((acc, item) => acc + item.custos, 0);
+		const residualGeralCust = Math.max(0, totalPeriodoCustos - totalCustos4Lojas);
+		const residualGeralFat = periodFaturamentos
+			.filter((f) => !SPECIFIC_STORE_IDS.includes(f.lojaId as any))
+			.reduce((acc, curr) => acc + (curr.valorTotal || 0), 0);
+
+		if (residualGeralFat > 0.01 || residualGeralCust > 0.01) {
+			storeEntries.push({
+				lojaId: "geral",
+				nome: STORE_NAMES_EXTENDED.geral,
+				faturamento: residualGeralFat,
+				custos: residualGeralCust,
+				lucro: residualGeralFat - residualGeralCust,
+			});
+		}
+
+		return storeEntries;
+	}, [periodFaturamentos, periodCustos, proporcoesMensais]);
 
 	// Maior centro de custo
 	const topCusto = categoriaData[0];
@@ -375,6 +406,13 @@ export default function ControlePage() {
 		setIsCustoModalOpen(true);
 	};
 
+	const handleOpenEditCusto = (item: CustoFinanceiro) => {
+		// Sempre busca o registro original do Firestore para nunca gravar valor proporcional no lugar do valor integral
+		const rawCusto = custos.find((raw) => raw.id === item.id) || item;
+		setEditingCusto(rawCusto);
+		setIsCustoModalOpen(true);
+	};
+
 	const handleSaveFat = async (
 		data: Omit<FaturamentoFinanceiro, "id" | "createdAt" | "updatedAt">
 	) => {
@@ -407,7 +445,15 @@ export default function ControlePage() {
 	};
 
 	const handleDeleteCusto = async (id: string) => {
-		if (window.confirm("Deseja realmente excluir este lançamento de custo?")) {
+		const target = custos.find((c) => c.id === id);
+		const confirmMessage =
+			target && isGeneralOnlyCostCategory(target.categoria) && lojaFilter !== "todas"
+				? `Este custo de ${CATEGORIAS_CUSTO_CONFIG[target.categoria]?.label} é um lançamento Geral/Matriz (${formatCurrency(
+						target.valor
+				  )}) rateado entre as 4 lojas. Deseja realmente excluir o lançamento original?`
+				: "Deseja realmente excluir este lançamento de custo?";
+
+		if (window.confirm(confirmMessage)) {
 			try {
 				await deleteCusto(id);
 			} catch (err) {
@@ -492,10 +538,7 @@ export default function ControlePage() {
 						onChangePeriodMode={(mode) => setPeriodMode(mode)}
 						onSelectDiaParaCusto={handleOpenNewCustoComDia}
 						onSelectDiaParaFaturamento={handleOpenNewFatComDia}
-						onEditCusto={(item) => {
-							setEditingCusto(item);
-							setIsCustoModalOpen(true);
-						}}
+						onEditCusto={handleOpenEditCusto}
 						onDeleteCusto={handleDeleteCusto}
 						onEditFaturamento={(item) => {
 							setSelectedFatDetalhes(item);
@@ -584,6 +627,11 @@ export default function ControlePage() {
 											</p>
 											<span className="text-[10px] text-slate-400 mt-1 block">
 												{catCount} {catCount === 1 ? "registro" : "registros"}
+												{lojaFilter !== "todas" && isGeneralOnlyCostCategory(catKey) && (
+													<span className="text-amber-600 dark:text-amber-400 font-bold">
+														{" "}• Rateio
+													</span>
+												)}
 											</span>
 										</div>
 									</div>
@@ -660,24 +708,24 @@ export default function ControlePage() {
 									return (
 										<div
 											key={custo.id}
-											onClick={() => {
-												setEditingCusto(custo);
-												setIsCustoModalOpen(true);
-											}}
+											onClick={() => handleOpenEditCusto(custo)}
 											className="py-2.5 flex items-center justify-between cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/40 px-2 rounded-xl transition-colors">
-											<div>
-												<p className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+											<div className="min-w-0 pr-2">
+												<p className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5 truncate">
 													<span
-														className="w-2 h-2 rounded-full inline-block"
+														className="w-2 h-2 rounded-full inline-block shrink-0"
 														style={{ backgroundColor: cfg?.color || "#64748b" }}
 													/>
-													{custo.descricao}
+													<span className="truncate">{custo.descricao}</span>
 												</p>
-												<span className="text-[10px] text-slate-400">
+												<span className="text-[10px] text-slate-400 block truncate">
 													Dia: {custo.data ? custo.data.split("-").reverse().join("/") : "-"} • {cfg?.label} • {STORE_NAMES_EXTENDED[custo.lojaId] || custo.lojaId}
+													{custo.isRateio && custo.rateioPercent !== undefined && (
+														<> • Rateio {custo.rateioPercent.toFixed(1).replace(".", ",")}% (Orig: {formatCurrency(custo.valorOriginal || 0)})</>
+													)}
 												</span>
 											</div>
-											<span className="text-xs font-black text-rose-600 dark:text-rose-400">
+											<span className="text-xs font-black text-rose-600 dark:text-rose-400 shrink-0">
 												{formatCurrency(custo.valor)}
 											</span>
 										</div>
@@ -714,10 +762,7 @@ export default function ControlePage() {
 			{activeSubTab === "custos" && (
 				<CustosTable
 					custos={filteredCustos}
-					onEdit={(item) => {
-						setEditingCusto(item);
-						setIsCustoModalOpen(true);
-					}}
+					onEdit={handleOpenEditCusto}
 					onDelete={handleDeleteCusto}
 				/>
 			)}

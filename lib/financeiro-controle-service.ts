@@ -12,6 +12,8 @@ import {
 import {
 	CustoFinanceiro,
 	FaturamentoFinanceiro,
+	isGeneralOnlyCostCategory,
+	isSpecificStoreId,
 } from "@/types/financeiro-controle";
 
 const FATURAMENTOS_COLLECTION = "financeiro_controle_faturamentos";
@@ -83,6 +85,10 @@ export const subscribeFaturamentos = (
 export const createFaturamento = async (
 	data: Omit<FaturamentoFinanceiro, "id" | "createdAt" | "updatedAt">
 ) => {
+	if (!isSpecificStoreId(data.lojaId)) {
+		throw new Error("Faturamento deve ser lançado apenas para uma loja específica.");
+	}
+
 	const rawPayload: Record<string, any> = {
 		...data,
 		valorTotal: Number(data.valorTotal) || 0,
@@ -107,6 +113,10 @@ export const updateFaturamento = async (
 	id: string,
 	data: Partial<Omit<FaturamentoFinanceiro, "id">>
 ) => {
+	if (data.lojaId !== undefined && !isSpecificStoreId(data.lojaId)) {
+		throw new Error("Faturamento deve ser vinculado apenas a uma loja específica.");
+	}
+
 	const ref = doc(db, FATURAMENTOS_COLLECTION, id);
 	const rawPayload: Record<string, any> = {
 		...data,
@@ -187,8 +197,17 @@ export const subscribeCustos = (
 export const createCusto = async (
 	data: Omit<CustoFinanceiro, "id" | "createdAt" | "updatedAt">
 ) => {
+	const normalizedLojaId = isGeneralOnlyCostCategory(data.categoria)
+		? "geral"
+		: data.lojaId;
+
+	if (!isGeneralOnlyCostCategory(data.categoria) && !isSpecificStoreId(normalizedLojaId)) {
+		throw new Error("Este tipo de custo deve ser lançado apenas para uma loja específica.");
+	}
+
 	const payload = sanitizeData({
 		...data,
+		lojaId: normalizedLojaId,
 		valor: Number(data.valor) || 0,
 		createdAt: serverTimestamp(),
 		updatedAt: serverTimestamp(),
@@ -205,6 +224,13 @@ export const updateCusto = async (
 		...data,
 		updatedAt: serverTimestamp(),
 	};
+	if (data.categoria !== undefined) {
+		if (isGeneralOnlyCostCategory(data.categoria)) {
+			rawPayload.lojaId = "geral";
+		} else if (data.lojaId !== undefined && !isSpecificStoreId(data.lojaId)) {
+			throw new Error("Este tipo de custo deve ser lançado apenas para uma loja específica.");
+		}
+	}
 	if (data.valor !== undefined) rawPayload.valor = Number(data.valor) || 0;
 	const payload = sanitizeData(rawPayload);
 	return await updateDoc(ref, payload);

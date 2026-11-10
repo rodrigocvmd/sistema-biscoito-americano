@@ -19,6 +19,9 @@ import {
 	STORE_NAMES_EXTENDED,
 	StoreIdWithGeral,
 	MetodoPagamento,
+	SPECIFIC_STORE_IDS,
+	isGeneralOnlyCostCategory,
+	isSpecificStoreId,
 } from "@/types/financeiro-controle";
 import { CurrencyInput } from "@/components/currency-input";
 import { DateInputBR } from "@/components/date-input-br";
@@ -45,7 +48,13 @@ export default function CustoModal({
 	defaultData,
 }: CustoModalProps) {
 	const [categoria, setCategoria] = useState<CategoriaCusto>(defaultCategoria);
-	const [lojaId, setLojaId] = useState<StoreIdWithGeral>(defaultLoja);
+	const [lojaId, setLojaId] = useState<StoreIdWithGeral | "">(
+		isGeneralOnlyCostCategory(defaultCategoria)
+			? "geral"
+			: isSpecificStoreId(defaultLoja)
+			? defaultLoja
+			: ""
+	);
 	const [dataCusto, setDataCusto] = useState("");
 	const [multiDatasEnabled, setMultiDatasEnabled] = useState(false);
 	const [multiDatas, setMultiDatas] = useState<string[]>([]);
@@ -56,12 +65,23 @@ export default function CustoModal({
 	const [observacoes, setObservacoes] = useState("");
 	const [isSubmitting, setIsSubmitting] = useState(false);
 	const valorInputRef = useRef<HTMLInputElement>(null);
+	const lastSpecificLojaRef = useRef<StoreIdWithGeral | "">(
+		isSpecificStoreId(defaultLoja) ? defaultLoja : ""
+	);
 
 	useEffect(() => {
 		if (isOpen) {
 			if (editingCusto) {
-				setCategoria(editingCusto.categoria);
-				setLojaId(editingCusto.lojaId);
+				const initCat = editingCusto.categoria;
+				const specLoja = isSpecificStoreId(editingCusto.lojaId)
+					? editingCusto.lojaId
+					: isSpecificStoreId(defaultLoja)
+					? defaultLoja
+					: "";
+				lastSpecificLojaRef.current = specLoja;
+
+				setCategoria(initCat);
+				setLojaId(isGeneralOnlyCostCategory(initCat) ? "geral" : specLoja);
 				setDataCusto(editingCusto.data);
 				setMultiDatasEnabled(false);
 				setMultiDatas([]);
@@ -79,9 +99,11 @@ export default function CustoModal({
 				const day = String(now.getDate()).padStart(2, "0");
 				const todayStr = `${year}-${month}-${day}`;
 				const initialDate = defaultData || todayStr;
+				const specLoja = isSpecificStoreId(defaultLoja) ? defaultLoja : "";
+				lastSpecificLojaRef.current = specLoja;
 
 				setCategoria(defaultCategoria);
-				setLojaId(defaultLoja);
+				setLojaId(isGeneralOnlyCostCategory(defaultCategoria) ? "geral" : specLoja);
 				setDataCusto(initialDate);
 				setMultiDatasEnabled(false);
 				setMultiDatas([initialDate, initialDate]);
@@ -105,9 +127,32 @@ export default function CustoModal({
 	if (!isOpen) return null;
 
 	const catConfig = CATEGORIAS_CUSTO_CONFIG[categoria];
+	const isGeneralOnly = isGeneralOnlyCostCategory(categoria);
+
+	const handleSelectCategoria = (nextCat: CategoriaCusto) => {
+		setCategoria(nextCat);
+		if (isGeneralOnlyCostCategory(nextCat)) {
+			setLojaId("geral");
+		} else {
+			setLojaId((prev) => (prev && isSpecificStoreId(prev) ? prev : lastSpecificLojaRef.current || ""));
+		}
+	};
+
+	const handleSelectLoja = (nextLoja: string) => {
+		setLojaId(nextLoja as StoreIdWithGeral | "");
+		if (isSpecificStoreId(nextLoja)) {
+			lastSpecificLojaRef.current = nextLoja;
+		}
+	};
 
 	const handleSubmit = async (e: React.FormEvent) => {
 		e.preventDefault();
+
+		const finalLojaId: StoreIdWithGeral | "" = isGeneralOnly ? "geral" : lojaId;
+		if (!isGeneralOnly && !isSpecificStoreId(finalLojaId)) {
+			alert("Para este tipo de custo, selecione uma loja específica (Lago, Terraço, Conjunto ou Noroeste).");
+			return;
+		}
 
 		const defaultDesc = catConfig?.label || "Custo";
 		const finalDescricao = descricao.trim() || defaultDesc;
@@ -135,7 +180,7 @@ export default function CustoModal({
 				for (const d of filledDates) {
 					await onSave({
 						categoria,
-						lojaId,
+						lojaId: finalLojaId as StoreIdWithGeral,
 						descricao: finalDescricao,
 						valor: Math.round(valNum),
 						data: d,
@@ -166,7 +211,7 @@ export default function CustoModal({
 		try {
 			await onSave({
 				categoria,
-				lojaId,
+				lojaId: finalLojaId as StoreIdWithGeral,
 				descricao: finalDescricao,
 				valor: Math.round(valNum),
 				data: dataCusto,
@@ -226,7 +271,7 @@ export default function CustoModal({
 									<button
 										key={key}
 										type="button"
-										onClick={() => setCategoria(key as CategoriaCusto)}
+										onClick={() => handleSelectCategoria(key as CategoriaCusto)}
 										className={`p-2.5 rounded-xl border text-left transition-all flex items-center gap-2 ${
 											isSelected
 												? "border-slate-900 dark:border-white bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900 shadow-sm"
@@ -277,18 +322,36 @@ export default function CustoModal({
 							{/* Linha: Unidade / Loja */}
 							<div>
 								<label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
-									Unidade / Loja
+									Unidade / Loja {!isGeneralOnly && <span className="text-rose-500">*</span>}
 								</label>
-								<select
-									value={lojaId}
-									onChange={(e) => setLojaId(e.target.value as StoreIdWithGeral)}
-									className="w-full bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500">
-									<option value="geral">Geral / Matriz (Todas as Lojas)</option>
-									<option value="lago">Lago</option>
-									<option value="terraco">Terraço</option>
-									<option value="conjunto">Conjunto</option>
-									<option value="noroeste">Noroeste</option>
-								</select>
+								{isGeneralOnly ? (
+									<>
+										<select
+											value="geral"
+											disabled
+											className="w-full bg-amber-50/70 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/60 rounded-xl px-3 py-2.5 text-xs font-bold text-amber-900 dark:text-amber-200 cursor-not-allowed">
+											<option value="geral">Geral / Matriz (Todas as Lojas)</option>
+										</select>
+										<p className="mt-1 text-[10px] font-semibold text-amber-700 dark:text-amber-400">
+											Custos de Cookies e Insumos são lançados apenas em Geral/Matriz e rateados proporcionalmente pelo faturamento mensal das 4 lojas.
+										</p>
+									</>
+								) : (
+									<select
+										required
+										value={lojaId === "geral" ? "" : lojaId}
+										onChange={(e) => handleSelectLoja(e.target.value)}
+										className="w-full bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500">
+										<option value="" disabled>
+											Selecione uma loja...
+										</option>
+										{SPECIFIC_STORE_IDS.map((sId) => (
+											<option key={sId} value={sId}>
+												{STORE_NAMES_EXTENDED[sId]}
+											</option>
+										))}
+									</select>
+								)}
 							</div>
 
 							{/* Bloco de Múltiplas Datas */}
@@ -371,18 +434,36 @@ export default function CustoModal({
 
 							<div>
 								<label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
-									Unidade / Loja
+									Unidade / Loja {!isGeneralOnly && <span className="text-rose-500">*</span>}
 								</label>
-								<select
-									value={lojaId}
-									onChange={(e) => setLojaId(e.target.value as StoreIdWithGeral)}
-									className="w-full bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500">
-									<option value="geral">Geral / Matriz (Todas as Lojas)</option>
-									<option value="lago">Lago</option>
-									<option value="terraco">Terraço</option>
-									<option value="conjunto">Conjunto</option>
-									<option value="noroeste">Noroeste</option>
-								</select>
+								{isGeneralOnly ? (
+									<>
+										<select
+											value="geral"
+											disabled
+											className="w-full bg-amber-50/70 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/60 rounded-xl px-3 py-2.5 text-xs font-bold text-amber-900 dark:text-amber-200 cursor-not-allowed">
+											<option value="geral">Geral / Matriz (Todas as Lojas)</option>
+										</select>
+										<p className="mt-1 text-[10px] font-semibold text-amber-700 dark:text-amber-400 leading-snug">
+											Rateado automaticamente entre as 4 lojas pelo faturamento do mês.
+										</p>
+									</>
+								) : (
+									<select
+										required
+										value={lojaId === "geral" ? "" : lojaId}
+										onChange={(e) => handleSelectLoja(e.target.value)}
+										className="w-full bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500">
+										<option value="" disabled>
+											Selecione uma loja...
+										</option>
+										{SPECIFIC_STORE_IDS.map((sId) => (
+											<option key={sId} value={sId}>
+												{STORE_NAMES_EXTENDED[sId]}
+											</option>
+										))}
+									</select>
+								)}
 							</div>
 						</div>
 					)}

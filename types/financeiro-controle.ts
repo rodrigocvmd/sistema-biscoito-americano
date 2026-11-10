@@ -2,6 +2,13 @@ import { StoreId } from "./index";
 
 export type StoreIdWithGeral = StoreId | "geral";
 
+export const SPECIFIC_STORE_IDS: readonly StoreId[] = [
+	"lago",
+	"terraco",
+	"conjunto",
+	"noroeste",
+] as const;
+
 export const STORE_NAMES_EXTENDED: Record<StoreIdWithGeral, string> = {
 	lago: "Lago",
 	terraco: "Terraço",
@@ -21,6 +28,19 @@ export type CategoriaCusto =
 	| "contador"
 	| "folha"
 	| "outros";
+
+export const GENERAL_ONLY_COST_CATEGORIES: readonly CategoriaCusto[] = [
+	"cookies",
+	"insumos",
+] as const;
+
+export const isGeneralOnlyCostCategory = (categoria: CategoriaCusto): boolean => {
+	return GENERAL_ONLY_COST_CATEGORIES.includes(categoria);
+};
+
+export const isSpecificStoreId = (lojaId: string): lojaId is StoreId => {
+	return SPECIFIC_STORE_IDS.includes(lojaId as StoreId);
+};
 
 export interface CategoriaCustoMeta {
 	id: CategoriaCusto;
@@ -174,6 +194,12 @@ export interface CustoFinanceiro {
 	comprovanteUrl?: string;
 	createdAt?: any;
 	updatedAt?: any;
+}
+
+export interface CustoComRateio extends CustoFinanceiro {
+	isRateio?: boolean;
+	valorOriginal?: number;
+	rateioPercent?: number;
 }
 
 export interface FaturamentoItem {

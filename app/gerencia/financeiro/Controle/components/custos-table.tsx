@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import {
 	CustoFinanceiro,
+	CustoComRateio,
 	CategoriaCusto,
 	CATEGORIAS_CUSTO_CONFIG,
 	STORE_NAMES_EXTENDED,
@@ -23,8 +24,8 @@ import {
 } from "@/types/financeiro-controle";
 
 interface CustosTableProps {
-	custos: CustoFinanceiro[];
-	onEdit: (item: CustoFinanceiro) => void;
+	custos: CustoComRateio[];
+	onEdit: (item: CustoComRateio) => void;
 	onDelete: (id: string) => void;
 }
 
@@ -174,9 +175,16 @@ export default function CustosTable({ custos, onEdit, onDelete }: CustosTablePro
 
 										{/* Loja */}
 										<td className="py-3 px-3 whitespace-nowrap">
-											<span className="inline-flex items-center px-2 py-0.5 rounded-lg text-[11px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
-												{STORE_NAMES_EXTENDED[custo.lojaId] || custo.lojaId}
-											</span>
+											<div className="flex flex-col items-start gap-0.5">
+												<span className="inline-flex items-center px-2 py-0.5 rounded-lg text-[11px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
+													{STORE_NAMES_EXTENDED[custo.lojaId] || custo.lojaId}
+												</span>
+												{custo.isRateio && custo.rateioPercent !== undefined && (
+													<span className="inline-flex items-center px-1.5 py-0.5 rounded-md text-[10px] font-bold bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300">
+														Rateio {custo.rateioPercent.toFixed(1).replace(".", ",")}%
+													</span>
+												)}
+											</div>
 										</td>
 
 										{/* Descrição */}
@@ -209,7 +217,12 @@ export default function CustosTable({ custos, onEdit, onDelete }: CustosTablePro
 
 										{/* Valor */}
 										<td className="py-3 px-4 text-right font-black text-rose-600 dark:text-rose-400 whitespace-nowrap text-sm">
-											{formatCurrency(custo.valor)}
+											<span>{formatCurrency(custo.valor)}</span>
+											{custo.isRateio && custo.valorOriginal !== undefined && (
+												<span className="block text-[10px] font-semibold text-slate-400">
+													Total: {formatCurrency(custo.valorOriginal)}
+												</span>
+											)}
 										</td>
 
 										{/* Ações */}

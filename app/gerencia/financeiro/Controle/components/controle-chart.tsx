@@ -576,7 +576,7 @@ export default function ControleChart({
 											? "bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-xs font-black"
 											: "text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"
 									}`}>
-									Ano Todo
+									Ano
 								</button>
 							</div>
 
@@ -676,11 +676,7 @@ export default function ControleChart({
 												? `Jan a ${MESES[maxMonthForAno - 1] || "Jan"}`
 												: `Jan a Dez`}
 										</span>
-										{ano === currentYear && (
-											<span className="text-[10px] text-blue-500 dark:text-blue-400 font-normal hidden sm:inline">
-												(até mês anterior)
-											</span>
-										)}
+										{ano === currentYear}
 									</div>
 								</div>
 							)}

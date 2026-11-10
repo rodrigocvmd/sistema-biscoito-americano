@@ -22,6 +22,8 @@ import {
 	CANAL_VENDA_CONFIG,
 	STORE_NAMES_EXTENDED,
 	StoreIdWithGeral,
+	SPECIFIC_STORE_IDS,
+	isSpecificStoreId,
 } from "@/types/financeiro-controle";
 import { CurrencyInput } from "@/components/currency-input";
 import { DateInputBR } from "@/components/date-input-br";
@@ -56,7 +58,9 @@ export default function FaturamentoModal({
 	defaultData,
 }: FaturamentoModalProps) {
 	const [tipo, setTipo] = useState<"geral" | "discriminado">("geral");
-	const [lojaId, setLojaId] = useState<StoreIdWithGeral>(defaultLoja);
+	const [lojaId, setLojaId] = useState<StoreIdWithGeral | "">(
+		isSpecificStoreId(defaultLoja) ? defaultLoja : ""
+	);
 	const [dataFaturamento, setDataFaturamento] = useState("");
 	const [valorGeral, setValorGeral] = useState("");
 	const [canal, setCanal] = useState<CanalVenda>("geral");
@@ -71,7 +75,13 @@ export default function FaturamentoModal({
 		if (isOpen) {
 			if (editingFaturamento) {
 				setTipo(editingFaturamento.tipo);
-				setLojaId(editingFaturamento.lojaId);
+				setLojaId(
+					isSpecificStoreId(editingFaturamento.lojaId)
+						? editingFaturamento.lojaId
+						: isSpecificStoreId(defaultLoja)
+						? defaultLoja
+						: ""
+				);
 				setDataFaturamento(editingFaturamento.data);
 				setValorGeral(
 					editingFaturamento.valorTotal
@@ -102,7 +112,7 @@ export default function FaturamentoModal({
 				const todayStr = `${year}-${month}-${day}`;
 
 				setTipo("geral");
-				setLojaId(defaultLoja);
+				setLojaId(isSpecificStoreId(defaultLoja) ? defaultLoja : "");
 				setDataFaturamento(defaultData || todayStr);
 				setValorGeral("");
 				setCanal("geral");
@@ -190,6 +200,10 @@ export default function FaturamentoModal({
 
 	const handleSubmit = async (e: React.FormEvent) => {
 		e.preventDefault();
+		if (!isSpecificStoreId(lojaId)) {
+			alert("Por favor, selecione uma loja específica (Lago, Terraço, Conjunto ou Noroeste).");
+			return;
+		}
 		if (!dataFaturamento) {
 			alert("Por favor, informe a data do faturamento.");
 			return;
@@ -328,18 +342,22 @@ export default function FaturamentoModal({
 					<div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
 						<div>
 							<label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
-								Unidade / Loja
+								Unidade / Loja <span className="text-rose-500">*</span>
 							</label>
 							<div className="relative">
 								<select
-									value={lojaId}
-									onChange={(e) => setLojaId(e.target.value as StoreIdWithGeral)}
+									required
+									value={lojaId === "geral" ? "" : lojaId}
+									onChange={(e) => setLojaId(e.target.value as StoreIdWithGeral | "")}
 									className="w-full bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500">
-									<option value="geral">Geral / Todas as Lojas</option>
-									<option value="lago">Lago</option>
-									<option value="terraco">Terraço</option>
-									<option value="conjunto">Conjunto</option>
-									<option value="noroeste">Noroeste</option>
+									<option value="" disabled>
+										Selecione uma loja...
+									</option>
+									{SPECIFIC_STORE_IDS.map((sId) => (
+										<option key={sId} value={sId}>
+											{STORE_NAMES_EXTENDED[sId]}
+										</option>
+									))}
 								</select>
 							</div>
 						</div>
